@@ -1,4 +1,84 @@
 #-------------------------------------------------------------------------------
+# Definition of source files, object location, module location etc...
+#-------------------------------------------------------------------------------
+OBJDIR :=   obj
+SRCDIR :=   src
+MODDIR :=   mod
+
+TARGET :=   MOCCa.exe
+SRC    :=   CompilationInfo.f90 GenInfo.f90 Force.f90 Derivatives.f90 
+SRC    +=   GnuForInterface.f90 CoulombDerivatives.f90 Mesh.f90 Spinor.f90 
+SRC    +=   Spwf.f90 SpwfStorage.f90 Damping.f90 Densities.f90 
+SRC    +=   Moments.f90  MultiGrid.f90 Coulomb.f90 PairingInteraction.f90 
+SRC    +=   LipkinNogami.f90 HFB.f90 BCS.f90 Pairing.f90 Cranking.f90 
+SRC    +=   MeanFields.f90 ImaginaryTime.f90 Energy.f90 DensityMixing.f90 
+SRC    +=   Transform.f90 SpwfFactory.f90 InOut.f90 Test.f90 Main.f90 
+LIBS   :=  -lopenblas
+
+#Make the lists of objects
+OBJ :=      $(patsubst %.f90,$(OBJDIR)/%.o,$(SRC))
+#-------------------------------------------------------------------------------
+# Compilers and some recommended options
+
+#Default compiler is gfortran
+CXX :=      gfortran
+# Default behaviour is not debugging
+DEBUG := no
+
+ifeq ($(CXX),gfortran)
+
+  ifeq ($(DEBUG),no)
+    #Optimal flag
+    CXXFLAGS := -O3
+  else
+    # Debugging flag
+    CXXFLAGS= -Og -fbacktrace -fcheck=all 
+    # Alternative
+    #CXXFLAGS= -Wno-tabs -fbacktrace -fcheck=all -ggdb -Wall
+  endif
+  #Move the .mod files to their own directory
+  CXXFLAGS += -J$(MODDIR)
+else ifeq ($(CXX),pgf90)
+  ifeq ($(DEBUG),0)
+    #Optimal flag
+		CXXFLAGS := -O3
+    #	else
+		# Debugging flag
+		CXXFLAGS=-traceback -Mbounds
+  endif
+	#Move the .mod files to their own directory
+	CXXFLAGS += -module $(MODDIR)
+else ifeq ($(CXX),ifort)
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  # The `-assume realloc-lhs' is mandatory for correct ifort behaviour.
+  #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ifeq ($(DEBUG),0)
+		#Optimal flag
+		CXXFLAGS=-O3 -assume realloc-lhs
+  else
+		# Debugging flag
+		CXXFLAGS=-g -traceback -check bounds -warn all -assume realloc-lhs
+  endif
+	#Move the .mod files to their own directory
+	CXXFLAGS += -module $(MODDIR)
+endif
+
+
+#-------------------------------------------------------------------------------
+
+.PHONY: all clean
+
+$(TARGET): $(OBJ)
+	$(CXX) -o $@ $^ $(LIBS)
+
+clean:
+	rm  -f $(OBJDIR)/*
+	rm  -f $(MODDIR)/*
+
+$(OBJDIR)/%.o : $(SRCDIR)/%.f90
+	$(CXX) $(CXXFLAGS) -c  $< -o $@
+
+#-------------------------------------------------------------------------------
 # Some observations on my experiences of compiling MOCCa.
 #
 # 
@@ -72,58 +152,3 @@
 # *) In addition to this, compiling MOCCa with PGI compilers with any kind of
 #    optimisation results in segfaults at runtime. To be investigated
 #-------------------------------------------------------------------------------
-
-CC=gfortran
-#CC=ifort
-#CC=pgf90
-
-#--------------------------------------------------------------------------------
-# Set Compiler flags
-ifeq ($(CC),gfortran)
-
-#  DEBUGGING FLAG
-#   CFLAGS= -Wno-tabs -fbacktrace -fcheck=all -ggdb -Wall
-#   CFLAGS= -Og -fbacktrace -fcheck=all 
-
-#  OPTIMAL FLAG
-   CFLAGS= -Ofast
-
-else ifeq ($(CC),pgf90)
-  
-#  DEBUGGING FLAG
-#  CFLAGS=-traceback -Mbounds
-
-#  OPTIMAL FLAG
-   CFLAGS=-O3
-
-else ifeq ($(CC),ifort)
-# The `-assume realloc-lhs' is mandatory for correct ifort behaviour.
-# DEBUGGING FLAG
-# CFLAGS=-g -traceback -check bounds -warn all -assume realloc-lhs
-
-# OPTIMAL FLAG
-  CFLAGS=-O3 -assume realloc-lhs
-endif
-#--------------------------------------------------------------------------------
-# Library linking
-LIB=-lopenblas
-
-#Source files
-SRC=CompilationInfo.f90 GenInfo.f90 Force.f90 Derivatives.f90  GnuForInterface.f90  CoulombDerivatives.f90 Mesh.f90 Spinor.f90 Spwf.f90 SpwfStorage.f90 Damping.f90 Densities.f90  Moments.f90  MultiGrid.f90 Coulomb.f90 PairingInteraction.f90 LipkinNogami.f90 HFB.f90 BCS.f90 Pairing.f90 Cranking.f90 MeanFields.f90 ImaginaryTime.f90 Energy.f90 DensityMixing.f90 InOut.f90 Test.f90 Main.f90 SpwfFactory.f90
-#Modules to build
-OBJ=CompilationInfo.o GenInfo.o Force.o Derivatives.o  GnuForInterface.o  CoulombDerivatives.o  Mesh.o Spinor.o Spwf.o SpwfStorage.o Damping.o Densities.o  Moments.o  MultiGrid.o Coulomb.o PairingInteraction.o LipkinNogami.o HFB.o BCS.o Pairing.o Cranking.o MeanFields.o ImaginaryTime.o Energy.o DensityMixing.o Transform.o SpwfFactory.o InOut.o Test.o Main.o
-#Modules to build for the Clusters program
-CLUOBJ=CompilationInfo.o GenInfo.o Force.o GnuForInterface.o Derivatives.o CoulombDerivatives.o  Mesh.o Spinor.o Spwf.o SpwfStorage.o Densities.o Moments.o  MultiGrid.o Coulomb.o PairingInteraction.o HFB.o BCS.o Pairing.o Cranking.o MeanFields.o Energy.o InOut.o Transform.o Clusters.o
-
-%.o: %.f90
-	$(CC) $(CFLAGS) -c $< $(OPT) $(LIB)
-
-MOCCa.exe: $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $^ $(LIB)
-	
-Clusters.exe : $(CLUOBJ)
-	$(CC) $(CFLAGS) -o $@ $^
-
-clean :
-	rm  *.mod
-	rm  *.o

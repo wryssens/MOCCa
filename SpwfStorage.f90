@@ -262,7 +262,7 @@ contains
     ! to this module explicitly.
     !---------------------------------------------------------------------------
     integer, allocatable          :: Order(:)
-    integer                       :: i, it, PrintType
+    integer                       :: i, it, PrintType, ifFilled
     integer, intent(in)           :: PairingType
     character(len=160)            :: HFheader='', CanHeader=''
     real(KIND=dp), intent(in)     :: Fermi(2)
@@ -367,7 +367,11 @@ contains
             do i=1,size(Order)
                 Distance = abs(HFBasis(Order(i))%GetEnergy() - Fermi(it))
                 if(Distance.lt.PrintingWindow) then 
-                    write(*, fmt='(i5)', ADVANCE='no') i
+                    ! We also print the sum of particles that would be 
+                    ! there if the orbitals were completely filled.
+                    ifFilled = i
+                    if(TRC) ifFilled=2*i
+                    write(*, fmt='(i4,1x)', ADVANCE='no') ifFilled
                     call HFBasis(Order(i))%PrintHF(Order(i),PrintType)
                 endif
             enddo
@@ -382,7 +386,11 @@ contains
             do i=1,size(Order)
                 Distance = abs(CanBasis(Order(i))%GetEnergy() - Fermi(it))
                 if(Distance.lt.PrintingWindow) then
-                    write(*, fmt='(i5)', ADVANCE='no') i
+                    ! We also print the sum of particles that would be 
+                    ! there if the orbitals were completely filled.
+                    ifFilled = i
+                    if(TRC) ifFilled=2*i
+                    write(*, fmt='(i4,1x)', ADVANCE='no') ifFilled
                     call CanBasis(Order(i))%PrintCanonical(Order(i), PrintType)
                 endif            
             enddo 

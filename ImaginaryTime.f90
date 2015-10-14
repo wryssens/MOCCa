@@ -149,10 +149,6 @@ contains
     endif
     !---------------------------------------------------------------------------
     ! Then we update the spwf-functions
-
-    print *, 'Correcting step Rutz'
-    print *, 'Value', Value
-    print *, 'Desired', Desired
     do i=1,nwt
       QPsi = HFBasis(i)%GetValue()
       it   = (HFBasis(i)%GetIsospin() + 3)/2 

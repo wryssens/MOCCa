@@ -35,7 +35,10 @@ module InOutput
   ! Temporary storage for Kappa matrix, in order to be able to 
   ! continue HFB calculations. There needs to be some kind of temporary storage,
   ! in case the symmetries on file do not match those of the run.
+  ! The array FileBlocksizes handles the effective sizes of the matrices
   complex(KIND=dp), allocatable :: InputKappa(:,:,:,:)
+  integer, allocatable          :: FileBlocksizes(:,:)
+
   !-----------------------------------------------------------------------------
   ! Variables read from the files of the ancient codes, mostly used for 
   ! continuing calculations after some massage of the data.
@@ -93,7 +96,7 @@ contains
     endif
     ! Special mention here for the HFB anomalous density matrix.
     if(allocated(InputKappa)) then
-      KappaHFB = TransformKappa(InputKappa, inPC, inIC)
+      KappaHFB = TransformKappa(InputKappa, inPC, inIC, FileBlocksizes)
     endif
   end subroutine Input
   
@@ -696,8 +699,6 @@ contains
     !---------------------------------------------------------------------------
     ! Fermi energy and Lipkin-Nogami parameter for solving the pairing equations
     read(IChan) npair,vgn,vgp,ren,rep,dcut, icut,Fermi,LNLambda
-    print *, 'read cr8 lnlambda', lnlambda
-    print *, 'read Fermi', Fermi
     !---------------------------------------------------------------------------
 
     if(ContinueCrank) then
@@ -1159,36 +1160,40 @@ contains
       ! But first decide on the appropriate sizes for InputKappaHFB
       PIn = 1 ; if(inPC) PIn = 2
       IIn = 1 ; if(InIc) IIn = 2
-
+      allocate(FileBlocksizes(PIn, IIn)) ; FileBlocksizes = 0.0_dp
       if(inTRC) then
         allocate(InputKappa(2*filenwt,2*filenwt,Pin,IIn))
       else
         allocate(InputKappa(filenwt,filenwt,Pin,IIn))
       endif
-      read(ICHan,iostat=ioerror) InputKappa
-      ! Don't read Delta in this case
-      !read(Ichan,iostat=ioerror) 
-      read(ICHan,iostat=ioerror) Fermi
-      read(Ichan, iostat=ioerror)LNLambda
+
+      read(ICHan,iostat=ioerror) InputKappa      
+      !read(Ichan,iostat=ioerror) FileBlockSizes
+
+      ! Temporary for radium wavefunctions
+      FileBlockSizes(1,1)= 102
+      FileBlockSizes(2,1)= 118
+      FileBlockSizes(1,2)= 84
+      FileBlockSizes(2,2)= 76
+      
+      read(ICHan,iostat=ioerror)  Fermi
+      read(Ichan, iostat=ioerror) LNLambda
     elseif(PairingType.eq.1) then
         !Read only Fermi in the BCS case
         read(IChan,iostat=ioerror)
-        !read(IChan,iostat=ioerror)
         read(IChan,iostat=ioerror)  Fermi
-        read(Ichan, iostat=ioerror) LNLambda
+        read(Ichan, iostat=ioerror) 
     else
         read(IChan,iostat=ioerror)
-        !read(IChan,iostat=ioerror)
         read(IChan,iostat=ioerror)
         read(IChan,iostat=ioerror)
     endif    
-      
     !Reading Moments
     if(ContinueMoment) then
       do while (.true.)
         call ReadMoment(IChan, ioerror)
         if(ioerror.eq.-1) exit !This is the End-Of-File condition
-        if(ioerror.gt.0 ) then
+        if(ioerror.ne.0 ) then
           call stp('IO error in reading the multipole moments from file.',     &
           &        'ioerror = ', ioerror)
         endif
@@ -1225,7 +1230,7 @@ contains
   ! 8 )  Pairing: type, strength, alphas and PairingCut
   ! 9 )  Omega and cranking values
   ! 10)  A guess for the kappa matrix for starting HFB calculations.
-  ! 11)  Delta, in order to be able to continue BCS calculations
+  ! 11)  The block sizes of the KappaHFB matrix
   ! 12)  Fermi energies
   ! 13)  Lipkin-Nogami parameter  
   ! 14)  Constraint Values and other parameters
@@ -1288,13 +1293,9 @@ contains
     ! Make a guess only when not doing HFB
     if(PairingType.ne.2) call WriteOutKappa(PairingType)
     write(OChan,iostat=io) KappaHFB
-    ! Pairing gaps
-    !if(PairingType.ne.0) then
-    !  write(OChan,iostat=io) Delta
-    !else
-    !  write(OChan,iostat=io)
-    !endif
-
+    ! Write the dimensions of this matrix to file, and note that it has been
+    ! allocated in WriteOutKappa
+    write(OChan,iostat=io) blocksizes
     write(OChan,iostat=io) Fermi
     write(OChan,iostat=io) LNLambda
     !---------------------------------------------------------------------------

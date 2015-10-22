@@ -989,7 +989,7 @@ contains
     Density =  NewDen
   end subroutine TransformDensities
 
-  function TransformKappa( InKappa, inPC, inIC) result(OutKappa)
+  function TransformKappa( InKappa, inPC, inIC, InputBlocksizes) result(OutKappa)
     !----------------------------------------------------------------------------
     ! Function that takes Kappa from a file and checks if it needs transformation
     ! when either Parity or Isospin gets broken.
@@ -1002,6 +1002,8 @@ contains
     complex(KIND=dp), allocatable :: OutKappa(:,:,:,:), Temp(:)
     logical, intent(in)           :: inPC, inIC
     integer                       :: sizes(2), P, it, iplus,imin,i,j
+
+    integer, intent(in)           :: InputBlockSizes(2,2)
 
     if(.not. inIC) then
         call stp('No rules to transform Kappa yet when breaking Isospin.')
@@ -1042,28 +1044,37 @@ contains
         ! and isospin conserved.
         allocate(OutKappa(HFBSize,HFBSize,1,2)) ; OutKappa = 0.0_dp
         do it=1,2
-            !Find out the effective size of the matrix
-            sizes = 0        
-            do P=1,2
-                do i=1,HFBSize
-                    do j=1,HFBSize
-                        if(abs(InKappa(i,j,P,it)).ne. 0.0_dp  &
-                            &      .and. i.gt.sizes(P)) sizes(P) = i
-                        if(abs(InKappa(i,j,P,it)).ne. 0.0_dp  &
-                            &      .and. j.gt.sizes(P)) sizes(P) = j
-                    enddo    
-                enddo
-            enddo
+            sizes = InputBlocksizes(:,it)
+            
             OutKappa(sum(sizes)/2+1:sum(sizes)/2+sizes(2)/2,1:sizes(2)/2,1,it)            &
             & = InKappa(sizes(2)/2+1:sizes(2),1:sizes(2)/2,2,it)
+            
             OutKappa(sum(sizes)/2+sizes(2)/2+1:sum(sizes),sizes(2)/2+1:sum(sizes)/2,1,it )&
             & = InKappa(sizes(1)/2+1:sizes(1),1:sizes(1)/2,1,it)
-            !& InKappa(1:sizes(1),1:sizes(1),1,it)  
+            
             do i=1,HFBSize
               do j=i+1, HFBSize
                 OutKappa(i,j,1,it) = - OutKappa(j,i,1,it)
               enddo
-            enddo 
+            enddo
+            
+!             print *, 'it = ', it
+!             print *, 'sizes', sizes
+!             print *, 'In, negative parity'
+!             do j=1,sizes(1)
+!               print *, DBLE(Inkappa( j, 1:sizes(1), 1,it))
+!             enddo
+!             print * 
+!             print *, 'In, positive parity'
+!             do j=1,sizes(2)
+!               print *, DBLE(Inkappa(j , 1:sizes(2), 2,it))
+!             enddo
+!             print *
+!             print *, 'out, all parity'
+!             do j=1,sizes(1) + sizes(2)
+!               print *, DBLE(OutKappa(j, 1:sum(sizes), 1, it ))
+!             enddo
+!             print *
         enddo
     endif
 

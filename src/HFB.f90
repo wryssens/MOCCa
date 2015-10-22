@@ -83,7 +83,7 @@ module HFB
   !-----------------------------------------------------------------------------
   ! Logical. Check all kinds of relations that should hold for correct HFB
   ! calculations. Only to be used for debugging purposes.
-  logical,parameter :: HFBCheck=.false.
+  logical,parameter :: HFBCheck=.true.
   !-----------------------------------------------------------------------------
   ! Real that determines how much to damp the RhoHFB and KappaHFB matrices.
   real(KIND=dp) :: HFBMix=0.1_dp
@@ -110,7 +110,7 @@ module HFB
   real(KIND=dp), allocatable :: QuasiEnergies(:,:,:), QuasiSignatures(:,:,:)
   !-----------------------------------------------------------------------------
   ! Maximum number of iterations that the Fermi solver can take
-  integer :: HFBIter = 200
+  integer :: HFBIter = 25
   !-----------------------------------------------------------------------------
   ! Logical that traces if quasiparticles excitations are defined in the HF or
   ! in the canonical basis.
@@ -141,7 +141,7 @@ module HFB
   real(KIND=dp), allocatable      :: Occupations(:,:,:)
   !-----------------------------------------------------------------------------
   ! 'Distance in energy' for the printing of quasiparticle excitations
-  real(Kind=dp) :: QPPrintWindow=10.0_dp
+  real(Kind=dp) :: QPPrintWindow=100.0_dp
   !-----------------------------------------------------------------------------
   ! Whether we want to use Broyden (fast and not 100% guaranteed) or Bisection
   ! (slow and guaranteed) method to solve for the Fermi energy
@@ -180,8 +180,8 @@ contains
     if(.not.allocated(CanTransfo)) then
       allocate(CanTransfo(HFBSize,HFBSize,Pindex,Iindex)) ; CanTransfo     = 0.0_dp
       allocate(Occupations(HFbsize,Pindex,Iindex))        ; Occupations    = 0.0_dp
-      allocate(QuasiEnergies(HFBSize,Pindex,Iindex))      ; QuasiEnergies  = 0.0_dp
-      allocate(QuasiSignatures(HFBSize,Pindex,Iindex))    ; QuasiSignatures= 0.0_dp
+      allocate(QuasiEnergies(2*HFBSize,Pindex,Iindex))      ; QuasiEnergies  = 0.0_dp
+      allocate(QuasiSignatures(2*HFBSize,Pindex,Iindex))    ; QuasiSignatures= 0.0_dp
       allocate(HFBColumns(HFBSize,Pindex,Iindex))         ; HFBColumns     = 0
     endif
 
@@ -705,7 +705,14 @@ contains
 
   !Check were we find ourselves in the phasespace
   N = HFBNumberofParticles(Fermi, Delta, LnLambda ) - Particles
-  if(Lipkin) LN   = LNLambda - LNCR8(Delta,DeltaLN, flag)
+  if(Lipkin) then
+    LN   = LNLambda - LNCR8(Delta,DeltaLN, flag)
+  else
+    ! Make sure the algorithm is converged in LN when LN is not active.
+    ! This is only to make sure no contamination occurs and convergence
+    ! is not wrongly judged.
+    LN   = 0.0_dp
+  endif
 
   ! Evaluating f and g for finite differences.
   NX = HFBNumberOfParticles(FermiHistory, Delta,LNLambda )-Particles               
@@ -776,7 +783,6 @@ contains
       !Convergence check
       do it=1,2
         if( abs(N(it)).lt.Prec  .and. abs(LN(it)).lt. Prec) Converged(it)=.true.
-        !if( abs(N(it)).lt.Prec) Converged(it) = .true.
       enddo
       if(all(converged)) then
         exit
@@ -797,6 +803,7 @@ contains
       !Print a warning if not converged
       if(iter.eq.HFBIter) then
           print 1, HFBIter, N + Particles
+          print *, abs(LN)
       endif
   enddo
   end subroutine HFBFindFermiEnergyBroyden
@@ -913,6 +920,19 @@ contains
     enddo
   enddo
 
+!   do it=1, Iindex
+!     print *, 'HFBHamil, it=', it
+!     do p=1, Pindex
+!       print *,' Parity, p=', p
+!       print *
+!       do i=1,2*blocksizes(P,it)
+!         write(*, '(999f7.2)'), DBLE(HFBHamil(1:2*blocksizes(P,it),i,P,it))
+!       enddo
+!       print *
+!     enddo
+!   enddo
+!   stop
+
   if(all(HFBHamil.eq.0.0_dp)) call stp('HFBHamiltonian completely zero!')
   end subroutine ConstructHFBHamiltonian  
 
@@ -1021,6 +1041,7 @@ contains
         U(1:N,1:2*N,P,it) = Eigenvectors(  1:N    ,1:2*N)
         V(1:N,1:2*N,P,it) = Eigenvectors(  N+1:2*N,1:2*N)
         QuasiEnergies(1:2*N,P,it) = EigenValues(1:2*N)
+        
         !-------------------------------------------------------------------------
         ! Calculate the quasiparticle signatures for further use
         QuasiSignatures(:,P,it)=0.0_dp
@@ -1046,11 +1067,24 @@ contains
         if(SC) then
           QuasiEnergies(1:2*N, P, it) = QuasiEnergies(1:2*N, P, it) &
           &                         - 1000*QuasiSignatures(1:2*N,P,it)
-        endif
+        endif       
       enddo
     enddo
 
     if(SC) call InsertionSortQPEnergies()
+
+!     do it=1,Iindex
+!       do P=1,PIndex
+!       N = blocksizes(P,it)
+!       print *
+!       print *, '(P, it) = (', P, it, ')'
+!       print *, 'N', N
+!       print *,  'First half', QuasiEnergies(1:N, P, it)
+!       print *,  '2nd   half', QuasiEnergies(N+1:2*N, P, it) 
+!       print * 
+!       enddo
+!     enddo
+
   end subroutine DiagonaliseHFBHamiltonian
 
   subroutine InsertionSortQPEnergies
@@ -1654,6 +1688,8 @@ contains
             CanBasis(index) = Canbasis(index) + CanTransfo(j,C,P,it)*          &
             &                                                       HFBasis(jjj)
           else
+            ! Note that this should only happen when signature is not conserved,
+            ! but TimeReversal is.
             CanBasis(index) = Canbasis(index) + CanTransfo(j,C,P,it)*          &
             &                                      TimeReverseSpwf(HFBasis(jjj))
           endif          
@@ -1677,7 +1713,7 @@ contains
       enddo
     enddo
   enddo
-  if(index.ne.nwt+1) call stp('Not enough wfs made')
+  if(index.ne.nwt+1) call stp('Not enough canonical spwfs were constructed.')
   !Do some stuff to get the canbasis in fighting condition
   do i=1,nwt !Here there has to be 'nwt' instead of HFBSize
     call CanBasis(i)%SymmetryOperators()
@@ -1787,6 +1823,17 @@ contains
         endif
     !---------------------------------------------------------------------------
     endif
+!     do i=1,blocksizes(1,2)
+!         do j=1,blocksizes(1,2)
+!             write (*,"(f8.3)",advance="no")  DBLE(CanTransfo(i,j,1,2)) 
+!         enddo
+!         print *
+!     enddo
+!     print *
+!     print '(10f8.3)', QuasiEnergies(1:2*blocksizes(1,2),1,2)
+!     print *
+!     print *, Columns(1:blocksizes(1,2),1,2)
+!     print *
   end function FindCorrectColumns
 
   subroutine WriteOutKappa(PairingType, OnlyIso)

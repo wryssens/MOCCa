@@ -1168,14 +1168,7 @@ contains
       endif
 
       read(ICHan,iostat=ioerror) InputKappa      
-      !read(Ichan,iostat=ioerror) FileBlockSizes
-
-      ! Temporary for radium wavefunctions
-      FileBlockSizes(1,1)= 102
-      FileBlockSizes(2,1)= 118
-      FileBlockSizes(1,2)= 84
-      FileBlockSizes(2,2)= 76
-      
+      read(Ichan,iostat=ioerror) FileBlockSizes      
       read(ICHan,iostat=ioerror)  Fermi
       read(Ichan, iostat=ioerror) LNLambda
     elseif(PairingType.eq.1) then

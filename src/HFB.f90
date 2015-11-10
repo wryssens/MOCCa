@@ -2,11 +2,6 @@ module HFB
 !-------------------------------------------------------------------------------
 ! Module that contains everything needed to solve the HFB equations.
 !-------------------------------------------------------------------------------
-! In Progress:
-!   *) Debug broyden solver
-! TODO:
-!   *) Implement quasiparticle blocking
-!-------------------------------------------------------------------------------
 ! Some general notes on technicalities:
 ! *) When conserving time-reversal not all spwfs are represented in memory.
 !    the wavefunctions are actually stored in memory. However, for easier coding
@@ -180,8 +175,8 @@ contains
     if(.not.allocated(CanTransfo)) then
       allocate(CanTransfo(HFBSize,HFBSize,Pindex,Iindex)) ; CanTransfo     = 0.0_dp
       allocate(Occupations(HFbsize,Pindex,Iindex))        ; Occupations    = 0.0_dp
-      allocate(QuasiEnergies(2*HFBSize,Pindex,Iindex))      ; QuasiEnergies  = 0.0_dp
-      allocate(QuasiSignatures(2*HFBSize,Pindex,Iindex))    ; QuasiSignatures= 0.0_dp
+      allocate(QuasiEnergies(2*HFBSize,Pindex,Iindex))    ; QuasiEnergies  = 0.0_dp
+      allocate(QuasiSignatures(2*HFBSize,Pindex,Iindex))  ; QuasiSignatures= 0.0_dp
       allocate(HFBColumns(HFBSize,Pindex,Iindex))         ; HFBColumns     = 0
     endif
 
@@ -244,12 +239,14 @@ contains
       FieldLN = 0.0_dp ; Gamma = 0.0_dp
       !Compute gamma if needed
       ! Gamma =(1 - 2 * Rho)Kappa
-      do P=1,Pindex
-        do j=1,HFBSize
-          do i=1,HFBSize
-            Gamma(i,j,P,:) = KappaHFB(i,j,P,:)
-            do k=1,HFBsize
-              Gamma(i,j,P,:) = Gamma(i,j,P,:)-2*KappaHFB(k,j,P,:)*RhoHFB(i,k,P,:)
+      do it=1,2
+        do P=1,Pindex
+          do j=1,HFBSize
+            do i=1,HFBSize
+              Gamma(i,j,P,it) = KappaHFB(i,j,P,it)
+              do k=1,HFBsize
+                Gamma(i,j,P,it) = Gamma(i,j,P,it)-2*KappaHFB(k,j,P,it)*RhoHFB(i,k,P,it)
+              enddo
             enddo
           enddo
         enddo
@@ -292,10 +289,6 @@ contains
             endif
             
             Cutoff(2) = PCutoffs(iii)            
-            !if(abs(KappaHFB(i,j,P,it)).gt.maxK) maxK = abs(KappaHFB(i,j,P,it))
-
-            ! Save some CPU cycles
-            !if(Cutoff(1)*Cutoff(2)*abs(KappaHFB(i,j,P,it)) .lt. HFBNumCut) cycle
 
             ActionOfPairing = PairingInter(Temp(1),Temp(2), it)
             Field(:,:,:,it) = Field(:,:,:,it)     -  Cutoff(1)*Cutoff(2)*      &
@@ -398,10 +391,10 @@ contains
         
             ! Attention for the extra minus sign: the bra < i,j | indicates an 
             ! extra complex conjugation.
-            TempIm   =                                                     &
-            &             + Psi1%Grid(:,:,:,4,1) * Psi2%Grid(:,:,:,1,1)    &
-            &             + Psi1%Grid(:,:,:,3,1) * Psi2%Grid(:,:,:,2,1)    &
-            &             - Psi1%Grid(:,:,:,2,1) * Psi2%Grid(:,:,:,3,1)    &
+            TempIm   =                                                         &
+            &             + Psi1%Grid(:,:,:,4,1) * Psi2%Grid(:,:,:,1,1)        &
+            &             + Psi1%Grid(:,:,:,3,1) * Psi2%Grid(:,:,:,2,1)        &
+            &             - Psi1%Grid(:,:,:,2,1) * Psi2%Grid(:,:,:,3,1)        & 
             &             - Psi1%Grid(:,:,:,1,1) * Psi2%Grid(:,:,:,4,1)
 
             Temp = DCMPLX(TempReal,TempIm)
@@ -414,7 +407,8 @@ contains
             Delta(j,i,P,it) = - Delta(i,j,P,it)
             if(allocated(DeltaLN)) then
               !Only activate when Lipkin-Nogami is active
-              DeltaLN(i,j,P,it) = Cutoff(1)*Cutoff(2)*dv*sum(Temp * PairingFieldLN(:,:,:,it))
+              DeltaLN(i,j,P,it) = Cutoff(1)*Cutoff(2)*dv*                       &
+              &                             sum(Temp * PairingFieldLN(:,:,:,it))
               DeltaLN(j,i,P,it) =  - DeltaLN(i,j,P,it)
             endif
           enddo
@@ -436,7 +430,8 @@ contains
     real(Kind=dp), intent(in) :: Lambda(2),LNLambda(2)
     real(KIND=dp)             :: N(2), N2(2,2)
     complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
-  
+    integer,save                   :: iter=0
+ 
     call ConstructHFBHamiltonian(Lambda, Delta, LNLambda)
     ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
     call DiagonaliseHFBHamiltonian()
@@ -455,6 +450,7 @@ contains
         enddo
       enddo
     enddo
+    iter = iter +1
   end function HFBNumberofParticles
 
   subroutine HFBFindFermiEnergyBisection(Fermi,L2,Delta,DeltaLN,Lipkin,Prec)
@@ -670,6 +666,7 @@ contains
   1 format('Attention, unconverged Fermi solver.'/, &
   &        'Iterations : ', i5, /, &
   &        'Particles  : ', 2f12.8)
+  2 format('LNLambda deviation : ', 2f12.8)
 
 
   real(KIND=dp), intent(inout)              :: Fermi(2), LnLambda(2)
@@ -803,7 +800,7 @@ contains
       !Print a warning if not converged
       if(iter.eq.HFBIter) then
           print 1, HFBIter, N + Particles
-          print *, abs(LN)
+          if(Lipkin) print 2, abs(LN)
       endif
   enddo
   end subroutine HFBFindFermiEnergyBroyden
@@ -920,19 +917,6 @@ contains
     enddo
   enddo
 
-!   do it=1, Iindex
-!     print *, 'HFBHamil, it=', it
-!     do p=1, Pindex
-!       print *,' Parity, p=', p
-!       print *
-!       do i=1,2*blocksizes(P,it)
-!         write(*, '(999f7.2)'), DBLE(HFBHamil(1:2*blocksizes(P,it),i,P,it))
-!       enddo
-!       print *
-!     enddo
-!   enddo
-!   stop
-
   if(all(HFBHamil.eq.0.0_dp)) call stp('HFBHamiltonian completely zero!')
   end subroutine ConstructHFBHamiltonian  
 
@@ -998,8 +982,7 @@ contains
           enddo
         enddo
         !------------------------------------------------------------------------
-        ! Temporary trick to separate signatures.
-        
+        ! Temporary trick to separate signatures.     
         if(SC) then
           do j=1,N
             jj = blockindices(j,P,it)
@@ -1022,20 +1005,6 @@ contains
           call stp("Error in diagonalising the HFB Hamiltonian.",                &
           &        "ZHEEVR Errorcode", Succes)
         endif
-!         if(SC) then 
-!             !---------------------------------------------------------------------
-!             ! Note that we do not divide the matrix into blocks by signature. 
-!             ! Thus care must be taken that the diagonalisation above conserves 
-!             ! signature when degenerate quasi-particle energies are encountered.
-!             ! Thus, in the subspace defined by the degenerate eigenvectors, we
-!             ! diagonalise the signature operator.
-!             do j=1,2*blocksizes(P,it)-1
-!                 if(abs(Eigenvalues(j) - Eigenvalues(j+1)).lt.1d-4) then
-!                     call DiagonaliseSignature(Eigenvectors(1:2*N,j),               &
-!                     &                         Eigenvectors(1:2*N,j+1),N)
-!                 endif
-!            enddo
-!         endif   
         !-------------------------------------------------------------------------
         ! We store all possible eigenvectors and later make the proper selection.       
         U(1:N,1:2*N,P,it) = Eigenvectors(  1:N    ,1:2*N)
@@ -1050,7 +1019,9 @@ contains
             jj  = blockindices(j,P,it)
             jjj = mod(jj-1,nwt)+1
             Sig = HFBasis(jjj)%GetSignatureR()
-            if(jj.ne.jjj) Sig = -Sig
+            if(jj.ne.jjj) then
+              Sig = -Sig
+            endif
             !-----------------------------------------------------
             ! The U components have the same signature
             QuasiSignatures(i,P,it) = QuasiSignatures(i,P,it)    & 
@@ -1072,25 +1043,16 @@ contains
     enddo
 
     if(SC) call InsertionSortQPEnergies()
-
-!     do it=1,Iindex
-!       do P=1,PIndex
-!       N = blocksizes(P,it)
-!       print *
-!       print *, '(P, it) = (', P, it, ')'
-!       print *, 'N', N
-!       print *,  'First half', QuasiEnergies(1:N, P, it)
-!       print *,  '2nd   half', QuasiEnergies(N+1:2*N, P, it) 
-!       print * 
-!       enddo
-!     enddo
-
   end subroutine DiagonaliseHFBHamiltonian
 
   subroutine InsertionSortQPEnergies
-
+    !-----------------------------------------------------------------------
+    ! Sort the QPenergies, since the trick to separate in 
+    ! subroutine DiagonaliseHFBHamilaltonian does not conserve the order.
+    ! We also sort the U and V matrices, as well as the Quasisignatures.
+    !-----------------------------------------------------------------------
     integer :: i,j, it, P
-    real(KIND=dp) :: TempE
+    real(KIND=dp) :: TempE,TempSig
     complex(KIND=dp) :: Temp(HFBSize)
 
     do it=1,Iindex
@@ -1098,11 +1060,19 @@ contains
             do i=1,2*blocksizes(P,it)-1
               j = i
               if(j.le.1) cycle
-              do while( QuasiEnergies(j-1,P,it) .gt. QuasiEnergies(j,P,it)) 
+              
+              !----------------------------------------------------------
+              ! This condition might seem weird, but it ensures that the
+              ! positive signature state ends up at a higher index in 
+              ! the array, since these states are shifted to higher
+              ! qp-energies in the diagonalization routine.
+              ! This of course fails when signature is not conserved.
+              do while(QuasiEnergies(j-1,P,it)-QuasiEnergies(j,P,it) .gt. 1d-8) 
                   TempE = QuasiEnergies(j,P,it)
                   QuasiEnergies(j,P,it) = QuasiEnergies(j-1,P,it)
                   QuasiEnergies(j-1,P,it) = TempE
 
+                  ! Also change the U and V around
                   Temp = U(:,j,P,it)
                   U(:,j,P,it)   = U(:,j-1,P,it)
                   U(:,j-1,P,it) = Temp
@@ -1111,10 +1081,16 @@ contains
                   V(:,j,P,it)   = V(:,j-1,P,it)
                   V(:,j-1,P,it) = Temp
 
+                  ! And don't forget the quasisignatures!
+                  TempSig                   = QuasiSignatures(j,P,it) 
+                  Quasisignatures(j,P,it)   = QuasiSignatures(j-1,P,it)
+                  Quasisignatures(j-1,P,it) = TempSig
+
                   j = j - 1
                   !Stop when we've reached the bottom of the list
                   if(j.eq.1) exit
-              end do
+              end do              
+
           enddo
         enddo
     enddo
@@ -1215,11 +1191,12 @@ contains
   ! For more see:
   ! G. Bertsch et al., Phys. Rev. A 79, 043602 (2009)
   !-----------------------------------------------------------------------------
-    integer             :: i,it,P, C
+    integer             :: i,it,P, C,j
     ! This counts the null-space dimension of U for every signature,parity & 
     ! isospin block.
     integer             :: NullDimension(2,2)
-    real(KIND=dp)       :: TotalSignature(2,2)
+    real(KIND=dp)       :: TotalSignature(2,2), prod
+    complex(KIND=dp) :: Temp(HFBSize)
     !---------------------------------------------------------------------------
     HFBColumns  = 0
     do it=1,Iindex
@@ -1241,7 +1218,7 @@ contains
     if(HFBCheck) call CheckUandVColumns(HFBColumns)    
     ! We now explicitly construct Rho first
     RhoHFB = constructRhoHFB(HFBColumns)
-    if(HFBCheck) call CheckRho(RhoHFB)
+    !if(HFBCheck) call CheckRho(RhoHFB)
     !---------------------------------------------------------------------------
     !Note that the entire procedure to combat gapless superconductivity is super-
     !fluous when conserving time-reversal
@@ -1272,28 +1249,32 @@ contains
             !-------------------------------------------------------------------
             ! Now for the fixing part: if a block has wrong number parity, we 
             ! check for the lowest positive quasiparticle energy of that block 
-            ! and'excite' that quasiparticle by exchanging U and V for that qp.          
+            ! and 'excite' that quasiparticle by exchanging U and V for that qp.          
             ! Of course we need to check that we excite the qp with the correct 
             ! signature.
             !-------------------------------------------------------------------
             do i=1,blocksizes(P,it)
               C = HFBColumns(i,P,it)
-              ! Notice the factor two: if one quasiparticle is accidentally
-              ! excited, this means that one signature in the sum has changed
-              ! sign. This means that the total sum will be off by double 
-              ! that signature!
-              HFBColumns(i,P,it) = 2*blocksizes(P,it) - C + 1
-              exit
-            enddo
-            !-------------------------------------------------------------------
-            ! Now check for total signature
-            TotalSignature(P,it) = 0.0_dp
-            do i=1,blocksizes(P,it)
-              C = HFBColumns(i,P,it)
-              TotalSignature(P,it)=TotalSignature(P,it)+QuasiSignatures(C,P,it)
+              if(abs(QuasiSignatures(C,P,it) - TotalSignature(P,it)/2 ).lt.1d-8) then
+                  HFBColumns(i,P,it) = 2*blocksizes(P,it) - C + 1
+                  print *, 'Excited', P, it, C, HFBColumns(i,P,it)
+                  print *, 'S, TS',  QuasiSignatures(C,P,it), TotalSignature(P,it)
+                  print *, 'NS', QuasiSignatures(HFBColumns(i,P,it),P,it)
+
+                  TotalSignature = 0.0_dp
+                  do j=1,blocksizes(P,it)
+                    C = HFBColumns(j,P,it)
+                    TotalSignature(P,it)=TotalSignature(P,it)+QuasiSignatures(C,P,it)
+                  enddo
+                  print *, 'NewTS', TotalSignature
+
+                  print *
+                  exit
+              endif
             enddo
           enddo
         enddo 
+      if(HFBCheck) call CheckUandVColumns(HFBColumns)   
       !-------------------------------------------------------------------------
       ! Reconstruct the density
       RhoHFB = constructRhoHFB(HFBColumns)
@@ -1316,9 +1297,11 @@ contains
     integer             :: i, j, k, P, it, ii, jj, kk
     complex(KIND=dp)    :: Check(4), UdaggerU, VDaggerV,UTV,VTU, UUdagger
     complex(KIND=dp)    :: VstarVT, ref, UVDagger, VstarUT
-    logical             :: Problem
+    logical             :: Problem, Cont
     integer, intent(in) :: Columns(HFBsize,Pindex,Iindex)
-    real(KIND=dp)       :: Prec = 1d-8
+    real(KIND=dp)       :: Prec = 1d-6
+
+    if(any(Imag(U) .ne. 0.0_dp)) call stp('U imaginary')
 
     Problem = .false.
     do it=1,Iindex
@@ -1355,26 +1338,64 @@ contains
             endif
 
             if(abs(Check(1) - ref).gt.Prec) then
-              print *, 'Check 1 failed at: ', i,j, Check(1),' P=',P,' it=', it
+              print *, 'Check 1 failed at: ', ii,jj, Check(1),' P=',P,' it=', it
               Problem=.true.
             endif
             if(abs(Check(2)      ).gt.Prec) then
-              print *, 'Check 2 failed at: ', i,j, Check(2),' P=',P,' it=', it
+              print *, 'Check 2 failed at: ', ii,jj, Check(2),' P=',P,' it=', it
               Problem=.true.
             endif
             if(abs(Check(3) - ref).gt.Prec) then
-              print *, 'Check 3 failed at: ', i,j, Check(3),' P=',P,' it=', it
+              print *, 'Check 3 failed at: ', ii,jj, Check(3),' P=',P,' it=', it
               Problem=.true.
             endif
             if(abs(Check(4)      ).gt.Prec) then
-              print *, 'Check 4 failed at: ', i,j, Check(4),' P=',P,' it=', it
+              print *, 'Check 4 failed at: ', ii,jj, Check(4),' P=',P,' it=', it
               Problem=.true.
-            endif           
+            endif  
           enddo
         enddo
       enddo
     enddo
-    if(Problem) call stp('Checks failed for U and V.')
+    if(Problem) then
+        do it=1,Iindex
+            do P=1,Pindex
+                print *,' P = ', P, 'It = ', it
+                print *
+                do i=1,2*blocksizes(P,it)
+                    write(*, "(i7)", ADVANCE='NO') i
+                enddo
+                print *
+                do i=1,2*blocksizes(P,it)
+                   Cont = .false.
+                   do j=1,blocksizes(P,it)
+                        if(HFBColumns(j,P,it) .eq. i) then
+                            Cont=.true.
+                            exit
+                        endif   
+                   enddo
+                   if(Cont) then 
+                    write(*, "(i7)", ADVANCE='NO') 1
+                   else
+                    write(*, "(i7)", ADVANCE='NO') 0
+                   endif
+                enddo
+                print *
+
+                do i=1,blocksizes(P,it)
+                    write(*,"(99f7.3)"), DBLE(U(i,1:2*blocksizes(P,it),P,it))
+                enddo
+                print *
+                 do i=1,blocksizes(P,it)
+                    write(*,"(99f7.3)"), DBLE(V(i,1:2*blocksizes(P,it),P,it))
+                enddo
+                print *
+                write(*, '(99f7.3)') QuasiSignatures(1:2*blocksizes(P,it),P,it)
+                write(*, '(99f7.3)') QuasiEnergies(1:2*blocksizes(P,it),P,it)
+            enddo
+            enddo
+        call stp('Checks failed for U and V.')
+    endif
   end subroutine CheckUandVColumns
 
   function constructRhoHFB (Columns) result(Rho)
@@ -2114,9 +2135,6 @@ contains
       if(.not.IC .and. Iso.ne.0) call stp('Invalid isospin for quasiparticle.')
 
       Pindex = (P + 3)/2 ; Isoindex = (Iso + 3)/2
-!       if(Qpindex.gt.blocksizes(Pindex, Isoindex))  then
-!         call stp('Invalid quasiparticle index.')
-!       endif
 
       !Saving input
       N = size(QPExcitations,2)
@@ -2131,8 +2149,8 @@ contains
         deallocate(Temp)
       endif
 
-      !Add to the HFBNumberparity
-      HFBNumberparity(Pindex,isoindex) = mod(HFBNumberparity(Pindex,isoindex) + 1,2)
+      !Change the HFBNumberParity accordingly
+      HFBNumberparity(Pindex,isoindex) = -1 * HFBNumberparity(Pindex,isoindex)
     enddo
 
   end subroutine ReadBlockingInfo
@@ -2145,16 +2163,16 @@ contains
 
     integer :: N, i
 
-    1 format(22('_', 'Blocking parameters', 21('_')))
-    2 format('  Index     Parity     Isospin  ')
-    3 format('--------------------------------')
-    4 format(i3, 2i2)
+    1 format('Blocking parameters')
+    2 format(2x,'  Index     Parity     Isospin  ')
+    3 format(2x,'--------------------------------')
+    4 format(i7, 5x, i6, 5x, i8)
 
-    5 format('--------------------------------')
-    6 format('Number parities')
-    7 format('  P=-1    P=+1')
-    8 format('N',2i2)
-    9 format('P',2i2)
+    5 format(2x,'--------------------------------')
+    6 format(2x,'Number parities')
+    7 format(2x,'Parity',8x,' -',11x,' +')
+    8 format(2x,'Neutron',7x,i2,11x,i2)
+    9 format(2x,'Proton ',7x,i2,11x,i2)
     print 1
 
     N = size(QPExcitations,2)
@@ -2164,8 +2182,10 @@ contains
       print 4, QPExcitations(:,i)
     enddo
     print 5
+    print *
     print 6
     print 7
+    print 5
     print 8, HFBNumberparity(:,1)
     print 9, HFBNumberParity(:,2)
     print 5
@@ -2193,53 +2213,63 @@ contains
     ! implemented yet.)
     !---------------------------------------------------------------------------
 
-      integer          :: N, i, index , j, P, it, C, K
-      complex(KIND=dp) :: Temp(HFBSize)
-      
-      N = size(QPExcitations,2)
+    integer          :: N, i, index , j, P, it, C, K, loc(1)
+    complex(KIND=dp) :: Temp(HFBSize)
+    real(KIND=dp)    :: TempU2
+
+    N = size(QPExcitations,2)
   
-      if(QPinHFBasis) then
-       call stp("Can't do HF-basis blocking yet.")
-      else
-       ! Identify the quasiparticle excitation and swap U & V columns by 
-       ! swapping the index in HFBColumns.
-       do i=1,N
+    do i=1,N
         index = QPExcitations(1,i)
         P     = QPExcitations(2,i)
-        it    = QPExcitations(3,i)        
-        !HFBColumns(index,P,it) = 2*blocksizes(P,it) - HFBColumns(index,P,it) + 1
-       
-        C    = HFBColumns(index,P,it)
-        HFBColumns(index,P,it) = 2*blocksizes(P,it) - C + 1
-        print *, 'excited', C, HFBColumns(index,P,it), QuasiEnergies(C,P,it), QuasiEnergies(HFBColumns(index,P,it),P,it)
-!         Temp = U(:,C,P,it)
-!         U(:,C,P,it)     = conjg(V(:,C,P,it)) 
-!         V(:,C,P,it)     = conjg(Temp)
-!         K = blocksizes(P,it)/2
-!         U(1:K,C,P,it)     = conjg(V(K+1:2*K,C,P,it)) 
-!         U(K+1:2*K,C,P,it) = conjg(V(1:K,C,P,it)) 
-      
-!         V(1:K,C,P,it)     = conjg(Temp(K+1:2*K))
-!         V(K+1:2*K,C,P,it) = conjg(Temp(1:K))
-       enddo
-      endif 
+        it    = QPExcitations(3,i) 
+        ! Identify the quasiparticle excitation
+        if(QPinHFBasis) then
+            loc = 0
+            TempU2 = 0.0_dp
+            ! Search among the currently occupied columns for which qp 
+            ! has the biggest overlap with the asked-for HF state.
+            do j=1,blocksizes(P,it)
+                if(DBLE(U(index,HFBColumns(j,P,it),P,it)**2) .gt. TempU2) then
+                    loc = HFBColumns(j,P,it)
+                    TempU2 = DBLE(U(index,HFBColumns(j,P,it),P,it)**2)
+                endif
+            enddo
+            C   = loc(1)
+        else
+            C   = index
+        endif
+        print *, 'C',C
+        do j=1,blocksizes(P,it)
+            if(HFBColumns(j,P,it) .eq. C) then
+                HFBColumns(j,P,it) = 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
+                !print *, 'Blocked', HFBColumns(j,P,it) 
+                !print *, 'Signature', QuasiSignatures(HFBColumns(j,P,it),P,it)
+            endif
+        enddo
+    enddo
+     
   end subroutine BlockQuasiParticles
 
   subroutine PrintQP()
   !-----------------------------------------------------------------------------
   ! Print the quasiparticles obtained by the HFB proces.
   !-----------------------------------------------------------------------------
-    integer             :: i, P, it, j
+    integer             :: i, P, it, j, domU(1), domV(1)
     character(len=7)    :: Species(2)=(/ 'Neutron', 'Proton '/)
     logical             :: skip
+    real(KIND=dp)       :: u2mv2, u2pv2, align(3,2*HFBSize,Pindex,IIndex)
+
 
     10  format (80 ('_'))
     20  format (80 ('-'))
      1  format ( a7, ' P=', i2 ' quasiparticles')
-     2  format ('  n   <Rz>   E_qp')
+     2  format ('  n   <Rz>   E_qp       U    V   u^2-v^2  u^2+v^2',3x,      &
+        &       '<Jx>',5x,'<Jy>',5x,'<Jz>')
      !           n   <Rz>   E_qp   
-     3  format ( i3, f7.2 , f10.5)
+     3  format ( i3, f7.2 , f10.5,2x, i3,2x, i3, 5(2x, f7.3))
 
+    align = QPalignment()
     do it=1,Iindex
         do P=1,Pindex
           print 10
@@ -2249,19 +2279,116 @@ contains
           do i=1,2*blocksizes(P,it)
             Skip =.true.
             do j=1,blocksizes(P,it)
+                ! Only print the qp if it is 'selected' in the HFBColumns
                 if( i.eq. HFBColumns(j,P,it) ) then
                     Skip = .false.
                     exit
                 endif
             enddo
             if(abs(QuasiEnergies(i,P,it)).gt.QPPrintWindow ) Skip=.true.
-            if(skip) cycle  
-            print 3, i, QuasiSignatures(i,P,it), QuasiEnergies(i,P,it)
+            if(skip) cycle
+            
+            ! Getting the dominant components of both U and V matrices.
+            domU = maxloc(abs(U(:,i,P,it)))
+            domV = maxloc(abs(V(:,i,P,it)))
+
+            ! Computing u^2 - v^2 and u^2 + v^2
+            u2mv2 = 0.0_dp ; u2pv2 = 0.0_dp
+            do j=1,blocksizes(P,it)
+              u2mv2 = u2mv2 + abs(U(j,i,P,it))**2 - abs(V(j,i,P,it))**2
+              u2pv2 = u2pv2 + abs(U(j,i,P,it))**2 + abs(V(j,i,P,it))**2
+            enddo
+            
+            print 3, i, QuasiSignatures(i,P,it), QuasiEnergies(i,P,it)    &
+            &      ,blockindices(domU(1),P,it), blockindices(domV(1),P,it)&
+            &      ,u2mv2, u2pv2, align(1:3,i,P,it)
           enddo
         enddo
     enddo
     print 20
   end subroutine PrintQP
+
+  function QPAlignment() result(align)
+    !------------------------------------------------------------------------
+    ! Function that computes the angular momentum of all quasiparticles.
+    ! This should only be called at print-out iterations, since this
+    ! is quite costly.
+    !------------------------------------------------------------------------
+
+    real(KIND=dp)    :: Jmatrix(HFBSize,HFBsize,6,2)
+    real(KIND=dp)    :: align(3,2*HFBSize,Pindex,IIndex)
+    integer          :: i,j,it,P,k,jj,kk, N
+    complex(KIND=dp) :: Transfo(2*HFBSize, 2*HFBSize,Pindex,IIndex)
+    !------------------------------------------------------------------------
+    ! First, we get all relevant matrix elements of the form 
+    ! < i | J | j >
+    ! in the HFBasis
+    ! The matrix elements of the nwt wavefunctions that are always stored
+    JMatrix=0.0_dp
+    do j=1,nwt
+        do i=1,j
+            ! Care for the indices here; Angularmomentum takes !reversed! 
+            ! indices
+            JMatrix(i,j,:,:) =   AngularMomentum(HFBasis(j),HFBasis(i),.false.)
+            JMatrix(j,i,:,1) =   JMatrix(i,j,:,1)
+            JMatrix(j,i,:,2) = - JMatrix(i,j,:,2)
+        enddo
+    enddo
+
+    ! Get the angular momentum of the time-reverse wavefunctions
+    if(TRC) then
+        do j=1,nwt
+            do i=1,j
+                JMatrix(i+nwt,j+nwt,:,:) = - JMatrix(i,j,:,:)
+                JMatrix(j+nwt,i+nwt,:,1) =   JMatrix(i+nwt,j+nwt,:,1)
+                JMatrix(j+nwt,i+nwt,:,2) =   JMatrix(i+nwt,j+nwt,:,2)
+            enddo    
+        enddo
+        ! ATTENTION: NOT COMPLETE YET FOR TRC -CONSERVATION!
+        call stp('Need work for printing of qp alignment')
+    endif
+
+    ! Construct the transformation matrix, in order to not get confused with 
+    ! indices.
+    do it=1,Iindex
+        do P=1,Pindex
+            N = blocksizes(P,it)
+            Transfo(1:N    ,1:2*N,P,it) = U(1:N,1:2*N,P,it)
+            Transfo(N+1:2*N,1:2*N,P,it) = V(1:N,1:2*N,P,it)
+        enddo
+    enddo
+
+    align= 0.0_dp
+    do it=1,iindex
+        do P=1,Pindex
+            N = blocksizes(P,it)
+            do i=1,2*N
+                do j=1,N
+                    jj = blockindices(j,P,it)
+                    do k=1,N
+                        kk = blockindices(k,P,it)
+                        Align(:,i,P,it) = Align(:,i,P,it) +   &
+                        &                 Jmatrix(kk,jj,1:3,1)&
+                        &                 *DBLE(Transfo(j,i,P,it)) &
+                        &                 *DBLE(Transfo(k,i,P,it))
+                    enddo
+                enddo
+
+               do j=N+1,2*N
+                    jj = blockindices(j-N,P,it)
+                    do k=N+1,2*N
+                        kk = blockindices(k-N,P,it)
+                        Align(:,i,P,it) = Align(:,i,P,it) -   &
+                        &                 Jmatrix(kk,jj,1:3,1)&
+                        &                 *DBLE(Transfo(j,i,P,it)) &
+                        &                 *DBLE(Transfo(k,i,P,it))
+                    enddo
+                enddo
+            enddo
+        enddo
+    enddo
+  end function QPAlignment
+
 
   subroutine HFBComputePairingDensity(PairDensity)
     !------------------------------------------------------------------------

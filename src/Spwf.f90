@@ -891,8 +891,9 @@ contains
     logical, intent(in)     :: Quadratic
     
     AngMom=0.0_dp
-    if(WF1%Parity.ne.WF2%Parity) then
-        ! The matrix element is zero when opposite parities are involved.
+    if(WF1%Parity.ne.WF2%Parity .or. WF1%Isospin.ne.WF2%Isospin) then
+        ! The matrix element is zero when opposite parities or isospins
+        ! are involved.
         return
     endif
 
@@ -901,7 +902,7 @@ contains
       Intermediate(i) = AngMomOperator(wf1,i)
     enddo
     !X Component
-    if(wf1%GetSignature().ne.0                                                 &
+    if(SC                                                                      &
     &  .and. wf1%GetSignature().eq.wf2%GetSignature()) then
       !Good signature quantum numbers prohibit <Jx>
       AngMom(1,:) = 0.0_dp
@@ -911,7 +912,7 @@ contains
     endif
     
     !Y Component
-    if(wf1%GetTimeSimplex().ne.0                                               &
+    if(SC                                                                      &
     &  .and. wf1%GetTimeSimplex().eq.wf2%GetTimeSimplex()) then
       !Good time simplex quantum numbers prohibit <Jy>
       AngMom(2,:) = 0.0_dp
@@ -921,9 +922,14 @@ contains
     endif 
     
     !Z Component
-    AngMom(3,1) = InproductSpinorReal(wf2%Value, Intermediate(3))
-    AngMom(3,2) = InproductSpinorImaginary(wf2%Value, Intermediate(3))
+    if( SC  .and.                                                              &
+        & wf1%GetSignature() .ne. wf2%Getsignature() ) then
+        AngMom(3,:) = 0.0
+    else
 
+        AngMom(3,1) = InproductSpinorReal(wf2%Value, Intermediate(3))
+        AngMom(3,2) = InproductSpinorImaginary(wf2%Value, Intermediate(3))
+    endif
     if(Quadratic) then
       !J**2 components, only compute these if desired.
       do i=1,3
@@ -960,9 +966,9 @@ contains
   1  format ( i3, 1x, f5.2, 1x, f7.4, 1x, f8.3, 1x, e9.2, 1x, f6.2,      f6.2 ) 
   !           n        <P>       <S>        v^2       E_sp      d2H       <Jz>
   11 format ( i3, 1x, f5.2, 1x, f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2, 1x, f6.2, & 
-  &           f6.2 )
-  !         < r^2 >
-  ! 
+  &           f6.2,1x, f6.2 )
+  !           J        <r^2>
+  !  
   !           n     <P> <S>        v^2       E_sp      d2H      <Jx> <Jz> <r^2>
   12 format ( i3, 2(1x, f5.2), 1x, f7.4 , 1x, f8.3, 1x, e9.2, 3(1x, f6.2) )
   !           n     <P> <S>        v^2       E_sp      d2H      <Jx> <Jy> <r^2>
@@ -970,23 +976,23 @@ contains
   
   !-----------------------------------------------------------------------------
   ! BCS calculations
-  !           n        <P> <S>   v^2       Delta     E_sp      d2H   <Jz>,<r^2>
-  2  format (i3,1x, f5.2,  1x, f7.4, 1x, f7.2 ,1x, f8.3, 1x, e9.2, 2(1x,f6.2))
-  !           n     <P> <S>    v^2  Delta     E_sp      d2H      <Jx> <Jz> <r^2>
-  21 format (i3,2(1x, f5.2), 1x,f7.4,1x,f7.2,1x, f8.3, 1x, e9.2, 3(1x, f6.2) ) 
+  !           n        <P> <S>   v^2       Delta     E_sp    d2H <Jz>,J,<r^2>
+  2  format (i3,1x, f5.2,  1x, f7.4, 1x, f7.2 ,1x, f8.3, 1x, e9.2, 3(1x,f6.2))
+  !           n     <P> <S>    v^2  Delta     E_sp      d2H     <Jx> <Jz>J<r^2>
+  21 format (i3,2(1x, f5.2), 1x,f7.4,1x,f7.2,1x, f8.3, 1x, e9.2, 4(1x, f6.2) ) 
   
   !-----------------------------------------------------------------------------
   ! HFB calculations
-  !           n      <P>    RhoII  Delta , PairPartner E_sp d2H   <Jz> <r^2>
-  3  format ( i3,1x,f5.2,1x,f7.4,1x,f7.2,1x, i3, 1x,f8.3,1x,e9.2,2(1x,f6.2)) 
+  !           n      <P>    RhoII  Delta , PairPartner E_sp d2H   <Jz> ,J,<r^2>
+  3  format ( i3,1x,f5.2,1x,f7.4,1x,f7.2,1x, i3, 1x,f8.3,1x,e9.2,3(1x,f6.2)) 
   !           n      <P>     <S>    RhoII   Delta , PairPartner E_sp  d2H 
   31 format ( i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x,f8.3,1x,e9.2,        &
-  &           2(1x,f6.2)) 
-  !           <Jz>, <r^2>
+  &           3(1x,f6.2)) 
+  !           <Jz>,J, <r^2>
   !           n      <P>     <S>    RhoII   Delta , PairPartner E_sp  d2H 
   32 format ( i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x,f8.3,1x,e9.2,        &
-  &           3(1x,f6.2))
-  !           <Jy>,<Jz>, <r^2>
+  &           4(1x,f6.2))
+  !           <Jy>,<Jz>,J, <r^2>
   class(Spwf), intent(in) :: WF
   integer, intent(in)     :: i
   integer, intent(in)     :: PrintType
@@ -998,14 +1004,14 @@ contains
   
   select case(PrintType)    
     case(1) !HF calculations
-        !Time Reversal and signature conservation => <S> = 1
+        !Time Reversal and signature conservation => <Rz> = 1
         if(TRC .and. SC .and. TSC) then
             print 1, i,WF%ParityR,PrintOcc,WF%Energy,WF%Dispersion,       &
             &          WF%AngMoment(3), WF%RMSRadius 
         elseif(SC.and.TSC) then
-        !Only Signature conservation
             print 11, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
-            &           WF%Dispersion,WF%AngMoment(3), WF%RMSRadius
+            &           WF%Dispersion,WF%AngMoment(3),WF%AngQuantum,      &
+            &           WF%RMSRadius
         elseif(TSC) then
         !No signature conservation
             print 12, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
@@ -1023,27 +1029,29 @@ contains
     case(2) !BCS calculations
         if(TRC .and. SC) then
             print 2, i,WF%ParityR,PrintOcc,Real(WF%Delta), WF%Energy,     &
-            &          WF%Dispersion,WF%AngMoment(3), WF%RMSRadius
+            &          WF%Dispersion,WF%AngMoment(3),WF%AngQuantum,       &
+            &          WF%RMSRadius
         elseif(TRC) then
             print 21, i,WF%ParityR,WF%SignatureR,PrintOcc,Real(WF%Delta), &
             &          WF%Energy,WF%Dispersion,WF%AngMoment(1),           &
-            &          WF%AngMoment(3), WF%RMSRadius
+            &          WF%AngMoment(3),WF%AngQuantum, WF%RMSRadius
         else
             call stp('No Printout defined yet.')
         endif
         
     case(3) !HFB calculations
         if(TRC .and. SC .and. TSC) then
-            print 3, i,WF%ParityR,PrintOcc,Real(WF%Delta),WF%PairPartner, &
-            &          WF%Energy,WF%Dispersion,WF%AngMoment(3),WF%RMSRadius
+            print 3, i,WF%ParityR,PrintOcc,Real(WF%Delta),WF%PairPartner,     &
+            &          WF%Energy,WF%Dispersion,WF%AngMoment(3),WF%AngQuantum, &
+            &          WF%RMSRadius
         elseif(SC.and.TSC) then
             print 31,i,WF%ParityR,WF%SignatureR,PrintOcc,Real(WF%Delta),  &
             &          WF%PairPartner,WF%Energy,WF%Dispersion,WF%AngMoment(3), &
-            &          WF%RMSRadius
+            &          WF%AngQuantum, WF%RMSRadius
         elseif(TSC) then
             print 32,i,WF%ParityR,WF%SignatureR,PrintOcc,Real(WF%Delta),       &
             &          WF%PairPartner,WF%Energy,WF%Dispersion,WF%AngMoment(1), &
-            &          WF%AngMoment(3),WF%RMSRadius
+            &          WF%AngMoment(3), WF%AngQuantum, WF%RMSRadius
         endif
     case DEFAULT
         call stp('Undefined printtype in subroutine PrintHF.')
@@ -1070,12 +1078,12 @@ contains
   
   !-----------------------------------------------------------------------------
   ! HFB calculations
-  !           n      <P>    v^2      E_sp   <Jz> <r^2>
-  3  format ( i3,1x,f5.2,1x,f7.4,1x,f8.3,1x,f6.2,1x,f6.2) 
-  !           n    <P>  <S>   v^2      E_sp   <Jz> <r^2>
-  31 format ( i3, 2(1x,f5.2) ,1x,f7.4,1x,f8.3,1x,f6.2,1x,f6.2) 
-  !           n    <P>  <S>   v^2      E_sp   <Jx>  <Jz> <r^2>
-  32 format ( i3, 2(1x,f5.2) ,1x,f7.4,1x,f8.3,1x,f6.2, 1x,f6.2,1x,f6.2) 
+  !           n      <P>    v^2      E_sp   <Jz> ,J,<r^2>
+  3  format ( i3,1x,f5.2,1x,f7.4,1x,f8.3,3(1x,f6.2)) 
+  !           n    <P>  <S>   v^2      E_sp   <Jz>,J, <r^2>
+  31 format ( i3, 2(1x,f5.2) ,1x,f7.4,1x,f8.3,3(1x,f6.2)) 
+  !           n    <P>  <S>   v^2      E_sp   <Jx> ,<Jz>,J, <r^2>
+  32 format ( i3, 2(1x,f5.2) ,1x,f7.4,1x,f8.3,4(1x,f6.2) ) 
   real(KIND =dp)          :: PrintOcc
   
   PrintOcc = WF%Occupation
@@ -1086,13 +1094,14 @@ contains
   case(3)
     if(TRC.and.SC.and.TSC) then
         print 3, i , WF%ParityR, PrintOcc, WF%Energy, WF%AngMoment(3),    &
-        & WF%RMSRadius
+        &            WF%AngQuantum, WF%RMSRadius
     elseif(SC .and. TSC) then
         print 31, i , WF%ParityR, WF%SignatureR, PrintOcc, WF%Energy,     &
-        &             WF%AngMoment(3), WF%RMSRadius
+        &             WF%AngMoment(3), WF%AngQuantum, WF%RMSRadius
     elseif(TSC) then
         print 32, i , WF%ParityR, WF%SignatureR, PrintOcc, WF%Energy,     &
-        &             WF%AngMoment(1),WF%AngMoment(3),WF%RMSRadius
+        &             WF%AngMoment(1),WF%AngMoment(3),  WF%AngQuantum,    &
+        &             WF%RMSRadius
     endif
   case DEFAULT
     call stp('Undefined printtype in PrintCanonical.')

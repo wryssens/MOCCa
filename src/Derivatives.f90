@@ -389,6 +389,7 @@ contains
       integer, intent(in)                :: Y,Z,N
       real(KIND=dp), target, intent(in)  :: Grid(:,:,:)
       real(KIND=dp)                      :: LineExtension(N) 
+      
       LineExtension=0.0_dp
       
   end function ZeroExtension
@@ -557,7 +558,7 @@ contains
     !---------------------------------------------------------------------------
     integer, intent(in)                   :: N,SignExtension,D
     !S and E are the first and last points that need to be derived.
-    real(KIND=dp), intent(in)             :: Line(nx) 
+    real(KIND=dp), intent(in)             :: Line(:) 
     real(KIND=dp)                         :: DerLine(nx), Factor, p
     real(KIND=dp), intent(in)             :: LineExtension(N)    
     integer                               :: i,j

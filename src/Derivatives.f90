@@ -2,7 +2,6 @@ module Derivatives
    
     use CompilationInfo
     use GenInfo
-    use OptimizedDerivatives
         
     implicit none
 

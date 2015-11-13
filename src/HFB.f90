@@ -2407,44 +2407,6 @@ subroutine PrintBlocking
   !-----------------------------------------------------------------------------
   ! Print the quasiparticles obtained by the HFB proces.
   !-----------------------------------------------------------------------------
-    integer             :: i, P, it, j
-    character(len=7)    :: Species(2)=(/ 'Neutron', 'Proton '/)
-    logical             :: skip
-
-    10  format (80 ('_'))
-    20  format (80 ('-'))
-     1  format ( a7, ' P=', i2 ' quasiparticles')
-     2  format ('  n   <Rz>   E_qp')
-     !           n   <Rz>   E_qp   
-     3  format ( i3, f7.2 , f10.5)
-
-    do it=1,Iindex
-        do P=1,Pindex
-          print 10
-          print 1, Species(it), 2*P-3
-          print 2
-          print 10
-          do i=1,2*blocksizes(P,it)
-            Skip =.true.
-            do j=1,blocksizes(P,it)
-                if( i.eq. HFBColumns(j,P,it) ) then
-                    Skip = .false.
-                    exit
-                endif
-            enddo
-            if(abs(QuasiEnergies(i,P,it)).gt.QPPrintWindow ) Skip=.true.
-            if(skip) cycle  
-            print 3, i, QuasiSignatures(i,P,it), QuasiEnergies(i,P,it)
-          enddo
-        enddo
-    enddo
-    print 20
-  end subroutine PrintQP
-
-  subroutine PrintQP()
-  !-----------------------------------------------------------------------------
-  ! Print the quasiparticles obtained by the HFB proces.
-  !-----------------------------------------------------------------------------
     integer             :: i, P, it, j, domU(1), domV(1)
     character(len=7)    :: Species(2)=(/ 'Neutron', 'Proton '/)
     logical             :: skip

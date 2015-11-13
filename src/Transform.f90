@@ -46,23 +46,37 @@ contains
   logical, intent(in)       :: inTRC, inTSC, inIC, inPC, inSC
   integer, intent(in)       :: filenx,fileny,filenz,filenwt
   type(Spwf), allocatable   :: HFBasisTransformed(:)
-  integer                   :: wave
+  integer                   :: wave, index
 
   
   !-----------------------------------------------------------------------------
-  !Checking for Time Reversal breaking first        
+  !Checking for Time Reversal breaking first!
+  ! Note that we try to take the same ordering as CR8: first all the neutron
+  ! wavefunctions, then all the proton wavefunctions.
   if(inTRC.eqv.TRC) then
     allocate(HFBasisTransformed(nwt))
     do wave=1,nwt
-      !Nothing to do, except copy.
-      HFBasisTransformed(wave) = CopyWaveFunction(HFBasis(wave))
+      HFBasisTransformed(nwt) = CopyWaveFunction(HFBasis(wave))
     enddo
+
   else
     allocate(HFBasisTransformed(nwt))
-    !Break TimeReversal
+    ! Count the neutron wavefunctions
     do wave=1,filenwt
+      if(HFBasis(wave)%GetIsospin().gt.0) exit
+    enddo
+    index = wave - 1
+
+    ! Create the neutron time-reversed pairs
+    do wave=1,index
       call BreakTimeReversal(HFBasis(wave), HFBasisTransformed(wave),          &
-      &                                     HFBasisTransformed(wave+filenwt) )
+      &                                     HFBasisTransformed(wave+index) )
+    enddo
+
+    ! Create the proton time-reversed pairs
+    do wave=index+1,filenwt
+      call BreakTimeReversal(HFBasis(wave),HFBasisTransformed(wave+index),     &
+      &                                    HFBasisTransformed(wave+filenwt))
     enddo
   endif
   !-----------------------------------------------------------------------------

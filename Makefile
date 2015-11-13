@@ -13,7 +13,7 @@ SRC    +=   Moments.f90  MultiGrid.f90 Coulomb.f90 PairingInteraction.f90
 SRC    +=   LipkinNogami.f90 HFB.f90 BCS.f90 Pairing.f90 Cranking.f90 
 SRC    +=   MeanFields.f90 ImaginaryTime.f90 Energy.f90 DensityMixing.f90 
 SRC    +=   Transform.f90 SpwfFactory.f90 InOut.f90 Test.f90 Main.f90 
-LIBS   :=  -lopenblas
+LIBS   :=  -lopenblas -lfftw3 -lm
 
 #Make the lists of objects
 OBJ :=      $(patsubst %.f90,$(OBJDIR)/%.o,$(SRC))
@@ -29,7 +29,7 @@ ifeq ($(CXX),gfortran)
 
   ifeq ($(DEBUG),no)
     #Optimal flag
-    CXXFLAGS := -O3
+    CXXFLAGS := -Ofast -pg
   else
     # Debugging flag
     CXXFLAGS= -Og -fbacktrace -fcheck=all 
@@ -52,7 +52,7 @@ else ifeq ($(CXX),ifort)
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   # The `-assume realloc-lhs' is mandatory for correct ifort behaviour.
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  ifeq ($(DEBUG),0)
+  ifeq ($(DEBUG),no)
 		#Optimal flag
 		CXXFLAGS=-O3 -assume realloc-lhs
   else
@@ -69,14 +69,14 @@ endif
 .PHONY: all clean
 
 $(TARGET): $(OBJ)
-	$(CXX) -o $@ $^ $(LIBS)
+	$(CXX) -o $@ $^ $(LIBS) -pg
 
 clean:
 	rm  -f $(OBJDIR)/*
 	rm  -f $(MODDIR)/*
 
 $(OBJDIR)/%.o : $(SRCDIR)/%.f90
-	$(CXX) $(CXXFLAGS) -c  $< -o $@
+	$(CXX) $(CXXFLAGS) -c  $< -o $@ -pg
 
 #-------------------------------------------------------------------------------
 # Some observations on my experiences of compiling MOCCa.

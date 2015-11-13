@@ -360,7 +360,8 @@ contains
         U = 0.0_dp ; V = 0.0_dp
         allocate(HFBHamil(2*HFBSize,2*HFBSize,2,2)) ; HFBHamil=0.0_dp
         !-----------------------------------------------------------------------
-        ! To be changed when quasi-particle blocking is implemented
+        ! By default, consider even-even nuclei. 
+        ! The routine readblocking will change the numberparity if necessary.
         HFBNumberParity=1        
         !-----------------------------------------------------------------------
         !Reset the canonical wavefunctions
@@ -397,18 +398,18 @@ contains
     7  format ('  Alpha                      ', 2x,f8.3,2x,f8.3)
     8  format ('  Attention: configuration is frozen.')
     9  format ('  HFBMixing                  ', 2x, f8.3)
-   10  format (' BCS-like: only Delta_{i,ibar} not zero.' )
-   100 format (' BCS-like Protons : only Delta_{i,ibar} not zero.' )
-   101 format (' BCS-like Neutrons: only Delta_{i,ibar} not zero.' ) 
-   11  format (' Constant Gap activated. ', /,                                 &
-   &          '  Neutron Gap: ' , f8.3   , /,                                  &
-   &          '  Proton  Gap: ' , f8.3   )
-   12  format (' Lipkin-Nogami prescription active.' )
-   13  format (' Cosine cutoff used. ')
-   14  format (' Symmetric Fermi cutoff used.')
-   15  format (' Maximum number of times the FermiSolver is called: ', i3)
-   16  format (' LNFraction on the hamiltonian:' , f8.3)
-   17  format (' Fermisolver used: ', a9)
+   10  format ('  BCS-like: only Delta_{i,ibar} not zero.' )
+   100 format ('  BCS-like Protons : only Delta_{i,ibar} not zero.' )
+   101 format ('  BCS-like Neutrons: only Delta_{i,ibar} not zero.' ) 
+   11  format ('  Constant Gap activated. ', /,                                 &
+   &          '   Neutron Gap: ' , f8.3   , /,                                  &
+   &          '   Proton  Gap: ' , f8.3   )
+   12  format ('  Lipkin-Nogami prescription active.' )
+   13  format ('  Cosine cutoff used. ')
+   14  format ('  Symmetric Fermi cutoff used.')
+   15  format ('  Maximum number of times the FermiSolver is called: ', i3)
+   16  format ('  LNFraction on the hamiltonian:' , f8.3)
+   17  format ('  Fermisolver used: ', a9)
 
     print 1
     select case(PairingType)

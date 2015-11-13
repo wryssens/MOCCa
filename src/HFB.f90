@@ -83,7 +83,7 @@ module HFB
   !-----------------------------------------------------------------------------
   ! Logical. Check all kinds of relations that should hold for correct HFB
   ! calculations. Only to be used for debugging purposes.
-  logical,parameter :: HFBCheck=.false.
+  logical,parameter :: HFBCheck=.true.
   !-----------------------------------------------------------------------------
   ! Real that determines how much to damp the RhoHFB and KappaHFB matrices.
   real(KIND=dp) :: HFBMix=0.1_dp
@@ -180,8 +180,8 @@ contains
     if(.not.allocated(CanTransfo)) then
       allocate(CanTransfo(HFBSize,HFBSize,Pindex,Iindex)) ; CanTransfo     = 0.0_dp
       allocate(Occupations(HFbsize,Pindex,Iindex))        ; Occupations    = 0.0_dp
-      allocate(QuasiEnergies(2*HFBSize,Pindex,Iindex))    ; QuasiEnergies  = 0.0_dp
-      allocate(QuasiSignatures(2*HFBSize,Pindex,Iindex))  ; QuasiSignatures= 0.0_dp
+      allocate(QuasiEnergies(2*HFBSize,Pindex,Iindex))      ; QuasiEnergies  = 0.0_dp
+      allocate(QuasiSignatures(2*HFBSize,Pindex,Iindex))    ; QuasiSignatures= 0.0_dp
       allocate(HFBColumns(HFBSize,Pindex,Iindex))         ; HFBColumns     = 0
     endif
 
@@ -244,12 +244,14 @@ contains
       FieldLN = 0.0_dp ; Gamma = 0.0_dp
       !Compute gamma if needed
       ! Gamma =(1 - 2 * Rho)Kappa
-      do P=1,Pindex
-        do j=1,HFBSize
-          do i=1,HFBSize
-            Gamma(i,j,P,:) = KappaHFB(i,j,P,:)
-            do k=1,HFBsize
-              Gamma(i,j,P,:) = Gamma(i,j,P,:)-2*KappaHFB(k,j,P,:)*RhoHFB(i,k,P,:)
+      do it=1,2
+        do P=1,Pindex
+          do j=1,HFBSize
+            do i=1,HFBSize
+              Gamma(i,j,P,it) = KappaHFB(i,j,P,it)
+              do k=1,HFBsize
+                Gamma(i,j,P,it) = Gamma(i,j,P,it)-2*KappaHFB(k,j,P,it)*RhoHFB(i,k,P,it)
+              enddo
             enddo
           enddo
         enddo
@@ -340,10 +342,9 @@ contains
     real(KIND=dp)                               :: TempIm(nx,ny,nz)
     complex(KIND=dp)                            :: Temp(nx,ny,nz)
     real(KIND=dp)                               :: Cutoff(2)
-    integer, save                               :: C = 0
-
+    
     if(ConstantGap) call stp('Trying to do constant gap pairing in HFB!')
-
+    
     Delta = 0.0_dp ; if(allocated(DeltaLN)) DeltaLN = 0.0_dp
 
     do it=1,Iindex
@@ -1777,64 +1778,31 @@ contains
         call CanBasis(index)%SetTimeSimplex(TS)
         call CanBasis(index)%SetIsospin(2*it-3)    
         Energy = 0.0_dp
-
-        ! Make a difference between TimeSimplex conservation and nonconservation.
-        ! This makes the difference between imaginary or complex multiplication
-        ! and since this construction is quadratic in nwt, it is pretty important
-        ! for heavy nuclei.
-        if(TSC) then
-            !----------------------------------------------------------------------
-            ! Make the transformation
-            do j=1,blocksizes(P,it)
-              jj = Blockindices(j,P,it)
-              jjj= mod(jj-1,nwt)+1
-              !Cutoff for numerical stability
-              if(abs(CanTransfo(j,C,P,it)) .lt.HFBNumCut) cycle
-              !--------------------------------------------------------------------
-              !Transformation
-              !--------------------------------------------------------------------
-              ! Note that the time-reversing here is kinda wasting cpu cycles 
-              ! since we apply it on the entire wavefunction. However, I prefer
-              ! this routine to act on wavefunctions, not the (more efficient) 
-              ! spinors, since in this way MOCCa checks the consistency of 
-              ! quantum numbers.
-              if(jj.eq.jjj) then   
-                CanBasis(index) = Canbasis(index) + DBLE(CanTransfo(j,C,P,it))*    &
-                &                                                       HFBasis(jjj)
-              else
-                ! Note that this should only happen when signature is not conserved,
-                ! but TimeReversal is.
-                CanBasis(index) = Canbasis(index) + DBLE(CanTransfo(j,C,P,it))*    &
-                &                                      TimeReverseSpwf(HFBasis(jjj))
-              endif          
-            enddo
-        else
-            !----------------------------------------------------------------------
-            ! Make the transformation
-            do j=1,blocksizes(P,it)
-              jj = Blockindices(j,P,it)
-              jjj= mod(jj-1,nwt)+1
-              !Cutoff for numerical stability
-              if(abs(CanTransfo(j,C,P,it)) .lt.HFBNumCut) cycle
-              !--------------------------------------------------------------------
-              !Transformation
-              !--------------------------------------------------------------------
-              ! Note that the time-reversing here is kinda wasting cpu cycles 
-              ! since we apply it on the entire wavefunction. However, I prefer
-              ! this routine to act on wavefunctions, not the (more efficient) 
-              ! spinors, since in this way MOCCa checks the consistency of 
-              ! quantum numbers.
-              if(jj.eq.jjj) then   
-                CanBasis(index) = Canbasis(index) + CanTransfo(j,C,P,it)*    &
-                &                                                       HFBasis(jjj)
-              else
-                ! Note that this should only happen when signature is not conserved,
-                ! but TimeReversal is.
-                CanBasis(index) = Canbasis(index) + CanTransfo(j,C,P,it)*    &
-                &                                      TimeReverseSpwf(HFBasis(jjj))
-              endif          
-            enddo
-        endif
+        !------------------------------------------------------------------------
+        ! Make the transformation
+        do j=1,blocksizes(P,it)
+          jj = Blockindices(j,P,it)
+          jjj= mod(jj-1,nwt)+1
+          !Cutoff for numerical stability
+          if(abs(CanTransfo(j,C,P,it)) .lt.HFBNumCut) cycle
+          !----------------------------------------------------------------------
+          !Transformation
+          !----------------------------------------------------------------------
+          ! Note that the time-reversing here is kinda wasting cpu cycles 
+          ! since we apply it on the entire wavefunction. However, I prefer
+          ! this routine to act on wavefunctions, not the (more efficient) 
+          ! spinors, since in this way MOCCa checks the consistency of 
+          ! quantum numbers.
+          if(jj.eq.jjj) then
+            CanBasis(index) = Canbasis(index) + CanTransfo(j,C,P,it)*          &
+            &                                                       HFBasis(jjj)
+          else
+            ! Note that this should only happen when signature is not conserved,
+            ! but TimeReversal is.
+            CanBasis(index) = Canbasis(index) + CanTransfo(j,C,P,it)*          &
+            &                                      TimeReverseSpwf(HFBasis(jjj))
+          endif          
+        enddo
 
         !---------------------------------------------------------------------
         ! Compute contribution to the dispersion in the particle number

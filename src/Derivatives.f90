@@ -2,6 +2,7 @@ module Derivatives
    
     use CompilationInfo
     use GenInfo
+    use OptimizedDerivatives
         
     implicit none
 
@@ -13,7 +14,7 @@ module Derivatives
     ! In addition, they force me to use allocatable types in the derivation 
     ! routines, which makes me uncomfortable: in this way the compiler does not
     ! get all available info (namely that the arrays will always be of dimension 
-    ! (nx,ny,nz)), and I fear this impact performance.
+    ! (nx,ny,nz)), and I fear this impacts performance.
     abstract interface
       function Central(Grid, Parity, Signature, TimeSimplex,Component) result(Der)
         import :: dp
@@ -219,7 +220,13 @@ contains
         DeriveY   => DerlagY
         DeriveZ   => DerlagZ                
         Laplacian => Laplacian_Lag
-       else      
+       else
+        ! Check for optimized derivatives
+!         if(TRC .and. SC .and. PC .and. TSC) then
+!             DeriveX => Opt_X_EV8
+!         else
+!             DeriveX => CentralX
+!         endif      
         !Use Finite Difference Coefficients
         DeriveX   => CentralX
         DeriveY   => CentralY

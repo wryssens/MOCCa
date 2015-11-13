@@ -327,7 +327,7 @@ contains
         DensityBasis      => CanBasis
         GetPairingFields  => HFBPairingField
         GetOccupations    => HFBOccupations
-        GetGaps           => HFBGaps
+        GetGaps           => HFBGaps!_TIMEREV!HFBGaps
         CompPDensity      => HFBComputePairingDensity
 
         if(trim(FermiSolver).eq.'BROYDEN') then

@@ -2,6 +2,11 @@ module HFB
 !-------------------------------------------------------------------------------
 ! Module that contains everything needed to solve the HFB equations.
 !-------------------------------------------------------------------------------
+! In Progress:
+!   *) Debug broyden solver
+! TODO:
+!   *) Implement quasiparticle blocking
+!-------------------------------------------------------------------------------
 ! Some general notes on technicalities:
 ! *) When conserving time-reversal not all spwfs are represented in memory.
 !    the wavefunctions are actually stored in memory. However, for easier coding
@@ -175,8 +180,8 @@ contains
     if(.not.allocated(CanTransfo)) then
       allocate(CanTransfo(HFBSize,HFBSize,Pindex,Iindex)) ; CanTransfo     = 0.0_dp
       allocate(Occupations(HFbsize,Pindex,Iindex))        ; Occupations    = 0.0_dp
-      allocate(QuasiEnergies(2*HFBSize,Pindex,Iindex))    ; QuasiEnergies  = 0.0_dp
-      allocate(QuasiSignatures(2*HFBSize,Pindex,Iindex))  ; QuasiSignatures= 0.0_dp
+      allocate(QuasiEnergies(2*HFBSize,Pindex,Iindex))      ; QuasiEnergies  = 0.0_dp
+      allocate(QuasiSignatures(2*HFBSize,Pindex,Iindex))    ; QuasiSignatures= 0.0_dp
       allocate(HFBColumns(HFBSize,Pindex,Iindex))         ; HFBColumns     = 0
     endif
 
@@ -268,6 +273,7 @@ contains
           sig1      = HFBasis(jjj)%GetSignature()
           Temp(1)   = HFBasis(jjj)%GetValue()
           Cutoff(1) = PCutoffs(jjj)
+          if(Cutoff(1).lt.HFBNumCut) cycle
           if(TRC .and. jj .ne. jjj) then
             sig1 = - sig1
             Temp(1) = TimeReverse(Temp(1))
@@ -283,12 +289,14 @@ contains
             !selects on both parity and isospin.
             if(sig1 .ne. -sig2 ) cycle
             
+            Cutoff(2) = PCutoffs(iii)                        
+            ! Save some CPU cycles
+            if(Cutoff(1)*Cutoff(2)*abs(KappaHFB(i,j,P,it)) .lt. HFBNumCut) cycle
+
             Temp(2)  = HFBasis(iii)%GetValue()
             if(TRC .and. ii .ne. iii) then
               Temp(2) = TimeReverse(Temp(2))
-            endif
-            
-            Cutoff(2) = PCutoffs(iii)            
+            endif            
 
             ActionOfPairing = PairingInter(Temp(1),Temp(2), it)
             Field(:,:,:,it) = Field(:,:,:,it)     -  Cutoff(1)*Cutoff(2)*      &
@@ -346,13 +354,14 @@ contains
           iii  = mod(ii-1,nwt)+1
           sig1 = HFBasis(iii)%GetSignature()
           Psi1 = HFBasis(iii)%GetValue()
+          
           if(TRC .and. ii.ne.iii) then 
             Psi1 = TimeReverse(Psi1)
             sig1 = - sig1
           endif
+          
           Cutoff(1) = PCutoffs(iii)
-          if(Cutoff(1).lt.1d-14) cycle
-
+          
           if(.not. BCSinHFB(it)) then 
             !Delta is antisymmetric, only compute the upper-diagonal part.
             !(And Thus Delta_{ii} = 0)
@@ -376,7 +385,9 @@ contains
             ! by the loop structure
             if(sig1.ne.-sig2) cycle
             Cutoff(2) = PCutoffs(jjj)
-            if(Cutoff(2).lt.1d-14) cycle
+            !if(Cutoff(2).lt.HFBNumCut) cycle
+
+            if(Cutoff(1)*Cutoff(2) .lt. HFBNumCut) cycle
 
             Psi2 = HFBasis(jjj)%GetValue()
             if(TRC .and. jj.gt.Blocksizes(P,it)/2) then
@@ -394,29 +405,133 @@ contains
             TempIm   =                                                         &
             &             + Psi1%Grid(:,:,:,4,1) * Psi2%Grid(:,:,:,1,1)        &
             &             + Psi1%Grid(:,:,:,3,1) * Psi2%Grid(:,:,:,2,1)        &
-            &             - Psi1%Grid(:,:,:,2,1) * Psi2%Grid(:,:,:,3,1)        & 
+            &             - Psi1%Grid(:,:,:,2,1) * Psi2%Grid(:,:,:,3,1)        &
             &             - Psi1%Grid(:,:,:,1,1) * Psi2%Grid(:,:,:,4,1)
 
-            Temp = DCMPLX(TempReal,TempIm)
-            Delta(i,j,P,it) =                                                  &
-            &            dv*Cutoff(1)*Cutoff(2)*sum(Temp*PairingField(:,:,:,it))
-           
-            if(TSC) Delta(i,j,P,it) = dcmplx(DBLE(Delta(i,j,P,it)), 0.0_dp)
+            ! Do less computations if TSC is conserved...
+            if(TSC) then
+                Delta(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*                    & 
+                &            (sum(   TempReal * DBLE(PairingField(:,:,:,it)))  &
+                &            -sum(   TempIm   * AIMAG(PairingField(:,:,:,it))))
+            else
+                Temp = DCMPLX(TempReal,TempIm)
+                Delta(i,j,P,it) =                                              &
+                &        dv*Cutoff(1)*Cutoff(2)*sum(Temp*PairingField(:,:,:,it))
+            endif
 
             !Delta is antisymmetric
             Delta(j,i,P,it) = - Delta(i,j,P,it)
             if(allocated(DeltaLN)) then
-              !Only activate when Lipkin-Nogami is active
-              DeltaLN(i,j,P,it) = Cutoff(1)*Cutoff(2)*dv*                       &
-              &                             sum(Temp * PairingFieldLN(:,:,:,it))
-              DeltaLN(j,i,P,it) =  - DeltaLN(i,j,P,it)
+                !Only activate when Lipkin-Nogami is active
+                if(TSC) then
+                    DeltaLN(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*              & 
+                    &   (sum(   TempReal * DBLE (PairingFieldLN(:,:,:,it)))    &
+                    &   -sum(   TempIm   * aimag(PairingFieldLN(:,:,:,it))))
+                else
+                    DeltaLN(i,j,P,it) = Cutoff(1)*Cutoff(2)*dv*                &
+                    &              sum(Temp * PairingFieldLN(:,:,:,it))
+                endif
+                DeltaLN(j,i,P,it) =  - DeltaLN(i,j,P,it)
             endif
           enddo
         enddo
       enddo
     enddo
+    !stop
     !---------------------------------------------------------------------------
   end subroutine HFBGaps
+
+  subroutine HFBGaps_TIMEREV(Delta,DeltaLN,PairingField,PairingFieldLN,Gaps,ConstantGap)
+    !---------------------------------------------------------------------------
+    ! Subroutine that computes the Delta_{i j} for the HFB model.
+    ! The formula (see Ring & Shuck, page 254 eq. (7.41))
+    ! is the following:
+    ! 
+    ! Delta_{i, j} = \int dr <i,j | Delta(r) | r >
+    ! 
+    ! When Lipkin-Nogami is activated, this routine also sums the modified gaps,
+    ! which are just analogous to the normal gaps:
+    ! Delta_{LN,i,j} = \int dr <i,j | Delta(r)_{LN} | r >
+    !---------------------------------------------------------------------------
+    ! Gaps & Constantgap are not used in this subroutine, but are present to 
+    ! be compatible with the BCS GetGaps subroutine header.
+    !---------------------------------------------------------------------------
+
+    use Spinors
+
+    complex(KIND=dp), intent(inout) :: Delta(HFBSize,HFBSize,2,2)
+    complex(KIND=dp), intent(inout) :: DeltaLN(HFBSize,HFBSize,2,2)
+    complex(KIND=dp), intent(in)    :: Pairingfield(nx,ny,nz,2)
+    complex(KIND=dp), intent(in)    :: PairingfieldLN(nx,ny,nz,2)
+    real(KIND=dp), intent(in)                   :: Gaps(2)
+    logical,intent(in)                          :: ConstantGap
+    integer                                     :: i, it,j, ii, jj, sig1,sig2, P
+    integer                                     :: minj, maxj, iii, jjj
+    type(Spinor)                                :: Psi1, Psi2
+    real(KIND=dp)                               :: TempReal(nx,ny,nz)
+    real(KIND=dp)                               :: TempIm(nx,ny,nz)
+    complex(KIND=dp)                            :: Temp(nx,ny,nz)
+    real(KIND=dp)                               :: Cutoff(2)
+    integer, save                               :: C = 0
+
+    Delta = 0.0_dp ; DeltaLN = 0.0_dp
+
+    do it=1,Iindex
+      do P=1,Pindex
+        ! On the left, only take wavefunctions of signature +1
+        do i=1,Blocksizes(P,it)/2
+          ii   = Blockindices(i,P,it)
+          iii  = mod(ii-1,nwt)+1
+
+          sig1 = HFBasis(iii)%GetSignature()
+          Psi1 = HFBasis(iii)%GetValue()
+
+          Cutoff(1) = PCutoffs(iii)
+            
+          do j=Blocksizes(P,it)/2+1, Blocksizes(P,it)
+            !On the irght, only take wavefunctions of signature -1
+
+            jj   =   Blockindices(j,P,it)
+            jjj  =   mod(jj-1,nwt)+1
+            sig2 = - HFBasis(jjj)%GetSignature()
+            
+            Cutoff(2) = PCutoffs(jjj)
+            
+            if(Cutoff(1)*Cutoff(2) .lt. HFBNumCut) cycle
+
+            Psi2 = HFBasis(jjj)%GetValue()
+            
+            !TempReal = - sum(Psi1%Grid * Psi2%Grid)
+            TempReal =                                                         &
+            &             - Psi1%Grid(:,:,:,3,1) * Psi2%Grid(:,:,:,3,1)        &
+            &             - Psi1%Grid(:,:,:,4,1) * Psi2%Grid(:,:,:,4,1)        &
+            &             - Psi1%Grid(:,:,:,1,1) * Psi2%Grid(:,:,:,1,1)        &
+            &             - Psi1%Grid(:,:,:,2,1) * Psi2%Grid(:,:,:,2,1)  
+        
+            ! Attention for the extra minus sign: the bra < i,j | indicates an 
+            ! extra complex conjugation.
+            TempIm   =                                                         &
+            &             - Psi1%Grid(:,:,:,4,1) * Psi2%Grid(:,:,:,3,1)        &
+            &             - Psi1%Grid(:,:,:,3,1) * Psi2%Grid(:,:,:,4,1)        &
+            &             - Psi1%Grid(:,:,:,2,1) * Psi2%Grid(:,:,:,1,1)        &
+            &             - Psi1%Grid(:,:,:,1,1) * Psi2%Grid(:,:,:,2,1)
+
+            ! Only valid when TimeSimplex is conserved!
+            Delta(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*                    & 
+            &            (sum(   TempReal * DBLE(PairingField(:,:,:,it)))  &
+            &            -sum(   TempIm   * AIMAG(PairingField(:,:,:,it))))
+            Delta(j,i,P,it) = - Delta(i,j,P,it)
+   
+            !Only valid when TimeSimplex is conserved
+            DeltaLN(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*              & 
+            &   (sum(   TempReal * DBLE (PairingFieldLN(:,:,:,it)))    &
+            &   -sum(   TempIm   * aimag(PairingFieldLN(:,:,:,it))))
+            DeltaLN(j,i,P,it) =  - DeltaLN(i,j,P,it)
+          enddo
+        enddo
+      enddo
+    enddo
+  end subroutine HFBGaps_TIMEREV
 
   function HFBNumberOfParticles(Lambda, Delta, LNLambda) result(N)
   !-----------------------------------------------------------------------------
@@ -430,8 +545,7 @@ contains
     real(Kind=dp), intent(in) :: Lambda(2),LNLambda(2)
     real(KIND=dp)             :: N(2), N2(2,2)
     complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
-    integer,save                   :: iter=0
- 
+  
     call ConstructHFBHamiltonian(Lambda, Delta, LNLambda)
     ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
     call DiagonaliseHFBHamiltonian()
@@ -450,7 +564,6 @@ contains
         enddo
       enddo
     enddo
-    iter = iter +1
   end function HFBNumberofParticles
 
   subroutine HFBFindFermiEnergyBisection(Fermi,L2,Delta,DeltaLN,Lipkin,Prec)
@@ -666,7 +779,6 @@ contains
   1 format('Attention, unconverged Fermi solver.'/, &
   &        'Iterations : ', i5, /, &
   &        'Particles  : ', 2f12.8)
-  2 format('LNLambda deviation : ', 2f12.8)
 
 
   real(KIND=dp), intent(inout)              :: Fermi(2), LnLambda(2)
@@ -800,7 +912,7 @@ contains
       !Print a warning if not converged
       if(iter.eq.HFBIter) then
           print 1, HFBIter, N + Particles
-          if(Lipkin) print 2, abs(LN)
+          print *, abs(LN)
       endif
   enddo
   end subroutine HFBFindFermiEnergyBroyden
@@ -917,6 +1029,19 @@ contains
     enddo
   enddo
 
+!   do it=1, Iindex
+!     print *, 'HFBHamil, it=', it
+!     do p=1, Pindex
+!       print *,' Parity, p=', p
+!       print *
+!       do i=1,2*blocksizes(P,it)
+!         write(*, '(999f7.2)'), DBLE(HFBHamil(1:2*blocksizes(P,it),i,P,it))
+!       enddo
+!       print *
+!     enddo
+!   enddo
+!   stop
+
   if(all(HFBHamil.eq.0.0_dp)) call stp('HFBHamiltonian completely zero!')
   end subroutine ConstructHFBHamiltonian  
 
@@ -982,7 +1107,8 @@ contains
           enddo
         enddo
         !------------------------------------------------------------------------
-        ! Temporary trick to separate signatures.     
+        ! Temporary trick to separate signatures.
+        
         if(SC) then
           do j=1,N
             jj = blockindices(j,P,it)
@@ -1005,6 +1131,20 @@ contains
           call stp("Error in diagonalising the HFB Hamiltonian.",                &
           &        "ZHEEVR Errorcode", Succes)
         endif
+!         if(SC) then 
+!             !---------------------------------------------------------------------
+!             ! Note that we do not divide the matrix into blocks by signature. 
+!             ! Thus care must be taken that the diagonalisation above conserves 
+!             ! signature when degenerate quasi-particle energies are encountered.
+!             ! Thus, in the subspace defined by the degenerate eigenvectors, we
+!             ! diagonalise the signature operator.
+!             do j=1,2*blocksizes(P,it)-1
+!                 if(abs(Eigenvalues(j) - Eigenvalues(j+1)).lt.1d-4) then
+!                     call DiagonaliseSignature(Eigenvectors(1:2*N,j),               &
+!                     &                         Eigenvectors(1:2*N,j+1),N)
+!                 endif
+!            enddo
+!         endif   
         !-------------------------------------------------------------------------
         ! We store all possible eigenvectors and later make the proper selection.       
         U(1:N,1:2*N,P,it) = Eigenvectors(  1:N    ,1:2*N)
@@ -1019,9 +1159,7 @@ contains
             jj  = blockindices(j,P,it)
             jjj = mod(jj-1,nwt)+1
             Sig = HFBasis(jjj)%GetSignatureR()
-            if(jj.ne.jjj) then
-              Sig = -Sig
-            endif
+            if(jj.ne.jjj) Sig = -Sig
             !-----------------------------------------------------
             ! The U components have the same signature
             QuasiSignatures(i,P,it) = QuasiSignatures(i,P,it)    & 
@@ -1043,9 +1181,22 @@ contains
     enddo
 
     if(SC) call InsertionSortQPEnergies()
+
+!     do it=1,Iindex
+!       do P=1,PIndex
+!       N = blocksizes(P,it)
+!       print *
+!       print *, '(P, it) = (', P, it, ')'
+!       print *, 'N', N
+!       print *,  'First half', QuasiEnergies(1:N, P, it)
+!       print *,  '2nd   half', QuasiEnergies(N+1:2*N, P, it) 
+!       print * 
+!       enddo
+!     enddo
+
   end subroutine DiagonaliseHFBHamiltonian
 
-  subroutine InsertionSortQPEnergies
+subroutine InsertionSortQPEnergies
     !-----------------------------------------------------------------------
     ! Sort the QPenergies, since the trick to separate in 
     ! subroutine DiagonaliseHFBHamilaltonian does not conserve the order.
@@ -1398,6 +1549,7 @@ contains
     endif
   end subroutine CheckUandVColumns
 
+
   function constructRhoHFB (Columns) result(Rho)
   !-----------------------------------------------------------------------------
   ! This function constructs a density matrix from the input of columns from
@@ -1622,7 +1774,7 @@ contains
   use wavefunctions
 
   real(KIND=dp), intent(inout)              :: PairingDisp(2)
-  real(KIND=dp), intent(in)                 :: Fermi(2), LNLambda(2)
+  real(KIND=dp), intent(in)                 :: Fermi(2), LNLambda(2)                          
   complex(KIND=dp), intent(in), allocatable :: Delta(:,:,:,:)
   real(KIND=dp)                             :: Energy,  RhoII, SR
   integer                                   :: it,P,i,j,S,ii,iii,loc(1),TS,jj,jjj,k
@@ -2155,7 +2307,7 @@ contains
 
   end subroutine ReadBlockingInfo
 
-  subroutine PrintBlocking
+subroutine PrintBlocking
     !---------------------------------------------------------------------------
     ! Subroutine to print the info on the any blocked states.
     !
@@ -2192,7 +2344,7 @@ contains
 
   end subroutine PrintBlocking
 
-  subroutine BlockQuasiParticles()
+ subroutine BlockQuasiParticles()
     !---------------------------------------------------------------------------
     ! Subroutine that arranges the blocking of quasiparticles. It should be used 
     ! after diagonalisation of the HFB harmiltonian, but before the calculation
@@ -2250,6 +2402,44 @@ contains
     enddo
      
   end subroutine BlockQuasiParticles
+
+  subroutine PrintQP()
+  !-----------------------------------------------------------------------------
+  ! Print the quasiparticles obtained by the HFB proces.
+  !-----------------------------------------------------------------------------
+    integer             :: i, P, it, j
+    character(len=7)    :: Species(2)=(/ 'Neutron', 'Proton '/)
+    logical             :: skip
+
+    10  format (80 ('_'))
+    20  format (80 ('-'))
+     1  format ( a7, ' P=', i2 ' quasiparticles')
+     2  format ('  n   <Rz>   E_qp')
+     !           n   <Rz>   E_qp   
+     3  format ( i3, f7.2 , f10.5)
+
+    do it=1,Iindex
+        do P=1,Pindex
+          print 10
+          print 1, Species(it), 2*P-3
+          print 2
+          print 10
+          do i=1,2*blocksizes(P,it)
+            Skip =.true.
+            do j=1,blocksizes(P,it)
+                if( i.eq. HFBColumns(j,P,it) ) then
+                    Skip = .false.
+                    exit
+                endif
+            enddo
+            if(abs(QuasiEnergies(i,P,it)).gt.QPPrintWindow ) Skip=.true.
+            if(skip) cycle  
+            print 3, i, QuasiSignatures(i,P,it), QuasiEnergies(i,P,it)
+          enddo
+        enddo
+    enddo
+    print 20
+  end subroutine PrintQP
 
   subroutine PrintQP()
   !-----------------------------------------------------------------------------
@@ -2388,7 +2578,6 @@ contains
         enddo
     enddo
   end function QPAlignment
-
 
   subroutine HFBComputePairingDensity(PairDensity)
     !------------------------------------------------------------------------

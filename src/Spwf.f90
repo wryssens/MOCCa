@@ -186,7 +186,7 @@ module WaveFunctions
   end interface
   interface operator (*)
     !Overloading "*" to be used with numbers and wavefunctions.
-    module procedure MultiplySpwf
+    module procedure MultiplySpwfcomplex, MultiplySpwfReal
   end interface
    
 contains
@@ -236,7 +236,20 @@ contains
     SumWF%J2           = 0.0_dp
   end function AddSpwf
   
-  function MultiplySpwf(A, WF) result(AWF)
+  function MultiplySpwfReal(A, WF) result(AWF)
+  
+    type(Spwf), intent(in)       :: WF
+    type(Spwf)                   :: AWF
+    real(KIND=dp), intent(in)    :: A
+    type(Spinor)                 :: Psi
+  
+    Psi = A * WF%Value
+    AWF = NewWaveFunction(Psi, WF%Isospin, WF%TimeSimplex, WF%Parity, &
+    &                     WF%Signature, WF%TimeReversal)
+  
+  end function MultiplySpwfReal
+
+  function MultiplySpwfComplex(A, WF) result(AWF)
   
     type(Spwf), intent(in)       :: WF
     type(Spwf)                   :: AWF
@@ -247,7 +260,52 @@ contains
     AWF = NewWaveFunction(Psi, WF%Isospin, WF%TimeSimplex, WF%Parity, &
     &                     WF%Signature, WF%TimeReversal)
   
-  end function MultiplySpwf
+  end function MultiplySpwfComplex
+
+!   function SaxPyWF(Phi,A,Psi) result(Chi)
+!     !--------------------------------------------------------
+!     ! Function to perform
+!     ! Phi =Phi + A * Psi
+!     ! without making temporary wavefunctions in the meantime
+!     !--------------------------------------------------------
+!     ! The inclusion of this did not speedup the program at all...
+!     !--------------------------------------------------------
+
+!     type(Spwf), intent(in)       :: Phi,Psi
+!     type(Spwf)                   :: Chi
+!     complex(KIND=dp), intent(in) :: A
+!     type(Spinor)                 :: temp
+
+!     if(Phi%Parity.ne.Psi%Parity) then
+!       call stp("You can't add wavefunctions with different parity!")
+!     endif
+!     if(Phi%Signature.ne.Psi%Signature) then
+!       call stp("You can't add wavefunctions with different signature!")
+!     endif
+!     if(Phi%TimeSimplex.ne.Psi%TimeSimplex) then
+!       call stp("You can't add wavefunctions with different TimeSimplex!")
+!     endif
+!     if(Phi%Isospin.ne.Psi%Isospin) then
+!       call stp("You can't add wavefunctions with different isospin!")
+!     endif
+
+!     temp = A * Psi%GetValue()
+!     Chi%Value = Phi%GetValue() + temp
+
+!     Chi%Isospin      = Phi%Isospin
+!     Chi%TimeSimplex  = Phi%TimeSimplex
+!     Chi%Parity       = Phi%Parity
+!     Chi%TimeReversal = Phi%TimeReversal
+!     Chi%Signature    = Phi%Signature
+
+!     Chi%Norm         = 0.0_dp
+!     Chi%Energy       = 0.0_dp
+!     Chi%Occupation   = 0.0_dp
+!     Chi%Dispersion   = 0.0_dp
+!     Chi%AngMoment    = 0.0_dp
+!     Chi%J2           = 0.0_dp
+
+!   end function SaxPyWF
     
   function MinusSpwf (WF1, WF2) result (DiffWF)
   !-----------------------------------------------------------------------------

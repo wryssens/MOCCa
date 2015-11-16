@@ -106,7 +106,7 @@ subroutine Evolve(MaxIterations, iprint)
   7 format ("Energy            changed for less than : ", e9.2)
   8 format ("Total dispersion of the occupied Spwfs  : ", e9.2)
   9 format ("Average dispersion of the occupied Spwfs: ", e9.2)
-100 format (/,78('='),/, 20x,' START OF THE ITERATIVE PROCESS ' ,/, 78('='),/)
+100 format (/,94('='),/, 20x,' START OF THE ITERATIVE PROCESS ' ,/, 94('='),/)
 
   logical, intent(in) :: iprint
   integer, intent(in) :: MaxIterations
@@ -398,7 +398,7 @@ subroutine PrintIterationInfo(Iteration)
 
   integer, intent(in) :: Iteration
 
-  1 format (/,80('='))
+  1 format (/,94('='))
   2 format (' Iteration ', i5)
   
   print 1

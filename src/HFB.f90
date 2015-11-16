@@ -2410,23 +2410,36 @@ subroutine PrintBlocking
     integer             :: i, P, it, j, domU(1), domV(1)
     character(len=7)    :: Species(2)=(/ 'Neutron', 'Proton '/)
     logical             :: skip
-    real(KIND=dp)       :: u2mv2, u2pv2, align(3,2*HFBSize,Pindex,IIndex)
+    real(KIND=dp)       :: u2mv2, u2pv2, align(6,2*HFBSize,Pindex,IIndex)
+    real(KIND=dp)       :: angquantum
 
 
     10  format (80 ('_'))
     20  format (80 ('-'))
      1  format ( a7, ' P=', i2 ' quasiparticles')
-     2  format ('  n   <Rz>   E_qp       U    V   u^2-v^2  u^2+v^2',3x,      &
-        &       '<Jx>',5x,'<Jy>',5x,'<Jz>')
+     2  format ('  n   <Rz>   E_qp       U    V   u^2-v^2 ',3x,      &
+        &       '<Jx|T>',4x,'<Jy|T>',6x,'<Jz>', 5x, ' J ')
+     3  format ('  n   <Rz>   E_qp       U    V   u^2-v^2 ',2x,      &
+        &       '<Jx>',5x,'<Jy|T>',3x,'<Jz>', 5x, ' J ')
+     4  format ('  n   <Rz>   E_qp       U    V   u^2-v^2 ',2x,      &
+        &       '<Jx>',5x,'<Jy>',5x,'<Jz>', 5x, ' J ')
      !           n   <Rz>   E_qp   
-     3  format ( i3, f7.2 , f10.5,2x, i3,2x, i3, 5(2x, f7.3))
+    99  format ( i3, f7.2 , f10.5,2x, i3,2x, i3, 5(3x, f7.2))
 
     align = QPalignment()
     do it=1,Iindex
         do P=1,Pindex
           print 10
           print 1, Species(it), 2*P-3
-          print 2
+          
+          if(SC.and.TSC) then
+            print 2
+          elseif(TSC) then
+            print 3
+          else
+            print 4
+          endif
+
           print 10
           do i=1,2*blocksizes(P,it)
             Skip =.true.
@@ -2451,9 +2464,16 @@ subroutine PrintBlocking
               u2pv2 = u2pv2 + abs(U(j,i,P,it))**2 + abs(V(j,i,P,it))**2
             enddo
             
-            print 3, i, QuasiSignatures(i,P,it), QuasiEnergies(i,P,it)    &
+            !----------------------------------------------------------
+            ! Now find j so that <J^2> = j*(j+1)
+            ! The solution is obviously:
+            ! j = [- 1 + sqrt( 1 + 4 * <J^2>)]/2
+            AngQuantum =                                                  &
+            &-0.5_dp*(1.0_dp-sqrt( 1.0_dp + 4.0_dp*sum(align(4:6,i,P,it)))) 
+
+            print 99, i, QuasiSignatures(i,P,it), QuasiEnergies(i,P,it)    &
             &      ,blockindices(domU(1),P,it), blockindices(domV(1),P,it)&
-            &      ,u2mv2, u2pv2, align(1:3,i,P,it)
+            &      ,u2mv2, align(1:3,i,P,it), angquantum
           enddo
         enddo
     enddo
@@ -2468,9 +2488,15 @@ subroutine PrintBlocking
     !------------------------------------------------------------------------
 
     real(KIND=dp)    :: Jmatrix(HFBSize,HFBsize,6,2)
-    real(KIND=dp)    :: align(3,2*HFBSize,Pindex,IIndex)
+    real(KIND=dp)    :: align(6,2*HFBSize,Pindex,IIndex)
     integer          :: i,j,it,P,k,jj,kk, N
     complex(KIND=dp) :: Transfo(2*HFBSize, 2*HFBSize,Pindex,IIndex)
+    logical          :: TRX=.false., TRY=.false., TRZ=.false.
+
+    if(SC)          TRX=.true.
+    if(TSC .or. SC) TRY=.true.
+    TRZ = .false.
+
     !------------------------------------------------------------------------
     ! First, we get all relevant matrix elements of the form 
     ! < i | J | j >
@@ -2481,7 +2507,7 @@ subroutine PrintBlocking
         do i=1,j
             ! Care for the indices here; Angularmomentum takes !reversed! 
             ! indices
-            JMatrix(i,j,:,:) =   AngularMomentum(HFBasis(j),HFBasis(i),.false.)
+            JMatrix(i,j,:,:) =   AngularMomentum(HFBasis(j),HFBasis(i), .true.,TRX,TRY,TRZ)
             JMatrix(j,i,:,1) =   JMatrix(i,j,:,1)
             JMatrix(j,i,:,2) = - JMatrix(i,j,:,2)
         enddo
@@ -2491,13 +2517,12 @@ subroutine PrintBlocking
     if(TRC) then
         do j=1,nwt
             do i=1,j
-                JMatrix(i+nwt,j+nwt,:,:) = - JMatrix(i,j,:,:)
-                JMatrix(j+nwt,i+nwt,:,1) =   JMatrix(i+nwt,j+nwt,:,1)
-                JMatrix(j+nwt,i+nwt,:,2) =   JMatrix(i+nwt,j+nwt,:,2)
+                JMatrix(i+nwt,j+nwt,1:3,:) = - JMatrix(i,j,1:3,:)
+                JMatrix(i+nwt,j+nwt,4:6,:) =   JMatrix(i,j,4:6,:)
+                JMatrix(j+nwt,i+nwt,:,1)   =   JMatrix(i+nwt,j+nwt,:,1)
+                JMatrix(j+nwt,i+nwt,:,2)   =   JMatrix(i+nwt,j+nwt,:,2)
             enddo    
         enddo
-        ! ATTENTION: NOT COMPLETE YET FOR TRC -CONSERVATION!
-        call stp('Need work for printing of qp alignment')
     endif
 
     ! Construct the transformation matrix, in order to not get confused with 
@@ -2520,7 +2545,7 @@ subroutine PrintBlocking
                     do k=1,N
                         kk = blockindices(k,P,it)
                         Align(:,i,P,it) = Align(:,i,P,it) +   &
-                        &                 Jmatrix(kk,jj,1:3,1)&
+                        &                 Jmatrix(kk,jj,:,1)&
                         &                 *DBLE(Transfo(j,i,P,it)) &
                         &                 *DBLE(Transfo(k,i,P,it))
                     enddo
@@ -2530,8 +2555,15 @@ subroutine PrintBlocking
                     jj = blockindices(j-N,P,it)
                     do k=N+1,2*N
                         kk = blockindices(k-N,P,it)
-                        Align(:,i,P,it) = Align(:,i,P,it) -   &
-                        &                 Jmatrix(kk,jj,1:3,1)&
+                        
+                        ! A minus sign for <Jx>, <Jy> and <Jz>
+                        Align(1:3,i,P,it) = Align(1:3,i,P,it) -    &
+                        &                 Jmatrix(kk,jj,1:3,1)     &
+                        &                 *DBLE(Transfo(j,i,P,it)) &
+                        &                 *DBLE(Transfo(k,i,P,it))
+                        ! A plus sign for <Jx^2>, <Jy^2> and <Jz^2>
+                        Align(4:6,i,P,it) = Align(4:6,i,P,it) +    &
+                        &                 Jmatrix(kk,jj,4:6,1)     &
                         &                 *DBLE(Transfo(j,i,P,it)) &
                         &                 *DBLE(Transfo(k,i,P,it))
                     enddo

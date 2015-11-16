@@ -56,7 +56,7 @@ contains
   if(inTRC.eqv.TRC) then
     allocate(HFBasisTransformed(nwt))
     do wave=1,nwt
-      HFBasisTransformed(nwt) = CopyWaveFunction(HFBasis(wave))
+      HFBasisTransformed(wave) = CopyWaveFunction(HFBasis(wave))
     enddo
 
   else

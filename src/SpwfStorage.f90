@@ -269,11 +269,11 @@ contains
     real(KIND=dp)                 :: Distance
     
     10 format (21 ('-'), ' Sp wavefunctions ', 41('-'))
-    20 format (80 ('-'))
-    30 format (80 ('_'),/,3x , 'Neutron wavefunctions')
-    40 format (80 ('_'),/,3x , 'Proton  wavefunctions')
-    50 format (80 ('_'),/,3x , 'HF Basis') 
-    60 format (80 ('_'),/,3x , 'Canonical Basis' )
+    20 format (94 ('-'))
+    30 format (94 ('_'),/,3x , 'Neutron wavefunctions')
+    40 format (94 ('_'),/,3x , 'Proton  wavefunctions')
+    50 format (94 ('_'),/,3x , 'HF Basis') 
+    60 format (94 ('_'),/,3x , 'Canonical Basis' )
     !---------------------------------------------------------------------------
     ! Different explanatory headers, who match with the formats in subroutine
     ! PrintHF and PrintCanonical.
@@ -281,60 +281,57 @@ contains
     ! Headers for Hartree-fock basis
     !--------------------------------------------------------------------------- 
     ! Hartree-Fock calculations
-    1  format (5x, ' n ' ,1x, ' <P> ',1x, '  v^2  ',1x, '  E_sp  ', 1x,        &
-    &          ' Var(h) ', 1x, ' <Jz> ', 1x , '   J  ',1x, ' <r^2> ') 
-    11 format (5x, ' n ' ,1x, ' <P> ',1x, '<Rz> ', 1x, '  v^2  ',1x,'  E_sp  ',&
-    &             1x, ' Var(h) ', 1x, ' <Jz> ', 1x , '   J  ',1x , ' <r^2> ')
-    12 format (5x, ' n ' ,1x, ' <P> ',1x, '<Rz> ', 1x, '  v^2  ',1x,'  E_sp  ',&
-    &             1x, ' Var(h) ', 1x, ' <Jx> ', 1x, ' <Jz> ', '   J  ',1x,     &
-    &                 ' <r^2> ')
-    13 format (5x, ' n ' ,1x, ' <P> ',1x, '<Rz> ', 1x, '  v^2  ',1x,'  E_sp  ',&
-    &             1x, ' Var(h) ', 1x, ' <Jx> ', 1x, ' <Jy> ', 1x , '   J  ',   &
-    &             1x , ' <r^2> ')
+    1  format (5x, ' n ' ,1x, ' <P> ',1x, '  v^2  ',1x, '  E_sp ', 2x,'Var(h)',&
+    &          4x, '<Jx|T>',1x, '<Jy|T>', 3x, '<Jz>', 4x,'J',4x,'<r^2>') 
+    11 format (5x, ' n ' ,2x,'<P>',2x, '<Rz>',4x,'v^2',5x,'E_sp',4x,'Var(h)',  &
+    &          3x, '<Jx>',2x, '<Jy|T>', 1x, '<Jz>', 3x , 'J',4x ,'<r^2>',1x)
+    12 format (5x, ' n ' ,2x,'<P>',2x, '<Rz>',4x,'v^2',5x,'E_sp',4x,'Var(h)',  &
+    &          3x, '<Jx|T>',1x, '<Jy>', 2x, '<Jz>', 3x , 'J',4x ,'<r^2>',1x)
+    13 format (5x, ' n ' ,2x,'<P>',2x, '<Rz>',4x,'v^2',5x,'E_sp',4x,'Var(h)',  &
+    &          3x, '<Jx>',1x, '<Jy>', 2x, '<Jz>', 3x , 'J',4x ,'<r^2>',1x)
+    
     !--------------------------------------------------------------------------- 
     ! BCS calculations
-    2  format (5x, ' n ',1x,' <P> ',1x,'  v^2  ',1x,' Delta ',1x,'   E_sp  ',  &
-    &           1x, ' Var(h) ', 1x, ' <Jz> ', 1x ,'   J  ', 1x,  ' <r^2> ')
-    21 format (5x, ' n ',1x,' <P> ',1x, '<Rz> ',1x'  v^2  ',1x,' Delta ',1x,   &
-    &           '   E_sp  ',1x,' Var(h) ',1x,' <Jx> ',1x,' <Jz> ',1x ,'   J  ',&
-    &           1x, ' <r^2> ') 
+    2  format (6x,'n',3x,'<P>',4x,'v^2',4x,'Delta',4x,'E_sp',4x,'Var(h)',3x,   &
+      &        '<Jx|T>',1x, '<Jy|T>', 2x, '<Jz>', 4x,'J',4x,'<r^2>')
+    21 format (6x,'n',3x,'<P>',2x,'<Rz>',3x,'v^2',4x,'Delta',4x,'E_sp',4x,     &
+      &        'Var(h)',5x,'<Jx>',2x,'<Jy|T>', 2x, '<Jz>', 4x,'J',4x,'<r^2>')
+
     !--------------------------------------------------------------------------- 
     ! HFB calculations
-    3  format (5x,' n ',1x,' <P> ',1x,' Rhoii ',1x,' Delta ',1x,' m ', 1x,     &
-    &          '  E_sp  ', 1x, ' Var(h) ', 1x, ' <Jz> ', 1x ,'   J  ', 1x,     &
-    &          ' <r^2> ') 
-    31 format (5x, ' n ' ,1x, ' <P> ',1x, '<Rz> ', 1x, ' Rhoii ',1x, ' Delta ',&
-    &             1x, ' m ', 1x, '  E_sp  ', 1x, ' Var(h) ', 1x, ' <Jz> ', 1x ,&
-    &            '   J  ', 1x, ' <r^2> ')
+    3  format (6x,'n',3x,'<P>',3x,'Rhoii',3x,'Delta',3x,'m',4x,'E_sp',4x,      &
+    &          'Var(h)',3x,'<Jx|T>',1x, '<Jy|T>', 2x, '<Jz>',5x,'J',3x,'<r^2>') 
+    31 format (6x,'n',3x,'<P>',2x,'<Rz>',2x,'Rhoii',2x,'Delta',5x,'m',4x,'E_sp'&
+    &         ,4x,'Var(h)',3x,'<Jx|T>',1x,'<Jy|T>',2x,'<Jz>',5x,'J',3x,'<r^2>')
     32 format (5x, ' n ' ,1x, ' <P> ',1x, '<Rz> ', 1x, ' Rhoii ',1x, ' Delta ',&
     &             1x, ' m ', 1x, '  E_sp  ', 1x, ' Var(h) ', 1x, ' <Jx> ', 1x ,&
     &            '   J  ', 1x, ' <Jz> ', 1x ,' <r^2> ')
     
     ! Headers for Canonical basis
     !---------------------------------------------------------------------------
-    4  format (5x,' n ' ,1x, ' <P> ', 1x, '  v^2  ',1x,'  E_sp  ', 1x, ' <Jz> '&
-      &         1x, '   J  ', 1x,' <r^2> ') 
-    41 format (5x,' n ', 1x, ' <P> ', 1x,'<Rz> ', 1x,'  v^2  ',  1x,'  E_sp  ',&
-    &           1x, ' <Jz> ', 1x,'  J  ',1x,' <r^2> ')
+    4  format (6x,'n',3x,'<P>',4x,'v^2',5x,'E_sp',3x,'<Jx|T>',1x,'<Jy|T>',2x,&
+    &          '<Jz>',4x,'J',4x,'<r^2> ') 
+    41 format (6x,'n',3x,'<P>',2x,'<Rz>',4x,'v^2',5x,'E_sp',3x,'<Jx|T>',1x,  &
+    &         '<Jy|T>',2x,'<Jz>',4x,'J',4x,'<r^2> ') 
     42 format (5x,' n ', 1x, ' <P> ', 1x,'<Rz> ', 1x,'  v^2  ',  1x,'  E_sp  ',&
     &           1x,' <Jx> ',1x,' <Jz> ',1x,'   J  ', 1x,' <r^2> ')
     
-    100 format ( 80('_'))
+    100 format (94('_'))
     
     print 10
     
     select case(PairingType)
     
     case(0)
-       if(TSC .and. TRC .and. SC) then
+       if(TSC .and. SC) then
         write(HFheader, fmt=1)
-       elseif(TSC.and.SC) then
+       elseif(TSC) then
         write(HFHeader, fmt=11)
-       elseif(SC .and. .not. TSC) then
-        write(HFHeader, fmt=13)
-       else
+       elseif(SC) then
         write(HFHeader, fmt=12)
-       endif       
+       else
+        write(HFHeader, fmt=13)
+       endif
        printType = 1
     case(1)
       if(TSC .and. SC) then

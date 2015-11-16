@@ -31,6 +31,9 @@ module WaveFunctions
     !   Norm of the wavefunction
     ! Angmoment
     !  Expectation value of the angular moment, in the three directions(x/y/z)
+    !  ATTENTION: when the matrix element <Psi | J_i | Psi > is constrained by
+    !  symmetry, then we calculate <Psi| J_i \check{T} | Psi > instead!
+    !
     ! J2
     !  Quadratic expectation values of the angular moment, <J_i^2>, in the three
     !  directions, in general not calculated.
@@ -583,8 +586,14 @@ contains
     !---------------------------------------------------------------------------
     class(Spwf), intent(inout)    :: WaveFunction
     real(KIND=dp)                 :: Temp(6,2)
+    logical                       :: TRX=.false., TRY=.false., TRZ=.false.
+
+    if(SC)          TRX=.true.
+    if(TSC .or. SC) TRY=.true.
+    TRZ = .false.
+
     Temp = 0.0_dp
-    Temp = AngularMomentum(WaveFunction, WaveFunction, .true.)               
+    Temp = AngularMomentum(WaveFunction, WaveFunction, .true.,TRX,TRY,TRZ)               
 
     !Angular Momentum in the three directions
     !Note: only the real parts!
@@ -926,77 +935,207 @@ contains
     ActionOfJ = Temp1 + Temp4
   end function AngMomOperator
 
-  function AngularMomentum(WF2,WF1, quadratic) result(AngMom)
-    !---------------------------------------------------------------------------
-    ! This function returns the matrix element 
-    !       < WF1 | \hat{J} | WF2 > 
-    ! and the matrix elements of
-    !       < WF1 | J_i**2 | WF2 >      
-    ! if the quadratic is true.            
-    ! Notice the ordering of the arguments in this expression!
-    !---------------------------------------------------------------------------
-    ! Note:
-    ! - When dictated by time reversal symmetry, it returns zero. 
-    !
-    ! - The matrix elements < WF2 | \hat{J} | WF1 > are only guaranteed to be 
-    !   real in the case of time simplex symmetry. This is the reason why J has 
-    !   two columns: the real and imaginary part.
-    !---------------------------------------------------------------------------
-    class(Spwf), intent(in) :: WF1,WF2
-    type(Spinor)            :: Intermediate(3), Intermediate2(3)
-    real(KIND=dp)           :: AngMom(6,2)
-    integer                 :: i
-    logical, intent(in)     :: Quadratic
-    
-    AngMom=0.0_dp
-    if(WF1%Parity.ne.WF2%Parity .or. WF1%Isospin.ne.WF2%Isospin) then
-        ! The matrix element is zero when opposite parities or isospins
-        ! are involved.
-        return
-    endif
+!   function AngularMomentum(WF2,WF1, quadratic,trx,try,trz) result(AngMom)
+!     !---------------------------------------------------------------------------
+!     ! This function returns the matrix element 
+!     !       < WF1 | \hat{J} | WF2 > 
+!     ! and the matrix elements of
+!     !       < WF1 | J_i**2 | WF2 >      
+!     ! if the quadratic is true.            
+!     ! Notice the ordering of the arguments in this expression!
+!     ! 
+!     ! If TRX_i is present, this routine includes an extra time-reversal operator
+!     !
+!     ! < WF1 | \hat{J}_{x_i}   \check{T} | WF2 >
+!     ! and
+!     ! < WF1 | \hat{J}_{x_i}^2 \check{T} | WF2 >
+!     !
+!     !---------------------------------------------------------------------------
+!     ! Note:
+!     ! - When dictated by symmetry, it returns zero. 
+!     !
+!     ! - The matrix elements < WF2 | \hat{J} | WF1 > are only guaranteed to be 
+!     !   real in the case of time simplex symmetry. This is the reason why J has 
+!     !   two columns: the real and imaginary part.
+!     !---------------------------------------------------------------------------
+!     class(Spwf), intent(in) :: WF1,WF2
+!     type(Spinor)            :: Intermediate(3), Intermediate2(3)
+!     real(KIND=dp)           :: AngMom(6,2)
+!     integer                 :: i
+!     logical, intent(in)     :: Quadratic
+!     logical, intent(in), optional :: TRX,TRY,TRZ
 
-    do i=1,3
-      Intermediate(i) = NewSpinor()
-      Intermediate(i) = AngMomOperator(wf1,i)
-    enddo
-    !X Component
-    if(SC                                                                      &
-    &  .and. wf1%GetSignature().eq.wf2%GetSignature()) then
-      !Good signature quantum numbers prohibit <Jx>
-      AngMom(1,:) = 0.0_dp
-    else    
-      AngMom(1,1) = InproductSpinorReal(wf2%Value, Intermediate(1))
-      AngMom(1,2) = InproductSpinorImaginary(wf2%Value, Intermediate(1))
-    endif
-    
-    !Y Component
-    if(SC                                                                      &
-    &  .and. wf1%GetTimeSimplex().eq.wf2%GetTimeSimplex()) then
-      !Good time simplex quantum numbers prohibit <Jy>
-      AngMom(2,:) = 0.0_dp
-    else
-      AngMom(2,1) = InproductSpinorReal(wf2%Value, Intermediate(2))
-      AngMom(2,2) = InproductSpinorImaginary(wf2%Value, Intermediate(2))
-    endif 
-    
-    !Z Component
-    if( SC  .and.                                                              &
-        & wf1%GetSignature() .ne. wf2%Getsignature() ) then
-        AngMom(3,:) = 0.0
-    else
+!     AngMom=0.0_dp
+!     if(WF1%Parity.ne.WF2%Parity .or. WF1%Isospin.ne.WF2%Isospin) then
+!         ! The matrix element is zero when opposite parities or isospins
+!         ! are involved.
+!         return
+!     endif
 
-        AngMom(3,1) = InproductSpinorReal(wf2%Value, Intermediate(3))
-        AngMom(3,2) = InproductSpinorImaginary(wf2%Value, Intermediate(3))
-    endif
-    if(Quadratic) then
-      !J**2 components, only compute these if desired.
-      do i=1,3
-        Intermediate2(i) = AngMomOperator(wf2,i)
-        AngMom(3+i,1)=InproductSpinorReal(Intermediate2(i),Intermediate(i))
-        AngMom(3+i,2)=InproductSpinorImaginary(Intermediate2(i),Intermediate(i))                
-      enddo
-    endif  
-  end function AngularMomentum
+!     do i=1,3
+!       Intermediate(i) = NewSpinor()
+!       Intermediate(i) = AngMomOperator(wf1,i)
+!     enddo
+!     !X Component
+!     if(SC                                                                      &
+!     &  .and. wf1%GetSignature().eq.wf2%GetSignature()) then
+!       !Good signature quantum numbers prohibit <Jx>
+!       AngMom(1,:) = 0.0_dp
+!     else    
+!       AngMom(1,1) = InproductSpinorReal(wf2%Value, Intermediate(1))
+!       AngMom(1,2) = InproductSpinorImaginary(wf2%Value, Intermediate(1))
+!     endif
+    
+!     !Y Component
+!     if(SC                                                                      &
+!     &  .and. wf1%GetTimeSimplex().eq.wf2%GetTimeSimplex()) then
+!       !Good time simplex quantum numbers prohibit <Jy>
+!       AngMom(2,:) = 0.0_dp
+!     else
+!       AngMom(2,1) = InproductSpinorReal(wf2%Value, Intermediate(2))
+!       AngMom(2,2) = InproductSpinorImaginary(wf2%Value, Intermediate(2))
+!     endif 
+    
+!     !Z Component
+!     if( SC  .and.                                                              &
+!         & wf1%GetSignature() .ne. wf2%Getsignature() ) then
+!         AngMom(3,:) = 0.0
+!     else
+!         AngMom(3,1) = InproductSpinorReal(wf2%Value, Intermediate(3))
+!         AngMom(3,2) = InproductSpinorImaginary(wf2%Value, Intermediate(3))
+!     endif
+!     if(Quadratic) then
+!       !J**2 components, only compute these if desired.
+!       do i=1,3
+!         Intermediate2(i) = AngMomOperator(wf2,i)
+!         AngMom(3+i,1)=InproductSpinorReal(Intermediate2(i),Intermediate(i))
+!         AngMom(3+i,2)=InproductSpinorImaginary(Intermediate2(i),Intermediate(i))                
+!       enddo
+!     endif  
+!   end function AngularMomentum
+
+    function AngularMomentum(WF2,WF1, quadratic,TRX,TRY,TRZ) result(AngMom)
+        !--------------------------------------------------------------------------
+        ! 
+        !
+        !
+        !--------------------------------------------------------------------------
+        ! Note:
+        ! The matrix elements < WF2 | \hat{J} | WF1 > are only guaranteed to 
+        ! be real in the case of time simplex symmetry. This is the reason 
+        ! why J has two columns: the real and imaginary part.
+        !--------------------------------------------------------------------------
+
+        class(Spwf), intent(in) :: WF1,WF2
+        type(Spinor)            :: Intermediate(3), Intermediate2(3)
+        real(KIND=dp)           :: AngMom(6,2)
+        integer                 :: i, sig1(3), sig2(3)
+        logical, intent(in)     :: Quadratic
+        logical, intent(in)     :: TRX,TRY,TRZ
+
+        AngMom=0.0_dp
+        
+        ! Get the signatures for checking in every Cartesian direction
+        sig1 = wf1%GetSignature()
+        sig2 = wf2%GetSignature()
+
+        ! Invert signatures if Time-reversal operators enter the expression
+        if(TRX) sig1(1) = - sig1(1)
+        if(TRY) sig1(2) = - sig1(2)
+        if(TRZ) sig1(3) = - sig1(3)
+
+        if(Quadratic) then
+            do i=1,3
+              Intermediate(i) = AngMomOperator(wf1,i)
+            enddo
+        endif
+        !--------------------------------------------------------------------------
+        !--------------------------------------------------------------------------
+        ! Compute < J_x >
+        if(SC .and. sig1(1) .eq. sig2(1) ) then
+            AngMom(1,:) = 0.0_dp
+        else
+            if(.not. Quadratic) Intermediate(1) = AngMomOperator(wf1,1)
+            if(TRX) then
+                AngMom(1,1) = InproductSpinorReal(wf2%Value,                      &
+                    &                                 TimeReverse(Intermediate(1)))
+            else
+                AngMom(1,1) = InproductSpinorReal(wf2%Value,                      &
+                    &                                              Intermediate(1))
+            endif
+            ! The imaginary part is zero when TimeSimplex is conserved
+            if(.not. TSC) then
+                if(TRX) then
+                    AngMom(1,2) = InproductSpinorImaginary(wf2%Value,             &
+                        &                             TimeReverse(Intermediate(1)))
+                else
+                    AngMom(1,2) = InproductSpinorImaginary(wf2%Value,             &
+                        &                                          Intermediate(1))
+                endif
+            endif
+        endif
+        !--------------------------------------------------------------------------
+        ! Compute < J_y >
+        if( (SC .and. sig1(2) .eq. sig2(2)) .or. (TSC .and. sig1(2).eq.sig2(2))) then
+            AngMom(2,:) = 0.0_dp
+        else
+            if(.not. Quadratic) Intermediate(2) = AngMomOperator(wf1,2)
+            if(TRY) then
+                AngMom(2,1) = InproductSpinorReal(wf2%Value,                      &
+                    &                                 TimeReverse(Intermediate(2)))
+            else
+                AngMom(2,1) = InproductSpinorReal(wf2%Value,                      &
+                    &                                              Intermediate(2))
+            endif
+            ! The imaginary part is zero when TimeSimplex is conserved
+            if(.not. TSC) then
+                if(TRY) then
+                    AngMom(2,2) = InproductSpinorImaginary(wf2%Value,             &
+                        &                             TimeReverse(Intermediate(2)))
+                else
+                    AngMom(2,2) = InproductSpinorImaginary(wf2%Value,             &
+                    &                                              Intermediate(2))
+                endif
+            endif
+        endif
+        !--------------------------------------------------------------------------
+        ! Compute < J_z >
+        if( SC .and. sig1(3) .ne. sig1(3) ) then
+            AngMom(3,:) = 0.0_dp
+        else
+            if(.not. Quadratic) Intermediate(3) = AngMomOperator(wf1,3)
+            if(TRZ) then
+                AngMom(3,1) = InproductSpinorReal(wf2%Value,                      &
+                    &                                 TimeReverse(Intermediate(3)))
+            else
+                AngMom(3,1) = InproductSpinorReal(wf2%Value,                      &
+                 &                                                Intermediate(3))
+            endif
+             ! The imaginary part is zero when TimeSimplex is conserved
+            if(.not. TSC) then
+                if(TRZ) then
+                    AngMom(3,2) = InproductSpinorImaginary(wf2%Value,             &
+                        &                             TimeReverse(Intermediate(3)))
+                else
+                    AngMom(3,2) = InproductSpinorImaginary(wf2%Value,             &
+                        &                                          Intermediate(3))
+                endif
+            endif   
+        endif
+        !--------------------------------------------------------------------------
+        !--------------------------------------------------------------------------
+        if(Quadratic) then
+          !J**2 components, only compute these if desired.
+          ! Note that these are never constrained by symmetries
+          do i=1,3
+            Intermediate2(i) = AngMomOperator(wf2,i)
+            AngMom(3+i,1)=InproductSpinorReal(Intermediate2(i),Intermediate(i))
+            AngMom(3+i,2)=InproductSpinorImaginary(Intermediate2(i),Intermediate(i))                
+          enddo
+        endif
+        !--------------------------------------------------------------------------
+
+    end function AngularMomentum
 
   subroutine PrintHF(WF,i,PrintType)
   !-----------------------------------------------------------------------------
@@ -1020,37 +1159,32 @@ contains
   
   !-----------------------------------------------------------------------------
   ! Hartree-Fock calculations
-  !           n        <P>        v^2       E_sp      d2H       <Jz>    < r^2 >
-  1  format ( i3, 1x, f5.2, 1x, f7.4, 1x, f8.3, 1x, e9.2, 1x, f6.2,      f6.2 ) 
-  !           n        <P>       <S>        v^2       E_sp      d2H       <Jz>
-  11 format ( i3, 1x, f5.2, 1x, f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2, 1x, f6.2, & 
-  &           f6.2,1x, f6.2 )
-  !           J        <r^2>
-  !  
-  !           n     <P> <S>        v^2       E_sp      d2H      <Jx> <Jz> <r^2>
-  12 format ( i3, 2(1x, f5.2), 1x, f7.4 , 1x, f8.3, 1x, e9.2, 3(1x, f6.2) )
-  !           n     <P> <S>        v^2       E_sp      d2H      <Jx> <Jy> <r^2>
-  13 format ( i3, 2(1x, f5.2), 1x, f7.4 , 1x, f8.3, 1x, e9.2, 3(1x, f6.2) )
-  
+  !           n        <P>        v^2       E_sp      d2H   <Jx/y/z> , J, < r^2 >
+  1  format ( i3, 1x, f5.2, 1x, f7.4, 1x, f8.3, 1x, e9.2, 1x, 5(f7.2) ) 
+  !           n        <P>       <S>        v^2       E_sp      d2H     
+  11 format ( i3, 1x, f5.2, 1x, f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2, 1x,      &
+  !           <Jx/y/z>, J, <r^2>
+  &           5(f6.2))  
+
   !-----------------------------------------------------------------------------
   ! BCS calculations
-  !           n        <P> <S>   v^2       Delta     E_sp    d2H <Jz>,J,<r^2>
-  2  format (i3,1x, f5.2,  1x, f7.4, 1x, f7.2 ,1x, f8.3, 1x, e9.2, 3(1x,f6.2))
-  !           n     <P> <S>    v^2  Delta     E_sp      d2H     <Jx> <Jz>J<r^2>
-  21 format (i3,2(1x, f5.2), 1x,f7.4,1x,f7.2,1x, f8.3, 1x, e9.2, 4(1x, f6.2) ) 
+  !           n        <P> <S>   v^2       Delta     E_sp   d2H <Jx/y/z>,J,<r^2>
+  2  format (i3,1x, f5.2,  1x, f7.4, 1x, f7.2 ,1x, f8.3, 1x, e9.2, 5(f7.2))
+  !           n     <P> <S>    v^2  Delta     E_sp      d2H     <Jx/y/z>J<r^2>
+  21 format (i3,2(1x, f5.2), 1x,f7.4,1x,f7.2,1x, f8.3, 1x, e9.2, 5(f7.2) ) 
   
   !-----------------------------------------------------------------------------
   ! HFB calculations
-  !           n      <P>    RhoII  Delta , PairPartner E_sp d2H   <Jz> ,J,<r^2>
-  3  format ( i3,1x,f5.2,1x,f7.4,1x,f7.2,1x, i3, 1x,f8.3,1x,e9.2,3(1x,f6.2)) 
+  !           n      <P>    RhoII  Delta PairPartner E_spd2H <Jx/y/z> ,J,<r^2>
+  3  format ( i3,1x,f5.2,1x,f7.4,1x,f7.2,1x, i3, 1x,f8.3,1x,e9.2,5(f7.2)) 
   !           n      <P>     <S>    RhoII   Delta , PairPartner E_sp  d2H 
   31 format ( i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x,f8.3,1x,e9.2,        &
-  &           3(1x,f6.2)) 
-  !           <Jz>,J, <r^2>
+  &           5(f7.2)) 
+  !           <Jx/y/z>,J, <r^2>
   !           n      <P>     <S>    RhoII   Delta , PairPartner E_sp  d2H 
   32 format ( i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x,f8.3,1x,e9.2,        &
-  &           4(1x,f6.2))
-  !           <Jy>,<Jz>,J, <r^2>
+  &           5(f7.2))
+  !           <Jx/y/z>J, <r^2>
   class(Spwf), intent(in) :: WF
   integer, intent(in)     :: i
   integer, intent(in)     :: PrintType
@@ -1065,21 +1199,20 @@ contains
         !Time Reversal and signature conservation => <Rz> = 1
         if(TRC .and. SC .and. TSC) then
             print 1, i,WF%ParityR,PrintOcc,WF%Energy,WF%Dispersion,       &
-            &          WF%AngMoment(3), WF%RMSRadius 
+            &          WF%AngMoment(1:3), WF%AngQuantum, WF%RMSRadius 
         elseif(SC.and.TSC) then
             print 11, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
-            &           WF%Dispersion,WF%AngMoment(3),WF%AngQuantum,      &
+            &           WF%Dispersion,WF%AngMoment(1:3),WF%AngQuantum,    &
             &           WF%RMSRadius
         elseif(TSC) then
-        !No signature conservation
-            print 12, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
-            &           WF%Dispersion,WF%AngMoment(1),WF%AngMoment(3),    &
+            ! No signature conservation
+            print 11, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
+            &           WF%Dispersion,WF%AngMoment(1:3), WF%AngQuantum,   &
             &           WF%RMSRadius
         elseif(SC .and. .not. TSC) then
-            print 13, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
-            &           WF%Dispersion,WF%AngMoment(2),WF%AngMoment(3),    &
+            print 11, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
+            &           WF%Dispersion,WF%AngMoment(1:3), WF%AngQuantum,   &
             &           WF%RMSRadius
-
         else
             call stp('no printout defined yet.')
         endif
@@ -1087,29 +1220,25 @@ contains
     case(2) !BCS calculations
         if(TRC .and. SC) then
             print 2, i,WF%ParityR,PrintOcc,Real(WF%Delta), WF%Energy,     &
-            &          WF%Dispersion,WF%AngMoment(3),WF%AngQuantum,       &
+            &          WF%Dispersion,WF%AngMoment(1:3),WF%AngQuantum,     &
             &          WF%RMSRadius
         elseif(TRC) then
             print 21, i,WF%ParityR,WF%SignatureR,PrintOcc,Real(WF%Delta), &
-            &          WF%Energy,WF%Dispersion,WF%AngMoment(1),           &
-            &          WF%AngMoment(3),WF%AngQuantum, WF%RMSRadius
+            &          WF%Energy,WF%Dispersion,WF%AngMoment(1:3),         &
+            &          WF%AngQuantum, WF%RMSRadius
         else
             call stp('No Printout defined yet.')
         endif
         
     case(3) !HFB calculations
         if(TRC .and. SC .and. TSC) then
-            print 3, i,WF%ParityR,PrintOcc,Real(WF%Delta),WF%PairPartner,     &
-            &          WF%Energy,WF%Dispersion,WF%AngMoment(3),WF%AngQuantum, &
-            &          WF%RMSRadius
-        elseif(SC.and.TSC) then
-            print 31,i,WF%ParityR,WF%SignatureR,PrintOcc,Real(WF%Delta),  &
-            &          WF%PairPartner,WF%Energy,WF%Dispersion,WF%AngMoment(3), &
+            print 3, i,WF%ParityR,PrintOcc,Real(WF%Delta),WF%PairPartner,        &
+            &          WF%Energy,WF%Dispersion,WF%AngMoment(1:3),                &
+            &          WF%AngQuantum,WF%RMSRadius
+        else
+            print 31,i,WF%ParityR,WF%SignatureR,PrintOcc,Real(WF%Delta),         &
+            &          WF%PairPartner,WF%Energy,WF%Dispersion,WF%AngMoment(1:3), &
             &          WF%AngQuantum, WF%RMSRadius
-        elseif(TSC) then
-            print 32,i,WF%ParityR,WF%SignatureR,PrintOcc,Real(WF%Delta),       &
-            &          WF%PairPartner,WF%Energy,WF%Dispersion,WF%AngMoment(1), &
-            &          WF%AngMoment(3), WF%AngQuantum, WF%RMSRadius
         endif
     case DEFAULT
         call stp('Undefined printtype in subroutine PrintHF.')
@@ -1126,7 +1255,7 @@ contains
   !-----------------------------------------------------------------------------
   ! PrintType
   ! = 3 => Minimal printout for HFB
-  !        fmt =  n, <P> , (<S>) , v^2 , E , d^2h , (<Jx>), (<Jy>), <Jz>
+  !        fmt =  n, <P> , (<S>) , v^2 , E , d^2h , <Jx>, <Jy>, <Jz>
   ! 
   !-----------------------------------------------------------------------------
   
@@ -1136,12 +1265,11 @@ contains
   
   !-----------------------------------------------------------------------------
   ! HFB calculations
-  !           n      <P>    v^2      E_sp   <Jz> ,J,<r^2>
-  3  format ( i3,1x,f5.2,1x,f7.4,1x,f8.3,3(1x,f6.2)) 
-  !           n    <P>  <S>   v^2      E_sp   <Jz>,J, <r^2>
-  31 format ( i3, 2(1x,f5.2) ,1x,f7.4,1x,f8.3,3(1x,f6.2)) 
-  !           n    <P>  <S>   v^2      E_sp   <Jx> ,<Jz>,J, <r^2>
-  32 format ( i3, 2(1x,f5.2) ,1x,f7.4,1x,f8.3,4(1x,f6.2) ) 
+  !           n      <P>    v^2      E_sp   <Jx/y/z> ,J,<r^2>
+  3  format ( i3,1x,f5.2,1x,f7.4,1x,f8.3,5(f7.2)) 
+  !           n    <P>  <S>   v^2      E_sp   <Jx/y/z> J <r^2>
+  31 format ( i3, 2(1x,f5.2) ,1x,f7.4,1x,f8.3,5(f7.2)) 
+
   real(KIND =dp)          :: PrintOcc
   
   PrintOcc = WF%Occupation
@@ -1151,15 +1279,11 @@ contains
   select case(PrintType)
   case(3)
     if(TRC.and.SC.and.TSC) then
-        print 3, i , WF%ParityR, PrintOcc, WF%Energy, WF%AngMoment(3),    &
+        print 3, i , WF%ParityR, PrintOcc, WF%Energy, WF%AngMoment(1:3),  &
         &            WF%AngQuantum, WF%RMSRadius
-    elseif(SC .and. TSC) then
+    else
         print 31, i , WF%ParityR, WF%SignatureR, PrintOcc, WF%Energy,     &
-        &             WF%AngMoment(3), WF%AngQuantum, WF%RMSRadius
-    elseif(TSC) then
-        print 32, i , WF%ParityR, WF%SignatureR, PrintOcc, WF%Energy,     &
-        &             WF%AngMoment(1),WF%AngMoment(3),  WF%AngQuantum,    &
-        &             WF%RMSRadius
+        &             WF%AngMoment(1:3), WF%AngQuantum, WF%RMSRadius
     endif
   case DEFAULT
     call stp('Undefined printtype in PrintCanonical.')

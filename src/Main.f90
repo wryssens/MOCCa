@@ -89,7 +89,6 @@ subroutine Evolve(MaxIterations, iprint)
   use Pairing, only     : SolvePairing, PairingType, SolvePairingStart
   use Cranking, only    : ReadjustCranking, CrankC0
   use DensityMixing,only: MixDensities
-  use Damping, only     : IterationCount
   use Cranking, only    : RutzCrank, CrankType
   use Testing
   use HFB

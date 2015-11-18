@@ -2,11 +2,6 @@ module HFB
 !-------------------------------------------------------------------------------
 ! Module that contains everything needed to solve the HFB equations.
 !-------------------------------------------------------------------------------
-! In Progress:
-!   *) Debug broyden solver
-! TODO:
-!   *) Implement quasiparticle blocking
-!-------------------------------------------------------------------------------
 ! Some general notes on technicalities:
 ! *) When conserving time-reversal not all spwfs are represented in memory.
 !    the wavefunctions are actually stored in memory. However, for easier coding
@@ -117,9 +112,16 @@ module HFB
   logical :: QPinHFBasis=.false.
   !-----------------------------------------------------------------------------
   ! Indices of the quasiparticle states that we want to block.
-  ! Different columns are different QPs, first number is the index, second
-  ! number is the parity, third number is the isospin.
-  integer,allocatable :: QPExcitations(:,:)
+  ! NOTE THAT THESE ARE IN THE HFBasis, as this is truely the only
+  ! sensible thing to do.
+  ! The rest of the arrays take the quantum numbers. Only QPBlockind takes 
+  ! the indices of the HF wavefunctions in their respective parity/isospin
+  ! blocks.
+  integer,allocatable :: QPExcitations(:)
+  integer,allocatable :: QPParities(:)
+  integer,allocatable :: QPIsospins(:)
+  integer,allocatable :: QPSignatures(:)
+  integer,allocatable :: QPblockind(:)
   !-----------------------------------------------------------------------------
   ! Integer that controls whether the program looks for even or odd HFB states.
   ! This needs to be stored for every parity-isospin block.
@@ -180,8 +182,8 @@ contains
     if(.not.allocated(CanTransfo)) then
       allocate(CanTransfo(HFBSize,HFBSize,Pindex,Iindex)) ; CanTransfo     = 0.0_dp
       allocate(Occupations(HFbsize,Pindex,Iindex))        ; Occupations    = 0.0_dp
-      allocate(QuasiEnergies(2*HFBSize,Pindex,Iindex))      ; QuasiEnergies  = 0.0_dp
-      allocate(QuasiSignatures(2*HFBSize,Pindex,Iindex))    ; QuasiSignatures= 0.0_dp
+      allocate(QuasiEnergies(2*HFBSize,Pindex,Iindex))    ; QuasiEnergies  = 0.0_dp
+      allocate(QuasiSignatures(2*HFBSize,Pindex,Iindex))  ; QuasiSignatures= 0.0_dp
       allocate(HFBColumns(HFBSize,Pindex,Iindex))         ; HFBColumns     = 0
     endif
 
@@ -777,8 +779,9 @@ contains
   ! was saved might actually be a very bad one.
   !---------------------------------------------------------------------------
   1 format('Attention, unconverged Fermi solver.'/, &
-  &        'Iterations : ', i5, /, &
+  &        'Iterations : ', i5,                  /, &
   &        'Particles  : ', 2f12.8)
+  2 format('Lipkin parameter deviation: ', 2f12.8)
 
 
   real(KIND=dp), intent(inout)              :: Fermi(2), LnLambda(2)
@@ -812,6 +815,7 @@ contains
   Particles(2) = Protons
   Converged    = .false.
 
+  flag = 0
   !Check were we find ourselves in the phasespace
   N = HFBNumberofParticles(Fermi, Delta, LnLambda ) - Particles
   if(Lipkin) then
@@ -864,7 +868,13 @@ contains
         FermiUpdate(it) = - invJ(1,1,it) * N(it)    
         if(Lipkin) then
           FermiUpdate(it) = FermiUpdate(it)        - invJ(1,2,it) * LN(it)
-          LNupdate(it)    = - invJ(2,1,it) * N(it) - invJ(2,2,it) * LN(it)
+          if(flag(it).ne.1) then
+            LNupdate(it)    = - invJ(2,1,it) * N(it) - invJ(2,2,it) * LN(it)
+          else
+            ! Don't update LN if the calculation of Lambda_2 got into trouble
+            print *, 'Discarded step at iteration ', iter, ' for isospin ', it
+            LNUpdate(it)    = 0.0_dp
+          endif
           norm(it)        = FermiUpdate(it)**2 + LNUpdate(it)**2
         else
          norm(it)        = FermiUpdate(it)**2
@@ -886,6 +896,7 @@ contains
       enddo
 
       !Recalculate
+      flag = 0
       N    = HFBNumberOfParticles(Fermi       ,Delta,LNLambda )  - Particles
       if(Lipkin) LN   = LNLambda - LNCR8(Delta,DeltaLN, flag)
 
@@ -912,7 +923,7 @@ contains
       !Print a warning if not converged
       if(iter.eq.HFBIter) then
           print 1, HFBIter, N + Particles
-          print *, abs(LN)
+          print 2, abs(LN)
       endif
   enddo
   end subroutine HFBFindFermiEnergyBroyden
@@ -1389,14 +1400,10 @@ subroutine InsertionSortQPEnergies
                 NullDimension(P,it) = NullDimension(P,it) + 1
               endif
             enddo
+
             ! If the number-parity is even, no problem.
             if((-1)**NullDimension(P,it) .eq. HFBNumberParity(P,it)) cycle
-            !-------------------------------------------------------------------
-            ! Now check for total signature
-            do i=1,blocksizes(P,it)
-              C = HFBColumns(i,P,it)
-              TotalSignature(P,it)=TotalSignature(P,it)+QuasiSignatures(C,P,it)
-            enddo
+            print *,' Gapless Superconductivity'
             !-------------------------------------------------------------------
             ! Now for the fixing part: if a block has wrong number parity, we 
             ! check for the lowest positive quasiparticle energy of that block 
@@ -1404,14 +1411,22 @@ subroutine InsertionSortQPEnergies
             ! Of course we need to check that we excite the qp with the correct 
             ! signature.
             !-------------------------------------------------------------------
+            !-------------------------------------------------------------------
+            ! Now check for total signature
             do i=1,blocksizes(P,it)
               C = HFBColumns(i,P,it)
-              if(abs(QuasiSignatures(C,P,it) - TotalSignature(P,it)/2 ).lt.1d-8) then
+              TotalSignature(P,it)=TotalSignature(P,it)+QuasiSignatures(C,P,it)
+            enddo
+            
+            do i=1,blocksizes(P,it)
+              C = HFBColumns(i,P,it)
+              if(abs(QuasiSignatures(C,P,it) - TotalSignature(P,it)/2 ).lt.1d-8) then      
                   HFBColumns(i,P,it) = 2*blocksizes(P,it) - C + 1
+                  
                   print *, 'Excited', P, it, C, HFBColumns(i,P,it)
-                  print *, 'S, TS',  QuasiSignatures(C,P,it), TotalSignature(P,it)
-                  print *, 'NS', QuasiSignatures(HFBColumns(i,P,it),P,it)
-
+                  !print *, 'S, TS',  QuasiSignatures(C,P,it), TotalSignature(P,it)
+                  !print *, 'NS', QuasiSignatures(HFBColumns(i,P,it),P,it)
+                  print *, 'Nulldimension', Nulldimension(P,it), HFBNumberparity(P,it)
                   TotalSignature = 0.0_dp
                   do j=1,blocksizes(P,it)
                     C = HFBColumns(j,P,it)
@@ -1423,7 +1438,7 @@ subroutine InsertionSortQPEnergies
                   exit
               endif
             enddo
-          enddo
+           enddo
         enddo 
       if(HFBCheck) call CheckUandVColumns(HFBColumns)   
       !-------------------------------------------------------------------------
@@ -2245,67 +2260,91 @@ subroutine InsertionSortQPEnergies
       else
         ! Signalling problem
         flag(it) = 1
-        print *, 'c2,c3,c4', c2,c3,c4
+        print *, 'c2,c3,c4', c2(it),c3(it),c4(it)
       endif
     enddo
-
-    if(any(isnan(LNLambda))) then
-     print *, 'c2,c3,c4', c2,c3,c4
-     print *, 'hl1', hl1
-     print *, 'hl2', hl2
-     call stp('LNLambda is NaN!')
-    endif
   end function LNCr8
 
-  subroutine ReadBlockingInfo()
+  subroutine ReadBlockingInfo(Block)
     !---------------------------------------------------------------------------
     ! Subroutine that reads from input the parameters for blocking calculations.
+    ! The integer Block decides the total number of quasiparticles.
     !
+    !---------------------------------------------------------------------------
+    ! Technical note: we cannot initialize the QPBlockind array here, since
+    ! MOCCa is not guaranteed to have read the wavefunction file when this
+    ! info is read. 
+    ! Instead BlockQP checks if this has been performed and if not calls
+    ! the subroutine QPindices.
+    !---------------------------------------------------------------------------
+
+    integer, intent(in) :: Block
+    integer             :: io, Blocked(Block)
+    integer, allocatable :: Temp(:)
+    
+    Namelist /Blocking/ Blocked
+
+    io = 0
+    allocate(QPExcitations(Block)) ; QPExcitations=0
+    
+    ! Read the namelist
+    read(unit=*,NML=Blocking, iostat=io)
+    if(io.ne.0) call stp('Error on reading blocked particle indices', 'Iostat', io)
+    if(any(Blocked.le.0) .or. any(Blocked.gt.nwt)) then
+        call stp('Invalid quasiparticle index.')
+    endif
+
+    QPexcitations=blocked
+  end subroutine ReadBlockingInfo
+
+  subroutine QPindices
+    !---------------------------------------------------------------------------
+    ! Subroutine that looks for the correct blockindices of the HFBasis 
+    ! wavefunctions.
     !
     !---------------------------------------------------------------------------
 
-    integer :: io, QPindex, P, Iso, Pindex, Isoindex, N
-    logical :: MoreQp
-    integer, allocatable :: Temp(:,:)
-    
-    Namelist /Blocking/ QPinHFBasis, QPindex, P, Iso, MoreQp
+    integer :: i, N, P,it,j, index, S
 
-    io = 0
-    MoreQp = .true.
-    allocate(QPExcitations(3,1)) ; QPExcitations=0
-    do while(MoreQp)
-      MoreQP= .false.
-      QPindex=-1 ; P = -2 ; Iso=-2
-      read(unit=*,NML=Blocking, iostat=io)
-      if(io.ne.0) call stp('Error on reading blocked particle indices', 'Iostat', io)
+    if(.not. allocated(Blockindices)) then
+        call stp('QPindices cannot work before the HFBmodule is properly'     &
+            &  //' initialized.')
+    endif
 
-      !Double checking some input
-      if(QPindex.le.0) call stp('Invalid quasiparticle index.')
-      if(PC .and. abs(P).ne.1) call stp('Invalid parity block for blocking.')
-      if(.not.PC .and. P.ne.0) call stp('Invalid parity block for blocking.')
-      if(IC .and. abs(Iso).ne.1) call stp('Invalid isospin for quasiparticle.')
-      if(.not.IC .and. Iso.ne.0) call stp('Invalid isospin for quasiparticle.')
+    N = size(QPexcitations)
 
-      Pindex = (P + 3)/2 ; Isoindex = (Iso + 3)/2
+    allocate(QPParities(N))    ; QPParities   =0
+    allocate(QPIsospins(N))    ; QPIsospins   =0
+    allocate(QPSignatures(N))  ; QPSignatures =0
+    allocate(QPblockind(N))    ; QPBlockind = 0.0_dp
 
-      !Saving input
-      N = size(QPExcitations,2)
-      QPExcitations(1,N) = QPindex
-      QPExcitations(2,N) = Pindex
-      QPExcitations(3,N) = Isoindex
-      !Make more space if needed.
-      if(MoreQp) then
-        allocate(Temp(3,N)); Temp = QPExcitations
-        deallocate(QPExcitations); allocate(QPExcitations(3,N+1))
-        QPExcitations(:,1:N) = Temp; QPExcitations(:,N+1)=0 
-        deallocate(Temp)
-      endif
+    do i=1,N
+        index = QPExcitations(i)
+        
+        ! Getting the Quantum Numbers
+        P  = (HFBasis(index)%GetParity()+3)/2
+        It = (HFBasis(index)%GetIsospin()+3)/2
+        S  = HFBasis(index)%GetSignature()
 
-      !Change the HFBNumberParity accordingly
-      HFBNumberparity(Pindex,isoindex) = -1 * HFBNumberparity(Pindex,isoindex)
+        !Saving input
+        QPParities(i)    = P
+        QPIsospins(i)    = It
+        QpSignatures(i)  = S
+
+        !Change the HFBNumberParity accordingly
+        HFBNumberparity(P,it) = -1 * HFBNumberparity(P,it)
     enddo
 
-  end subroutine ReadBlockingInfo
+    index = 0
+    do i=1,N
+        P = QPParities(i)
+        it= QPIsospins(i)
+        do j=1,blocksizes(P,it)
+          if(blockindices(j,P,it) .eq. QPExcitations(i) ) index = j
+        enddo
+        QPBlockind(i) = index
+    enddo
+  end subroutine QPindices
 
 subroutine PrintBlocking
     !---------------------------------------------------------------------------
@@ -2316,22 +2355,22 @@ subroutine PrintBlocking
     integer :: N, i
 
     1 format('Blocking parameters')
-    2 format(2x,'  Index     Parity     Isospin  ')
-    3 format(2x,'--------------------------------')
-    4 format(i7, 5x, i6, 5x, i8)
+    2 format(2x,'  Index     Parity     Isospin      Signature')
+    3 format(2x,'---------------------------------------------')
+    4 format(i7, 5x, i6, 5x, i8,5x,i8)
 
-    5 format(2x,'--------------------------------')
+    5 format(2x,'---------------------------------------------')
     6 format(2x,'Number parities')
     7 format(2x,'Parity',8x,' -',11x,' +')
     8 format(2x,'Neutron',7x,i2,11x,i2)
     9 format(2x,'Proton ',7x,i2,11x,i2)
     print 1
 
-    N = size(QPExcitations,2)
+    N = size(QPExcitations)
     print 2
     print 3
     do i=1,N
-      print 4, QPExcitations(:,i)
+      print 4, QPExcitations(i), 2*QPParities(i)-3,2*QPIsospins(i)-3, QPSignatures(i)
     enddo
     print 5
     print *
@@ -2341,7 +2380,6 @@ subroutine PrintBlocking
     print 8, HFBNumberparity(:,1)
     print 9, HFBNumberParity(:,2)
     print 5
-
   end subroutine PrintBlocking
 
  subroutine BlockQuasiParticles()
@@ -2369,31 +2407,31 @@ subroutine PrintBlocking
     complex(KIND=dp) :: Temp(HFBSize)
     real(KIND=dp)    :: TempU2
 
-    N = size(QPExcitations,2)
+    N = size(QPExcitations)
+
+    if(.not.allocated(QPBlockind)) call QPindices()
   
     do i=1,N
-        index = QPExcitations(1,i)
-        P     = QPExcitations(2,i)
-        it    = QPExcitations(3,i) 
+        index = QPblockind(i)
+        P     = QPParities(i)
+        it    = QPIsospins(i)
+
         ! Identify the quasiparticle excitation
-        if(QPinHFBasis) then
-            loc = 0
-            TempU2 = 0.0_dp
-            ! Search among the currently occupied columns for which qp 
-            ! has the biggest overlap with the asked-for HF state.
-            do j=1,blocksizes(P,it)
-                if(DBLE(U(index,HFBColumns(j,P,it),P,it)**2) .gt. TempU2) then
-                    loc = HFBColumns(j,P,it)
-                    TempU2 = DBLE(U(index,HFBColumns(j,P,it),P,it)**2)
-                endif
-            enddo
-            C   = loc(1)
-        else
-            C   = index
-        endif
-        print *, 'C',C
+        loc = 0
+        TempU2 = 0.0_dp
+        ! Search among the currently occupied columns for which qp 
+        ! has the biggest overlap with the asked-for HF state.
+        do j=1,blocksizes(P,it)
+            if(DBLE(U(index,HFBColumns(j,P,it),P,it)**2) .gt. TempU2) then
+                loc = HFBColumns(j,P,it)
+                TempU2 = DBLE(U(index,HFBColumns(j,P,it),P,it)**2)
+            endif
+        enddo
+        C   = loc(1)
+  
         do j=1,blocksizes(P,it)
             if(HFBColumns(j,P,it) .eq. C) then
+                !print *, 'after', 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
                 HFBColumns(j,P,it) = 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
                 !print *, 'Blocked', HFBColumns(j,P,it) 
                 !print *, 'Signature', QuasiSignatures(HFBColumns(j,P,it),P,it)
@@ -2523,6 +2561,10 @@ subroutine PrintBlocking
                 JMatrix(j+nwt,i+nwt,:,2)   =   JMatrix(i+nwt,j+nwt,:,2)
             enddo    
         enddo
+	if(.not.SC) call stp('Calculation of J matrix elements not yet' &
+        &                  //' correctly implemented for signature'     &
+        &                  //' breaking and Time Reversal conserving'   &
+        &                  //' calculations.')
     endif
 
     ! Construct the transformation matrix, in order to not get confused with 

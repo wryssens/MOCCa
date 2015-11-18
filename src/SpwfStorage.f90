@@ -439,13 +439,12 @@ contains
           &DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMomentSquared(i)
         enddo   
       enddo
+      ! Artificially set total J_x and J_y to zero when dictated by symmetries.
+      ! In that case the above summation is not \sum v^2_i <Psi_i|J_x|\Psi_i>
+      ! but rather \sum v^2_i <Psi_i|J_x T |\Psi_i>
+      if(SC)          TotalAngMom(1) = 0.0
+      if(SC .or. TSC) TotalAngMom(2) = 0.0
     endif      
-     
-!    if(SaveOlderValues) then
-!      print *, 'Before Rutz', TotalAngMom(3), J2Total(3)
-!    else
-!      print *, 'After Rutz', Totalangmom(3), J2total(3)
-!    endif
     
   end subroutine UpdateAM
 

@@ -112,9 +112,8 @@ module Pairing
   ! Thus, if .false., the occupations from file are used.
   logical                     :: SolvePairingStart=.true.
   !-----------------------------------------------------------------------------
-  ! Logical that tells MOCCa to look for input on blocked quasiparticles in the
-  ! case of HFB pairing
-  logical                     :: Blocking=.false. 
+  ! Integer that tells MOCCa what number of blocked qps to look for.
+  integer                     :: Block=0
   !------------------------------------------------------
   ! Temporary array for the pairing density rho~, until a 
   ! more general implementation is available.
@@ -148,7 +147,7 @@ contains
      &                  HFBMix, NeutronGap, ProtonGap, ConstantGap,            &
      &                  Lipkin, LNFraction, GuessKappa, PairingMu, CutType,    &
      &                  MaxLambdaIter, SemiBCS, SemiBCSNeutron, SemiBCSProton, &
-     &                  QPinHFBasis, SolvePairingStart,QPPrintWindow, Blocking,&
+     &                  QPinHFBasis, SolvePairingStart,QPPrintWindow, Block,   &
      &                  FermiSolver
 
      read(unit=*, NML=Pairing)
@@ -210,7 +209,7 @@ contains
       endif
      endif
 
-     if(PairingType.ne.2 .and. Blocking ) then
+     if(PairingType.ne.2 .and. Block .ne. 0) then
       call stp('Cannot block quasiparticles when not doing HFB calculations.')
      endif
 
@@ -252,6 +251,10 @@ contains
      if(ConstantGap .and. Lipkin) then
         call stp('Impossible to enforce constant pairing gaps when'            &
         &         // ' Lipkin-Nogami is enabled.')
+     endif
+     if(Block.lt.0) then
+        call stp('Number of blocked quasiparticles should not be smaller than' &
+          &    //' zero.')
      endif
      !-----------------------------------------------------------------------------
      !--------------------------------------------------------------------------
@@ -379,7 +382,7 @@ contains
         endif
         !-----------------------------------------------------------------------
         ! Calling the readBlocking routine when the user wants to do blocking
-        if(Blocking) call ReadBlockingInfo()
+        if(Block.ne.0) call ReadBlockingInfo(Block)
      end select
   
   end subroutine ReadPairingInfo

@@ -1873,13 +1873,23 @@ subroutine InsertionSortQPEnergies
           ! spinors, since in this way MOCCa checks the consistency of 
           ! quantum numbers.
           if(jj.eq.jjj) then
-            CanBasis(index) = Canbasis(index) + CanTransfo(j,C,P,it)*          &
-            &                                                       HFBasis(jjj)
+            if(TSC) then
+                CanBasis(index) = Canbasis(index) + DBLE(CanTransfo(j,C,P,it))*&
+                &                                                    HFBasis(jjj)
+            else
+                CanBasis(index) = Canbasis(index) +       CanTransfo(j,C,P,it)*&
+                &                                                    HFBasis(jjj)
+            endif
           else
             ! Note that this should only happen when signature is not conserved,
             ! but TimeReversal is.
-            CanBasis(index) = Canbasis(index) + CanTransfo(j,C,P,it)*          &
-            &                                      TimeReverseSpwf(HFBasis(jjj))
+            if(TSC) then
+                CanBasis(index) = Canbasis(index) + DBLE(CanTransfo(j,C,P,it))*&
+                &                                  TimeReverseSpwf(HFBasis(jjj))
+            else
+                CanBasis(index) = Canbasis(index) +       CanTransfo(j,C,P,it)*&
+                &                                  TimeReverseSpwf(HFBasis(jjj))
+            endif
           endif          
         enddo
 

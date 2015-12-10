@@ -2,10 +2,13 @@ module Derivatives
    
     use CompilationInfo
     use GenInfo
+    use OptimizedDerivatives
         
     implicit none
 
     public
+
+    logical :: OptDer=.true.  
 
     !-----------------------------------------------------------------------------
     ! These abstract interface seem to serve no well-defined use, but they are
@@ -106,13 +109,16 @@ module Derivatives
     real(KIND=dp),parameter,dimension(9) :: FourthOrderSecondDer=(/ &
     & -9.0_dp/8064.0_dp, 128.0_dp/8064.0_dp, -1008.0_dp/8064.0_dp, 1.0_dp,     &
     & -14350.0_dp/8064.0_dp, 1.0_dp, -1008.0_dp/8064.0_dp, 128.0_dp/8064.0_dp, &
-    & -9.0_dp/8064.0_dp /)       
+    & -9.0_dp/8064.0_dp /)  
+
+
+
 contains
     subroutine ReadDerivativesInfo()
       !-----------------------------------------------------------------------
       ! Subroutine that reads the user input regarding this module.
       !-----------------------------------------------------------------------     
-      NameList /Derivatives/ MaxFDOrder, MaxFDLapOrder, CoulombLapOrder
+      NameList /Derivatives/ MaxFDOrder, MaxFDLapOrder, CoulombLapOrder, OptDer
       
       !-----------------------------------------------------------------------
       ! Note that the ifort compiler segfaults here for the following:
@@ -220,17 +226,27 @@ contains
         DeriveZ   => DerlagZ                
         Laplacian => Laplacian_Lag
        else
-        ! Check for optimized derivatives
-!         if(TRC .and. SC .and. PC .and. TSC) then
-!             DeriveX => Opt_X_EV8
-!         else
-!             DeriveX => CentralX
-!         endif      
+        !Check for optimized derivatives
+        if(OptDer) then
+          if(TRC .and. SC .and. PC .and. TSC) then
+              DeriveX => Opt_X_EV8
+              DeriveY => Opt_Y_EV8
+              DeriveZ => Opt_Z_EV8
+              Laplacian => Lapla_EV8
+          else
+              DeriveX   => CentralX
+              DeriveY   => CentralY
+              DeriveZ   => CentralZ
+              Laplacian => Laplacian_Central
+          endif
+        else
+          DeriveX   => CentralX
+          DeriveY   => CentralY
+          DeriveZ   => CentralZ
+          Laplacian => Laplacian_Central
+        endif    
         !Use Finite Difference Coefficients
-        DeriveX   => CentralX
-        DeriveY   => CentralY
-        DeriveZ   => CentralZ
-        Laplacian => Laplacian_Central
+        
       endif
 
       !Selecting the appropriate coefficients for the First Derivative
@@ -313,7 +329,7 @@ contains
                 !Using Signature and Time Simplex
                 if(Component.eq.1) then
                         !Spin up real
-                        S=Signature*TimeSimplex
+                        S= Signature*TimeSimplex
                 elseif(Component.eq.2) then
                         !Spin up imaginary
                         S=-Signature*TimeSimplex

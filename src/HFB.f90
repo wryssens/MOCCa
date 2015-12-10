@@ -105,7 +105,7 @@ module HFB
   real(KIND=dp), allocatable :: QuasiEnergies(:,:,:), QuasiSignatures(:,:,:)
   !-----------------------------------------------------------------------------
   ! Maximum number of iterations that the Fermi solver can take
-  integer :: HFBIter = 25
+  integer :: HFBIter = 5
   !-----------------------------------------------------------------------------
   ! Logical that traces if quasiparticles excitations are defined in the HF or
   ! in the canonical basis.
@@ -548,9 +548,29 @@ contains
     real(KIND=dp)             :: N(2), N2(2,2)
     complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
   
-    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda)
+    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,0.0_dp)
     ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
     call DiagonaliseHFBHamiltonian()
+
+!    print *, 'Before'
+!    do it=1,2
+!        do P=1,2
+!            print *, QuasiEnergies(1:2*blocksizes(P,it),P,it)
+!        enddo
+!    enddo
+!
+!    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,1.0_dp)
+!    ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
+!    call DiagonaliseHFBHamiltonian()
+!
+!    print *, 'After'
+!    do it=1,2
+!        do P=1,2
+!            print *, QuasiEnergies(1:2*blocksizes(P,it),P,it)
+!        enddo
+!    enddo
+!    stop
+
     ! Construct the generalised density matrix and the anomalous one.
     call ConstructHFBstate()
               
@@ -994,7 +1014,7 @@ contains
   
   end function FermiBisection
 
-  subroutine ConstructHFBHamiltonian(lambda, Delta, LnLambda)
+  subroutine ConstructHFBHamiltonian(lambda, Delta, LnLambda, HFBGauge)
   !-----------------------------------------------------------------------------
   ! Constructs the HFB hamiltonian.
   ! The argument lambda is the current guess for the Fermi energy.
@@ -1002,7 +1022,7 @@ contains
   ! Note that the Rho & Kappa from the past mean-field iteration are used. This
   ! to combat a hysteresis-effect for the Fermi-solver routines. 
   !-----------------------------------------------------------------------------
-  real(KIND=dp), intent(in)                :: lambda(2), LNLambda(2)
+  real(KIND=dp), intent(in)                :: lambda(2), LNLambda(2), HFBGauge
   integer                                  :: i,j, it, ii,iii,P
   complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
   
@@ -1017,12 +1037,13 @@ contains
         ! Diagonal contribution:
         ! epsilon - lambda  - 2 * Lambda_2 ( 1 - 2 * Rho)                    
         HFBHamil(i,i,P,it) = HFBasis(iii)%GetEnergy() -  Lambda(it)            &
-        &                     - 2*(1.0_dp-LNFraction)* LNLambda(it)
+        &                     - 2*(1.0_dp-LNFraction)* LNLambda(it)                            
         !------------------------------------------------------------------------
         ! Offdiagonal
         do j=1,blocksizes(P,it)
-          HFBHamil(i,j,P,it) = HFBHamil(i,j,P,it) +                            &
-          & (1.0_dp-LNFraction)*4*LNLambda(it)*OldRhoHFB(i,j,P,it)
+          HFBHamil(i,j,P,it) = HFBHamil(i,j,P,it)                              &
+          &       +  (1.0_dp-LNFraction)*4*LNLambda(it)*   OldRhoHFB(i,j,P,it) & 
+          &       +  HFBGauge                          *   OldRhoHFB(i,j,P,it)
         enddo
         do j=1,blocksizes(P,it)
           !---------------------------------------------------------------------
@@ -1034,24 +1055,12 @@ contains
         do j=1,blocksizes(P,it)
           ! Delta - 2 * Lambda_2 * Kappa
           HFBHamil(i,j + blocksizes(P,it),P,it) = Delta(i,j,P,it)              &
-          &                     -LNFraction*4*LNLambda(it)*OldKappaHFB(i,j,P,it)
+          &            - LNFraction*4*LNLambda(it)*      OldKappaHFB(i,j,P,it) &
+          &            - HFBGauge                 *      OldKappaHFB(i,j,P,it) 
         enddo
       enddo
     enddo
   enddo
-
-!   do it=1, Iindex
-!     print *, 'HFBHamil, it=', it
-!     do p=1, Pindex
-!       print *,' Parity, p=', p
-!       print *
-!       do i=1,2*blocksizes(P,it)
-!         write(*, '(999f7.2)'), DBLE(HFBHamil(1:2*blocksizes(P,it),i,P,it))
-!       enddo
-!       print *
-!     enddo
-!   enddo
-!   stop
 
   if(all(HFBHamil.eq.0.0_dp)) call stp('HFBHamiltonian completely zero!')
   end subroutine ConstructHFBHamiltonian  
@@ -1192,18 +1201,6 @@ contains
     enddo
 
     if(SC) call InsertionSortQPEnergies()
-
-!     do it=1,Iindex
-!       do P=1,PIndex
-!       N = blocksizes(P,it)
-!       print *
-!       print *, '(P, it) = (', P, it, ')'
-!       print *, 'N', N
-!       print *,  'First half', QuasiEnergies(1:N, P, it)
-!       print *,  '2nd   half', QuasiEnergies(N+1:2*N, P, it) 
-!       print * 
-!       enddo
-!     enddo
 
   end subroutine DiagonaliseHFBHamiltonian
 

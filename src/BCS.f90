@@ -76,21 +76,22 @@ contains
       complex(KIND=dp), allocatable, intent(inout) :: Field(:,:,:,:)
       complex(KIND=dp), allocatable, intent(inout) :: FieldLN(:,:,:,:)
       complex(KIND=dp), allocatable,intent(inout)  :: Delta(:,:,:,:)
-      integer      :: i, it
+      integer      :: i, it,j
       real(KIND=dp):: Cutoff 
-      type(Spinor) :: Temp
+      type(Spinor) :: Psi
+      complex(KIND=dp)                             :: Temp(nx,ny,nz)
   
       Field  = 0.0_dp
       do i=1,nwt
           it = (HFBasis(i)%GetIsospin()+3)/2
           Cutoff = PCutoffs(i)
-     
-          Temp  = HFBasis(i)%GetValue()
-          
-          Field(:,:,:,it) =  Field(:,:,:,it) + 0.5_dp*Cutoff**2                &
-          &               * Delta(i,1,1,1)/(HFBasis(i)%GetEqp())               & 
-          &               * PairingInter(Temp,TimeReverse(Temp), it )
-  
+          Psi  = HFBasis(i)%GetValue()
+          Temp = PairingInter(Psi,TimeReverse(Psi), it )
+          do j=1,nx*ny*nz
+            Field(i,1,1,it) =  Field(i,1,1,it) + 0.5_dp*Cutoff**2                &
+            &               * Delta(i,1,1,1)/(HFBasis(i)%GetEqp())               & 
+            &               * Temp(i,1,1)
+          enddo
       enddo
     end subroutine BCSPairingField
 

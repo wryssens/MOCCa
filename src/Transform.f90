@@ -19,6 +19,7 @@ module Transform
   use Spinors
   use WaveFunctions
   use Spwfstorage
+  use Spinors
   
   use CoulombDerivatives 
 
@@ -184,6 +185,7 @@ contains
   ! with opposite signatures.
   !-----------------------------------------------------------------------------
     use Spinors
+
     type(Spwf), intent(in) :: wf
     type(Spwf), intent(out):: NewWFOne, NewWFTwo
     type(Spinor)           :: Temp    
@@ -1290,6 +1292,7 @@ contains
     ! operator.
     !---------------------------------------------------------------------------
     use Spinors
+    
     type(Spwf), intent(in) :: inwf
     type(Spwf), intent(out):: outwf1, outwf2
     type(Spwf)             :: workwf

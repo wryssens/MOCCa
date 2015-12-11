@@ -293,7 +293,7 @@ subroutine Evolve(MaxIterations, iprint)
   endif
 
   !Reanalysis of the result with Lagrange derivatives.
-  !call FinalIteration()
+  call FinalIteration()
   
   if(Convergence) then
      print 5

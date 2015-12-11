@@ -634,8 +634,6 @@ contains
     do mu = 1,3
             Der(mu) = Psi%GetDer(mu)
             do nu=1,3
-                    !P = Pauli(Der(mu),nu)
-                    !P = WPot(:,:,:,mu,nu,it)*P
                     P = WPot(:,:,:,mu,nu,it)*Pauli(Der(mu),nu)
                     ActionOfW = ActionOfW + P
             enddo

@@ -350,7 +350,7 @@ contains
     integer        :: q,i,j,k,l,m
     real(KIND=dp)  :: factorialquotient  
 
-    LegendreMesh = 0.0_dp
+    !LegendreMesh = 0.0_dp
     
     do k=1,mz
       do j=1,my
@@ -392,7 +392,6 @@ contains
         enddo
       enddo
     enddo
-    
     
     return
   end function SphericalHarmonics

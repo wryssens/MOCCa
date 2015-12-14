@@ -722,11 +722,12 @@ contains
     type(Spinor)            :: ActionOfC, Value, Der(3), Lap, Temp
 
     Value = Psi%GetValue()
-    it = Psi%GetIsospin()
+    it    = Psi%GetIsospin()
 
     !Terms involving the laplacian
     Lap = Psi%GetLap()
 
+    ActionOfC = NewSpinor()
     do m=1,3
         Temp = Pauli(Lap,m)
         ActionOfC = ActionOfC  + CPot(:,:,:,m,it) * Temp

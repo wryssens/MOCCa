@@ -371,11 +371,11 @@ contains
         &                       Occupation*DensityBasis(i)%GetVecj()
         DenIn%Vecs(:,:,:,:,it)= DenIN%Vecs(:,:,:,:,it) +                       &
         &                       Occupation*DensityBasis(i)%GetVecs()
-        if(B15.ne.0.0_dp .or. B16.ne.0.0_dp) then
+        if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
           DenIn%VecT(:,:,:,:,it)= DenIn%VecT(:,:,:,:,it) +                     &
           &                       Occupation*DensityBasis(i)%GetVecT()
         endif
-        if(B17 .ne. 0.0_dp .or. B18.ne.0.0_dp) then
+        if(B16 .ne. 0.0_dp .or. B17.ne.0.0_dp) then
           DenIn%VecF(:,:,:,:,it)= DenIn%VecF(:,:,:,:,it) +                     &
           &                       Occupation*DensityBasis(i)%GetVecF()
         endif

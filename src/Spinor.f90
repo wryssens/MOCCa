@@ -13,7 +13,6 @@ module spinors
     procedure, public, pass :: DeriveSpinor
     procedure, public, pass :: LapSpinor
     procedure, public, pass :: ActionOfTimeSimplex
-    procedure, public, pass :: TimeReverse
     procedure, public, pass :: ActionOfParity  
     procedure, public, pass :: ActionOfSignature
   

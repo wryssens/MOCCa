@@ -2369,7 +2369,8 @@ subroutine InsertionSortQPEnergies
     !---------------------------------------------------------------------------
 
     integer, intent(in) :: Block
-    integer             :: io, Blocked(Block)
+    integer             :: io
+    integer, allocatable :: Blocked(:)
     integer, allocatable :: Temp(:)
     
     Namelist /Blocking/ Blocked
@@ -2378,6 +2379,7 @@ subroutine InsertionSortQPEnergies
     allocate(QPExcitations(Block)) ; QPExcitations=0
     
     ! Read the namelist
+    allocate(Blocked(block))
     read(unit=*,NML=Blocking, iostat=io)
     if(io.ne.0) call stp('Error on reading blocked particle indices', 'Iostat', io)
     if(any(Blocked.le.0) .or. any(Blocked.gt.nwt)) then

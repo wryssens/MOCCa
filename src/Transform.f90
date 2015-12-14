@@ -177,44 +177,7 @@ contains
     call wf%SetDispersion(Dispersion)
     call wf%SetAngMoment(AngMom)
   end subroutine BreakParity
-        
-  subroutine BreakTimeReversal(wf, NewWfOne,NewWfTwo)
-  !-----------------------------------------------------------------------------
-  ! This subroutine takes as input a wavefunction wf with conserved time 
-  ! reversal symmetry. Two new wavefunctions NewWfOne and newWFTwo get created 
-  ! with opposite signatures.
-  !-----------------------------------------------------------------------------
-    use Spinors
 
-    type(Spwf), intent(in) :: wf
-    type(Spwf), intent(out):: NewWFOne, NewWFTwo
-    type(Spinor)           :: Temp    
-
-    !Checking input
-    if(wf%GetTimeReversal().eq.0) call stp("Time Reversal is already broken!")
-
-    !Copying the wavefunctions
-    NewWfOne = CopyWaveFunction(wf)
-    NewWfTwo = CopyWaveFunction(wf)
-    !Changing time reversal quantum numbers
-    call NewWfOne%SetTimeReversal(0)
-    call NewWfTwo%SetTimeReversal(0)
-
-    !Halving the occupation
-    call NewWfOne%SetOcc(NewWfOne%GetOcc()/2.0_dp)
-    call NewWfTwo%SetOcc(NewWfTwo%GetOcc()/2.0_dp)
-
-    !Changing signature quantum number
-    call NewWfOne%SetSignature(1)
-    call NewWfTwo%SetSignature(-1)
-
-    !Switching the components of nr.2 around
-    ! Action of timereversal is -i *\sigma_y * K
-    Temp = TimeReverse(wf%GetValue())
-
-    call NewWfTwo%SetGrid(Temp)
-  end subroutine BreakTimeReversal
-        
   subroutine BreakSignature(wf)       
     !---------------------------------------------------------------------------
     ! This subroutine takes as argument a single particle wavefunction and 
@@ -1517,5 +1480,44 @@ contains
     call outwf2%SetGrid(Final(2))
     call outwf1%SetGrid(Final(1))  
   end subroutine SymDisplaceZ
+ 
+  subroutine BreakTimeReversal(wf, NewWfOne,NewWfTwo)
+  !-----------------------------------------------------------------------------
+  ! This subroutine takes as input a wavefunction wf with conserved time 
+  ! reversal symmetry. Two new wavefunctions NewWfOne and newWFTwo get created 
+  ! with opposite signatures.
+  !-----------------------------------------------------------------------------
+
+    use Spinors
+    
+    type(Spwf), intent(in) :: wf
+    type(Spwf), intent(out):: NewWFOne, NewWFTwo
+    type(Spinor)           :: Temp 
+
+    !Checking input
+    if(wf%GetTimeReversal().eq.0) call stp("Time Reversal is already broken!")
+
+    !Copying the wavefunctions
+    NewWfOne = CopyWaveFunction(wf)
+    NewWfTwo = CopyWaveFunction(wf)
+    !Changing time reversal quantum numbers
+    call NewWfOne%SetTimeReversal(0)
+    call NewWfTwo%SetTimeReversal(0)
+
+    !Halving the occupation
+    call NewWfOne%SetOcc(NewWfOne%GetOcc()/2.0_dp)
+    call NewWfTwo%SetOcc(NewWfTwo%GetOcc()/2.0_dp)
+
+    !Changing signature quantum number
+    call NewWfOne%SetSignature(1)
+    call NewWfTwo%SetSignature(-1)
+
+    !Switching the components of nr.2 around
+    ! Action of timereversal is -i *\sigma_y * K
+    Temp = wf%GetValue()
+    Temp = TimeReverse(Temp)
+
+    call NewWfTwo%SetGrid(Temp)
+  end subroutine BreakTimeReversal
 
 end module Transform

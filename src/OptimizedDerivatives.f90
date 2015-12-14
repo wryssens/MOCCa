@@ -295,6 +295,61 @@ contains
       return
   end subroutine derz
 
+  function Opt_Z_EV4(Grid,Parity,Signature, TimeSimplex,Component) result(Der)
+    
+    integer,intent(in) :: Parity,Signature,TimeSimplex,Component
+    real(KIND=dp), target, intent(in) :: Grid(:,:,:)
+    real(KIND=dp),allocatable         :: Der(:,:,:)
+    integer                           :: i,j,k, S
+
+    allocate(Der(nx,ny,nz)) ; Der = 0.0_dp
+    call derz_ev4(Grid, der)
+
+  end function Opt_Z_EV4
+
+  subroutine derz_ev4 (w,wz)
+
+      integer            :: i,j,k
+      real(KIND=dp), intent(in) ::w(nx,ny,nz)
+      real(KIND=dp), intent(out)::wz(nx,ny,nz)
+
+      real(KIND=dp),parameter :: ca=45.0d0,cb=9.0d0,cc=60.0d0
+
+      do i=1,nx*ny
+        wz(i,1,1)    = ca*(w(i,1,2)               ) & 
+     &                -cb*(w(i,1,3)               ) &
+     &                   +(w(i,1,4)               )
+        wz(i,1,2)    = ca*(w(i,1,3)   -w(i,1,1)   ) &
+     &                -cb*(w(i,1,4)               ) &
+     &                   +(w(i,1,5)               )
+        wz(i,1,3)    = ca*(w(i,1,4)   -w(i,1,2)   ) &
+     &                -cb*(w(i,1,5)   -w(i,1,1)   ) &
+     &                   +(w(i,1,6)               )
+        wz(i,1,nz-2) = ca*(w(i,1,nz-1)-w(i,1,nz-3)) &
+     &                -cb*(w(i,1,nz)  -w(i,1,nz-4)) &
+     &                   +(           -w(i,1,nz-5))
+        wz(i,1,nz-1) = ca*(w(i,1,nz)  -w(i,1,nz-2)) &
+     &                -cb*(           -w(i,1,nz-3)) &
+     &                   +(           -w(i,1,nz-4))
+        wz(i,1,nz)   = ca*(           -w(i,1,nz-1)) &
+     &                -cb*(           -w(i,1,nz-2)) &
+     &                   +(           -w(i,1,nz-3))
+      enddo
+
+      do k=4,nz-3
+      do i=1,nx*ny
+        wz(i,1,k)    = ca*(w(i,1,k+1) - w(i,1,k-1) ) &
+     &                -cb*(w(i,1,k+2) - w(i,1,k-2) ) &
+     &                   +(w(i,1,k+3) - w(i,1,k-3) )
+      enddo
+      enddo
+
+      do i=1,nx*ny*nz
+        wz(i,1,1) = wz(i,1,1) / (cc*dx)
+      enddo
+      return
+  end subroutine derz_EV4
+
   function Lapla_EV8(Grid,Parity, Signature, TimeSimplex,Component) result(Lap)
 
     integer,intent(in)                :: Parity,Signature,TimeSimplex,Component
@@ -500,5 +555,80 @@ contains
             dw(i,1,1) = - dw(i,1,1) / xd
         enddo
     end subroutine lapla_Z_ev8
+
+    function Lapla_EV4(Grid,Parity, Signature, TimeSimplex,Component) result(Lap)
+
+        integer,intent(in)                :: Parity,Signature,TimeSimplex,Component
+        real(KIND=dp), target, intent(in) :: Grid(:,:,:)
+        real(KIND=dp), allocatable        :: Lap(:,:,:)
+        real(KIND=dp)                     :: DerX(nx,ny,nz)
+        real(KIND=dp)                     :: DerZ(nx,ny,nz)
+        real(KIND=dp)                     :: DerY(nx,ny,nz)
+        integer                           :: xp,yp,zp
+
+        allocate(Lap(nx,ny,nz)) ; Lap = 0.0_dp
+        select case(Component)
+        case(1)
+            xp = Signature ; yp = TimeSimplex ; zp = Signature*Parity
+        case(2)
+            xp =-Signature ; yp =-TimeSimplex ; zp = Signature*Parity
+        case(3)
+            xp =-Signature ; yp = TimeSimplex ; zp =-Signature*Parity
+        case(4)
+            xp = Signature ; yp =-TimeSimplex ; zp =-Signature*Parity
+        end select 
+
+        call lapla_X_ev8(Grid,DerX,xp)
+        call lapla_Y_ev8(Grid,DerY,yp)
+        call lapla_Z_ev4(Grid,DerZ)
+
+        Lap =  Derx + Dery + Derz
+      end function Lapla_EV4
+
+      subroutine lapla_Z_EV4 (w,dw)
+
+        real(KIND=dp), parameter :: xxf=-8064.0d0,xxm=43050.0d0,xx2=1008.0d0 
+        real(KIND=dp), parameter :: xx3=-128.0d0,xx4=9.0d0,xxd=5040.0d0
+        real(KIND=dp), intent(in):: w(nx,ny,nz)
+        real(KIND=dp)            :: dw(nx,ny,nz)
+        real(KIND=dp)            :: xf, xm, x2,x3,x4, xd
+        integer                  :: i,j,k
+
+        xf = xxf                  ! = -8064.0d0
+        xm = xxm / xf             ! = 43050.0d0 / xf
+        x2 = xx2 / xf             ! =  1008.0d0 / xf
+        x3 = xx3 / xf             ! =  -128.0d0 / xf
+        x4 = xx4 / xf             ! =     9.0d0 / xf
+        xd = xxd / xf * (dx*dx)   ! =  5040.0d0 / xf * (dx*dx)
+
+        do i=1,nx*ny*nz
+            dw(i,1,1) = xm * w(i,1,1)/3
+        enddo
+
+        do i=1,nx*ny
+            dw(i,1,2)    = dw(i,1,2)   +   w(i,1,1)
+            dw(i,1,3)    = dw(i,1,3)   +   w(i,1,2)   +x2*w(i,1,1)
+            dw(i,1,4)    = dw(i,1,4)   +   w(i,1,3)   +x2*w(i,1,2)+x3*w(i,1,1)
+            dw(i,1,nz-1) = dw(i,1,nz-1)+   w(i,1,nz)
+            dw(i,1,nz-2) = dw(i,1,nz-2)+   w(i,1,nz-1)+x2*w(i,1,nz)
+            dw(i,1,nz-3) = dw(i,1,nz-3)+   w(i,1,nz-2)+x2*w(i,1,nz-1)+x3*w(i,1,nz)
+        enddo
+        do k=1,nz-4
+            do i=1,nx*ny
+                dw(i,1,k) = dw(i,1,k)   +   w(i,1,k+1) +x2*w(i,1,k+2)   &
+                &                          +x3*w(i,1,k+3) +x4*w(i,1,k+4)
+            enddo
+        enddo
+        do k=5,nz
+            do i=1,nx*ny
+                dw(i,1,k) = dw(i,1,k)   +   w(i,1,k-1) +x2*w(i,1,k-2)   &
+                &                          +x3*w(i,1,k-3) +x4*w(i,1,k-4)
+            enddo
+        enddo
+
+        do i=1,nx*ny*nz
+            dw(i,1,1) = - dw(i,1,1) / xd
+        enddo
+    end subroutine lapla_Z_ev4
 
 end module OptimizedDerivatives

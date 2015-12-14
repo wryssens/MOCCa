@@ -228,11 +228,18 @@ contains
        else
         !Check for optimized derivatives
         if(OptDer) then
-          if(TRC .and. SC .and. PC .and. TSC) then
+          if(SC .and. PC .and. TSC) then
+              ! All spatial symmetries conserved
               DeriveX => Opt_X_EV8
               DeriveY => Opt_Y_EV8
               DeriveZ => Opt_Z_EV8
               Laplacian => Lapla_EV8
+          elseif(SC .and. TSC) then
+              ! Parity broken, signature and timereversal conserved
+              DeriveX => Opt_X_EV8
+              DeriveY => Opt_Y_EV8
+              DeriveZ => Opt_Z_EV4
+              Laplacian => Lapla_EV4
           else
               DeriveX   => CentralX
               DeriveY   => CentralY

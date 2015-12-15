@@ -9,6 +9,7 @@ module Testing
     use InOutput
     use Densities
     use Derivatives
+    use OptimizedDerivatives
     use Moments
     use Mesh
     use InOutput
@@ -18,11 +19,37 @@ module Testing
     use Pairing 
     use MeanFields
     use Spinors
+
     implicit none
 
     public
 
     contains
+
+!     subroutine CompareDer
+!       integer :: i,j,k,l
+!       type(Spinor) :: opt(3), nonopt(3)
+
+!       i = 1
+!       DeriveX => Opt_X_EV8
+!       opt    = DeriveSpinor(HFBasis(i)%GetValue(),HFBasis(i)%GetParity(),1,1)
+!       DeriveX   => CentralX
+!       nonopt = DeriveSpinor(HFBasis(i)%GetValue(),HFBasis(i)%GetParity(),1,1)
+
+!       do l=1,4
+!       do k=1,nz
+!         do j=1,ny
+!           do i=1,nx
+!             if(abs(nonopt(1)%Grid(i,j,k,l,1) - opt(1)%Grid(i,j,k,l,1)) .gt. 1d-10) then
+!             print *, nonopt(1)%Grid(i,j,k,l,1) - opt(1)%Grid(i,j,k,l,1), i,j,k,l
+!             endif
+!           enddo 
+!         enddo
+!       enddo
+!       enddo
+!       stop
+
+!     end subroutine CompareDer
     
 
     subroutine OddTpot

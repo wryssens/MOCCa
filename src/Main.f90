@@ -50,8 +50,7 @@ program MOCCa
      ! In testing mode.
      if(TestRun.eq.1) then
         print*, "MOCCa is entering test mode!"
-        call TestPairingFields()
-        call TestDelta()  
+        !call CompareDer
         call stp('End of TestRun')
      endif   
      !--------------------------------------------------------------------------

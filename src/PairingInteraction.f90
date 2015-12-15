@@ -154,30 +154,37 @@ contains
     complex(KIND=dp)         :: ActionOfPairing(nx,ny,nz)
     real(KIND=dp)            :: factor(nx,ny,nz), Temp(nx,ny,nz,2)
     integer, intent(in)      :: it
+    integer                  :: i
 
     ActionOfPairing = 0.0_dp ; factor = 0.0_dp
     
     !---------------------------------------------------------------------------
     ! Real part
-    Temp(:,:,:,1) =                                                      &
-    &               wf1%Grid(:,:,:,1,1) * wf2%Grid(:,:,:,3,1)            &
-    &             - wf1%Grid(:,:,:,2,1) * wf2%Grid(:,:,:,4,1)            &
-    &             - wf1%Grid(:,:,:,3,1) * wf2%Grid(:,:,:,1,1)            &
-    &             + wf1%Grid(:,:,:,4,1) * wf2%Grid(:,:,:,2,1)  
-    !---------------------------------------------------------------------------
-    ! Imaginary Part 
-    Temp(:,:,:,2) =                                                      &
-    &               wf1%Grid(:,:,:,1,1) * wf2%Grid(:,:,:,4,1)            &
-    &             + wf1%Grid(:,:,:,2,1) * wf2%Grid(:,:,:,3,1)            &
-    &             - wf1%Grid(:,:,:,3,1) * wf2%Grid(:,:,:,2,1)            &
-    &             - wf1%Grid(:,:,:,4,1) * wf2%Grid(:,:,:,1,1)
+    do i=1,nx*ny*nz
+      Temp(i,1,1,1) =                                                      &
+      &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,3,1)            &
+      &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,4,1)            &
+      &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,1,1)            &
+      &             + wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,2,1)  
+      !---------------------------------------------------------------------------
+      ! Imaginary Part 
+      Temp(i,1,1,2) =                                                      &
+      &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,4,1)            &
+      &             + wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,3,1)            &
+      &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,2,1)            &
+      &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,1,1)
+    enddo
 
     !---------------------------------------------------------------------------
     ! Density dependent interaction factor.
-    factor =  - PairingStrength(it) *                                    &
-    &      ( 1.0_dp - alpha(it)/rhosat * sum(Density%Rho,4))
+    do i=1,nx*ny*nz
+      factor(i,1,1) =  - PairingStrength(it) *  ( 1.0_dp - alpha(it)/rhosat* &
+      &      (Density%Rho(i,1,1,1) + Density%Rho(i,1,1,2)))
+    enddo
     
-    ActionOfPairing = factor * dcmplx(Temp(:,:,:,1), Temp(:,:,:,2))
+    do i=1,nx*ny*nz
+      ActionOfPairing(i,1,1) = factor(i,1,1) * dcmplx(Temp(i,1,1,1), Temp(i,1,1,2))
+    enddo
 
   end function PairingInter
 

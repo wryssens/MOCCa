@@ -201,9 +201,11 @@ contains
     
     !B14 Terms
     if(B14.ne. 0.0_dp) then
-      B(14)=&
-      & (sum(JMuNuT**2)-sum(VecST(:,:,:,1)*VecTT(:,:,:,1)-                     &
-      & VecST(:,:,:,2)*VecTT(:,:,:,2)-VecST(:,:,:,3)*VecTT(:,:,:,3)))
+      B(14)=(sum(JMuNuT**2))
+      if(.not.TRC) then
+        B(14) = B(14)  -sum(VecST(:,:,:,1)*VecTT(:,:,:,1)-                   &
+        & VecST(:,:,:,2)*VecTT(:,:,:,2)-VecST(:,:,:,3)*VecTT(:,:,:,3))
+      endif
       B(14) = B14*dv*B(14)
     endif
 

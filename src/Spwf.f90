@@ -892,7 +892,7 @@ contains
     integer, intent(in)     :: Direction
     ! Temp1 contains the spin part, temp2 and temp3 the orbital parts.   
     type(Spinor)            :: ActionOfJ, Temp1, Temp2, Temp3, Temp4
-    integer                 :: i
+    integer                 :: i,k
     
     Temp1=NewSpinor();Temp2=NewSpinor(); Temp3=NewSpinor();Temp4=NewSpinor()
     ActionOfJ = NewSpinor()
@@ -902,31 +902,39 @@ contains
       !The action of Jx
       Temp1 = Pauli(WF%Value,1)
       Temp1 = (1.0_dp/2.0_dp)* Temp1
-      do i=1,4
-        Temp2%Grid(:,:,:,i,1) = Mesh3D(2,:,:,:) * WF%Der(3)%Grid(:,:,:,i,1)
+      do k=1,4
+          do i=1,nx*ny*nz
+            Temp2%Grid(i,1,1,k,1) = Mesh3D(2,i,1,1) * WF%Der(3)%Grid(i,1,1,k,1)
+          enddo
       enddo
-      do i=1,4
-        Temp3%Grid(:,:,:,i,1) = Mesh3D(3,:,:,:) * WF%Der(2)%Grid(:,:,:,i,1)
+      do k=1,4
+          do i=1,nx*ny*nz
+            Temp3%Grid(i,1,1,k,1) = Mesh3D(3,i,1,1) * WF%Der(2)%Grid(i,1,1,k,1)
+          enddo
       enddo
     case (2)
       !The action of Jy
       Temp1 = Pauli(WF%Value,2)
       Temp1 = (1.0_dp/2.0_dp)* Temp1
-      do i=1,4
-        Temp2%Grid(:,:,:,i,1) = Mesh3D(3,:,:,:) * WF%Der(1)%Grid(:,:,:,i,1)
-      enddo
-      do i=1,4
-        Temp3%Grid(:,:,:,i,1) = Mesh3D(1,:,:,:) * WF%Der(3)%Grid(:,:,:,i,1)
+      do k=1,4
+          do i=1,nx*ny*nz
+            Temp2%Grid(i,1,1,k,1) = Mesh3D(3,i,1,1) * WF%Der(1)%Grid(i,1,1,k,1)
+          enddo
+          do i=1,nx*ny*nz
+            Temp3%Grid(i,1,1,k,1) = Mesh3D(1,i,1,1) * WF%Der(3)%Grid(i,1,1,k,1)
+          enddo
       enddo
     case (3)
       !The action of Jz
       Temp1 = Pauli(WF%Value,3)
       Temp1 = (1.0_dp/2.0_dp)*Temp1
-      do i=1,4
-        Temp2%Grid(:,:,:,i,1) = Mesh3D(1,:,:,:) * WF%Der(2)%Grid(:,:,:,i,1)
-      enddo      
-      do i=1,4
-        Temp3%Grid(:,:,:,i,1) = Mesh3D(2,:,:,:) * WF%Der(1)%Grid(:,:,:,i,1)
+      do k=1,4
+          do i=1,4
+            Temp2%Grid(i,1,1,k,1) = Mesh3D(1,i,1,1) * WF%Der(2)%Grid(i,1,1,k,1)
+          enddo      
+          do i=1,4
+            Temp3%Grid(i,1,1,k,1) = Mesh3D(2,i,1,1) * WF%Der(1)%Grid(i,1,1,k,1)
+          enddo
       enddo
     end select
     

@@ -13,7 +13,6 @@ module spinors
     procedure, public, pass :: DeriveSpinor
     procedure, public, pass :: LapSpinor
     procedure, public, pass :: ActionOfTimeSimplex
-    procedure, public, pass :: TimeReverse
     procedure, public, pass :: ActionOfParity  
     procedure, public, pass :: ActionOfSignature
   
@@ -107,31 +106,40 @@ contains
     integer, intent(in)      :: Direction
     real(Kind=dp)            :: PauliSpinor(nx,ny,nz,4,1)
     type(Spinor)             :: SigmaPsi
+    integer                  :: i
                     
     if(Direction.eq.1) then
         !\sigma_x = ( 0  1 )
-        !           ( 1  0 )      
-        PauliSpinor(:,:,:,1,:) = Psi%Grid(:,:,:,3,:)
-        PauliSpinor(:,:,:,2,:) = Psi%Grid(:,:,:,4,:)
-        PauliSpinor(:,:,:,3,:) = Psi%Grid(:,:,:,1,:)
-        PauliSpinor(:,:,:,4,:) = Psi%Grid(:,:,:,2,:)         
+        !           ( 1  0 )
+        do i=1,nx*ny*nz
+          PauliSpinor(i,1,1,1,1) = Psi%Grid(i,1,1,3,1)
+          PauliSpinor(i,1,1,2,1) = Psi%Grid(i,1,1,4,1)
+          PauliSpinor(i,1,1,3,1) = Psi%Grid(i,1,1,1,1)
+          PauliSpinor(i,1,1,4,1) = Psi%Grid(i,1,1,2,1)   
+        enddo      
     elseif(Direction.eq.2) then                
         !\sigma_y = ( 0 -i )
-        !           ( i  0 )          
-        PauliSpinor(:,:,:,1,:) =   Psi%Grid(:,:,:,4,:)
-        PauliSpinor(:,:,:,2,:) = - Psi%Grid(:,:,:,3,:)
-        PauliSpinor(:,:,:,3,:) = - Psi%Grid(:,:,:,2,:)
-        PauliSpinor(:,:,:,4,:) =   Psi%Grid(:,:,:,1,:)       
+        !           ( i  0 )
+        do i=1,nx*ny*nz          
+          PauliSpinor(i,1,1,1,1) =   Psi%Grid(i,1,1,4,1)
+          PauliSpinor(i,1,1,2,1) = - Psi%Grid(i,1,1,3,1)
+          PauliSpinor(i,1,1,3,1) = - Psi%Grid(i,1,1,2,1)
+          PauliSpinor(i,1,1,4,1) =   Psi%Grid(i,1,1,1,1)
+        enddo       
     elseif(Direction.eq.3) then
         !\sigma_z = ( 1  0 )
-        !           ( 0 -1 )       
-        PauliSpinor(:,:,:,1,:) =   Psi%Grid(:,:,:,1,:)
-        PauliSpinor(:,:,:,2,:) =   Psi%Grid(:,:,:,2,:)
-        PauliSpinor(:,:,:,3,:) = - Psi%Grid(:,:,:,3,:)
-        PauliSpinor(:,:,:,4,:) = - Psi%Grid(:,:,:,4,:)
+        !           ( 0 -1 )
+        do i=1,nx*ny*nz       
+          PauliSpinor(i,1,1,1,1) =   Psi%Grid(i,1,1,1,1)
+          PauliSpinor(i,1,1,2,1) =   Psi%Grid(i,1,1,2,1)
+          PauliSpinor(i,1,1,3,1) = - Psi%Grid(i,1,1,3,1)
+          PauliSpinor(i,1,1,4,1) = - Psi%Grid(i,1,1,4,1)
+        enddo
     endif
     SigmaPsi=NewSpinor()
-    SigmaPsi%Grid = PauliSpinor
+    do i=1,nx*ny*nz*4
+      SigmaPsi%Grid(i,1,1,1,1) = PauliSpinor(i,1,1,1,1)
+    enddo
     return
   end function Pauli
   pure function MultiplyFunction(F,Psi) result(FPsi)
@@ -142,15 +150,17 @@ contains
     class(Spinor), intent(in) :: Psi
     type(Spinor)              :: FPsi
     real(KIND=dp),intent(in)  :: F(nx,ny,nz)
-    integer                   :: i
+    integer                   :: i,k
     
     FPsi=NewSPinor()
-    do i=1,4
-      FPsi%Grid(:,:,:,i,1) = F*Psi%Grid(:,:,:,i,1)
+    do k=1,4
+      do i=1,nx*ny*nz
+        FPsi%Grid(i,1,1,k,1) = F(i,1,1)*Psi%Grid(i,1,1,k,1)
+      enddo
     enddo
     return 
   end function MultiplyFunction
-  pure function MultiplyScalar(S,Psi) result(SPsi)
+  function MultiplyScalar(S,Psi) result(SPsi)
     !---------------------------------------------------------------------------
     ! This function multiplies the spinor Psi with a scalar S.
     ! It is used for overloading the operator *.
@@ -158,14 +168,16 @@ contains
     class(Spinor), intent(in) :: Psi
     type(Spinor)              :: SPsi
     real(KIND=dp),intent(in)  :: S
+    integer                   :: i
     
     SPsi=NewSPinor()
-    SPsi%Grid = S*Psi%Grid
-    
+     do i=1,4*nx*ny*nz
+       SPsi%Grid(i,1,1,1,1) = S*Psi%Grid(i,1,1,1,1)
+     enddo  
     return
   end function MultiplyScalar
   
-  pure function MultiplyComplex(S,Psi) result(SPsi)
+  function MultiplyComplex(S,Psi) result(SPsi)
     !---------------------------------------------------------------------------
     ! This function multiplies the spinor Psi with a complex scalar S.
     ! It is used for overloading the operator *.
@@ -189,16 +201,25 @@ contains
     !---------------------------------------------------------------------------
     class(Spinor),intent(in) :: Psi, Phi
     real(KIND=dp)            :: PsiPhi(nx,ny,nz,2)
+    integer                  :: i
                             
     PsiPhi = 0.0_dp
     
     !Real part
-    PsiPhi(:,:,:,1) =  sum( Psi%Grid(:,:,:,:,1)* Phi%Grid(:,:,:,:,1),4)
+    do i=1,nx*ny*nz
+      PsiPhi(i,1,1,1) = Psi%Grid(i,1,1,1,1) * Phi%Grid(i,1,1,1,1) &
+      &               + Psi%Grid(i,1,1,2,1) * Phi%Grid(i,1,1,2,1) &
+      &               + Psi%Grid(i,1,1,3,1) * Phi%Grid(i,1,1,3,1) &
+      &               + Psi%Grid(i,1,1,4,1) * Phi%Grid(i,1,1,4,1)
+    enddo
     !Imaginary Part
-    PsiPhi(:,:,:,2) =  Psi%Grid(:,:,:,1,1)*Phi%Grid(:,:,:,2,1)                 &
-                  & -  Psi%Grid(:,:,:,2,1)*Phi%Grid(:,:,:,1,1)                 &
-                  & +  Psi%Grid(:,:,:,3,1)*Phi%Grid(:,:,:,4,1)                 &
-                  & -  Psi%Grid(:,:,:,4,1)*Phi%Grid(:,:,:,3,1)
+    do i=1,nx*ny*nz
+      PsiPhi(i,1,1,1) = Psi%Grid(i,1,1,1,1) * Phi%Grid(i,1,1,2,1) &
+      &               - Psi%Grid(i,1,1,2,1) * Phi%Grid(i,1,1,1,1) &
+      &               + Psi%Grid(i,1,1,3,1) * Phi%Grid(i,1,1,4,1) &
+      &               - Psi%Grid(i,1,1,4,1) * Phi%Grid(i,1,1,3,1)
+    enddo
+
 
     return
   end function MultiplySpinor
@@ -212,11 +233,16 @@ contains
     class(Spinor),intent(in) :: Psi, Phi
     real(KIND=dp)            :: REPsiPhi(nx,ny,nz)
     real(KIND=dp)            :: GridPsi(nx,ny,nz,4,1), GridPhi(nx,ny,nz,4,1)
-   
-    GridPsi = Psi%Grid
-    GridPhi = Phi%Grid
+    integer                  :: i
+  
+    do i=1,nx*ny*nz
+      RePsiPhi(i,1,1) = Psi%Grid(i,1,1,1,1) * Phi%Grid(i,1,1,1,1) &
+      &               + Psi%Grid(i,1,1,2,1) * Phi%Grid(i,1,1,2,1) &
+      &               + Psi%Grid(i,1,1,3,1) * Phi%Grid(i,1,1,3,1) &
+      &               + Psi%Grid(i,1,1,4,1) * Phi%Grid(i,1,1,4,1)
+    enddo
 
-    RePsiPhi =   sum(GridPsi(:,:,:,:,1) * GridPhi(:,:,:,:,1),4)
+    !RePsiPhi =   sum(GridPsi(:,:,:,:,1) * GridPhi(:,:,:,:,1),4)
     
   end function RealMultiplySpinor
   
@@ -227,16 +253,16 @@ contains
     ! Not adapted yet for isospin symmetry breaking.
     !-------------------------------------------------------------------------
     class(Spinor),intent(in) :: Psi, Phi
-    real(Kind=dp)            :: GridPsi(nx,ny,nz,4,1), GridPhi(nx,ny,nz,4,1)
     real(KIND=dp)            :: ImPsiPhi(nx,ny,nz)
+    integer                  :: i
 
-    GridPsi=Psi%Grid
-    GridPhi=Phi%Grid
+    do i=1,nx*ny*nz
+      ImPsiPhi(i,1,1) = Psi%Grid(i,1,1,1,1) * Phi%Grid(i,1,1,2,1) &
+      &               - Psi%Grid(i,1,1,2,1) * Phi%Grid(i,1,1,1,1) &
+      &               + Psi%Grid(i,1,1,3,1) * Phi%Grid(i,1,1,4,1) &
+      &               - Psi%Grid(i,1,1,4,1) * Phi%Grid(i,1,1,3,1)
+    enddo
 
-    ImPsiPhi =   GridPsi(:,:,:,1,1)*GridPhi(:,:,:,2,1)                       &
-             & - GridPsi(:,:,:,2,1)*GridPhi(:,:,:,1,1)                       &
-             & + GridPsi(:,:,:,3,1)*GridPhi(:,:,:,4,1)                       &
-             & - GridPsi(:,:,:,4,1)*GridPhi(:,:,:,3,1)
   end function ImagMultiplySpinor
   
   pure function Add(psi, phi) result(PsiplusPhi)
@@ -246,9 +272,12 @@ contains
     !-------------------------------------------------------------------------
     class(Spinor), intent(in) :: Psi, Phi
     type(Spinor)              :: PsiplusPhi
+    integer                   :: i
 
     PsiPlusPhi=NewSPinor()
-    PsiplusPhi%Grid = Psi%Grid + Phi%Grid
+    do i=1,4*nx*ny*nz
+      PsiplusPhi%Grid(i,1,1,1,1) = Psi%Grid(i,1,1,1,1) + Phi%Grid(i,1,1,1,1)
+    enddo
     
     return
   end function Add
@@ -259,9 +288,12 @@ contains
     !-------------------------------------------------------------------------
     class(Spinor), intent(in) :: Psi, Phi
     type(Spinor)              :: PsiMinPhi
+    integer                   :: i
 
     PsiMinPhi = NewSPinor()
-    PsiminPhi%Grid = Psi%Grid - Phi%Grid
+    do i=1,nx*ny*nz*4
+      PsiminPhi%Grid(i,1,1,1,1) = Psi%Grid(i,1,1,1,1) - Phi%Grid(i,1,1,1,1)
+    enddo
 
     return
   end function Subtract
@@ -307,12 +339,15 @@ contains
     !-------------------------------------------------------------------------
     class(Spinor), intent(in) :: Psi
     type(Spinor)              :: iPsi
+    integer                   :: i
 
-    IPsi = NewSPinor()  
-    IPsi%Grid(:,:,:,1,:) = - Psi%Grid(:,:,:,2,:)
-    IPsi%Grid(:,:,:,2,:) =   Psi%Grid(:,:,:,1,:)
-    IPsi%Grid(:,:,:,3,:) = - Psi%Grid(:,:,:,4,:)
-    IPsi%Grid(:,:,:,4,:) =   Psi%Grid(:,:,:,3,:)
+    IPsi = NewSPinor()
+    do i=1,nx*ny*nz
+      IPsi%Grid(i,1,1,1,1) = - Psi%Grid(i,1,1,2,1)
+      IPsi%Grid(i,1,1,2,1) =   Psi%Grid(i,1,1,1,1)
+      IPsi%Grid(i,1,1,3,1) = - Psi%Grid(i,1,1,4,1)
+      IPsi%Grid(i,1,1,4,1) =   Psi%Grid(i,1,1,3,1)
+    enddo
     return
   end function MultiplyI
   
@@ -324,16 +359,17 @@ contains
     class(Spinor), intent(in) :: Psi
     type(Spinor)              :: Phi
     real*8                    :: Grid1(nx,ny,nz,4,1), Grid2(nx,ny,nz,4,1)
+    integer                   :: i
     
     Phi = NewSPinor()
-    Grid1 = Psi%Grid
-    
-    Grid2(:,:,:,1,:) =   Grid1(:,:,:,3,:)
-    Grid2(:,:,:,2,:) = - Grid1(:,:,:,4,:)
-    Grid2(:,:,:,3,:) = - Grid1(:,:,:,1,:)                
-    Grid2(:,:,:,4,:) =   Grid1(:,:,:,2,:)
 
-    Phi%Grid = Grid2
+    do i=1,nx*ny*nz
+      Phi%Grid(i,1,1,1,1) =   Psi%Grid(i,1,1,3,1)
+      Phi%Grid(i,1,1,2,1) = - Psi%Grid(i,1,1,4,1)
+      Phi%Grid(i,1,1,3,1) = - Psi%Grid(i,1,1,1,1)                
+      Phi%Grid(i,1,1,4,1) =   Psi%Grid(i,1,1,2,1)
+    enddo
+
 
     return
   end function TimeReverse
@@ -455,7 +491,7 @@ contains
     type(Spinor)              :: dPsi(3)
     integer, intent(in)       :: Parity,Signature,TimeSimplex
     real(KIND=dp)             :: DerivResult(nx,ny,nz,3), GridPsi(nx,ny,nz,4,1)
-    integer                   :: i,l,k
+    integer                   :: i,l,k,n
     
     do i=1,3
          DPsi(i)  =NewSPinor()
@@ -470,7 +506,9 @@ contains
         DerivResult(:,:,:,3) = &
         & DeriveZ(GridPsi(:,:,:,l,k),Parity,Signature,TimeSimplex,l)
         do i=1,3
-            dPsi(i)%Grid(:,:,:,l,k) = DerivResult(:,:,:,i)
+          do n=1,nx*ny*nz
+            dPsi(i)%Grid(n,1,1,l,k) = DerivResult(n,1,1,i)
+          enddo
         enddo 
       enddo
     enddo
@@ -559,13 +597,13 @@ contains
     !---------------------------------------------------------------------------
     class(Spinor), intent(in) :: Psi,Phi
     real(KIND=dp)             :: Inproduct
-    real(KIND=dp)             :: Grid2(nx,ny,nz,4,1), Grid1(nx,ny,nz,4,1)
-       
-    Grid1 = Psi%Grid
-    Grid2 = Phi%Grid                        
+    integer                   :: i
 
-    Inproduct = sum(Grid1*Grid2)*dv
-    
+    Inproduct = 0.0_dp
+    do i=1,nx*ny*nz*4
+      Inproduct = Inproduct + Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1)
+    enddo
+    Inproduct = Inproduct*dv
     return
   end function InproductSpinorReal
   

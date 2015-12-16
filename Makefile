@@ -69,14 +69,14 @@ endif
 .PHONY: all clean
 
 $(TARGET): $(OBJ)
-	$(CXX) -o $@ $^ $(LIBS) -pg
+	$(CXX) -o $@ $^ $(LIBS)
 
 clean:
 	rm  -f $(OBJDIR)/*
 	rm  -f $(MODDIR)/*
 
 $(OBJDIR)/%.o : $(SRCDIR)/%.f90
-	$(CXX) $(CXXFLAGS) -c  $< -o $@ -pg
+	$(CXX) $(CXXFLAGS) -c  $< -o $@ 
 
 #-------------------------------------------------------------------------------
 # Some observations on my experiences of compiling MOCCa.

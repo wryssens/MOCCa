@@ -35,7 +35,7 @@ module HFB
   use Spinors
 
   implicit none
- 
+
   !-----------------------------------------------------------------------------
   ! Real that saves the number of particles. Useful because it can be iterated.
   real(KIND=dp), save :: Particles(2)
@@ -95,8 +95,8 @@ module HFB
   ! Fraction of the Lipkin-Nogami term to put into the pairing part of the 
   ! HFB Hamiltonian, versus the part to put in the mean-field part.
   ! See the discussion in the PhD Thesis of Gall. 
-  ! I have yet to see any real effect of this parameter.
   real(KIND=dp) :: LNFraction=1.0_dp
+  real(KIND=dp) :: HFBGauge = 0.0_dp
   !----------------------------------------------------------------------------
   !Quasiparticle Energies: note that all of these get stored, even the occupied
   ! ones.
@@ -149,11 +149,8 @@ module HFB
   ! (slow and guaranteed) method to solve for the Fermi energy
   character(len=9) :: FermiSolver='Broyden'
 
-  !procedure(DiagonaliseHFBHamiltonian_ZHEEVR), pointer :: DiagonaliseHFBHamiltonian &
-  !&                                              =>  DiagonaliseHFBHamiltonian_DSYEVR
 
 contains
-
   subroutine PrepareHFBModule
     !---------------------------------------------------------------------------
     ! This subroutine nicely prepares the module at the start of the program.
@@ -445,7 +442,6 @@ contains
         enddo
       enddo
     enddo
-    !stop
     !---------------------------------------------------------------------------
   end subroutine HFBGaps
 
@@ -553,26 +549,60 @@ contains
     real(Kind=dp), intent(in) :: Lambda(2),LNLambda(2)
     real(KIND=dp)             :: N(2), N2(2,2)
     complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
-  
-    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,0.0_dp)
-    ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
-    call DiagonaliseHFBHamiltonian()
-!    print *, 'Before'
-!    do it=1,2
-!        do P=1,2
+
+    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge)
+!     ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
+!     call DiagonaliseHFBHamiltonian()
+!     !LNFRACTION=0.001
+!     print *, 'Before'
+!     do it=1,1
+!     do P=1,1
+!     print *, QuasiEnergies(1:2*blocksizes(P,it),P,it)
+!     enddo
+!     enddo
+!     print *
+!     do it=1,1
+!     do P=1,1
+!     do i=1,blocksizes(P,it)
+!     print *, DBLE(U(i,1:2*blocksizes(P,it),P,it))
+!     enddo
+!     enddo
+!     enddo
+!     print *
+!     do it=1,1
+!     do P=1,1
+!     do i=1,blocksizes(P,it)
+!     print *, DBLE(V(i,1:2*blocksizes(P,it),P,it))
+!     enddo
+!     enddo
+!     enddo
+   
+!    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge + 1.0_dp)
+!    ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
+!    call DiagonaliseHFBHamiltonian()
+
+!    print *
+!    print *, 'After'
+!    do it=1,1
+!        do P=1,1
 !            print *, QuasiEnergies(1:2*blocksizes(P,it),P,it)
 !        enddo
 !    enddo
-!
-!    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,1.0_dp)
-!    ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
-!    call DiagonaliseHFBHamiltonian()
-!
-!    print *, 'After'
-!    do it=1,2
-!        do P=1,2
-!            print *, QuasiEnergies(1:2*blocksizes(P,it),P,it)
-!        enddo
+!    print *
+!    do it=1,1
+!      do P=1,1
+!         do i=1,blocksizes(P,it)
+!             print *, DBLE(U(i,1:2*blocksizes(P,it),P,it))
+!         enddo
+!      enddo
+!    enddo
+!    print *
+!    do it=1,1
+!      do P=1,1
+!         do i=1,blocksizes(P,it)
+!             print *, DBLE(V(i,1:2*blocksizes(P,it),P,it))
+!         enddo
+!      enddo
 !    enddo
 !    stop
 
@@ -1019,7 +1049,7 @@ contains
   
   end function FermiBisection
 
-  subroutine ConstructHFBHamiltonian(lambda, Delta, LnLambda, HFBGauge)
+  subroutine ConstructHFBHamiltonian(lambda, Delta, LnLambda, Gauge)
   !-----------------------------------------------------------------------------
   ! Constructs the HFB hamiltonian.
   ! The argument lambda is the current guess for the Fermi energy.
@@ -1027,7 +1057,7 @@ contains
   ! Note that the Rho & Kappa from the past mean-field iteration are used. This
   ! to combat a hysteresis-effect for the Fermi-solver routines. 
   !-----------------------------------------------------------------------------
-  real(KIND=dp), intent(in)                :: lambda(2), LNLambda(2), HFBGauge
+  real(KIND=dp), intent(in)                :: lambda(2), LNLambda(2), Gauge
   integer                                  :: i,j, it, ii,iii,P
   complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
   
@@ -1048,7 +1078,7 @@ contains
         do j=1,blocksizes(P,it)
           HFBHamil(i,j,P,it) = HFBHamil(i,j,P,it)                              &
           &       +  (1.0_dp-LNFraction)*4*LNLambda(it)*   OldRhoHFB(i,j,P,it) & 
-          &       +  HFBGauge                          *   OldRhoHFB(i,j,P,it)
+          &       +  Gauge                             *   OldRhoHFB(i,j,P,it)
         enddo
         do j=1,blocksizes(P,it)
           !---------------------------------------------------------------------
@@ -1061,7 +1091,7 @@ contains
           ! Delta - 2 * Lambda_2 * Kappa
           HFBHamil(i,j + blocksizes(P,it),P,it) = Delta(i,j,P,it)              &
           &            - LNFraction*4*LNLambda(it)*      OldKappaHFB(i,j,P,it) &
-          &            - HFBGauge                 *      OldKappaHFB(i,j,P,it) 
+          &            + Gauge                    *      OldKappaHFB(i,j,P,it) 
         enddo
       enddo
     enddo
@@ -1336,77 +1366,6 @@ subroutine InsertionSortQPEnergies
     enddo
 
   end subroutine InsertionSortQPEnergies
-
-  subroutine DiagonaliseSignature(V1,V2, N)
-  !---------------------------------------------------------------------------
-  ! Diagonalise a 2D-subspace spanned by V1 and V2 for eigenstates of signature
-  ! N is half the size of the vectors V1 and V2.
-  !---------------------------------------------------------------------------
-    complex(KIND=dp), intent(inout) :: V1(2*N), V2(2*N)
-    integer, intent(in)             :: N
-    real(KIND=dp)                   :: Norm(2,2)
-    integer                         :: i
-
-    ! Since we already know the correct subspaces where the correct eigenvectors
-    ! live: the first half of coordinates and the second half of coordinates.
-    ! So we can just use projection operators and normalise afterwards. 
-    ! Provided of course we project on the 'largest' components and don't
-    ! accidentally annihilate a component!
-    Norm = 0.0_dp
-    do i=1,N/2
-        Norm(1,1) = Norm(1,1) + abs(V1(i))**2
-        Norm(2,1) = Norm(2,1) + abs(V2(i))**2
-    enddo
-    do i=3*N/2+1,2*N
-        Norm(1,1) = Norm(1,1) + abs(V1(i))**2
-        Norm(2,1) = Norm(2,1) + abs(V2(i))**2
-    enddo
-    do i=N/2+1, 3*N/2
-        Norm(1,2) = Norm(1,2) + abs(V1(i))**2
-        Norm(2,2) = Norm(2,2) + abs(V2(i))**2
-    enddo
-
-    if( Norm(1,1) .gt. Norm(2,1) ) then
-        !Project the first vector on the first signature and the second on the
-        !second one.
-        do i=1,N/2
-            V1(i)     = V1(i    )/sqrt(Norm(1,1))
-            V1(i+N/2) = 0.0_dp
-            V2(i)     = 0.0_dp
-            V2(i+N/2) = V2(i+N/2)/sqrt(Norm(2,2))
-        enddo
-        do i=N+1, 3*N/2
-            V1(i)     = 0.0_dp
-            V1(i+N/2) = V1(i+N/2)/sqrt(Norm(1,1))
-            V2(i)     = V2(i    )/sqrt(Norm(2,2))
-            V2(i+N/2) = 0.0_dp
-        enddo
-    else
-        !Project the first vector on the second signature and the second on the
-        !first signature.
-        do i=1,N/2
-            V1(i)     = 0.0_dp
-            V1(i+N/2) = V1(i+N/2)/sqrt(Norm(1,2))
-            V2(i)     = V2(i    )/sqrt(Norm(2,1))
-            V2(i+N/2) = 0.0_dp
-        enddo
-        do i=N+1, 3*N/2
-            V1(i)     = V1(i    )/sqrt(Norm(1,2))
-            V1(i+N/2) = 0.0_dp
-            V2(i)     = 0.0_dp
-            V2(i+N/2) = V2(i+N/2)/sqrt(Norm(2,1))
-        enddo
-    endif
-    if(abs(sum(V1*V1) - 1).gt.1d-10) then
-        print *, 'Norm ', sum(V1*V1)
-        call stp('ortho 1 ')
-    endif
-    if(abs(sum(V2*V2) - 1).gt.1d-10) then
-        print *, 'Norm ', sum(V2*V2)
-        call stp('ortho 2 ')
-    endif
-    if(abs(sum(V1*V2)    ).gt.1d-10) call stp('ortho 12 ')
-  end subroutine DiagonaliseSignature
 
   subroutine ConstructHFBState()
   !-----------------------------------------------------------------------------

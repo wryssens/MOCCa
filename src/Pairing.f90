@@ -131,16 +131,16 @@ contains
     ! Pairing. It then checks as far as possible the input on consistency errors
     ! and allocates the necessary variables.
     !---------------------------------------------------------------------------
+
      real(KIND=dp) :: PairingNeutron=-100.0_dp, PairingProton=-100.0_dp
-     real(KIND=dp) :: CutProton=-100.0_dp, CutNeutron=-100.0_dp
-     real(KIND=dp) :: AlphaProton=-100.0_dp, AlphaNeutron=-100.0_dp
-     real(KIND=dp) :: Protongap=0.0_dp, NeutronGap=0.0_dp
+     real(KIND=dp) :: CutProton     =-100.0_dp, CutNeutron   =-100.0_dp
+     real(KIND=dp) :: AlphaProton   =-100.0_dp, AlphaNeutron =-100.0_dp
+     real(KIND=dp) :: Protongap     =   0.0_dp, NeutronGap   =   0.0_dp
      integer       :: i
      logical       :: SemiBCS=.false., SemiBCSNeutron=.false.
      logical       :: SemiBCSProton=.false.
      character(len=3) :: UpperType
 
-  
      NameList /Pairing/ PairingNeutron, PairingProton, CutProton , RhoSat,     &
      &                  alphaProton, AlphaNeutron,                             &
      &                  Type, CutNeutron, FreezeOccupation, PairingIter,       &
@@ -148,7 +148,7 @@ contains
      &                  Lipkin, LNFraction, GuessKappa, PairingMu, CutType,    &
      &                  MaxLambdaIter, SemiBCS, SemiBCSNeutron, SemiBCSProton, &
      &                  QPinHFBasis, SolvePairingStart,QPPrintWindow, Block,   &
-     &                  FermiSolver
+     &                  FermiSolver, HFBIter,HFBgauge
 
      read(unit=*, NML=Pairing)
   
@@ -391,7 +391,7 @@ contains
     !---------------------------------------------------------------------------
     ! Subroutine prints pairing info to STDOUT at the start of the program.
     !---------------------------------------------------------------------------
-    
+
     1  format (22('-'), 'Pairing Parameters', 21('-'))
     2  format (A26) 
     3  format (33x, ' N ',7x, ' P ') 
@@ -410,10 +410,12 @@ contains
    12  format ('  Lipkin-Nogami prescription active.' )
    13  format ('  Cosine cutoff used. ')
    14  format ('  Symmetric Fermi cutoff used.')
-   15  format ('  Maximum number of times the FermiSolver is called: ', i3)
-   16  format ('  LNFraction on the hamiltonian:' , f8.3)
-   17  format ('  Fermisolver used: ', a9)
-
+   15  format ('  Fermisolver iterations (external): ', i3)
+   16  format ('  Fermisolver iterations (internal): ', i3)
+   17  format ('  LNFraction on the HFB hamiltonian: ', f8.3)
+   18  format ('  Gauge of the HFB hamiltonian:      ', f8.3)
+   19  format ('  Fermisolver used: ', a9)
+   
     print 1
     select case(PairingType)
       case(0)
@@ -451,9 +453,12 @@ contains
     if(Lipkin)           print 12
     
     print *
+    if(PairingType .eq. 2) print 19, FermiSolver
     print 15 , PairingIter
-    print 16 , LNFraction
-    if(PairingType.eq.2) print 17, FermiSolver
+    if(PairingType .eq. 2) print 16, HFBIter
+    if(Lipkin)             print 17, LNFraction
+    if(PairingType .eq. 2) print 18, HFBGauge
+    
     
     print * 
 
@@ -476,7 +481,7 @@ contains
     5 format (' Dispersion        ',2x,f10.5,2x,f10.5)
     6 format (' Lipkin-N. Lambda_2',2x,f10.5,2x,f10.5)
     7 format (60('-'))
-    
+
     select case(PairingType)   
       case (0) 
         !Don't print anything when doing HF

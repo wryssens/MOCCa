@@ -113,9 +113,8 @@ subroutine Evolve(MaxIterations, iprint)
   logical, external   :: ConvergenceCheck 
   integer             :: i,wave
   logical             :: RutzCheck
-
   real(KIND=dp)       :: Canenergy
-  
+ 
   ! Assign correct evolution operator for the iterations
   select case(IterType)
   case('IMTS')

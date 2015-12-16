@@ -552,7 +552,7 @@ contains
 
     call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge)
 !     ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
-!     call DiagonaliseHFBHamiltonian()
+     call DiagonaliseHFBHamiltonian()
 !     !LNFRACTION=0.001
 !     print *, 'Before'
 !     do it=1,1

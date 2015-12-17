@@ -966,6 +966,10 @@ contains
         logical, intent(in)     :: TRX,TRY,TRZ
 
         AngMom = 0.0_dp
+
+        if(WF1%GetParity().ne.WF2%GetParity())   return
+        if(WF1%GetIsospin().ne.WF2%GetIsospin()) return
+        
         ! Get the signatures for checking in every Cartesian direction
         sig1 = wf1%GetSignature()
         sig2 = wf2%GetSignature()

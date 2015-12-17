@@ -662,6 +662,8 @@ contains
     if(PairingType.eq.1 .and. maxval(abs(Delta)).lt.1d-5) Delta = 1.0_dp
     if(Lipkin)  where(LNLambda  .eq.0.0_dp) LNLambda= 0.1_dp
     if(.not.Lipkin) LNLambda= 0.0_dp
+
+    call CompDensityFactor
     !---------------------------------------------------------------------------
     ! Outer iterations: iterating gaps and pairingfield.
     do outerIter=1,PairingIter

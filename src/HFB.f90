@@ -224,6 +224,7 @@ contains
     !  where Gamma = (1 - 2 Rho) * Kappa
     !---------------------------------------------------------------------------
     use Spinors
+    use PairingInteraction
     
     complex(KIND=dp), allocatable, intent(inout) :: Field(:,:,:,:)
     complex(KIND=dp), allocatable, intent(inout) :: FieldLN(:,:,:,:)
@@ -301,8 +302,7 @@ contains
 !             if(TRC .and. ii .ne. iii) then
 !               Temp(2) = TimeReverse(Temp(2))
 !             endif            
-
-            ActionOfPairing = PairingInter(Temp(1),Temp(2), it)
+            ActionOfPairing = GetPairDensity(Temp(1),Temp(2))
             Field(:,:,:,it) = Field(:,:,:,it)     -  Cutoff(1)*Cutoff(2)*      &
             &                                 KappaHFB(i,j,P,it)*ActionOfPairing
             if(allocated(FieldLN)) then
@@ -313,6 +313,17 @@ contains
         enddo
       enddo
     enddo
+    do it=1,2
+      do i=1,nx*ny*nz
+        Field(i,1,1,it) = Field(i,1,1,it) * DensityFactor(i,1,1,it)
+      enddo
+    enddo
+    if(allocated(FieldLN)) then
+      do i=1,nx*ny*nz
+        FieldLN(i,1,1,it) = FieldLN(i,1,1,it) * DensityFactor(i,1,1,it)
+      enddo
+    endif
+
   end subroutine HFBPairingField
 
   subroutine HFBGaps(Delta,DeltaLN,PairingField,PairingFieldLN,Gaps,ConstantGap)
@@ -2517,7 +2528,7 @@ subroutine PrintBlocking
      !           n   <Rz>   E_qp   
     99  format ( i3, f7.2 , f10.5,2x, i3,2x, i3, 5(3x, f7.2))
 
-    !align = QPalignment()
+    align = QPalignment()
     do it=1,Iindex
         do P=1,Pindex
           print 10

@@ -508,7 +508,7 @@ contains
 
     1 format (' Hartree-Fock Configuration          ')
     2 format (' ------------------------------------')
-    3 format ('  P, Rz      - -   + -   - +   + + ')
+    3 format ('  P, Rz      + +   + -   - +   - - ')
     4 format ('Neutron | ', 4i6)
     5 format ('Proton  | ', 4i6)
 
@@ -531,8 +531,8 @@ contains
         if(TRC) N(P,mod(S,2)+1,it) = N(P,mod(S,2)+1,it) + 1
     enddo
 
-    print 4, N(1,1,1), N(2,1,1),N(1,2,1), N(2,2,1)
-    print 5, N(1,1,2), N(2,1,2),N(1,2,2), N(2,2,2)
+    print 4, N(2,2,1), N(2,1,1),N(1,2,1), N(1,1,1)
+    print 5, N(2,2,2), N(2,1,2),N(1,2,2), N(1,1,2)
     print 2
 
   end subroutine PrintHFConfiguration

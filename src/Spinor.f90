@@ -160,7 +160,8 @@ contains
     enddo
     return 
   end function MultiplyFunction
-  function MultiplyScalar(S,Psi) result(SPsi)
+  
+  pure function MultiplyScalar(S,Psi) result(SPsi)
     !---------------------------------------------------------------------------
     ! This function multiplies the spinor Psi with a scalar S.
     ! It is used for overloading the operator *.
@@ -177,7 +178,7 @@ contains
     return
   end function MultiplyScalar
   
-  function MultiplyComplex(S,Psi) result(SPsi)
+  pure function MultiplyComplex(S,Psi) result(SPsi)
     !---------------------------------------------------------------------------
     ! This function multiplies the spinor Psi with a complex scalar S.
     ! It is used for overloading the operator *.
@@ -369,8 +370,6 @@ contains
       Phi%Grid(i,1,1,3,1) = - Psi%Grid(i,1,1,1,1)                
       Phi%Grid(i,1,1,4,1) =   Psi%Grid(i,1,1,2,1)
     enddo
-
-
     return
   end function TimeReverse
   

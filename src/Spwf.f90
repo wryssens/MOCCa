@@ -815,7 +815,7 @@ contains
     WF%Lap = LapSpinor(WF%Value,P,S,TS)    
   end subroutine CompDer
         
- function GetDer(WF,Direction) result(Der)
+ pure function GetDer(WF,Direction) result(Der)
     !---------------------------------------------------------------------------
     ! Function that returns the laplacian of the Spwf.
     !---------------------------------------------------------------------------
@@ -943,106 +943,29 @@ contains
     ActionOfJ = Temp1 + Temp4
   end function AngMomOperator
 
-!   function AngularMomentum(WF2,WF1, quadratic,trx,try,trz) result(AngMom)
-!     !---------------------------------------------------------------------------
-!     ! This function returns the matrix element 
-!     !       < WF1 | \hat{J} | WF2 > 
-!     ! and the matrix elements of
-!     !       < WF1 | J_i**2 | WF2 >      
-!     ! if the quadratic is true.            
-!     ! Notice the ordering of the arguments in this expression!
-!     ! 
-!     ! If TRX_i is present, this routine includes an extra time-reversal operator
-!     !
-!     ! < WF1 | \hat{J}_{x_i}   \check{T} | WF2 >
-!     ! and
-!     ! < WF1 | \hat{J}_{x_i}^2 \check{T} | WF2 >
-!     !
-!     !---------------------------------------------------------------------------
-!     ! Note:
-!     ! - When dictated by symmetry, it returns zero. 
-!     !
-!     ! - The matrix elements < WF2 | \hat{J} | WF1 > are only guaranteed to be 
-!     !   real in the case of time simplex symmetry. This is the reason why J has 
-!     !   two columns: the real and imaginary part.
-!     !---------------------------------------------------------------------------
-!     class(Spwf), intent(in) :: WF1,WF2
-!     type(Spinor)            :: Intermediate(3), Intermediate2(3)
-!     real(KIND=dp)           :: AngMom(6,2)
-!     integer                 :: i
-!     logical, intent(in)     :: Quadratic
-!     logical, intent(in), optional :: TRX,TRY,TRZ
-
-!     AngMom=0.0_dp
-!     if(WF1%Parity.ne.WF2%Parity .or. WF1%Isospin.ne.WF2%Isospin) then
-!         ! The matrix element is zero when opposite parities or isospins
-!         ! are involved.
-!         return
-!     endif
-
-!     do i=1,3
-!       Intermediate(i) = NewSpinor()
-!       Intermediate(i) = AngMomOperator(wf1,i)
-!     enddo
-!     !X Component
-!     if(SC                                                                      &
-!     &  .and. wf1%GetSignature().eq.wf2%GetSignature()) then
-!       !Good signature quantum numbers prohibit <Jx>
-!       AngMom(1,:) = 0.0_dp
-!     else    
-!       AngMom(1,1) = InproductSpinorReal(wf2%Value, Intermediate(1))
-!       AngMom(1,2) = InproductSpinorImaginary(wf2%Value, Intermediate(1))
-!     endif
-    
-!     !Y Component
-!     if(SC                                                                      &
-!     &  .and. wf1%GetTimeSimplex().eq.wf2%GetTimeSimplex()) then
-!       !Good time simplex quantum numbers prohibit <Jy>
-!       AngMom(2,:) = 0.0_dp
-!     else
-!       AngMom(2,1) = InproductSpinorReal(wf2%Value, Intermediate(2))
-!       AngMom(2,2) = InproductSpinorImaginary(wf2%Value, Intermediate(2))
-!     endif 
-    
-!     !Z Component
-!     if( SC  .and.                                                              &
-!         & wf1%GetSignature() .ne. wf2%Getsignature() ) then
-!         AngMom(3,:) = 0.0
-!     else
-!         AngMom(3,1) = InproductSpinorReal(wf2%Value, Intermediate(3))
-!         AngMom(3,2) = InproductSpinorImaginary(wf2%Value, Intermediate(3))
-!     endif
-!     if(Quadratic) then
-!       !J**2 components, only compute these if desired.
-!       do i=1,3
-!         Intermediate2(i) = AngMomOperator(wf2,i)
-!         AngMom(3+i,1)=InproductSpinorReal(Intermediate2(i),Intermediate(i))
-!         AngMom(3+i,2)=InproductSpinorImaginary(Intermediate2(i),Intermediate(i))                
-!       enddo
-!     endif  
-!   end function AngularMomentum
-
-    function AngularMomentum(WF2,WF1, quadratic,TRX,TRY,TRZ) result(AngMom)
-        !--------------------------------------------------------------------------
-        ! 
+  function AngularMomentum(WF2,WF1, quadratic,TRX,TRY,TRZ) result(AngMom)
+        !-----------------------------------------------------------------
+        ! Optimized routine for the computation of angularmomentum.
         !
+        !---------------------------------------------------------------------------
+        !       J_x = 1/2*( 0  1 ) + i z \partial_y - i y\partial_z
+        !                 ( 1  0 )
         !
-        !--------------------------------------------------------------------------
-        ! Note:
-        ! The matrix elements < WF2 | \hat{J} | WF1 > are only guaranteed to 
-        ! be real in the case of time simplex symmetry. This is the reason 
-        ! why J has two columns: the real and imaginary part.
-        !--------------------------------------------------------------------------
+        !       J_y = 1/2*( 0 -i ) + i x \partial_z - i z\partial_x
+        !                 ( i  0 )
+        !
+        !       J_z = 1/2*( 1  0 ) + i y \partial_x - i x\partial_y
+        !                 ( 0 -1 )
+        !---------------------------------------------------------------------------
 
         class(Spwf), intent(in) :: WF1,WF2
-        type(Spinor)            :: Intermediate(3), Intermediate2(3)
+        type(Spinor)            :: psi,phi, derphi(3)
         real(KIND=dp)           :: AngMom(6,2)
-        integer                 :: i, sig1(3), sig2(3)
+        integer                 :: i, sig1(3), sig2(3),j,k
         logical, intent(in)     :: Quadratic
         logical, intent(in)     :: TRX,TRY,TRZ
 
-        AngMom=0.0_dp
-        
+        AngMom = 0.0_dp
         ! Get the signatures for checking in every Cartesian direction
         sig1 = wf1%GetSignature()
         sig2 = wf2%GetSignature()
@@ -1052,98 +975,135 @@ contains
         if(TRY) sig1(2) = - sig1(2)
         if(TRZ) sig1(3) = - sig1(3)
 
-        if(Quadratic) then
-            do i=1,3
-              Intermediate(i) = AngMomOperator(wf1,i)
+        phi=WF1%GetValue()
+        psi=WF2%GetValue()
+        derphi(1) = WF1%GetDer(1)
+        derphi(2) = WF1%GetDer(2)
+        derphi(3) = WF1%GetDer(3)
+
+
+        !-------------------------------------------------------------------------------
+        ! X-direction
+
+        if(TRX) then
+            do i=1,nx*ny*nz
+                AngMom(1,1) = AngMom(1,1) + 0.5_dp * (                              &
+                &                         - Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) & 
+                &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
+                &                         + Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) & 
+                &                         - Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
+                AngMom(1,1) = AngMom(1,1)    &
+                &           + Psi%Grid(i,1,1,2,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+                &           - Psi%Grid(i,1,1,2,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,3,1) & 
+                !
+                &           + Psi%Grid(i,1,1,1,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,4,1) &
+                &           - Psi%Grid(i,1,1,1,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
+                !
+                &           - Psi%Grid(i,1,1,4,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
+                &           + Psi%Grid(i,1,1,4,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
+                !
+                &           - Psi%Grid(i,1,1,3,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
+                &           + Psi%Grid(i,1,1,3,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,2,1)
+            enddo
+
+        else
+            do i=1,nx*ny*nz
+                AngMom(1,1) = AngMom(1,1) + 0.5_dp * (                              &
+                &                           Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,3,1) & 
+                &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,4,1) &
+                &                         + Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,1,1) & 
+                &                         + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,2,1))
+
+                AngMom(1,1) = AngMom(1,1)    &
+                &           + Psi%Grid(i,1,1,2,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
+                &           - Psi%Grid(i,1,1,2,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,1,1) & 
+                !
+                &           - Psi%Grid(i,1,1,1,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
+                &           + Psi%Grid(i,1,1,1,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
+                !
+                &           + Psi%Grid(i,1,1,4,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+                &           - Psi%Grid(i,1,1,4,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
+                !
+                &           - Psi%Grid(i,1,1,3,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,4,1) &
+                &           + Psi%Grid(i,1,1,3,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,4,1)
             enddo
         endif
-        !--------------------------------------------------------------------------
-        !--------------------------------------------------------------------------
-        ! Compute < J_x >
-        if(SC .and. sig1(1) .eq. sig2(1) ) then
-            AngMom(1,:) = 0.0_dp
-        else
-            if(.not. Quadratic) Intermediate(1) = AngMomOperator(wf1,1)
-            if(TRX) then
-                AngMom(1,1) = InproductSpinorReal(wf2%Value,                      &
-                    &                                 TimeReverse(Intermediate(1)))
-            else
-                AngMom(1,1) = InproductSpinorReal(wf2%Value,                      &
-                    &                                              Intermediate(1))
-            endif
-            ! The imaginary part is zero when TimeSimplex is conserved
-            if(.not. TSC) then
-                if(TRX) then
-                    AngMom(1,2) = InproductSpinorImaginary(wf2%Value,             &
-                        &                             TimeReverse(Intermediate(1)))
-                else
-                    AngMom(1,2) = InproductSpinorImaginary(wf2%Value,             &
-                        &                                          Intermediate(1))
-                endif
-            endif
-        endif
-        !--------------------------------------------------------------------------
-        ! Compute < J_y >
-        if( (SC .and. sig1(2) .eq. sig2(2)) .or. (TSC .and. sig1(2).eq.sig2(2))) then
-            AngMom(2,:) = 0.0_dp
-        else
-            if(.not. Quadratic) Intermediate(2) = AngMomOperator(wf1,2)
-            if(TRY) then
-                AngMom(2,1) = InproductSpinorReal(wf2%Value,                      &
-                    &                                 TimeReverse(Intermediate(2)))
-            else
-                AngMom(2,1) = InproductSpinorReal(wf2%Value,                      &
-                    &                                              Intermediate(2))
-            endif
-            ! The imaginary part is zero when TimeSimplex is conserved
-            if(.not. TSC) then
-                if(TRY) then
-                    AngMom(2,2) = InproductSpinorImaginary(wf2%Value,             &
-                        &                             TimeReverse(Intermediate(2)))
-                else
-                    AngMom(2,2) = InproductSpinorImaginary(wf2%Value,             &
-                    &                                              Intermediate(2))
-                endif
-            endif
-        endif
-        !--------------------------------------------------------------------------
-        ! Compute < J_z >
-        if( SC .and. sig1(3) .ne. sig1(3) ) then
-            AngMom(3,:) = 0.0_dp
-        else
-            if(.not. Quadratic) Intermediate(3) = AngMomOperator(wf1,3)
-            if(TRZ) then
-                AngMom(3,1) = InproductSpinorReal(wf2%Value,                      &
-                    &                                 TimeReverse(Intermediate(3)))
-            else
-                AngMom(3,1) = InproductSpinorReal(wf2%Value,                      &
-                 &                                                Intermediate(3))
-            endif
-             ! The imaginary part is zero when TimeSimplex is conserved
-            if(.not. TSC) then
-                if(TRZ) then
-                    AngMom(3,2) = InproductSpinorImaginary(wf2%Value,             &
-                        &                             TimeReverse(Intermediate(3)))
-                else
-                    AngMom(3,2) = InproductSpinorImaginary(wf2%Value,             &
-                        &                                          Intermediate(3))
-                endif
-            endif   
-        endif
-        !--------------------------------------------------------------------------
-        !--------------------------------------------------------------------------
-        if(Quadratic) then
-          !J**2 components, only compute these if desired.
-          ! Note that these are never constrained by symmetries
-          do i=1,3
-            Intermediate2(i) = AngMomOperator(wf2,i)
-            AngMom(3+i,1)=InproductSpinorReal(Intermediate2(i),Intermediate(i))
-            AngMom(3+i,2)=InproductSpinorImaginary(Intermediate2(i),Intermediate(i))                
-          enddo
-        endif
-        !--------------------------------------------------------------------------
 
-    end function AngularMomentum
+
+        !-------------------------------------------------------------------------------
+        ! Y-direction
+        if(TRY) then
+            do i=1,nx*ny*nz
+                AngMom(2,1) = AngMom(2,1) + 0.5_dp * (                              &
+                &                         - Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,2,1) & 
+                &                         - Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,1,1) &
+                &                         + Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,4,1) & 
+                &                         + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,3,1))
+
+                !Orbital 
+                AngMom(2,1) = AngMom(2,1)    &
+                &           + Psi%Grid(i,1,1,2,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
+                &           - Psi%Grid(i,1,1,2,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,3,1) & 
+                !
+                &           + Psi%Grid(i,1,1,1,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
+                &           - Psi%Grid(i,1,1,1,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
+                !
+                &           - Psi%Grid(i,1,1,4,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
+                &           + Psi%Grid(i,1,1,4,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
+                !
+                &           - Psi%Grid(i,1,1,3,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
+                &           + Psi%Grid(i,1,1,3,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,2,1) 
+            enddo
+        else
+            do i=1,nx*ny*nz
+                ! Spin
+                AngMom(2,1) = AngMom(2,1) + 0.5_dp * (                              &
+                &                         - Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,4,1) & 
+                &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,3,1) &
+                &                         - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,2,1) & 
+                &                         + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,1,1))
+
+                !Orbital 
+                AngMom(2,1) = AngMom(2,1)    &
+                &           + Psi%Grid(i,1,1,2,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
+                &           - Psi%Grid(i,1,1,2,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,1,1) & 
+                !
+                &           - Psi%Grid(i,1,1,1,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
+                &           + Psi%Grid(i,1,1,1,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
+                !
+                &           + Psi%Grid(i,1,1,4,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
+                &           - Psi%Grid(i,1,1,4,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
+                !
+                &           - Psi%Grid(i,1,1,3,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
+                &           + Psi%Grid(i,1,1,3,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,4,1) 
+            enddo
+        endif
+
+        !-------------------------------------------------------------------------------
+        ! Z-direction
+        do i=1,nx*ny*nz            
+            AngMom(3,1) = AngMom(3,1) + 0.5_dp * (                              &
+            &                           Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) & 
+            &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
+            &                         - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) & 
+            &                         - Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
+            AngMom(3,1) = AngMom(3,1)    &
+            &           + Psi%Grid(i,1,1,2,1)*Mesh3DY(i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
+            &           - Psi%Grid(i,1,1,2,1)*Mesh3DX(i,1,1)*derphi(2)%Grid(i,1,1,1,1) & 
+            !
+            &           - Psi%Grid(i,1,1,1,1)*Mesh3DY(i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
+            &           + Psi%Grid(i,1,1,1,1)*Mesh3DX(i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
+            !
+            &           + Psi%Grid(i,1,1,4,1)*Mesh3DY(i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
+            &           - Psi%Grid(i,1,1,4,1)*Mesh3DX(i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+            !
+            &           - Psi%Grid(i,1,1,3,1)*Mesh3DY(i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
+            &           + Psi%Grid(i,1,1,3,1)*Mesh3DX(i,1,1)*derphi(2)%Grid(i,1,1,4,1) 
+
+        enddo
+        AngMom = AngMom * dv
+
+  end function AngularMomentum
 
   subroutine PrintHF(WF,i,PrintType)
   !-----------------------------------------------------------------------------

@@ -18,7 +18,7 @@ module Coulomb
   !       5=> Combination of CG and SOR
   !       6=> Naïve multigrid
   !-----------------------------------------------------------------------------
-  integer, public :: CoulombSolver=2
+  integer, public :: CoulombSolver=1
 
   ! Maximum number of Coulomb iterations. 
   integer, public :: CoulombMax=500

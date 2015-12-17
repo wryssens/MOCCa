@@ -1,0 +1,12 @@
+- C potential
+  When using Sly5like forces and breaking time-reversal symmetry, the presence
+  of this potential makes the time-broken groundstate not be time-reversal
+  symmetric.
+
+- <J_y| T> calculation
+  The calculation of <Jy|T> is messed up and does not coincide with cr8s calculation
+  
+- Single-particle header when breaking time-reversal is not aligned
+
+
+  

@@ -125,7 +125,7 @@ contains
   
   end function Cosinecut
   
-  function PairingInter(wf1,wf2, it) result( ActionOfPairing)
+  pure function PairingInter(wf1,wf2, it) result( ActionOfPairing)
     !---------------------------------------------------------------------------
     ! Calculate the action of the pairing interaction on a twobody state,
     ! represented by spinor 1 and 2.
@@ -151,29 +151,50 @@ contains
     use Densities, only : Density
     
     type(Spinor), intent(in) :: wf1, wf2
+    integer, intent(in)      :: it
+    
     complex(KIND=dp)         :: ActionOfPairing(nx,ny,nz)
     real(KIND=dp)            :: factor(nx,ny,nz), Temp(nx,ny,nz,2)
-    integer, intent(in)      :: it
     integer                  :: i
+
 
     ActionOfPairing = 0.0_dp ; factor = 0.0_dp
     
-    !---------------------------------------------------------------------------
-    ! Real part
-    do i=1,nx*ny*nz
-      Temp(i,1,1,1) =                                                      &
-      &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,3,1)            &
-      &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,4,1)            &
-      &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,1,1)            &
-      &             + wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,2,1)  
+    if(.not.TRC) then 
       !---------------------------------------------------------------------------
-      ! Imaginary Part 
-      Temp(i,1,1,2) =                                                      &
-      &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,4,1)            &
-      &             + wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,3,1)            &
-      &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,2,1)            &
-      &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,1,1)
-    enddo
+      ! Real part
+      do i=1,nx*ny*nz
+        Temp(i,1,1,1) =                                                      &
+        &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,3,1)            &
+        &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,4,1)            &
+        &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,1,1)            &
+        &             + wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,2,1)  
+        !---------------------------------------------------------------------------
+        ! Imaginary Part 
+        Temp(i,1,1,2) =                                                      &
+        &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,4,1)            &
+        &             + wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,3,1)            &
+        &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,2,1)            &
+        &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,1,1)
+      enddo
+    else
+      !---------------------------------------------------------------------------
+      ! Real part
+      do i=1,nx*ny*nz
+        Temp(i,1,1,1) =                                                      &
+        &             - wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,1,1)            &
+        &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,2,1)            &
+        &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,3,1)            &
+        &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,4,1)  
+        !---------------------------------------------------------------------------
+        ! Imaginary Part 
+        Temp(i,1,1,2) =                                                      &
+        &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,2,1)            &
+        &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,1,1)            &
+        &             + wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,4,1)            &
+        &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,3,1)
+      enddo
+    endif
 
     !---------------------------------------------------------------------------
     ! Density dependent interaction factor.
@@ -182,9 +203,9 @@ contains
       &      (Density%Rho(i,1,1,1) + Density%Rho(i,1,1,2)))
     enddo
     
-    do i=1,nx*ny*nz
-      ActionOfPairing(i,1,1) = factor(i,1,1) * dcmplx(Temp(i,1,1,1), Temp(i,1,1,2))
-    enddo
+     do i=1,nx*ny*nz
+       ActionOfPairing(i,1,1) = factor(i,1,1) * dcmplx(Temp(i,1,1,1), Temp(i,1,1,2))
+     enddo
 
   end function PairingInter
 

@@ -50,7 +50,6 @@ module Pairing
   procedure(BCSPairingField), pointer             :: GetPairingFields !Pairing fields
   procedure(BCSFindFermiEnergy), pointer          :: FindFermiEnergy  !Fermi Energy
   procedure(BCSOccupations), pointer              :: GetOccupations   !Occupations
-  procedure(HFBComputePairingDensity), pointer    :: CompPDensity     
   !-----------------------------------------------------------------------------
   ! Universal properties
   !-----------------------------------------------------------------------------
@@ -331,8 +330,7 @@ contains
         GetPairingFields  => HFBPairingField
         GetOccupations    => HFBOccupations
         GetGaps           => HFBGaps!_TIMEREV!HFBGaps
-        CompPDensity      => HFBComputePairingDensity
-
+        
         if(trim(FermiSolver).eq.'BROYDEN') then
           FindFermiEnergy   => HFBFindFermiEnergyBroyden
         elseif(trim(FermiSolver).eq.'BISECTION') then

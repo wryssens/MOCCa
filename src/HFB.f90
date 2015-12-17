@@ -278,7 +278,8 @@ contains
           if(Cutoff(1).lt.HFBNumCut) cycle
           if(TRC .and. jj .ne. jjj) then
             sig1 = - sig1
-            Temp(1) = TimeReverse(Temp(1))
+            !PairingInter now takes care of time-reversed problems
+            !Temp(1) = TimeReverse(Temp(1))
           endif
           do i=j+1,blocksizes(P,it)
             ii   = Blockindices(i,P,it)
@@ -296,9 +297,10 @@ contains
             if(Cutoff(1)*Cutoff(2)*abs(KappaHFB(i,j,P,it)) .lt. HFBNumCut) cycle
 
             Temp(2)  = HFBasis(iii)%GetValue()
-            if(TRC .and. ii .ne. iii) then
-              Temp(2) = TimeReverse(Temp(2))
-            endif            
+            !PairingInter now takes care of time-reversed problems
+!             if(TRC .and. ii .ne. iii) then
+!               Temp(2) = TimeReverse(Temp(2))
+!             endif            
 
             ActionOfPairing = PairingInter(Temp(1),Temp(2), it)
             Field(:,:,:,it) = Field(:,:,:,it)     -  Cutoff(1)*Cutoff(2)*      &
@@ -2515,7 +2517,7 @@ subroutine PrintBlocking
      !           n   <Rz>   E_qp   
     99  format ( i3, f7.2 , f10.5,2x, i3,2x, i3, 5(3x, f7.2))
 
-    align = QPalignment()
+    !align = QPalignment()
     do it=1,Iindex
         do P=1,Pindex
           print 10
@@ -2665,49 +2667,5 @@ subroutine PrintBlocking
         enddo
     enddo
   end function QPAlignment
-
-  subroutine HFBComputePairingDensity(PairDensity)
-    !------------------------------------------------------------------------
-    ! Temporary subroutine that computes the pairdensity Rho~ until a more
-    ! complete implementation is available.
-    !------------------------------------------------------------------------
-    use Spinors
-    integer       :: it,i,j, at, P,ii,iii,jj,jjj,S1,S2
-    complex(KIND=dp), intent(inout), allocatable :: PairDensity(:,:,:,:)
-    real(KIND=dp) :: Temp(nx,ny,nz,2),cutoff(2)
-    type(Spinor)  :: TSpin
- 
-    if(.not.allocated(PairDensity)) then
-      allocate(PairDensity(nx,ny,nz,2))
-    endif
-    PairDensity = 0.0_dp
-
-    do it=1,Iindex
-      do P=1,Pindex
-        do i=1,blocksizes(P,it)
-          ii = blockindices(i,P,it)
-          iii= mod(ii-1,nwt)+1
-          S1 = HFBasis(iii)%GetSignature()
-          if( iii .ne. ii) S1 = -S1
-          Cutoff(1) = PCutoffs(iii)
-          !Contributions to pairdensity are symmetric under i<=>j
-          do j=i,blocksizes(P,it)
-            jj = blockindices(j,P,it)
-            jjj= mod(jjj-1,nwt)+1
-            TSPin = HFBasis(jjj)%GetValue()
-            S2 = HFBasis(jjj)%GetSignature()
-            if( jjj .ne. jj) S2 = -S2
-            if(S2 * S1 .ge. 0) cycle
-            if(S2 .lt. 0) TSpin = TimeReverse(Tspin)
-            Temp = HFBasis(iii)%GetValue()*Pauli(TSpin,3)
-            Temp = Cutoff(1) * Cutoff(2) * Temp
-            PairDensity(:,:,:,it) = PairDensity(:,:,:,it) + dcmplx( Temp(:,:,:,1), Temp(:,:,:,2))
-          enddo
-        enddo
-      enddo
-    enddo  
-    PairDensity = 2*PairDensity
-  end subroutine HFBComputePairingDensity
-
 
 end module HFB

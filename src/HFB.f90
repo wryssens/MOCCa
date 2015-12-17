@@ -232,7 +232,7 @@ contains
     complex(KIND=dp)                             :: ActionOfPairing(nx,ny,nz)
     complex(KIND=dp),allocatable,save            :: Gamma(:,:,:,:)
     real(KIND=dp) :: maxK
-    integer      :: i, it, j, ii, sig1, sig2, jj,k,P, iii, jjj
+    integer      :: i, it, j, ii, sig1, sig2, jj,k,P, iii, jjj,l
     real(KIND=dp):: Cutoff(2) 
     type(Spinor) :: Temp(2)
 
@@ -296,18 +296,20 @@ contains
             Cutoff(2) = PCutoffs(iii)                        
             ! Save some CPU cycles
             if(Cutoff(1)*Cutoff(2)*abs(KappaHFB(i,j,P,it)) .lt. HFBNumCut) cycle
-
             Temp(2)  = HFBasis(iii)%GetValue()
-            !PairingInter now takes care of time-reversed problems
-!             if(TRC .and. ii .ne. iii) then
-!               Temp(2) = TimeReverse(Temp(2))
-!             endif            
+
+            !Note that this does automatically include a Time-reversal operator
+            ! when appropriate
             ActionOfPairing = GetPairDensity(Temp(1),Temp(2))
-            Field(:,:,:,it) = Field(:,:,:,it)     -  Cutoff(1)*Cutoff(2)*      &
-            &                                 KappaHFB(i,j,P,it)*ActionOfPairing
+            do l=1,nx*ny*nz
+              Field(l,1,1,it) = Field(l,1,1,it)     -  Cutoff(1)*Cutoff(2)*      &
+              &                   DBLE(KappaHFB(i,j,P,it))*ActionOfPairing(l,1,1)
+            enddo
             if(allocated(FieldLN)) then
-              FieldLN(:,:,:,it) = FieldLN(:,:,:,it) -  Cutoff(1)*Cutoff(2)*    &
-              &                                  Gamma(i,j,P,it)*ActionOfPairing     
+              do l=1,nx*ny*nz
+                FieldLN(l,1,1,it) = FieldLN(l,1,1,it) -  Cutoff(1)*Cutoff(2)*    &
+                &                 DBLE(Gamma(i,j,P,it))*ActionOfPairing(l,1,1)
+              enddo
             endif          
           enddo
         enddo
@@ -323,7 +325,6 @@ contains
         FieldLN(i,1,1,it) = FieldLN(i,1,1,it) * DensityFactor(i,1,1,it)
       enddo
     endif
-
   end subroutine HFBPairingField
 
   subroutine HFBGaps(Delta,DeltaLN,PairingField,PairingFieldLN,Gaps,ConstantGap)

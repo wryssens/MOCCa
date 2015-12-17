@@ -957,9 +957,18 @@ contains
         !       J_z = 1/2*( 1  0 ) + i y \partial_x - i x\partial_y
         !                 ( 0 -1 )
         !---------------------------------------------------------------------------
+        ! Note that we split left & right for the quadratic angular momentum
+        ! So:
+        !
+        !              <-       ->             <-      ->    <-  ->
+        !  J_i^2 = ( 0.25 \sigma_i \sigma_i +  \sigma_i L_i + L_i L_i)
+        !
+        ! and since our wavefunctions are normalized, the \sigma_i^2 term is simply
+        ! 0.25
+        !---------------------------------------------------------------------------
 
         class(Spwf), intent(in) :: WF1,WF2
-        type(Spinor)            :: psi,phi, derphi(3)
+        type(Spinor)            :: psi,phi, derphi(3), derpsi(3)
         real(KIND=dp)           :: AngMom(6,2)
         integer                 :: i, sig1(3), sig2(3),j,k
         logical, intent(in)     :: Quadratic
@@ -981,10 +990,9 @@ contains
 
         phi=WF1%GetValue()
         psi=WF2%GetValue()
-        derphi(1) = WF1%GetDer(1)
-        derphi(2) = WF1%GetDer(2)
-        derphi(3) = WF1%GetDer(3)
-
+        derphi(1) = WF1%GetDer(1) !; derpsi(1) = WF2%GetDer(3)
+        derphi(2) = WF1%GetDer(2) !; derpsi(2) = WF2%GetDer(3)
+        derphi(3) = WF1%GetDer(3) !; derpsi(3) = WF2%GetDer(3)
 
         !-------------------------------------------------------------------------------
         ! X-direction
@@ -1102,8 +1110,23 @@ contains
             !
             &           - Psi%Grid(i,1,1,3,1)*Mesh3DY(i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
             &           + Psi%Grid(i,1,1,3,1)*Mesh3DX(i,1,1)*derphi(2)%Grid(i,1,1,4,1) 
-
         enddo
+
+!         if(Quadratic)
+!             !---------------------------------------------------------------------------
+!             ! X direction
+
+!             !---------------------------------------------------------------------------
+!             ! Y direction
+
+!             !---------------------------------------------------------------------------
+!             ! Z direction
+!             do i=1,nx*ny*nz
+!                 AngMom(6,1) = AngMom(6,1) + 
+!             enddo
+!             AngMom(6,1) = AngMom(6,1) + 0.25_dp
+!         endif
+
         AngMom = AngMom * dv
 
   end function AngularMomentum

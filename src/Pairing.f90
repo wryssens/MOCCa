@@ -480,22 +480,62 @@ contains
     6 format (' Lipkin-N. Lambda_2',2x,f10.5,2x,f10.5)
     7 format (60('-'))
 
+
+    print 1
+
     select case(PairingType)   
       case (0) 
-        !Don't print anything when doing HF
+        !Print Configuration counting
+        call PrintHFConfiguration
         return 
-      case (1)
-        !Print all that is below for BCS pairing
+      case (1,2)
+        print 2
+        print 3, Fermi
+        print 4, sum(Density%Rho(:,:,:,1))*dv, sum(Density%Rho(:,:,:,2))*dv
+        print 5, PairingDisp
+        if(Lipkin) print 6, LNLambda
     end select
-    
-    print 1
-    print 2
-    print 3, Fermi
-    print 4, sum(Density%Rho(:,:,:,1))*dv, sum(Density%Rho(:,:,:,2))*dv
-    print 5, PairingDisp
-    if(Lipkin) print 6, LNLambda
+
+
     print 7
   end subroutine PrintPairing
+
+  subroutine PrintHFConfiguration
+    !---------------------------------------------------------------------------
+    ! Simple subroutine to count in what kind of Hartree-Fock configuration
+    ! we are currently sitting.
+    !---------------------------------------------------------------------------
+
+    1 format (' Hartree-Fock Configuration          ')
+    2 format (' ------------------------------------')
+    3 format ('  P, Rz      - -   + -   - +   + + ')
+    4 format ('Neutron | ', 4i6)
+    5 format ('Proton  | ', 4i6)
+
+    integer :: N(2,2,2), it, P, S,i
+
+    print 1
+    print 2
+    print 3
+    print 2
+
+    ! Count
+    N = 0
+    do i=1,nwt
+        if(HFBasis(i)%GetOcc() .lt. 0.5_dp) cycle
+        it = (HFBasis(i)%GetIsospin()  + 3)/2
+        P  = (HFBasis(i)%GetParity()   + 3)/2
+        S  = (HFBasis(i)%GetSignature()+ 3)/2
+
+        N(P,S,it) = N(P,S,it) + 1
+        if(TRC) N(P,mod(S,2)+1,it) = N(P,mod(S,2)+1,it) + 1
+    enddo
+
+    print 4, N(1,1,1), N(2,1,1),N(1,2,1), N(2,2,1)
+    print 5, N(1,1,2), N(2,1,2),N(1,2,2), N(2,2,2)
+    print 2
+
+  end subroutine PrintHFConfiguration
 
   function HFEnergy( Delta) result(E)
     !---------------------------------------------------------------------------

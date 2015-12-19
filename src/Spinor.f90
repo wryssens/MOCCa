@@ -136,7 +136,7 @@ contains
           PauliSpinor(i,1,1,4,1) = - Psi%Grid(i,1,1,4,1)
         enddo
     endif
-    SigmaPsi=NewSpinor()
+    allocate(SigmaPsi%Grid(nx,ny,nz,4,1))
     do i=1,nx*ny*nz*4
       SigmaPsi%Grid(i,1,1,1,1) = PauliSpinor(i,1,1,1,1)
     enddo
@@ -171,10 +171,11 @@ contains
     real(KIND=dp),intent(in)  :: S
     integer                   :: i
     
-    SPsi=NewSPinor()
-     do i=1,4*nx*ny*nz
+    !SPsi=NewSPinor()
+    allocate(SPsi%Grid(nx,ny,nz,4,1))
+    do i=1,4*nx*ny*nz
        SPsi%Grid(i,1,1,1,1) = S*Psi%Grid(i,1,1,1,1)
-     enddo  
+    enddo  
     return
   end function MultiplyScalar
   
@@ -274,8 +275,11 @@ contains
     class(Spinor), intent(in) :: Psi, Phi
     type(Spinor)              :: PsiplusPhi
     integer                   :: i
+    real(KIND=dp)             :: temp(nx,ny,nz,4,1), tempPsi(nx,ny,nz,4,1)
+    real(KIND=dp)             :: tempPhi(nx,ny,nz,4,1)
 
-    PsiPlusPhi=NewSPinor()
+    !PsiPlusPhi=NewSPinor()
+    allocate(PsiPlusPhi%Grid(nx,ny,nz,4,1))
     do i=1,4*nx*ny*nz
       PsiplusPhi%Grid(i,1,1,1,1) = Psi%Grid(i,1,1,1,1) + Phi%Grid(i,1,1,1,1)
     enddo
@@ -291,7 +295,8 @@ contains
     type(Spinor)              :: PsiMinPhi
     integer                   :: i
 
-    PsiMinPhi = NewSPinor()
+    !PsiMinPhi = NewSPinor()
+    allocate(PsiMinPhi%Grid(nx,ny,nz,4,1))
     do i=1,nx*ny*nz*4
       PsiminPhi%Grid(i,1,1,1,1) = Psi%Grid(i,1,1,1,1) - Phi%Grid(i,1,1,1,1)
     enddo

@@ -231,7 +231,7 @@ contains
     complex(KIND=dp), allocatable, intent(inout) :: Delta(:,:,:,:)
     complex(KIND=dp)                             :: ActionOfPairing(nx,ny,nz)
     complex(KIND=dp),allocatable,save            :: Gamma(:,:,:,:)
-    real(KIND=dp) :: maxK
+    real(KIND=dp):: factor, factorLN
     integer      :: i, it, j, ii, sig1, sig2, jj,k,P, iii, jjj,l
     real(KIND=dp):: Cutoff(2) 
     type(Spinor) :: Temp(2)
@@ -267,62 +267,92 @@ contains
     ! factor 2.
     ! (Note that the i=j contributions are not calculated since they are zero
     ! anyway.)
-    maxK = 0.0_dp
-    do it=1,Iindex
-      do P=1,Pindex
-        do j=1,blocksizes(P,it)
-          jj        = Blockindices(j,P,it)
-          jjj       = mod(jj-1,nwt)+1
-          sig1      = HFBasis(jjj)%GetSignature()
-          Temp(1)   = HFBasis(jjj)%GetValue()
-          Cutoff(1) = PCutoffs(jjj)
-          if(Cutoff(1).lt.HFBNumCut) cycle
-          if(TRC .and. jj .ne. jjj) then
-            sig1 = - sig1
-            !PairingInter now takes care of time-reversed problems
-            !Temp(1) = TimeReverse(Temp(1))
-          endif
-          do i=j+1,blocksizes(P,it)
-            ii   = Blockindices(i,P,it)
-            iii  = mod(ii-1,nwt)+1
-            sig2 = HFBasis(iii)%GetSignature()
-            if( TRC .and. ii .ne. iii) then
-              sig2 = - sig2
+    if(allocated(FieldLN)) then
+      do it=1,Iindex
+        do P=1,Pindex
+          do j=1,blocksizes(P,it)
+            jj        = Blockindices(j,P,it)
+            jjj       = mod(jj-1,nwt)+1
+            sig1      = HFBasis(jjj)%GetSignature()
+            Temp(1)   = HFBasis(jjj)%GetValue()
+            Cutoff(1) = PCutoffs(jjj)
+            if(Cutoff(1).lt.HFBNumCut) cycle
+            if(TRC .and. jj .ne. jjj) then
+              sig1 = - sig1
             endif
-            !Selection on signature quantum number; the loop structure already
-            !selects on both parity and isospin.
-            if(sig1 .ne. -sig2 ) cycle
-            
-            Cutoff(2) = PCutoffs(iii)                        
-            ! Save some CPU cycles
-            if(Cutoff(1)*Cutoff(2)*abs(KappaHFB(i,j,P,it)) .lt. HFBNumCut) cycle
-            Temp(2)  = HFBasis(iii)%GetValue()
-
-            !Note that this does automatically include a Time-reversal operator
-            ! when appropriate
-            ActionOfPairing = GetPairDensity(Temp(1),Temp(2))
-            do l=1,nx*ny*nz
-              Field(l,1,1,it) = Field(l,1,1,it)     -  Cutoff(1)*Cutoff(2)*      &
-              &                   DBLE(KappaHFB(i,j,P,it))*ActionOfPairing(l,1,1)
-            enddo
-            if(allocated(FieldLN)) then
+            do i=j+1,blocksizes(P,it)
+              ii   = Blockindices(i,P,it)
+              iii  = mod(ii-1,nwt)+1
+              sig2 = HFBasis(iii)%GetSignature()
+              if( TRC .and. ii .ne. iii) then
+                sig2 = - sig2
+              endif
+              !Selection on signature quantum number; the loop structure already
+              !selects on both parity and isospin.
+              if(sig1 .ne. -sig2 ) cycle          
+              Cutoff(2) = PCutoffs(iii)                        
+              ! Save some CPU cycles
+              if(Cutoff(1)*Cutoff(2)*abs(KappaHFB(i,j,P,it)) .lt. HFBNumCut) cycle
+              Temp(2)  = HFBasis(iii)%GetValue()
+        
+              factor    = Cutoff(1)*Cutoff(2)*DBLE(KappaHFB(i,j,P,it))
+              factorLN  = Cutoff(1)*Cutoff(2)*DBLE(Gamma(i,j,P,it))
               do l=1,nx*ny*nz
-                FieldLN(l,1,1,it) = FieldLN(l,1,1,it) -  Cutoff(1)*Cutoff(2)*    &
-                &                 DBLE(Gamma(i,j,P,it))*ActionOfPairing(l,1,1)
+                Field(l,1,1,it) = Field(l,1,1,it)     - factor  *ActionOfPairing(l,1,1)
+                FieldLN(l,1,1,it) = FieldLN(l,1,1,it) - factorLN*ActionOfPairing(l,1,1)
               enddo
-            endif          
+            enddo
           enddo
         enddo
       enddo
-    enddo
-    do it=1,2
-      do i=1,nx*ny*nz
-        Field(i,1,1,it) = Field(i,1,1,it) * DensityFactor(i,1,1,it)
-      enddo
-    enddo
-    if(allocated(FieldLN)) then
       do i=1,nx*ny*nz
         FieldLN(i,1,1,it) = FieldLN(i,1,1,it) * DensityFactor(i,1,1,it)
+        Field(i,1,1,it)   = Field(i,1,1,it)   * DensityFactor(i,1,1,it)
+      enddo
+    else
+      do it=1,Iindex
+        do P=1,Pindex
+          do j=1,blocksizes(P,it)
+            jj        = Blockindices(j,P,it)
+            jjj       = mod(jj-1,nwt)+1
+            sig1      = HFBasis(jjj)%GetSignature()
+            Temp(1)   = HFBasis(jjj)%GetValue()
+            Cutoff(1) = PCutoffs(jjj)
+            if(Cutoff(1).lt.HFBNumCut) cycle
+            if(TRC .and. jj .ne. jjj) then
+              sig1 = - sig1
+            endif
+            do i=j+1,blocksizes(P,it)
+              ii   = Blockindices(i,P,it)
+              iii  = mod(ii-1,nwt)+1
+              sig2 = HFBasis(iii)%GetSignature()
+              if( TRC .and. ii .ne. iii) then
+                sig2 = - sig2
+              endif
+              !Selection on signature quantum number; the loop structure already
+              !selects on both parity and isospin.
+              if(sig1 .ne. -sig2 ) cycle              
+              Cutoff(2) = PCutoffs(iii)                        
+              
+              ! Save some CPU cycles
+              if(Cutoff(1)*Cutoff(2)*abs(KappaHFB(i,j,P,it)) .lt. HFBNumCut) cycle
+              Temp(2)  = HFBasis(iii)%GetValue()
+              !Note that this does automatically include a Time-reversal operator
+              ! when appropriate
+              ActionOfPairing = GetPairDensity(Temp(1),Temp(2))
+              factor          = Cutoff(1)*Cutoff(2)*DBLE(KappaHFB(i,j,P,it))
+              do l=1,nx*ny*nz
+                Field(l,1,1,it) = Field(l,1,1,it) - factor*ActionOfPairing(l,1,1)
+              enddo      
+            enddo
+          enddo
+        enddo
+      enddo
+
+      do it=1,2
+        do i=1,nx*ny*nz
+          Field(i,1,1,it) = Field(i,1,1,it) * DensityFactor(i,1,1,it)
+        enddo
       enddo
     endif
   end subroutine HFBPairingField
@@ -342,6 +372,10 @@ contains
     ! Gaps & Constantgap are not used in this subroutine, but are present to 
     ! be compatible with the BCS GetGaps subroutine header.
     !---------------------------------------------------------------------------
+    !
+    ! NOTE THAT THIS ROUTINE IS NOT READY FOR TIME-SIMPLEX BREAKING AS DELTA
+    ! CAN BE COMPLEX IN THAT CASE!
+    !----------------------------------------------------------------------------
 
     use Spinors
 
@@ -361,7 +395,7 @@ contains
     real(KIND=dp)                               :: Cutoff(2)
     
     if(ConstantGap) call stp('Trying to do constant gap pairing in HFB!')
-    
+
     Delta = 0.0_dp ; if(allocated(DeltaLN)) DeltaLN = 0.0_dp
 
     do it=1,Iindex
@@ -373,7 +407,7 @@ contains
           Psi1 = HFBasis(iii)%GetValue()
           
           if(TRC .and. ii.ne.iii) then 
-            Psi1 = TimeReverse(Psi1)
+            !Psi1 = TimeReverse(Psi1)
             sig1 = - sig1
           endif
           
@@ -407,49 +441,37 @@ contains
             if(Cutoff(1)*Cutoff(2) .lt. HFBNumCut) cycle
 
             Psi2 = HFBasis(jjj)%GetValue()
-            if(TRC .and. jj.gt.Blocksizes(P,it)/2) then
-              Psi2 = TimeReverse(Psi2)
-            endif
-
-            do k=1,nx*ny*nz
-                TempReal(k,1,1) =                                                  &
-                &             - Psi1%Grid(k,1,1,3,1) * Psi2%Grid(k,1,1,1,1)        &
-                &             + Psi1%Grid(k,1,1,4,1) * Psi2%Grid(k,1,1,2,1)        &
-                &             + Psi1%Grid(k,1,1,1,1) * Psi2%Grid(k,1,1,3,1)        &
-                &             - Psi1%Grid(k,1,1,2,1) * Psi2%Grid(k,1,1,4,1)  
+!             if(TRC .and. jj.gt.Blocksizes(P,it)/2) then
+!               Psi2 = TimeReverse(Psi2)
+!             endif
+            Temp = GetPairDensity(Psi1,Psi2)
+!             do k=1,nx*ny*nz
+!                 TempReal(k,1,1) =                                                  &
+!                 &             - Psi1%Grid(k,1,1,3,1) * Psi2%Grid(k,1,1,1,1)        &
+!                 &             + Psi1%Grid(k,1,1,4,1) * Psi2%Grid(k,1,1,2,1)        &
+!                 &             + Psi1%Grid(k,1,1,1,1) * Psi2%Grid(k,1,1,3,1)        &
+!                 &             - Psi1%Grid(k,1,1,2,1) * Psi2%Grid(k,1,1,4,1)  
             
-                ! Attention for the extra minus sign: the bra < i,j | indicates an 
-                ! extra complex conjugation.
-                TempIm(k,1,1)   =                                                  &
-                &             + Psi1%Grid(k,1,1,4,1) * Psi2%Grid(k,1,1,1,1)        &
-                &             + Psi1%Grid(k,1,1,3,1) * Psi2%Grid(k,1,1,2,1)        &
-                &             - Psi1%Grid(k,1,1,2,1) * Psi2%Grid(k,1,1,3,1)        &
-                &             - Psi1%Grid(k,1,1,1,1) * Psi2%Grid(k,1,1,4,1)
-            enddo
+!                 ! Attention for the extra minus sign: the bra < i,j | indicates an 
+!                 ! extra complex conjugation.
+!                 TempIm(k,1,1)   =                                                  &
+!                 &             + Psi1%Grid(k,1,1,4,1) * Psi2%Grid(k,1,1,1,1)        &
+!                 &             + Psi1%Grid(k,1,1,3,1) * Psi2%Grid(k,1,1,2,1)        &
+!                 &             - Psi1%Grid(k,1,1,2,1) * Psi2%Grid(k,1,1,3,1)        &
+!                 &             - Psi1%Grid(k,1,1,1,1) * Psi2%Grid(k,1,1,4,1)
+!             enddo
+        
+            Delta(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*                    & 
+            &            (sum(   DBLE(Temp)  * DBLE(PairingField(:,:,:,it)))  &
+            &            -sum(   AIMAG(Temp) * AIMAG(PairingField(:,:,:,it))))
 
-            ! Do less computations if TSC is conserved...
-            if(TSC) then
-                Delta(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*                    & 
-                &            (sum(   TempReal * DBLE(PairingField(:,:,:,it)))  &
-                &            -sum(   TempIm   * AIMAG(PairingField(:,:,:,it))))
-            else
-                Temp = DCMPLX(TempReal,TempIm)
-                Delta(i,j,P,it) =                                              &
-                &        dv*Cutoff(1)*Cutoff(2)*sum(Temp*PairingField(:,:,:,it))
-            endif
 
             !Delta is antisymmetric
             Delta(j,i,P,it) = - Delta(i,j,P,it)
             if(allocated(DeltaLN)) then
-                !Only activate when Lipkin-Nogami is active
-                if(TSC) then
-                    DeltaLN(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*              & 
-                    &   (sum(   TempReal * DBLE (PairingFieldLN(:,:,:,it)))    &
-                    &   -sum(   TempIm   * aimag(PairingFieldLN(:,:,:,it))))
-                else
-                    DeltaLN(i,j,P,it) = Cutoff(1)*Cutoff(2)*dv*                &
-                    &              sum(Temp * PairingFieldLN(:,:,:,it))
-                endif
+                DeltaLN(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*              & 
+                &   (sum(   TempReal * DBLE (PairingFieldLN(:,:,:,it)))    &
+                &   -sum(   TempIm   * aimag(PairingFieldLN(:,:,:,it))))
                 DeltaLN(j,i,P,it) =  - DeltaLN(i,j,P,it)
             endif
           enddo
@@ -900,7 +922,7 @@ contains
   NX = HFBNumberOfParticles(FermiHistory, Delta,LNLambda )-Particles               
   if(Lipkin) LNX  = LNLambda - LNCR8(Delta,DeltaLN, flag)
 
-  if(Lipkin) NY = HFBNumberOfParticles(Fermi, Delta,LNHistory )-Particles
+  if(Lipkin) NY   = HFBNumberOfParticles(Fermi, Delta,LNHistory )-Particles
   if(Lipkin) LNY  = LNHistory - LNCR8(Delta,DeltaLN, flag)
 
   ! Construct a finite difference approximation of the Jacobian
@@ -966,7 +988,7 @@ contains
 
       !Recalculate
       flag = 0
-      N    = HFBNumberOfParticles(Fermi       ,Delta,LNLambda )  - Particles
+      N    = HFBNumberOfParticles(Fermi,Delta,LNLambda )  - Particles
       if(Lipkin) LN   = LNLambda - LNCR8(Delta,DeltaLN, flag)
 
       !Convergence check
@@ -1205,7 +1227,7 @@ contains
     call InsertionSortQPEnergies
   end subroutine DiagonaliseHFBHamiltonian!_DSYEVR
  
-!   subroutine DiagonaliseHFBHamiltonian_ZHEEVR
+!   subroutine DiagonaliseHFBHamiltonian!_ZHEEVR
 !     !---------------------------------------------------------------------------
 !     ! Alternative subroutine for diagonalising the HFB Hamiltonian.
 !     !---------------------------------------------------------------------------
@@ -1328,7 +1350,7 @@ contains
 
 !     if(SC) call InsertionSortQPEnergies()
 
-!   end subroutine DiagonaliseHFBHamiltonian_ZHEEVR
+!   end subroutine DiagonaliseHFBHamiltonian!_ZHEEVR
 
 subroutine InsertionSortQPEnergies
     !-----------------------------------------------------------------------
@@ -1336,13 +1358,14 @@ subroutine InsertionSortQPEnergies
     ! subroutine DiagonaliseHFBHamilaltonian does not conserve the order.
     ! We also sort the U and V matrices, as well as the Quasisignatures.
     !-----------------------------------------------------------------------
-    integer :: i,j, it, P
+    integer :: i,j, it, P, N
     real(KIND=dp) :: TempE,TempSig
     complex(KIND=dp) :: Temp(HFBSize)
 
     do it=1,Iindex
         do P=1,Pindex
-            do i=1,2*blocksizes(P,it)-1
+            N = blocksizes(P,it)
+            do i=1,2*N-1
               j = i
               if(j.le.1) cycle
               !----------------------------------------------------------
@@ -1357,13 +1380,13 @@ subroutine InsertionSortQPEnergies
                   QuasiEnergies(j-1,P,it) = TempE
 
                   ! Also change the U and V around
-                  Temp = U(:,j,P,it)
-                  U(:,j,P,it)   = U(:,j-1,P,it)
-                  U(:,j-1,P,it) = Temp
+                  Temp(1:N)       = U(1:N,j,P,it)
+                  U(1:N,j,P,it)   = U(1:N,j-1,P,it)
+                  U(1:N,j-1,P,it) = Temp(1:N)
 
-                  Temp = V(:,j,P,it)
-                  V(:,j,P,it)   = V(:,j-1,P,it)
-                  V(:,j-1,P,it) = Temp
+                  Temp(1:N)       = V(1:N,j,P,it)
+                  V(1:N,j,P,it)   = V(1:N,j-1,P,it)
+                  V(1:N,j-1,P,it) = Temp(1:N)
 
                   ! And don't forget the quasisignatures!
                   TempSig                   = QuasiSignatures(j,P,it) 
@@ -1930,6 +1953,7 @@ subroutine InsertionSortQPEnergies
             if(TSC) then
                 CanBasis(index) = Canbasis(index) + DBLE(CanTransfo(j,C,P,it))*&
                 &                                                    HFBasis(jjj)
+                !CanBasis(index) = SaxpyWF(CanBasis(index),DBLE(CanTransfo(j,C,P,it)),HFBasis(jjj))
             else
                 CanBasis(index) = Canbasis(index) +       CanTransfo(j,C,P,it)*&
                 &                                                    HFBasis(jjj)
@@ -2178,7 +2202,7 @@ subroutine InsertionSortQPEnergies
         !---------------------------------------------------------------------------
         ! HFB calculation: Kappa should already be ok, but when asked MOCCa should 
         ! be able to make some guess.
-        Occ = 0.5_dp
+        Occ = 0.1_dp
         if(present(OnlyIso)) then
           startit=OnlyIso
           stopit =OnlyIso
@@ -2212,7 +2236,7 @@ subroutine InsertionSortQPEnergies
     end select
   end subroutine WriteOutKappa
   
-  function LNCr8(Delta, DeltaLN,flag) result(LNLambda)
+  function LNCr8(Delta, DeltaLN, flag) result(LNLambda)
   !-----------------------------------------------------------------------------
   ! Function that calculates Lambda2 as in CR8, which is to mean in a way that 
   ! is completely incomprehensible.

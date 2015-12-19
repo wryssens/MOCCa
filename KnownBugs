@@ -8,5 +8,7 @@
   
 - Single-particle header when breaking time-reversal is not aligned
 
-
+- Jx is not zero when signature is broken from time-reversal file.
+  -> Either signature breaking is wrong
+  -> Or Jx calculation is wrong (more probable)
   

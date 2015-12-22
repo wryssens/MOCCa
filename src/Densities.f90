@@ -110,7 +110,6 @@ contains
     !Time-even density with Jmunu!
     if(B14.ne.0.0_dp .or. B15.ne.0.0_dp .or. B16.ne.0.0_dp .or. B17.ne.0.0_dp)&
     & then
-      
       allocate(R%JMuNu(sizex,sizey,sizez,3,3,2))
       R%Jmunu = 0.0_dp
     endif
@@ -582,11 +581,11 @@ contains
       write(unit) Den%JMuNu
     else
       !Write an empty line
-      write(unit) 
+      write(unit)
     endif
     !---------------------------------------------------------------------------
     ! Things that are not necessarily allocated
-    if(TRC) then
+    if(.not.TRC) then
       write(unit) Den%vecj, Den%RotVecj
       write(unit) Den%Vecs, Den%Rots, Den%DerS
       
@@ -614,27 +613,35 @@ contains
 
   end subroutine WriteDensity
   
-  subroutine ReadDensity(Den, unit, filenx,fileny,filenz)
+  subroutine ReadDensity(Den, unit, filenx,fileny,filenz, flag)
   !-----------------------------------------------------------------------------
   ! Assigns a density vector den values read from file unit.
   ! Everything gets newly allocated.
+  !
+  ! Flag signals if problems have been encountered.
+  ! 
   !----------------------------------------------------------------------------- 
     type(DensityVector), intent(inout) :: Den
     integer, intent(in)                :: unit
-    integer                            :: io, i
+    integer                            :: io, i, SizeOfDen
     integer, intent(in)                :: filenx, fileny, filenz
+    integer, intent(inout)             :: flag
         
-    Den = NewDensityVector(filenx,fileny,filenz)    
+    Den = NewDensityVector(filenx,fileny,filenz) 
+
+    Flag = 0   
         
-    read(unit) Den%Rho, Den%DerRho, Den%LapRho
-    read(unit) Den%Tau
-    read(unit) Den%NablaJ
+    read(unit,iostat=flag) Den%Rho, Den%DerRho, Den%LapRho
+    read(unit,iostat=flag) Den%Tau
+    read(unit,iostat=flag) Den%NablaJ
     
     if(allocated(Den%Jmunu)) then
       io = 0
-      read(unit, iostat=io) Den%JMuNu
-      if(io.ne.0.0_dp) then
-        !End-of-record problem, no densities on file
+      SizeOfDen = size(Den%JMuNu)
+      ! Read the density as a vector. My clever scheme of trying to read
+      ! the densities fails if this is read as a matrix.
+      read(unit,iostat=io) Den%JMuNu(1:SizeOfDen,1,1,1,1,1)
+      if(io.ne.0) then
         Den%JMuNu = 0.0_dp
       endif
     else
@@ -645,7 +652,7 @@ contains
     ! The densities however are not guaranteed to be on file, which is why we
     ! utilize some iostat tricks. 
     ! Note that the IOSTAT end-of-record code on FORTRAN is -2.
-    if(TRC) then      
+    if(.not. TRC) then      
       io = 0
       read(unit, iostat=io) Den%vecj,Den%RotVecj
       if(io.ne.0) then
@@ -696,8 +703,7 @@ contains
         endif     
       else
         read(unit)              
-      endif
-      
+      endif  
     else
       do i=1,5
         read(unit)

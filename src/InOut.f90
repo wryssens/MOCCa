@@ -1116,12 +1116,13 @@ contains
     enddo
     !---------------------------------------------------------------------------
     ! 5) Densities
-    call ReadDensity(Density,Ichan,filenx,fileny,filenz)
-    
+    call ReadDensity(Density,Ichan,filenx,fileny,filenz, ioerror)
+    if(ioerror.ne.0) then
+        call stp('ReadDensity failed','Iostat', ioerror)
+    endif
     !---------------------------------------------------------------------------
     ! Decide whether to cut wavefunctions or not
     call DecideToCut(nwt,filenwt)
-    
     !---------------------------------------------------------------------------
     ! Reading the  Non-Essential Variables
     ! 6 ) Specifics of the finite difference scheme
@@ -1150,7 +1151,11 @@ contains
     
     !Cranking Variables
     if(ContinueCrank) then
-      read(IChan,iostat=ioerror) Omega, CrankValues      
+      read(IChan,iostat=ioerror) Omega, CrankValues
+      if(ioerror.ne.0) then
+        call stp('Did not read CrankValues correctly' , &
+             &   'Iostat', ioerror)
+      endif      
     else
       read(IChan,iostat=ioerror)
     endif
@@ -1168,21 +1173,28 @@ contains
       endif
 
       read(ICHan,iostat=ioerror) InputKappa      
+      if(ioerror.ne.0) then
+        call stp('Did not read InputKappa correctly' , &
+             &   'Iostat', ioerror)
+      endif
       read(Ichan,iostat=ioerror) FileBlockSizes
+      if(ioerror.ne.0) then
+        call stp('Did not read FileBlocksizes correctly' , &
+             &   'Iostat', ioerror)
+      endif
 
-      ! Temporary for radium wavefunctions
-      !FileBlockSizes(1,1)= 102
-      !FileBlockSizes(2,1)= 118
-      !FileBlockSizes(1,2)= 84
-      !FileBlockSizes(2,2)= 76
-      
-      read(ICHan,iostat=ioerror)  Fermi
-      read(Ichan, iostat=ioerror) LNLambda
+      read(ICHan, iostat=ioerror)  Fermi
+      read(Ichan, iostat=ioerror)  LNLambda
+      if(ioerror.ne.0) then
+        call stp('Did not read Fermi and LNLambda correctly' , &
+             &   'Iostat', ioerror)
+      endif
+    
     elseif(PairingType.eq.1) then
         !Read only Fermi in the BCS case
         read(IChan,iostat=ioerror)
         read(IChan,iostat=ioerror)  Fermi
-        read(Ichan, iostat=ioerror) 
+        read(Ichan,iostat=ioerror) 
     else
         read(IChan,iostat=ioerror)
         read(IChan,iostat=ioerror)
@@ -1298,15 +1310,12 @@ contains
     write(OChan,iostat=io) blocksizes
     write(OChan,iostat=io) Fermi
     write(OChan,iostat=io) LNLambda
+    print *, 'Wrote', Fermi, LNLambda
     !---------------------------------------------------------------------------
     ! Multipole constraint variables
     ! Special treatment: got to loop over the multipole moments and only write
     ! the constrained ones.
-    if(.not.associated(Root)) then
-      return ! Return when doing AMBROSYA or other auxiliary codes.
-    else
-      Current => Root    
-    endif
+    Current => Root    
     do while(.true.)
       if(Current%ConstraintType.ne.0) then
         call Current%Write(Ochan)

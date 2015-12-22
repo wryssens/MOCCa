@@ -152,7 +152,7 @@ contains
     !instead of only half.
     !Note that the x and y dimensions need not be nx/ny when we are breaking 
     !more than one symmetry.
-    Temp = NewSpinor(size(Value%Grid,1), size(Value%Grid,2), nz)
+    Temp = NewSizeSpinor(size(Value%Grid,1), size(Value%Grid,2), nz)
     ! Moving the old values to their correct place in the new spinor.
     Temp%Grid(:,:,nz/2+1:nz ,:,:) = Value%Grid(:,:,1:nz/2,:,:)
 
@@ -210,7 +210,7 @@ contains
 
     ! When breaking parity, we need to store the values for the entire x-axis, 
     ! instead of only half.
-    Temp = NewSpinor(nx,size(Value%Grid,2), size(Value%Grid,3))
+    Temp = NewSizeSpinor(nx,size(Value%Grid,2), size(Value%Grid,3))
 
     ! Moving the old values to their correct place in the new spinor.
     Temp%Grid(nx/2+1:nx,:,:,:,:) = Value%Grid(1:nx/2,:,:,:,:)
@@ -267,7 +267,7 @@ contains
     if(TimeSimplex.eq.0) call stp("Signature is already broken!")
           
     !When breaking parity, we need to store the values for the entire y-axis.
-    Temp=NewSpinor(size(Value%Grid,1),ny,size(Value%Grid,3))
+    Temp=NewSizeSpinor(size(Value%Grid,1),ny,size(Value%Grid,3))
 
     ! Moving the old values to their correct place in the new spinor.
     Temp%Grid(:, ny/2+1:ny,:,:,:) = Value%Grid(:,1:ny/2,:,:,:)

@@ -165,10 +165,13 @@ contains
 
     implicit none
 
-    integer      :: nw,mw, Signature, Parity, Isospin
+    integer      :: nw,mw, Signature, Parity, Isospin, i
     real(KIND=dp):: Norm
     type(Spinor) :: ValueOne,ValueTwo,Temp, Temp2
     real(KIND=dp):: MatrixElement(2)
+
+
+    if(.not.allocated(Temp%Grid)) allocate(Temp%Grid(nx,ny,nz,4,1))
       
     do nw=1,nwt
       ! First normalise \Psi_{nw}
@@ -209,10 +212,22 @@ contains
         MatrixElement=InProduct(HFBasis(mw),HFBasis(nw))            
         ValueTwo = HFBasis(mw)%GetValue()
 
+        !________________________________________________________
+        ! Working version with overloaded operators.
+        ! However, this is slow due to repeated loading/storing.
         !Real Part of MatrixElement
-        Temp = ValueOne
-        Temp = (-MatrixElement(1))*Temp
-        Temp = Temp + ValueTwo
+        !Temp = ValueOne
+        !Temp = (-MatrixElement(1))*Temp
+        !Temp = Temp + ValueTwo
+        !________________________________________________________
+        ! TODO: rewrite the rest of the routine too when breaking
+        ! signature and/or timereversal
+        !_________________________________________________________
+
+        !Don't use the builtins to gain some time
+        do i=1,4*nx*ny*nz
+          Temp%Grid(i,1,1,1,1) = ValueTwo%Grid(i,1,1,1,1) - MatrixElement(1) * ValueOne%Grid(i,1,1,1,1) 
+        enddo
 
         if(.not.TSC) then
          !Imaginary Part of MatrixElement (Zero when timesimplex is conserved).

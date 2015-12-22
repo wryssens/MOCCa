@@ -55,11 +55,24 @@ module spinors
   end interface
 
 contains
-  
-  pure function NewSpinor( insizex, insizey, insizez) result (Psi)
+
+  pure function NewSpinor() result(Psi)
     !---------------------------------------------------------------------------
     ! This function serves as constructor for the Spinor Class, taking 
     ! proper care of allocation and initialisation to zero.
+    !---------------------------------------------------------------------------
+    ! Strictly speaking this is inefficient, as the setting to zero takes some
+    ! time. In time-critical places, a direct allocation is a better strategy.
+    !---------------------------------------------------------------------------
+    type(Spinor) :: Psi
+
+    allocate(Psi%Grid(nx,ny,nz,4,1)); Psi%Grid=0.0_dp
+  end function
+  
+  pure function NewSizeSpinor( insizex, insizey, insizez) result (Psi)
+    !---------------------------------------------------------------------------
+    ! COnstructor for a spinor with different mesh sizes, very practical in 
+    ! the transform module.
     !---------------------------------------------------------------------------
     type(Spinor) :: Psi
     integer      :: sizex,sizey,sizez
@@ -77,7 +90,7 @@ contains
 
     allocate(Psi%Grid(sizex,sizey,sizez,4,1))
     Psi%Grid=0.0_dp
-  end function NewSpinor
+  end function NewSizeSpinor
   
   subroutine SetComponent(Psi, Component, Value, IsoComponent)
     !---------------------------------------------------------------------------
@@ -170,9 +183,9 @@ contains
     type(Spinor)              :: SPsi
     real(KIND=dp),intent(in)  :: S
     integer                   :: i
-    
-    !SPsi=NewSPinor()
-    allocate(SPsi%Grid(nx,ny,nz,4,1))
+
+    allocate(SPsi%Grid(nx,ny,nz,4,1)) 
+    !No setting to zero as this is unneccessary and slow down...
     do i=1,4*nx*ny*nz
        SPsi%Grid(i,1,1,1,1) = S*Psi%Grid(i,1,1,1,1)
     enddo  
@@ -189,7 +202,7 @@ contains
     complex(KIND=dp),intent(in)  :: S
 
     SPsi = MultiplyI(Psi)
-    SPsi = DReal(S) * Psi + Imag(S) * SPsi
+    SPsi = DBLE(S) * Psi + Imag(S) * SPsi
     
     return
   end function MultiplyComplex
@@ -278,7 +291,6 @@ contains
     real(KIND=dp)             :: temp(nx,ny,nz,4,1), tempPsi(nx,ny,nz,4,1)
     real(KIND=dp)             :: tempPhi(nx,ny,nz,4,1)
 
-    !PsiPlusPhi=NewSPinor()
     allocate(PsiPlusPhi%Grid(nx,ny,nz,4,1))
     do i=1,4*nx*ny*nz
       PsiplusPhi%Grid(i,1,1,1,1) = Psi%Grid(i,1,1,1,1) + Phi%Grid(i,1,1,1,1)
@@ -295,7 +307,6 @@ contains
     type(Spinor)              :: PsiMinPhi
     integer                   :: i
 
-    !PsiMinPhi = NewSPinor()
     allocate(PsiMinPhi%Grid(nx,ny,nz,4,1))
     do i=1,nx*ny*nz*4
       PsiminPhi%Grid(i,1,1,1,1) = Psi%Grid(i,1,1,1,1) - Phi%Grid(i,1,1,1,1)
@@ -367,8 +378,7 @@ contains
     real*8                    :: Grid1(nx,ny,nz,4,1), Grid2(nx,ny,nz,4,1)
     integer                   :: i
     
-    Phi = NewSPinor()
-
+    allocate(Phi%Grid(nx,ny,nz,4,1))
     do i=1,nx*ny*nz
       Phi%Grid(i,1,1,1,1) =   Psi%Grid(i,1,1,3,1)
       Phi%Grid(i,1,1,2,1) = - Psi%Grid(i,1,1,4,1)
@@ -498,7 +508,7 @@ contains
     integer                   :: i,l,k,n
     
     do i=1,3
-         DPsi(i)  =NewSPinor()
+         allocate(DPsi(i)%Grid(nx,ny,nz,4,1))
     enddo
     GridPsi = Psi%Grid
     do k=1, size(Psi%Grid,5)
@@ -582,15 +592,19 @@ contains
     class(Spinor), intent(in) :: Psi,Phi
     real(KIND=dp)             :: Inproduct, Grid1(nx,ny,nz,4,1)
     real(KIND=dp)             :: Grid2(nx,ny,nz,4,1)
+    integer                   :: i 
 
     Grid1 = Phi%Grid
     Grid2 = Psi%Grid
 
-    Inproduct = dv*sum(Grid1(:,:,:,2,1)*Grid2(:,:,:,1,1) &
-              &      - Grid1(:,:,:,1,1)*Grid2(:,:,:,2,1) &
-              &      + Grid1(:,:,:,4,1)*Grid2(:,:,:,3,1) &
-              &      - Grid1(:,:,:,3,1)*Grid2(:,:,:,4,1))
-    
+    Inproduct=0.0_dp
+    do i=1,nx*ny*nz
+        Inproduct = Inproduct + Grid1(i,1,1,2,1)*Grid2(i,1,1,1,1) &
+                       &      - Grid1(i,1,1,1,1)*Grid2(i,1,1,2,1) &
+                       &      + Grid1(i,1,1,4,1)*Grid2(i,1,1,3,1) &
+                       &      - Grid1(i,1,1,3,1)*Grid2(i,1,1,4,1)
+    enddo
+    Inproduct = Inproduct * dv
     return
   end function InproductSpinorImaginary
   

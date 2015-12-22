@@ -583,73 +583,19 @@ contains
   !-----------------------------------------------------------------------------
     integer                   :: i, it, P, iter
     real(Kind=dp), intent(in) :: Lambda(2),LNLambda(2)
-    real(KIND=dp)             :: N(2), N2(2,2)
+    real(KIND=dp)             :: N(2), N2(2,2), times(5)
     complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
 
     call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge)
-!     ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
-     call DiagonaliseHFBHamiltonian()
-!     !LNFRACTION=0.001
-!     print *, 'Before'
-!     do it=1,1
-!     do P=1,1
-!     print *, QuasiEnergies(1:2*blocksizes(P,it),P,it)
-!     enddo
-!     enddo
-!     print *
-!     do it=1,1
-!     do P=1,1
-!     do i=1,blocksizes(P,it)
-!     print *, DBLE(U(i,1:2*blocksizes(P,it),P,it))
-!     enddo
-!     enddo
-!     enddo
-!     print *
-!     do it=1,1
-!     do P=1,1
-!     do i=1,blocksizes(P,it)
-!     print *, DBLE(V(i,1:2*blocksizes(P,it),P,it))
-!     enddo
-!     enddo
-!     enddo
-   
-!    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge + 1.0_dp)
-!    ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
-!    call DiagonaliseHFBHamiltonian()
-
-!    print *
-!    print *, 'After'
-!    do it=1,1
-!        do P=1,1
-!            print *, QuasiEnergies(1:2*blocksizes(P,it),P,it)
-!        enddo
-!    enddo
-!    print *
-!    do it=1,1
-!      do P=1,1
-!         do i=1,blocksizes(P,it)
-!             print *, DBLE(U(i,1:2*blocksizes(P,it),P,it))
-!         enddo
-!      enddo
-!    enddo
-!    print *
-!    do it=1,1
-!      do P=1,1
-!         do i=1,blocksizes(P,it)
-!             print *, DBLE(V(i,1:2*blocksizes(P,it),P,it))
-!         enddo
-!      enddo
-!    enddo
-!    stop
-
+    ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
+    call DiagonaliseHFBHamiltonian()!_DSYEVR()
     ! Construct the generalised density matrix and the anomalous one.
     call ConstructHFBstate()
-              
+
     N = 0.0_dp ; N2 = 0.0_dp
     !Calculating total number of particles, by tracing the density matrix
     ! Sidenote: RHOHFB is hermitian, thus the imaginary parts of RHoHFB(i,i) are
     ! zero anyways.
-    call DiagonaliseRhoHFB()
     do it=1,Iindex
       do P=1,Pindex
         do i=1,blocksizes(P,it)
@@ -657,6 +603,7 @@ contains
         enddo
       enddo
     enddo
+
   end function HFBNumberofParticles
 
   subroutine HFBFindFermiEnergyBisection(Fermi,L2,Delta,DeltaLN,Lipkin,Prec)
@@ -1127,7 +1074,7 @@ contains
           ! Delta - 2 * Lambda_2 * Kappa
           HFBHamil(i,j + blocksizes(P,it),P,it) = Delta(i,j,P,it)              &
           &            - LNFraction*4*LNLambda(it)*      OldKappaHFB(i,j,P,it) &
-          &            + Gauge                    *      OldKappaHFB(i,j,P,it) 
+          &            + Gauge                    *      OldKappaHFB(i,j,P,it)
         enddo
       enddo
     enddo
@@ -1136,7 +1083,7 @@ contains
   if(all(HFBHamil.eq.0.0_dp)) call stp('HFBHamiltonian completely zero!')
   end subroutine ConstructHFBHamiltonian  
 
-  subroutine DiagonaliseHFBHamiltonian!_DSYEVR
+  subroutine DiagonaliseHFBHamiltonian_DSYEVR
     !--------------------------------------------
     !
     !http://www.netlib.org/lapack/double/dsyevr.f
@@ -1147,6 +1094,7 @@ contains
     real(KIND=dp), allocatable,save :: Temp(:,:), Eigenvectors(:,:),Eigenvalues(:)
     real(KIND=dp), allocatable,save :: WORK(:)
     integer, allocatable, save      :: ISUPPZ(:), IWORK(:)
+    real(KIND=dp) :: test
 
     !---------------------------------------------------------------------------
     ! Preliminary work.
@@ -1192,14 +1140,14 @@ contains
         enddo
         !------------------------------------------------------------------------
         ! We store all possible eigenvectors and later make the proper selection.
-        
+          
         !First signature block
         INFO = 0
         call DSYEVR( 'V', 'A', 'U', N, Temp(1:N,1:N), N, 0.0, 0.0, 0, 0,       &
         &      0.0, M, Eigenvalues(1:N), Eigenvectors(1:N,1:N), N, ISUPPZ,  &
         &      WORK, LWORK, IWORK, LIWORK, INFO )
         if(INFO .ne. 0) call stp('DSYERV failed.', 'INFO', INFO)
-        
+
         U(      1:N/2,    1:N  ,P,it) = Eigenvectors(       1:N/2   ,  1:N  )
         V(  N/2+1:N  ,    1:N  ,P,it) = Eigenvectors(   N/2+1:N     ,  1:N  )
 
@@ -1211,7 +1159,8 @@ contains
             call DSYEVR( 'V', 'A', 'U', N, Temp(N+1:2*N,N+1:2*N), N, 0.0, 0.0, 0, 0,&
             &      0.0, M, Eigenvalues(N+1:2*N), Eigenvectors(N+1:2*N,N+1:2*N), N,  &
             &      ISUPPZ, WORK, LWORK, IWORK, LIWORK, INFO )
-            if(INFO .ne. 0) call stp('DSYERV failed.', 'INFO', INFO)
+            if(INFO .ne. 0) call stp('DSYEVR failed.', 'INFO', INFO)
+
             U(  N/2+1:N  ,N+1:2*N  ,P,it) = Eigenvectors(     N+1:3*N/2 ,N+1:2*N)
             V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(   3*N/2+1:2*N   ,N+1:2*N)
             QuasiEnergies(N+1:2*N,P,it)   = EigenValues(N+1:2*N)
@@ -1220,13 +1169,69 @@ contains
             V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(   N/2+1:N     ,  1:N  )
             QuasiEnergies(N+1:2*N,  P,it) = QuasiEnergies(1: N,P,it)
         endif
-        
       enddo
     enddo
 
     call InsertionSortQPEnergies
-  end subroutine DiagonaliseHFBHamiltonian!_DSYEVR
- 
+
+  end subroutine DiagonaliseHFBHamiltonian_DSYEVR
+
+  subroutine DiagonaliseHFBHamiltonian
+
+    integer                         :: i,j,k,it, P,jj,ii,jjj,S,Sig1,iii,sig2, Nmax,N
+    real(KIND=dp), allocatable,save ::  Eigenvectors(:,:),Eigenvalues(:)
+    real(KIND=dp), allocatable,save :: WORK(:)
+    real(KIND=dp), allocatable,save :: Temp(:,:)
+    real(KIND=dp)                   :: test
+
+    Nmax = maxval(blocksizes)
+    !---------------------------------------------------------------------------
+    ! Preliminary work.
+    if(.not.allocated(WORK)) then
+        allocate(Temp(Nmax,Nmax)) ; Temp = 0.0_dp
+        allocate(Work(Nmax))      ; Work = 0.0_dp
+        allocate(Eigenvectors(Nmax,Nmax)) ; Eigenvectors=0.0_dp
+        allocate(Eigenvalues(Nmax))  ; Eigenvalues=0.0_dp
+    endif
+
+    U = 0.0_dp
+    V = 0.0_dp
+    
+    if(.not. TRC) call stp('Diagon not yet for non time-reversed states')
+    do it=1,Iindex
+        do P=1,Pindex
+            N = blocksizes(P,it)
+            Temp(1:N,1:N)        = 0.0_dp
+            Eigenvalues(1:N)     = 0.0_dp
+            Eigenvectors(1:N,1:N)= 0.0_dp
+            Work(1:N)            = 0.0_dp
+            
+            do j=1,N/2
+                do i=1,N/2
+                    Temp(i,j)         = DBLE(HFBHamil(i,j,P,it))
+                    Temp(j,i)         = Temp(i,j)
+                    Temp(i+N/2,j+N/2) = DBLE(HFBHamil(i+3*N/2,j+3*N/2,P,it))
+                    Temp(j+N/2,i+N/2) = Temp(i+N/2,j+N/2)
+                    Temp(i,j+N/2)     = DBLE(HFBHamil(i,j+3*N/2,P,it))
+                    Temp(j+N/2,i)     = Temp(i,j+N/2)
+                enddo
+            enddo
+
+            call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work)
+        
+            U(      1:N/2,    1:N  ,P,it) = Eigenvectors(       1:N/2   ,  1:N  )
+            V(  N/2+1:N  ,    1:N  ,P,it) = Eigenvectors(   N/2+1:N     ,  1:N  )
+            QuasiEnergies(1:N,P,it)       = EigenValues(1:N)
+
+            U(  N/2+1:N  ,N+1:2*N  ,P,it) = Eigenvectors(       1:N/2   ,  1:N  )
+            V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(   N/2+1:N     ,  1:N  )
+            QuasiEnergies(N+1:2*N,  P,it) = QuasiEnergies(1: N,P,it)
+        enddo
+    enddo
+    if(SC) call InsertionSortQPEnergies
+
+end subroutine DiagonaliseHFBHamiltonian!_CR8
+
 !   subroutine DiagonaliseHFBHamiltonian!_ZHEEVR
 !     !---------------------------------------------------------------------------
 !     ! Alternative subroutine for diagonalising the HFB Hamiltonian.
@@ -1444,12 +1449,9 @@ subroutine InsertionSortQPEnergies
         do i=1,blocksizes(P,it)
           HFBColumns(i,P,it) = i + blocksizes(P,it)
         enddo
-!         print *, HFBColumns(1:blocksizes(P,it),P,it)
-!         do i=1,blocksizes(P,it)
-!             print *, QuasiEnergies(HFBColumns(i,P,it),P,it)
-!         enddo
       enddo
     enddo
+
     ! Switch the columns we want to block
     if(allocated(QPExcitations)) call BlockQuasiParticles()
 
@@ -1672,7 +1674,7 @@ subroutine InsertionSortQPEnergies
 
   end function ConstructRHOHFB
 
-  subroutine DiagonaliseRhoHFB
+  subroutine DiagonaliseRhoHFB_ZHEEV
     !---------------------------------------------------------------------------
     ! Diagonalise RhoHFB and find both the occupation numbers and the 
     ! transformation matrix between HFbasis and the canonical basis.
@@ -1705,7 +1707,9 @@ subroutine InsertionSortQPEnergies
           Temp          = 0.0_dp
           N             = blocksizes(P,it)
           Temp(1:N,1:N) = RhoHFB(1:N,1:N,P,it)
-          
+
+
+           
           !-------------------------------------------------------------------
           ! Since our matrices are not split into signature blocks, and in 
           ! general the eigenvalues of the density matrix are degenerate, 
@@ -1738,6 +1742,7 @@ subroutine InsertionSortQPEnergies
           if(Succes.ne.0) then
             call stp('ZHEEV failed to diagonalise RHOHFB', 'Errorcode', Succes)
           endif
+
           CanTransfo(1:N,1:N,P,it) = Temp(1:N,1:N)
           !------------------------------------------------------------------
           ! Since we shifted the eigenvalues of the negative signature states
@@ -1745,13 +1750,80 @@ subroutine InsertionSortQPEnergies
           ! Notice the slight offset to make sure we are not accidentally
           ! adding two to positive signature eigenvalues
           if(SC) where( Occupations.lt.-0.1_dp) Occupations = Occupations + 2
-          ! Numerical safety net
-          !where( Occupations.gt.1.0_dp) Occupations=1.0_dp
-          !where( Occupations.lt.0.0_dp) Occupations=0.0_dp
       enddo
     enddo
     where (abs(CanTransfo) .lt. 1d-11) CanTransfo = 0.0_dp
-  end subroutine DiagonaliseRhoHFB
+  end subroutine DiagonaliseRhoHFB_ZHEEV
+  
+  subroutine DiagonaliseRhoHFB!_diagoncr8
+        !-------------------------------------------------------------------------
+        ! Diagonalise the HFB density matrix using the diagon subroutine from cr8.
+        !
+        ! Notice that we do not bother to explicitly use the signature symmetry
+        ! to simplify the diagonalization. This routine does not cost any time in 
+        ! practice, since the dimension of Rho is only half that of he HFB 
+        ! hamiltonian.
+        !-------------------------------------------------------------------------
+        ! NOT SUITED FOR TIME SIMPLEX BREAKING CALCULATIONS!
+        !-------------------------------------------------------------------------
+        real(KIND=dp), allocatable :: Work(:), Eigenvalues(:)
+        real(KIND=dp), allocatable :: Temp(:,:)
+        real(KIND=dp), allocatable :: Eigenvectors(:,:)
+        integer                          :: P, it, N, i, Nmax, ii, iii
+
+        Nmax = maxval(Blocksizes)
+         if(.not. allocated(Work)) then
+            allocate(Eigenvectors(Nmax,Nmax)) ; Eigenvectors = 0.0_dp
+            allocate(Work(Nmax*5))              ; Work = 0.0_dp
+            allocate(Temp(Nmax,Nmax))         ; Temp = 0.0_dp
+            allocate(Eigenvalues(Nmax))       ; Eigenvalues = 0.0_dp
+        endif
+        do it=1,Iindex
+          do P=1,Pindex          
+              Temp          = 0.0_dp
+              N             = blocksizes(P,it)
+              Temp(1:N,1:N) = DBLE(RhoHFB(1:N,1:N,P,it))
+              !-------------------------------------------------------------------
+              ! Since our matrices are not split into signature blocks, and in 
+              ! general the eigenvalues of the density matrix are degenerate, 
+              ! we need to ensure that states of different signature do not get
+              ! mixed. We do this by artificially shifting the eigenvalues of 
+              ! the negative signatures.
+              !
+              ! Notice that, if V is some eigenvector of some matrix A with
+              ! eigenvalue lambda, then V is also an eigenvalue of (A - b*I)
+              ! where I is the identity matrix and b is a number. 
+              ! Its corresponding eigenvalue is then just shifted, but the 
+              ! the eigenvectors of A and (A - b*I) are the same.
+              !
+              ! In this way, we subtract two from the negative signature 
+              ! diagonal elements, thus putting the negative signature 
+              ! eigenvalues in the (-2,-1) range, well separated from the 
+              ! positive signature eigenvalues in the (0,1) range.
+              if(SC) then
+                do i=1,N       
+                  ii  = blockindices(i,P,it)
+                  iii = mod(ii-1,nwt)+1
+                  if( ii .ne. iii .or. HFBasis(iii)%GetSignature().eq.-1) then
+                    Temp(i,i) = Temp(i,i) - 2.0_dp
+                  endif
+                enddo
+              endif
+
+              call diagoncr8(temp,Nmax,N,Eigenvectors,Eigenvalues, Work)
+
+              CanTransfo(1:N,1:N,P,it) = Eigenvectors(1:N,1:N)
+              Occupations(1:N,P,it)    = Eigenvalues(1:N)
+              !------------------------------------------------------------------
+              ! Since we shifted the eigenvalues of the negative signature states
+              ! by -2, we now need to find the actual occupation numbers.
+              ! Notice the slight offset to make sure we are not accidentally
+              ! adding two to positive signature eigenvalues
+              if(SC) where( Occupations.lt.-0.1_dp) Occupations = Occupations + 2
+          enddo
+        enddo
+        where (abs(CanTransfo) .lt. 1d-11) CanTransfo = 0.0_dp
+  end subroutine DiagonaliseRhoHFB!_diagoncr8
 
   subroutine CheckRho(Rho)
     !--------------------------------------------------------------------------
@@ -1824,7 +1896,7 @@ subroutine InsertionSortQPEnergies
             enddo
             Kappa(j,i,P,it) = - Kappa(i,j,P,it)
           enddo
-        enddo 
+        enddo
       enddo
     enddo
 
@@ -1845,7 +1917,6 @@ subroutine InsertionSortQPEnergies
                       if(jj .ne. jjj) S2 = -S2
                       if(S1*S2 .ne. -1 .and. abs(Kappa(i,j,P,it)).gt.HFBNumCut) then
                           print *, i,j, S1, S2, Kappa(i,j,P,it)
-                          print *, QuasiEnergies(:,P,it)
                           call stp('Kappa Signatures!')
                       endif
                   enddo
@@ -1853,7 +1924,6 @@ subroutine InsertionSortQPEnergies
           enddo
       enddo
     endif
-
   end function ConstructKappaHFB
 
   subroutine HFBOccupations(Fermi, Delta,LNLambda,PairingDisp)
@@ -1883,7 +1953,7 @@ subroutine InsertionSortQPEnergies
     KappaHFB = HFBMix * KappaHFB + (1.0_dp - HFBMix) * OldKappaHFB
   endif    
   ! Actual diagonalisation
-  call DiagonaliseRHOHFB
+  call DiagonaliseRHOHFB!_ZHEEV
   !-----------------------------------------------------------------------------
   ! Check the diagonalisation
   if(all(Occupations.eq.0.0_dp)) then
@@ -2098,17 +2168,6 @@ subroutine InsertionSortQPEnergies
         endif
     !---------------------------------------------------------------------------
     endif
-!     do i=1,blocksizes(1,2)
-!         do j=1,blocksizes(1,2)
-!             write (*,"(f8.3)",advance="no")  DBLE(CanTransfo(i,j,1,2)) 
-!         enddo
-!         print *
-!     enddo
-!     print *
-!     print '(10f8.3)', QuasiEnergies(1:2*blocksizes(1,2),1,2)
-!     print *
-!     print *, Columns(1:blocksizes(1,2),1,2)
-!     print *
   end function FindCorrectColumns
 
   subroutine WriteOutKappa(PairingType, OnlyIso)
@@ -2703,5 +2762,203 @@ subroutine PrintBlocking
         enddo
     enddo
   end function QPAlignment
+
+  subroutine diagoncr8 (a,ndim,n,v,d,wd)
+  !..............................................................................
+  !  diagonalization of a real symmetric matrix a(i,j)                         .
+  !     input : a  n*n matrix           (with declared dimensions ndim*ndim)    .
+  !             a(i,k) * v(k,j) = v(i,k) * d(k)                                 .
+  !     output: v block of eigenvectors (with declared dimensions ndim*ndim)    .
+  !             d eigenvalues in ascending order                                .
+  !             wd working array                                                .
+  !             the content of a is lost (actualy, a(i,i) = d(i)                .
+  !             a(i,j) = v(i,k) * d(k) * v(j,k)                                 .
+  !                      v is an orthogonal matrix : v(i,k)*v(j,k) = delta_ij   .
+  !..............................................................................
+      integer,parameter        :: jstop=30
+      real(KIND=dp), parameter :: eps=9.0d-12,epsd=1.0d-16,tol=1.0d-36
+      real(KIND=dp), parameter :: zero=0.0d0,one=1.0d0,two=2.0d0
+
+      real(KIND=dp), intent(inout) :: a(ndim,ndim),v(ndim,ndim),d(ndim),wd(ndim)
+      integer, intent(in)          :: ndim,n
+
+      integer       :: i,j,ml, m1,m,n1, k, ii, j1, l
+      real(KIND=dp) :: p, scale, g,r, s, c, hh, b, f, h
+
+      v(1,1) = one
+      d(1)   = a(1,1)
+      if (n.le.1) return
+
+      do i=1,ndim*ndim
+        v(i,1) = a(i,1)
+      enddo
+
+      do 9 ii=2,n
+        i     = n+2-ii
+        l     = i-1
+        h     = zero
+        scale = zero
+        if (l.eq.1) go to 100
+        do k=1,l
+          scale = scale + abs(v(i,k))
+        enddo
+        if (scale.gt.tol) go to 3
+  100   continue
+        wd(i) = v(i,l)
+        d(i) = h
+        go to 9
+    3   do k=1,l
+          v(i,k) = v(i,k)/scale
+          h      = h + v(i,k)**2
+        enddo
+        f      = v(i,l)
+        g      =-sign(sqrt(h),f)
+        wd(i)  = g*scale
+        h      = h-f*g
+        v(i,l) = f-g
+        f      = zero
+        do j=1,l
+          v(j,i) = v(i,j)/(h*scale)
+          g = zero
+          do k=1,j
+            g = g + v(j,k)*v(i,k)
+          enddo
+          j1 = j + 1
+          if (j1.le.l) then
+            do k=j1,l
+              g = g + v(k,j)*v(i,k)
+            enddo
+          endif
+          wd(j) = g/h
+          f     = f + wd(j)*v(i,j)
+        enddo
+        hh = f/(h+h)
+        do j=1,l
+          f     = v(i,j)
+          g     = wd(j) - hh*f
+          wd(j) = g
+          do k=1,j
+            v(j,k) = v(j,k) - f*wd(k) - g*v(i,k)
+          enddo
+        enddo
+        do k=1,l
+          v(i,k) = scale * v(i,k)
+        enddo
+        d(i)=h
+    9 continue
+
+      d(1)  = zero
+      wd(1) = zero
+      do i=1,n
+        l=i-1
+        if ((abs(d(i)).ge.epsd).and.(l.ne.0)) then
+          do j=1,l
+            g = zero
+            do k=1,l
+              g = g + v(i,k)*v(k,j)
+            enddo
+            do k=1,l
+              v(k,j) = v(k,j) - g*v(k,i)
+            enddo
+          enddo
+        endif
+        d(i)   = v(i,i)
+        v(i,i) = one
+        if (l.ne.0) then
+          do j=1,l
+            v(i,j) = zero
+            v(j,i) = zero
+          enddo
+        endif
+      enddo
+
+      do i=2,n
+        wd(i-1) = wd(i)
+      enddo
+
+      wd(n) = zero
+      b     = zero
+      f     = zero
+      do 212 l=1,n
+        j = 0
+        h = eps * ( abs(d(l)) + abs(wd(l)) )
+        if (b.lt.h) b = h
+        m = l - 1
+  202   m = m + 1
+        if (m.gt.n) go to 203
+        if (abs(wd(m))-b) 203,203,202
+  203   continue
+        if (m.eq.l) go to 211
+  204   continue
+        if (j.eq.jstop) call stp (' diagon jstop ')
+        j = j + 1
+        p = (d(l+1)-d(l))/(two*wd(l))
+        r = sqrt(p*p+one)
+        h =  d(l)-wd(l)/(p+sign(r,p))
+        do i=l,n
+          d(i) = d(i) - h
+        enddo
+        f  = f+h
+        p  = d(m)
+        c  = one
+        s  = zero
+        m1 = m  - 1
+        ml = m1 + l
+        do ii=l,m1
+          i = ml - ii
+          g = c*wd(i)
+          h = c*p
+          if (abs(p).ge.abs(wd(i))) then
+            c       = wd(i)/p
+            r       = sqrt(c*c+one)
+            wd(i+1) = s*p*r
+            s       = c/r
+            c       = one/r
+          else
+            c       = p/wd(i)
+            r       = sqrt(c*c+one)
+            wd(i+1) = s*wd(i)*r
+            s       = one/r
+            c       = c/r
+          endif
+          p      = c*d(i) - s*g
+          d(i+1) = h + s*(c*g+s*d(i))
+          do k=1,n
+            h        = v(k,i+1)
+            v(k,i+1) = s*v(k,i) + c*h
+            v(k,i)   = c*v(k,i) - s*h
+          enddo
+        enddo
+        wd(l) = s*p
+        d(l)  = c*p
+        if (abs(wd(l))-b) 211,211,204
+  211   continue
+        d(l) = d(l)+f
+  212 continue
+
+      n1 = n-1
+      do i=1,n1
+        k  = i
+        p  = d(i)
+        ii = i + 1
+        do j=ii,n
+          if (d(j).lt.p) then
+            k = j
+            p = d(j)
+          endif
+        enddo
+        if (k.ne.i) then
+          d(k) = d(i)
+          d(i) = p
+          do j=1,n
+            p      = v(j,i)
+            v(j,i) = v(j,k)
+            v(j,k) = p
+          enddo
+        endif
+      enddo
+
+      return
+      end subroutine diagoncr8
 
 end module HFB

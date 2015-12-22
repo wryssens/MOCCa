@@ -167,8 +167,8 @@ contains
     close(inunit)
     !Averaging masses if needed:
     if(Averagemass) nucleonmass = (nucleonmass(1) + nucleonmass(2))/2
-    !Multiply hbm by two
-    hbm = hbm*2.0
+!     !Multiply hbm by two
+     hbm = hbm*2.0
 
   end subroutine ReadForce
 

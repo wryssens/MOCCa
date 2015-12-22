@@ -78,7 +78,7 @@ module HFB
   !-----------------------------------------------------------------------------
   ! Logical. Check all kinds of relations that should hold for correct HFB
   ! calculations. Only to be used for debugging purposes.
-  logical,parameter :: HFBCheck=.false.
+  logical,parameter :: HFBCheck=.true.
   !-----------------------------------------------------------------------------
   ! Real that determines how much to damp the RhoHFB and KappaHFB matrices.
   real(KIND=dp) :: HFBMix=0.1_dp
@@ -295,19 +295,22 @@ contains
               if(Cutoff(1)*Cutoff(2)*abs(KappaHFB(i,j,P,it)) .lt. HFBNumCut) cycle
               Temp(2)  = HFBasis(iii)%GetValue()
         
+              ActionOfPairing = GetPairDensity(Temp(1),Temp(2))
               factor    = Cutoff(1)*Cutoff(2)*DBLE(KappaHFB(i,j,P,it))
               factorLN  = Cutoff(1)*Cutoff(2)*DBLE(Gamma(i,j,P,it))
               do l=1,nx*ny*nz
-                Field(l,1,1,it) = Field(l,1,1,it)     - factor  *ActionOfPairing(l,1,1)
+                Field(l,1,1,it)   = Field(l,1,1,it)   - factor  *ActionOfPairing(l,1,1)
                 FieldLN(l,1,1,it) = FieldLN(l,1,1,it) - factorLN*ActionOfPairing(l,1,1)
               enddo
             enddo
           enddo
         enddo
       enddo
-      do i=1,nx*ny*nz
-        FieldLN(i,1,1,it) = FieldLN(i,1,1,it) * DensityFactor(i,1,1,it)
-        Field(i,1,1,it)   = Field(i,1,1,it)   * DensityFactor(i,1,1,it)
+      do it=1,Iindex
+        do i=1,nx*ny*nz
+          FieldLN(i,1,1,it) = FieldLN(i,1,1,it) * DensityFactor(i,1,1,it)
+          Field(i,1,1,it)   = Field(i,1,1,it)   * DensityFactor(i,1,1,it)
+        enddo
       enddo
     else
       do it=1,Iindex
@@ -441,37 +444,16 @@ contains
             if(Cutoff(1)*Cutoff(2) .lt. HFBNumCut) cycle
 
             Psi2 = HFBasis(jjj)%GetValue()
-!             if(TRC .and. jj.gt.Blocksizes(P,it)/2) then
-!               Psi2 = TimeReverse(Psi2)
-!             endif
-            Temp = GetPairDensity(Psi1,Psi2)
-!             do k=1,nx*ny*nz
-!                 TempReal(k,1,1) =                                                  &
-!                 &             - Psi1%Grid(k,1,1,3,1) * Psi2%Grid(k,1,1,1,1)        &
-!                 &             + Psi1%Grid(k,1,1,4,1) * Psi2%Grid(k,1,1,2,1)        &
-!                 &             + Psi1%Grid(k,1,1,1,1) * Psi2%Grid(k,1,1,3,1)        &
-!                 &             - Psi1%Grid(k,1,1,2,1) * Psi2%Grid(k,1,1,4,1)  
-            
-!                 ! Attention for the extra minus sign: the bra < i,j | indicates an 
-!                 ! extra complex conjugation.
-!                 TempIm(k,1,1)   =                                                  &
-!                 &             + Psi1%Grid(k,1,1,4,1) * Psi2%Grid(k,1,1,1,1)        &
-!                 &             + Psi1%Grid(k,1,1,3,1) * Psi2%Grid(k,1,1,2,1)        &
-!                 &             - Psi1%Grid(k,1,1,2,1) * Psi2%Grid(k,1,1,3,1)        &
-!                 &             - Psi1%Grid(k,1,1,1,1) * Psi2%Grid(k,1,1,4,1)
-!             enddo
-        
+            Temp = GetPairDensity(Psi1,Psi2)        
             Delta(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*                    & 
             &            (sum(   DBLE(Temp)  * DBLE(PairingField(:,:,:,it)))  &
             &            -sum(   AIMAG(Temp) * AIMAG(PairingField(:,:,:,it))))
-
-
             !Delta is antisymmetric
             Delta(j,i,P,it) = - Delta(i,j,P,it)
             if(allocated(DeltaLN)) then
                 DeltaLN(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*              & 
-                &   (sum(   TempReal * DBLE (PairingFieldLN(:,:,:,it)))    &
-                &   -sum(   TempIm   * aimag(PairingFieldLN(:,:,:,it))))
+                &   (sum(   DBLE(TEMP) * DBLE (PairingFieldLN(:,:,:,it)))    &
+                &   -sum(   AIMAG(TEMP)* aimag(PairingFieldLN(:,:,:,it))))
                 DeltaLN(j,i,P,it) =  - DeltaLN(i,j,P,it)
             endif
           enddo
@@ -588,10 +570,11 @@ contains
 
     call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge)
     ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
-    call DiagonaliseHFBHamiltonian()!_DSYEVR()
+    call DiagonaliseHFBHamiltonian
     ! Construct the generalised density matrix and the anomalous one.
     call ConstructHFBstate()
 
+    call DiagonaliseRHOHFB
     N = 0.0_dp ; N2 = 0.0_dp
     !Calculating total number of particles, by tracing the density matrix
     ! Sidenote: RHOHFB is hermitian, thus the imaginary parts of RHoHFB(i,i) are
@@ -915,9 +898,9 @@ contains
           endif
           norm(it)        = FermiUpdate(it)**2 + LNUpdate(it)**2
         else
-         norm(it)        = FermiUpdate(it)**2
+         norm(it)         = FermiUpdate(it)**2
         endif  
-      enddo
+      enddo 
 
       FermiUpdate = step * FermiUpdate
       LNUpdate    = step * LNUpdate
@@ -1138,6 +1121,13 @@ contains
                 Temp(i,j)          = DBLE(HFBHamil(i-N/2,j-N/2,P,it))
             enddo
         enddo
+
+!         do i=1,2*N
+!           print *, Temp(i,1:2*N)
+!         enddo
+!         print *
+!         stop
+
         !------------------------------------------------------------------------
         ! We store all possible eigenvectors and later make the proper selection.
           
@@ -1154,7 +1144,7 @@ contains
         QuasiEnergies(1:N,P,it) = EigenValues(1:N)
 
         !Second signature block
-        if(.not.TRC) then
+        !if(.not.TRC) then
             INFO = 0
             call DSYEVR( 'V', 'A', 'U', N, Temp(N+1:2*N,N+1:2*N), N, 0.0, 0.0, 0, 0,&
             &      0.0, M, Eigenvalues(N+1:2*N), Eigenvectors(N+1:2*N,N+1:2*N), N,  &
@@ -1164,14 +1154,28 @@ contains
             U(  N/2+1:N  ,N+1:2*N  ,P,it) = Eigenvectors(     N+1:3*N/2 ,N+1:2*N)
             V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(   3*N/2+1:2*N   ,N+1:2*N)
             QuasiEnergies(N+1:2*N,P,it)   = EigenValues(N+1:2*N)
-        else
-            U(  N/2+1:N  ,N+1:2*N  ,P,it) = Eigenvectors(       1:N/2   ,  1:N  )
-            V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(   N/2+1:N     ,  1:N  )
-            QuasiEnergies(N+1:2*N,  P,it) = QuasiEnergies(1: N,P,it)
-        endif
+        !else
+        !   U(  N/2+1:N  ,N+1:2*N  ,P,it) = Eigenvectors(       1:N/2   ,  1:N  )
+        !    V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(   N/2+1:N     ,  1:N  )
+        !    QuasiEnergies(N+1:2*N,  P,it) = QuasiEnergies(1: N,P,it)
+        !endif
       enddo
     enddo
 
+!     do it=1,2
+!     do P=1,2
+!       do i=1,blocksizes(P,it)
+!         print *, DBLE(U(i,1:2*blocksizes(P,it),P,it))
+!       enddo
+!       print *
+!       do i=1,blocksizes(P,it)
+!         print *, DBLE(V(i,1:2*blocksizes(P,it),P,it))
+!       enddo
+!       print *
+!       print *
+!     enddo
+!     enddo
+!     stop
     call InsertionSortQPEnergies
 
   end subroutine DiagonaliseHFBHamiltonian_DSYEVR
@@ -1217,145 +1221,144 @@ contains
                 enddo
             enddo
 
-            call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work)
+            call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work, 'DiagHamil ')
         
             U(      1:N/2,    1:N  ,P,it) = Eigenvectors(       1:N/2   ,  1:N  )
             V(  N/2+1:N  ,    1:N  ,P,it) = Eigenvectors(   N/2+1:N     ,  1:N  )
             QuasiEnergies(1:N,P,it)       = EigenValues(1:N)
 
-            U(  N/2+1:N  ,N+1:2*N  ,P,it) = Eigenvectors(       1:N/2   ,  1:N  )
+            U(  N/2+1:N  ,N+1:2*N  ,P,it) =-Eigenvectors(       1:N/2   ,  1:N  )
             V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(   N/2+1:N     ,  1:N  )
             QuasiEnergies(N+1:2*N,  P,it) = QuasiEnergies(1: N,P,it)
         enddo
     enddo
     if(SC) call InsertionSortQPEnergies
-
 end subroutine DiagonaliseHFBHamiltonian!_CR8
 
-!   subroutine DiagonaliseHFBHamiltonian!_ZHEEVR
-!     !---------------------------------------------------------------------------
-!     ! Alternative subroutine for diagonalising the HFB Hamiltonian.
-!     !---------------------------------------------------------------------------
-!     ! Subroutine that solves the HFB eigenvalue problem 
-!     !
-!     !      ( U_k )        ( U_k )
-!     !   H  (     )  = Ek  (     )
-!     !      ( V_k )        ( V_k )
-!     !
-!     ! And stores the result in matrices U & V.
-!     !---------------------------------------------------------------------------
-!     ! NOTE 
-!     ! 1) Extra documentation for the diagonalisation routine 
-!     !    http://www.netlib.org/lapack/explore-html/d9/dd2/zheevr_8f.html
-!     !---------------------------------------------------------------------------
-!     integer, save                       :: size, m, lwork,lrwork,liwork
-!     complex(KIND=dp), allocatable,save       :: Eigenvectors(:,:)
-!     complex(KIND=dp), allocatable,save       :: Temp(:,:)
-!     real(KIND=dp) , allocatable,save         :: Eigenvalues(:)
-!     complex(KIND=dp), allocatable,save       :: Work(:), rwork(:)
-!     integer, allocatable,save                :: iwork(:), isuppz(:)
-!     integer                             :: Succes,i,j,jj,it,P, N, jjj, S
-!     real(KIND=dp)                       :: Sig
-!     real(KIND=dp)                       :: time0=0,time1=0,timetot=0
+  subroutine DiagonaliseHFBHamiltonian_ZHEEVR
+    !---------------------------------------------------------------------------
+    ! Alternative subroutine for diagonalising the HFB Hamiltonian.
+    !---------------------------------------------------------------------------
+    ! Subroutine that solves the HFB eigenvalue problem 
+    !
+    !      ( U_k )        ( U_k )
+    !   H  (     )  = Ek  (     )
+    !      ( V_k )        ( V_k )
+    !
+    ! And stores the result in matrices U & V.
+    !---------------------------------------------------------------------------
+    ! NOTE 
+    ! 1) Extra documentation for the diagonalisation routine 
+    !    http://www.netlib.org/lapack/explore-html/d9/dd2/zheevr_8f.html
+    !---------------------------------------------------------------------------
+    integer, save                       :: size, m, lwork,lrwork,liwork
+    complex(KIND=dp), allocatable,save       :: Eigenvectors(:,:)
+    complex(KIND=dp), allocatable,save       :: Temp(:,:)
+    real(KIND=dp) , allocatable,save         :: Eigenvalues(:)
+    complex(KIND=dp), allocatable,save       :: Work(:), rwork(:)
+    integer, allocatable,save                :: iwork(:), isuppz(:)
+    integer                             :: Succes,i,j,jj,it,P, N, jjj, S
+    real(KIND=dp)                       :: Sig
+    real(KIND=dp)                       :: time0=0,time1=0,timetot=0
     
-!     size = maxval(blocksizes)
-!     !---------------------------------------------------------------------------
-!     ! Preliminary work.
-!     if(.not.allocated(WORK)) then
-!         !Allocate several arrays for the LAPACK routine
-!         allocate(Temp(2*size, 2*size))                   ; Temp = 0.0_dp
-!         allocate(Eigenvectors(2*HFBSize, 2*HFBsize))     ; Eigenvectors= 0.0_dp
-!         allocate(Eigenvalues(2*size))                    ; EigenValues=0.0_dp
-!         allocate(Isuppz(4*size))                         ; ISUPPZ=0  
-!         ! Do a preliminary call to the LAPACK routine to find the optimum
-!         ! WORK sizes.
-!         LWORK = -1 ; LRWORK = -1 ; LIWORK = -1
-!         allocate(work(1), rwork(1), iwork(1))
-!         call ZHEEVR('V', 'A', 'U', 2*size, Temp,                            &
-!         &            2*size, 0.0_dp , 0.0_dp,0,0,                           &
-!         &            0.0_dp, 2*size, Eigenvalues, Eigenvectors, 2*HFBSize,  &
-!         &            isuppz,work,lwork,rwork,                               &
-!         &            lrwork, iwork, liwork, Succes)
+    size = maxval(blocksizes)
+    !---------------------------------------------------------------------------
+    ! Preliminary work.
+    if(.not.allocated(WORK)) then
+        !Allocate several arrays for the LAPACK routine
+        allocate(Temp(2*size, 2*size))                   ; Temp = 0.0_dp
+        allocate(Eigenvectors(2*HFBSize, 2*HFBsize))     ; Eigenvectors= 0.0_dp
+        allocate(Eigenvalues(2*size))                    ; EigenValues=0.0_dp
+        allocate(Isuppz(4*size))                         ; ISUPPZ=0  
+        ! Do a preliminary call to the LAPACK routine to find the optimum
+        ! WORK sizes.
+        LWORK = -1 ; LRWORK = -1 ; LIWORK = -1
+        allocate(work(1), rwork(1), iwork(1))
+        call ZHEEVR('V', 'A', 'U', 2*size, Temp,                            &
+        &            2*size, 0.0_dp , 0.0_dp,0,0,                           &
+        &            0.0_dp, 2*size, Eigenvalues, Eigenvectors, 2*HFBSize,  &
+        &            isuppz,work,lwork,rwork,                               &
+        &            lrwork, iwork, liwork, Succes)
 
-!         lwork = ceiling(DBLE(WORK(1))) ; lrwork = ceiling(DBLE(RWORK(1))) 
-!         liwork =IWORK(1)
-!         deallocate(WORK, RWORK, IWORK)
-!         allocate(WORK(lwork), RWORK(lrwork), IWORK(liwork))
-!     endif
-!     !----------------------------------------------------------------------------
-!     U = 0.0_dp ; V=0.0_dp
-!     do it=1,Iindex
-!       do P=1,Pindex
-!         Temp = 0.0_dp
-!         N = blocksizes(P,it)
-!         do j=1,2*N
-!           do i=1,2*N
-!             Temp(i,j) = HFBHamil(i,j,P,it)
-!           enddo
-!         enddo
-!         !------------------------------------------------------------------------
-!         ! Temporary trick to separate signatures.
+        lwork = ceiling(DBLE(WORK(1))) ; lrwork = ceiling(DBLE(RWORK(1))) 
+        liwork =IWORK(1)
+        deallocate(WORK, RWORK, IWORK)
+        allocate(WORK(lwork), RWORK(lrwork), IWORK(liwork))
+    endif
+    !----------------------------------------------------------------------------
+    U = 0.0_dp ; V=0.0_dp
+    do it=1,Iindex
+      do P=1,Pindex
+        Temp = 0.0_dp
+        N = blocksizes(P,it)
+        do j=1,2*N
+          do i=1,2*N
+            Temp(i,j) = HFBHamil(i,j,P,it)
+          enddo
+        enddo
+        !------------------------------------------------------------------------
+        ! Temporary trick to separate signatures.
         
-!         if(SC) then
-!           do j=1,N
-!             jj = blockindices(j,P,it)
-!             jjj= mod(jj-1,nwt)+1
-!             S = HFBasis(jjj)%GetSignature()
-!             if(jjj .ne. jj) S = -S
-!             Temp(j,j)     = Temp(j,j)     + 1000*S
-!             Temp(j+N,j+N) = Temp(j+N,j+N) - 1000*S
-!           enddo
-!         endif
-!         !------------------------------------------------------------------------
+        if(SC) then
+          do j=1,N
+            jj = blockindices(j,P,it)
+            jjj= mod(jj-1,nwt)+1
+            S = HFBasis(jjj)%GetSignature()
+            if(jjj .ne. jj) S = -S
+            Temp(j,j)     = Temp(j,j)     + 1000*S
+            Temp(j+N,j+N) = Temp(j+N,j+N) - 1000*S
+          enddo
+        endif
+        !------------------------------------------------------------------------
 
-!         Succes = 0
-!         m = N
-!         call ZHEEVR('V', 'A', 'U', 2*N , Temp(1:2*N,1:2*N),2*N, 0.0_dp,          &
-!           &          0.0_dp,0,0,0.0_dp, 2*N, Eigenvalues(1:2*N),                 &
-!           &          Eigenvectors(1:2*N,1:2*N),2*N, isuppz, work, lwork, rwork,  &
-!           &          lrwork,iwork, liwork,Succes)
-!         if(Succes.ne.0) then  
-!           call stp("Error in diagonalising the HFB Hamiltonian.",                &
-!           &        "ZHEEVR Errorcode", Succes)
-!         endif
-!         !-------------------------------------------------------------------------
-!         ! We store all possible eigenvectors and later make the proper selection.       
-!         U(1:N,1:2*N,P,it) = Eigenvectors(  1:N    ,1:2*N)
-!         V(1:N,1:2*N,P,it) = Eigenvectors(  N+1:2*N,1:2*N)
-!         QuasiEnergies(1:2*N,P,it) = EigenValues(1:2*N)
+        Succes = 0
+        m = N
+        call ZHEEVR('V', 'A', 'U', 2*N , Temp(1:2*N,1:2*N),2*N, 0.0_dp,          &
+          &          0.0_dp,0,0,0.0_dp, 2*N, Eigenvalues(1:2*N),                 &
+          &          Eigenvectors(1:2*N,1:2*N),2*N, isuppz, work, lwork, rwork,  &
+          &          lrwork,iwork, liwork,Succes)
+        if(Succes.ne.0) then  
+          call stp("Error in diagonalising the HFB Hamiltonian.",                &
+          &        "ZHEEVR Errorcode", Succes)
+        endif
+        !-------------------------------------------------------------------------
+        ! We store all possible eigenvectors and later make the proper selection.       
+        U(1:N,1:2*N,P,it) = Eigenvectors(  1:N    ,1:2*N)
+        V(1:N,1:2*N,P,it) = Eigenvectors(  N+1:2*N,1:2*N)
+        QuasiEnergies(1:2*N,P,it) = EigenValues(1:2*N)
         
-!         !-------------------------------------------------------------------------
-!         ! Calculate the quasiparticle signatures for further use
-!         QuasiSignatures(:,P,it)=0.0_dp
-!         do i=1,2*N
-!           do j=1,N
-!             jj  = blockindices(j,P,it)
-!             jjj = mod(jj-1,nwt)+1
-!             Sig = HFBasis(jjj)%GetSignatureR()
-!             if(jj.ne.jjj) Sig = -Sig
-!             !-----------------------------------------------------
-!             ! The U components have the same signature
-!             QuasiSignatures(i,P,it) = QuasiSignatures(i,P,it)    & 
-!             &                       + sig * abs(U(j,i,P,it))**2
-!             !-----------------------------------------------------
-!             ! The V components have opposite signature, thus 
-!             ! opposite sign.
-!             QuasiSignatures(i,P,it) = QuasiSignatures(i,P,it)    &
-!             &                       - sig * abs(V(j,i,P,it))**2
-!           enddo
-!         enddo
-!         !------------------------------------------------------------------------
-!         ! Extra for temporary trick
-!         if(SC) then
-!           QuasiEnergies(1:2*N, P, it) = QuasiEnergies(1:2*N, P, it) &
-!           &                         - 1000*QuasiSignatures(1:2*N,P,it)
-!         endif       
-!       enddo
-!     enddo
+        !-------------------------------------------------------------------------
+        ! Calculate the quasiparticle signatures for further use
+        QuasiSignatures(:,P,it)=0.0_dp
+        do i=1,2*N
+          do j=1,N
+            jj  = blockindices(j,P,it)
+            jjj = mod(jj-1,nwt)+1
+            Sig = HFBasis(jjj)%GetSignatureR()
+            if(jj.ne.jjj) Sig = -Sig
+            !-----------------------------------------------------
+            ! The U components have the same signature
+            QuasiSignatures(i,P,it) = QuasiSignatures(i,P,it)    & 
+            &                       + sig * abs(U(j,i,P,it))**2
+            !-----------------------------------------------------
+            ! The V components have opposite signature, thus 
+            ! opposite sign.
+            QuasiSignatures(i,P,it) = QuasiSignatures(i,P,it)    &
+            &                       - sig * abs(V(j,i,P,it))**2
+          enddo
+        enddo
+        !------------------------------------------------------------------------
+        ! Extra for temporary trick
+        if(SC) then
+          QuasiEnergies(1:2*N, P, it) = QuasiEnergies(1:2*N, P, it) &
+          &                         - 1000*QuasiSignatures(1:2*N,P,it)
+        endif       
+      enddo
+    enddo
 
-!     if(SC) call InsertionSortQPEnergies()
+    if(SC) call InsertionSortQPEnergies()
 
-!   end subroutine DiagonaliseHFBHamiltonian!_ZHEEVR
+   end subroutine DiagonaliseHFBHamiltonian_ZHEEVR
 
 subroutine InsertionSortQPEnergies
     !-----------------------------------------------------------------------
@@ -1454,13 +1457,12 @@ subroutine InsertionSortQPEnergies
 
     ! Switch the columns we want to block
     if(allocated(QPExcitations)) call BlockQuasiParticles()
-
     !---------------------------------------------------------------------------
     ! Extra check if needed
     if(HFBCheck) call CheckUandVColumns(HFBColumns)    
     ! We now explicitly construct Rho first
     RhoHFB = constructRhoHFB(HFBColumns)
-    !if(HFBCheck) call CheckRho(RhoHFB)
+    if(HFBCheck) call CheckRho(RhoHFB)
     !---------------------------------------------------------------------------
     !Note that the entire procedure to combat gapless superconductivity is super-
     !fluous when conserving time-reversal
@@ -1810,7 +1812,7 @@ subroutine InsertionSortQPEnergies
                 enddo
               endif
 
-              call diagoncr8(temp,Nmax,N,Eigenvectors,Eigenvalues, Work)
+              call diagoncr8(temp,Nmax,N,Eigenvectors,Eigenvalues, Work, 'DiagRho   ')
 
               CanTransfo(1:N,1:N,P,it) = Eigenvectors(1:N,1:N)
               Occupations(1:N,P,it)    = Eigenvalues(1:N)
@@ -2324,7 +2326,7 @@ subroutine InsertionSortQPEnergies
     c2 = 0.0_dp ; c3 =0.0_dp ; c4 = 0.0_dp
     trx= 0.0_dp ; txd=0.0_dp ; ex = 0.0_dp ; gkr = 0.0_dp ; erx = 0.0_dp
     gkx = 0.0_dp ; gky = 0.0_dp ; Chi = 0.0_dp ; chika = 0.0_dp ; Gamka = 0.0_dp
-       
+  
     do it=1,Iindex
       do P=1,Pindex
         do i=1,blocksizes(P,it)
@@ -2763,7 +2765,7 @@ subroutine PrintBlocking
     enddo
   end function QPAlignment
 
-  subroutine diagoncr8 (a,ndim,n,v,d,wd)
+  subroutine diagoncr8 (a,ndim,n,v,d,wd, callrout)
   !..............................................................................
   !  diagonalization of a real symmetric matrix a(i,j)                         .
   !     input : a  n*n matrix           (with declared dimensions ndim*ndim)    .
@@ -2778,6 +2780,7 @@ subroutine PrintBlocking
       integer,parameter        :: jstop=30
       real(KIND=dp), parameter :: eps=9.0d-12,epsd=1.0d-16,tol=1.0d-36
       real(KIND=dp), parameter :: zero=0.0d0,one=1.0d0,two=2.0d0
+      character(len=10), intent(in)  :: callrout
 
       real(KIND=dp), intent(inout) :: a(ndim,ndim),v(ndim,ndim),d(ndim),wd(ndim)
       integer, intent(in)          :: ndim,n
@@ -2890,7 +2893,9 @@ subroutine PrintBlocking
   203   continue
         if (m.eq.l) go to 211
   204   continue
-        if (j.eq.jstop) call stp (' diagon jstop ')
+        if (j.eq.jstop) then
+          call stp (' Diagoncr8 failed, caller '// Callrout)
+        endif
         j = j + 1
         p = (d(l+1)-d(l))/(two*wd(l))
         r = sqrt(p*p+one)

@@ -652,7 +652,7 @@ contains
     ! The densities however are not guaranteed to be on file, which is why we
     ! utilize some iostat tricks. 
     ! Note that the IOSTAT end-of-record code on FORTRAN is -2.
-    if(.not. TRC) then      
+    if( TRC) then      
       io = 0
       read(unit, iostat=io) Den%vecj,Den%RotVecj
       if(io.ne.0) then

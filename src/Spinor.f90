@@ -165,7 +165,7 @@ contains
     real(KIND=dp),intent(in)  :: F(nx,ny,nz)
     integer                   :: i,k
     
-    FPsi=NewSPinor()
+    allocate(FPsi%Grid(nx,ny,nz,4,1))
     do k=1,4
       do i=1,nx*ny*nz
         FPsi%Grid(i,1,1,k,1) = F(i,1,1)*Psi%Grid(i,1,1,k,1)
@@ -323,7 +323,7 @@ contains
     class(Spinor), intent(in) :: Psi
     type(Spinor)              :: MinPsi
     
-    MinPsi = NewSPinor()
+    allocate(MinPsi%Grid(nx,ny,nz,4,1))
     MinPsi%Grid = -Psi%Grid
     
   end function Negative
@@ -358,7 +358,7 @@ contains
     type(Spinor)              :: iPsi
     integer                   :: i
 
-    IPsi = NewSPinor()
+    allocate(IPsi%Grid(nx,ny,nz,4,1))
     do i=1,nx*ny*nz
       IPsi%Grid(i,1,1,1,1) = - Psi%Grid(i,1,1,2,1)
       IPsi%Grid(i,1,1,2,1) =   Psi%Grid(i,1,1,1,1)

@@ -1310,7 +1310,6 @@ contains
     write(OChan,iostat=io) blocksizes
     write(OChan,iostat=io) Fermi
     write(OChan,iostat=io) LNLambda
-    print *, 'Wrote', Fermi, LNLambda
     !---------------------------------------------------------------------------
     ! Multipole constraint variables
     ! Special treatment: got to loop over the multipole moments and only write

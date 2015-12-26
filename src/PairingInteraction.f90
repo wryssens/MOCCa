@@ -55,7 +55,7 @@ module PairingInteraction
   
 contains
 
-  function GetPairDensity(wf1,wf2) result( ActionOfPairing)
+  pure function GetPairDensity(wf1,wf2) result( ActionOfPairing)
     !---------------------------------------------------------------------------
     ! Calculate the action of the pairing interaction on a twobody state,
     ! represented by spinor 1 and 2.
@@ -74,23 +74,23 @@ contains
     type(Spinor), intent(in) :: wf1, wf2
     
     complex(KIND=dp)         :: ActionOfPairing(nx,ny,nz)
-    real(KIND=dp)            :: Temp(nx,ny,nz,2)
+    real(KIND=dp)            :: Temp(2,nx,ny,nz)
     integer                  :: i
 
-    ActionOfPairing = 0.0_dp
+    !ActionOfPairing = 0.0_dp
     
     if(.not.TRC) then 
       !---------------------------------------------------------------------------
       ! Real part
       do i=1,nx*ny*nz
-        Temp(i,1,1,1) =                                                      &
+        Temp(1,i,1,1) =                                                      &
         &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,3,1)            &
         &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,4,1)            &
         &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,1,1)            &
         &             + wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,2,1)  
         !---------------------------------------------------------------------------
         ! Imaginary Part 
-        Temp(i,1,1,2) =                                                      &
+        Temp(2,i,1,1) =                                                      &
         &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,4,1)            &
         &             + wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,3,1)            &
         &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,2,1)            &
@@ -100,14 +100,14 @@ contains
       !---------------------------------------------------------------------------
       ! Real part
       do i=1,nx*ny*nz
-        Temp(i,1,1,1) =                                                      &
+        Temp(1,i,1,1) =                                                      &
         &             - wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,1,1)            &
         &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,2,1)            &
         &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,3,1)            &
         &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,4,1)  
         !---------------------------------------------------------------------------
         ! Imaginary Part 
-        Temp(i,1,1,2) =                                                      &
+        Temp(2,i,1,1) =                                                      &
         &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,2,1)            &
         &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,1,1)            &
         &             + wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,4,1)            &
@@ -116,9 +116,9 @@ contains
     endif
 
     do i=1,nx*ny*nz
-       ActionOfPairing(i,1,1) = dcmplx(Temp(i,1,1,1), Temp(i,1,1,2))
+       ActionOfPairing(i,1,1) = dcmplx(Temp(1,i,1,1), Temp(2,i,1,1))
     enddo
-    if(all(ActionOfPairing .eq. 0.0 )) call stp('Action')
+    !if(all(ActionOfPairing .eq. 0.0 )) call stp('Action')
     return
   end function GetPairDensity
   

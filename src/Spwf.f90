@@ -612,7 +612,7 @@ contains
     ! The solution is obviously:
     ! j = [- 1 + sqrt( 1 + 4 * <J^2>)]/2
     WaveFunction%AngQuantum=                                                   &
-    &                  - 0.5_dp*(1.0_dp-sqrt( 1.0_dp + 4.0_dp*sum(Temp(4:6,1)))) 
+    &                  - 0.5_dp*(1.0_dp-sqrt( 1.0_dp + 4.0_dp*sum(Temp(4:6,1))))
   end subroutine CompAngMoment
  
   subroutine SetEnergy(WaveFunction,Energy) 
@@ -936,11 +936,12 @@ contains
       !The action of Jz
       Temp1 = Pauli(WF%Value,3)
       Temp1 = (1.0_dp/2.0_dp)*Temp1
+
       do k=1,4
-          do i=1,4
+          do i=1,nx*ny*nz
             Temp2%Grid(i,1,1,k,1) = Mesh3D(1,i,1,1) * WF%Der(2)%Grid(i,1,1,k,1)
           enddo      
-          do i=1,4
+          do i=1,nx*ny*nz
             Temp3%Grid(i,1,1,k,1) = Mesh3D(2,i,1,1) * WF%Der(1)%Grid(i,1,1,k,1)
           enddo
       enddo
@@ -965,19 +966,11 @@ contains
         !       J_z = 1/2*( 1  0 ) + i y \partial_x - i x\partial_y
         !                 ( 0 -1 )
         !---------------------------------------------------------------------------
-        ! Note that we split left & right for the quadratic angular momentum
-        ! So:
-        !
-        !              <-       ->             <-      ->    <-  ->
-        !  J_i^2 = ( 0.25 \sigma_i \sigma_i +  \sigma_i L_i + L_i L_i)
-        !
-        ! and since our wavefunctions are normalized, the \sigma_i^2 term is simply
-        ! 0.25
         !---------------------------------------------------------------------------
 
         class(Spwf), intent(in) :: WF1,WF2
         type(Spinor)            :: psi,phi, derphi(3), derpsi(3)
-        real(KIND=dp)           :: AngMom(6,2)
+        real(KIND=dp)           :: AngMom(6,2), r1,r2,r3,r4,l1,l2,l3,l4
         integer                 :: i, sig1(3), sig2(3),j,k
         logical, intent(in)     :: Quadratic
         logical, intent(in)     :: TRX,TRY,TRZ
@@ -998,9 +991,9 @@ contains
 
         phi=WF1%GetValue()
         psi=WF2%GetValue()
-        derphi(1) = WF1%GetDer(1) !; derpsi(1) = WF2%GetDer(3)
-        derphi(2) = WF1%GetDer(2) !; derpsi(2) = WF2%GetDer(3)
-        derphi(3) = WF1%GetDer(3) !; derpsi(3) = WF2%GetDer(3)
+        derphi(1) = WF1%GetDer(1) ; derpsi(1) = WF2%GetDer(1)
+        derphi(2) = WF1%GetDer(2) ; derpsi(2) = WF2%GetDer(2)
+        derphi(3) = WF1%GetDer(3) ; derpsi(3) = WF2%GetDer(3)
 
         !-------------------------------------------------------------------------------
         ! X-direction
@@ -1053,32 +1046,52 @@ contains
         ! Y-direction
         if(TRY) then
             do i=1,nx*ny*nz
-                AngMom(2,1) = AngMom(2,1) + 0.5_dp * (                              &
-                &                         - Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,2,1) & 
-                &                         - Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,1,1) &
-                &                         + Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,4,1) & 
-                &                         + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,3,1))
+                ! Action of J_y to the right
+                r1 = - Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,2,1) &
+                &    + Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,4,1)
+                r2 =   Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,1,1) &
+                &    - Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,1,1) &
+                &    - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+                r3 = - Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,4,1) &
+                &    + Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,4,1) &
+                &    - 0.5_dp        * Phi%Grid(i,1,1,2,1)
+                r4 =   Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,3,1) &
+                &    - Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,3,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
 
-                !Orbital 
-                AngMom(2,1) = AngMom(2,1)    &
-                &           + Psi%Grid(i,1,1,2,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
-                &           - Psi%Grid(i,1,1,2,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,3,1) & 
-                !
-                &           + Psi%Grid(i,1,1,1,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
-                &           - Psi%Grid(i,1,1,1,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
-                !
-                &           - Psi%Grid(i,1,1,4,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
-                &           + Psi%Grid(i,1,1,4,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
-                !
-                &           - Psi%Grid(i,1,1,3,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
-                &           + Psi%Grid(i,1,1,3,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,2,1) 
+
+                l1 =  Psi%Grid(i,1,1,1,1)
+                l2 =  Psi%Grid(i,1,1,2,1)
+                l3 =  Psi%Grid(i,1,1,3,1)
+                l4 =  Psi%Grid(i,1,1,4,1)
+                AngMom(2,1) = AngMom(2,1) + l1*r1 + l2*r2 +l3*r3 + l4*r4
+!                 AngMom(2,1) = AngMom(2,1) + 0.5_dp * (                              &
+!                 &                         - Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,2,1) & 
+!                 &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,1,1) &
+!                 &                         - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,4,1) & 
+!                 &                         + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,3,1))
+
+!                 !Orbital 
+!                 AngMom(2,1) = AngMom(2,1)    &
+!                 &           - Psi%Grid(i,1,1,1,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
+!                 &           + Psi%Grid(i,1,1,1,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,3,1) & 
+!                 !
+!                 &           - Psi%Grid(i,1,1,2,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
+!                 &           + Psi%Grid(i,1,1,2,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
+!                 !
+!                 &           - Psi%Grid(i,1,1,3,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
+!                 &           + Psi%Grid(i,1,1,3,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
+!                 !
+!                 &           - Psi%Grid(i,1,1,4,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
+!                 &           + Psi%Grid(i,1,1,4,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,2,1) 
             enddo
         else
             do i=1,nx*ny*nz
                 ! Spin
                 AngMom(2,1) = AngMom(2,1) + 0.5_dp * (                              &
-                &                         - Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,4,1) & 
-                &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,3,1) &
+                &                         + Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,4,1) & 
+                &                         - Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,3,1) &
                 &                         - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,2,1) & 
                 &                         + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,1,1))
 
@@ -1120,20 +1133,110 @@ contains
             &           + Psi%Grid(i,1,1,3,1)*Mesh3DX(i,1,1)*derphi(2)%Grid(i,1,1,4,1) 
         enddo
 
-!         if(Quadratic)
-!             !---------------------------------------------------------------------------
-!             ! X direction
+        if(Quadratic) then
+             !---------------------------------------------------------------------------
+             ! X direction
+             do i=1,nx*ny*nz
+                ! Action of J_x to the right
+                r1 = - Mesh3DZ(i,1,1)* DerPhi(2)%Grid(i,1,1,2,1) &
+                &    + Mesh3DY(i,1,1)* DerPhi(3)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,3,1)
+                r2 =   Mesh3DZ(i,1,1)* DerPhi(2)%Grid(i,1,1,1,1) &
+                &    - Mesh3DY(i,1,1)* DerPhi(3)%Grid(i,1,1,1,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,4,1)
+                r3 = - Mesh3DZ(i,1,1)* DerPhi(2)%Grid(i,1,1,4,1) &
+                &    + Mesh3DY(i,1,1)* DerPhi(3)%Grid(i,1,1,4,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+                r4 =   Mesh3DZ(i,1,1)* DerPhi(2)%Grid(i,1,1,3,1) &
+                &    - Mesh3DY(i,1,1)* DerPhi(3)%Grid(i,1,1,3,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,2,1)
 
-!             !---------------------------------------------------------------------------
-!             ! Y direction
+                !Action of J_x to the left
+                l1 = - Mesh3DZ(i,1,1)* DerPsi(2)%Grid(i,1,1,2,1) &
+                &    + Mesh3DY(i,1,1)* DerPsi(3)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,3,1)
+                l2 =   Mesh3DZ(i,1,1)* DerPsi(2)%Grid(i,1,1,1,1) &
+                &    - Mesh3DY(i,1,1)* DerPsi(3)%Grid(i,1,1,1,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,4,1)
+                l3 = - Mesh3DZ(i,1,1)* DerPsi(2)%Grid(i,1,1,4,1) &
+                &    + Mesh3DY(i,1,1)* DerPsi(3)%Grid(i,1,1,4,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,1,1)
+                l4 =   Mesh3DZ(i,1,1)* DerPsi(2)%Grid(i,1,1,3,1) &
+                &    - Mesh3DY(i,1,1)* DerPsi(3)%Grid(i,1,1,3,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,2,1)
 
-!             !---------------------------------------------------------------------------
-!             ! Z direction
-!             do i=1,nx*ny*nz
-!                 AngMom(6,1) = AngMom(6,1) + 
-!             enddo
-!             AngMom(6,1) = AngMom(6,1) + 0.25_dp
-!         endif
+                AngMom(4,1) = AngMom(4,1) + l1*r1 + l2*r2 + l3*r3 + l4*r4
+
+             enddo
+             !---------------------------------------------------------------------------
+             ! Y direction
+             do i=1,nx*ny*nz
+                ! Action of J_y to the right
+                r1 = - Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,2,1) &
+                &    + Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,4,1)
+                r2 =   Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,1,1) &
+                &    - Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,1,1) &
+                &    - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+                r3 = - Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,4,1) &
+                &    + Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,4,1) &
+                &    - 0.5_dp        * Phi%Grid(i,1,1,2,1)
+                r4 =   Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,3,1) &
+                &    - Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,3,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+
+                !Action of J_y to the left
+                l1 = - Mesh3DX(i,1,1)* DerPsi(3)%Grid(i,1,1,2,1) &
+                &    + Mesh3DZ(i,1,1)* DerPsi(1)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,4,1)
+                l2 =   Mesh3DX(i,1,1)* DerPsi(3)%Grid(i,1,1,1,1) &
+                &    - Mesh3DZ(i,1,1)* DerPsi(1)%Grid(i,1,1,1,1) &
+                &    - 0.5_dp        * Psi%Grid(i,1,1,3,1)
+                l3 = - Mesh3DX(i,1,1)* DerPsi(3)%Grid(i,1,1,4,1) &
+                &    + Mesh3DZ(i,1,1)* DerPsi(1)%Grid(i,1,1,4,1) &
+                &    - 0.5_dp        * Psi%Grid(i,1,1,2,1)
+                l4 =   Mesh3DX(i,1,1)* DerPsi(3)%Grid(i,1,1,3,1) &
+                &    - Mesh3DZ(i,1,1)* DerPsi(1)%Grid(i,1,1,3,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,1,1)
+
+                AngMom(5,1) = AngMom(5,1) + l1*r1 + l2*r2 + l3*r3 + l4*r4
+             enddo
+
+             !---------------------------------------------------------------------------
+             ! Z direction
+             do i=1,nx*ny*nz
+                ! Action of J_z to the right
+                r1 = - Mesh3DY(i,1,1)* DerPhi(1)%Grid(i,1,1,2,1) &
+                &    + Mesh3DX(i,1,1)* DerPhi(2)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+                r2 =   Mesh3DY(i,1,1)* DerPhi(1)%Grid(i,1,1,1,1) &
+                &    - Mesh3DX(i,1,1)* DerPhi(2)%Grid(i,1,1,1,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,2,1)
+                r3 = - Mesh3DY(i,1,1)* DerPhi(1)%Grid(i,1,1,4,1) &
+                &    + Mesh3DX(i,1,1)* DerPhi(2)%Grid(i,1,1,4,1) &
+                &    - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+                r4 =   Mesh3DY(i,1,1)* DerPhi(1)%Grid(i,1,1,3,1) &
+                &    - Mesh3DX(i,1,1)* DerPhi(2)%Grid(i,1,1,3,1) &
+                &    - 0.5_dp        * Phi%Grid(i,1,1,4,1)
+
+                !Action of J_z to the left
+                l1 = - Mesh3DY(i,1,1)* DerPsi(1)%Grid(i,1,1,2,1) &
+                &    + Mesh3DX(i,1,1)* DerPsi(2)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,1,1)
+                l2 =   Mesh3DY(i,1,1)* DerPsi(1)%Grid(i,1,1,1,1) &
+                &    - Mesh3DX(i,1,1)* DerPsi(2)%Grid(i,1,1,1,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,2,1)
+                l3 = - Mesh3DY(i,1,1)* DerPsi(1)%Grid(i,1,1,4,1) &
+                &    + Mesh3DX(i,1,1)* DerPsi(2)%Grid(i,1,1,4,1) &
+                &    - 0.5_dp        * Psi%Grid(i,1,1,3,1)
+                l4 =   Mesh3DY(i,1,1)* DerPsi(1)%Grid(i,1,1,3,1) &
+                &    - Mesh3DX(i,1,1)* DerPsi(2)%Grid(i,1,1,3,1) &
+                &    - 0.5_dp        * Psi%Grid(i,1,1,4,1)
+
+                AngMom(6,1) = AngMom(6,1) + l1*r1 + l2*r2 + l3*r3 + l4*r4
+             enddo
+             
+         endif
 
         AngMom = AngMom * dv
 
@@ -1399,8 +1502,8 @@ contains
 
     Vecs=0.0_dp
     do l=1,3
-            Psi = Pauli(WaveFunction%Value,l)
-            Vecs(:,:,:,l) = RealMultiplySpinor(WaveFunction%Value,Psi)   
+        Psi = Pauli(WaveFunction%Value,l)
+        Vecs(:,:,:,l) = RealMultiplySpinor(WaveFunction%Value,Psi)   
     enddo
   end function GetVecs
   

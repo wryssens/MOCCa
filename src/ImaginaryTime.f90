@@ -40,10 +40,10 @@ contains
         hPsi = hPsi + S
         hPsi = hPsi + A
             
-        if(B14.ne.0.0_dp .or. B15 .ne. 0.0_dp) then
-          C = ActionOfC(Psi)
-          hPsi = hPsi + C
-        endif
+!         if(B14.ne.0.0_dp .or. B15 .ne. 0.0_dp) then
+!           C = ActionOfC(Psi)
+!           hPsi = hPsi + C
+!         endif
 
         if(B16.ne.0.0_dp .or. B17 .ne. 0.0_dp) then
           D = ActionOfD(Psi)
@@ -131,7 +131,7 @@ contains
       
       !Calculate the update
       do it=1,2
-        Update(:,:,:,it) = c0*( Value(it)  - Desired(it))/(O2(it) + d0)*       &
+        Update(:,:,:,it) = c0*(Value(it)  - Desired(it))/(O2(it) + d0)*       &
         &                  Current%SpherHarm**power
       enddo
       Correction = Correction + Update
@@ -161,8 +161,7 @@ contains
       enddo
       
       !Substituting the correction
-      QPsi = QPsi - Correction(:,:,:,it)*Cutoff(:,:,:,it)*QPsi                 &
-      &    - TempSpinor
+      QPsi = QPsi - Correction(:,:,:,it)*Cutoff(:,:,:,it)*QPsi - TempSpinor
       call HFBasis(i)%SetGrid(QPsi)
     enddo
     ! Finally, orthonormalisation

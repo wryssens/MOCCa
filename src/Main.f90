@@ -50,7 +50,8 @@ program MOCCa
      ! In testing mode.
      if(TestRun.eq.1) then
         print*, "MOCCa is entering test mode!"
-        !call CompareDer
+        call DeriveAll()
+        call TestJ2
         call stp('End of TestRun')
      endif   
      !--------------------------------------------------------------------------
@@ -188,6 +189,7 @@ subroutine Evolve(MaxIterations, iprint)
   !Printing observables
   call PrintIterationInfo(0)
 
+
   !Checking for the presence of Rutz-Type constraints
   RutzCheck = CheckForRutzMoments()
 
@@ -212,6 +214,7 @@ subroutine Evolve(MaxIterations, iprint)
     ! When moments or angular moments are constrained according to K.Rutz' 
     ! prescription, there needs to be a correction step, dependent on the 
     ! density or angular moment obtained in  the meantime.
+
     if(RutzCheck) then
       call UpdateDensities(0,.true.)    
       call CalculateAllMoments(1) ! Save old values to history
@@ -223,11 +226,15 @@ subroutine Evolve(MaxIterations, iprint)
         call updateAm(.true.) 
         call ReadjustCranking(.true.)
     endif   
+    !Checking for the presence of Rutz-Type constraints
+    RutzCheck = CheckForRutzMoments()
+
     if(RutzCheck .or. RutzCrank) then
         !Apply Corrections and resolve pairing
         call RutzCorrectionStep
         call SolvePairing
     endif
+
     !---------------------------------------------------------------------------   
     !Deriving all Spwf
     call DeriveAll()

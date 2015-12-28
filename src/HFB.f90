@@ -78,7 +78,7 @@ module HFB
   !-----------------------------------------------------------------------------
   ! Logical. Check all kinds of relations that should hold for correct HFB
   ! calculations. Only to be used for debugging purposes.
-  logical,parameter :: HFBCheck=.true.
+  logical,parameter :: HFBCheck=.false.
   !-----------------------------------------------------------------------------
   ! Real that determines how much to damp the RhoHFB and KappaHFB matrices.
   real(KIND=dp) :: HFBMix=0.1_dp
@@ -249,10 +249,10 @@ contains
       ! Gamma =(1 - 2 * Rho)Kappa
       do it=1,2
         do P=1,Pindex
-          do j=1,HFBSize
-            do i=1,HFBSize
+          do j=1,blocksizes(P,it)
+            do i=1,blocksizes(P,it)
               Gamma(i,j,P,it) = KappaHFB(i,j,P,it)
-              do k=1,HFBsize
+              do k=1,blocksizes(P,it)
                 Gamma(i,j,P,it) = Gamma(i,j,P,it)-2*KappaHFB(k,j,P,it)*RhoHFB(i,k,P,it)
               enddo
             enddo
@@ -274,7 +274,7 @@ contains
             jj        = Blockindices(j,P,it)
             jjj       = mod(jj-1,nwt)+1
             sig1      = HFBasis(jjj)%GetSignature()
-            Temp(1)   = HFBasis(jjj)%GetValue()
+            !Temp(1)   = HFBasis(jjj)%GetValue()
             Cutoff(1) = PCutoffs(jjj)
             if(Cutoff(1).lt.HFBNumCut) cycle
             if(TRC .and. jj .ne. jjj) then
@@ -293,9 +293,9 @@ contains
               Cutoff(2) = PCutoffs(iii)                        
               ! Save some CPU cycles
               if(Cutoff(1)*Cutoff(2)*abs(KappaHFB(i,j,P,it)) .lt. HFBNumCut) cycle
-              Temp(2)  = HFBasis(iii)%GetValue()
+              !Temp(2)  = HFBasis(iii)%GetValue()
         
-              ActionOfPairing = GetPairDensity(Temp(1),Temp(2))
+              ActionOfPairing = GetPairDensity(HFBasis(jjj)%Value,HFBasis(iii)%Value)
               factor    = Cutoff(1)*Cutoff(2)*DBLE(KappaHFB(i,j,P,it))
               factorLN  = Cutoff(1)*Cutoff(2)*DBLE(Gamma(i,j,P,it))
               do l=1,nx*ny*nz
@@ -313,13 +313,13 @@ contains
         enddo
       enddo
     else
-      do it=1,Iindex
+     do it=1,Iindex
         do P=1,Pindex
           do j=1,blocksizes(P,it)
             jj        = Blockindices(j,P,it)
             jjj       = mod(jj-1,nwt)+1
             sig1      = HFBasis(jjj)%GetSignature()
-            Temp(1)   = HFBasis(jjj)%GetValue()
+            !Temp(1)   = HFBasis(jjj)%GetValue()
             Cutoff(1) = PCutoffs(jjj)
             if(Cutoff(1).lt.HFBNumCut) cycle
             if(TRC .and. jj .ne. jjj) then
@@ -339,10 +339,10 @@ contains
               
               ! Save some CPU cycles
               if(Cutoff(1)*Cutoff(2)*abs(KappaHFB(i,j,P,it)) .lt. HFBNumCut) cycle
-              Temp(2)  = HFBasis(iii)%GetValue()
+              !Temp(2)  = HFBasis(iii)%GetValue()
               !Note that this does automatically include a Time-reversal operator
               ! when appropriate
-              ActionOfPairing = GetPairDensity(Temp(1),Temp(2))
+              ActionOfPairing = GetPairDensity(HFBasis(jjj)%Value,HFBasis(iii)%Value)
               factor          = Cutoff(1)*Cutoff(2)*DBLE(KappaHFB(i,j,P,it))
               do l=1,nx*ny*nz
                 Field(l,1,1,it) = Field(l,1,1,it) - factor*ActionOfPairing(l,1,1)
@@ -351,8 +351,7 @@ contains
           enddo
         enddo
       enddo
-
-      do it=1,2
+      do it=1,Iindex
         do i=1,nx*ny*nz
           Field(i,1,1,it) = Field(i,1,1,it) * DensityFactor(i,1,1,it)
         enddo
@@ -407,7 +406,7 @@ contains
           ii   = Blockindices(i,P,it)
           iii  = mod(ii-1,nwt)+1
           sig1 = HFBasis(iii)%GetSignature()
-          Psi1 = HFBasis(iii)%GetValue()
+          !Psi1 = HFBasis(iii)%GetValue()
           
           if(TRC .and. ii.ne.iii) then 
             !Psi1 = TimeReverse(Psi1)
@@ -443,8 +442,8 @@ contains
 
             if(Cutoff(1)*Cutoff(2) .lt. HFBNumCut) cycle
 
-            Psi2 = HFBasis(jjj)%GetValue()
-            Temp = GetPairDensity(Psi1,Psi2)        
+            !Psi2 = HFBasis(jjj)%GetValue()
+            Temp = GetPairDensity(HFBasis(iii)%Value,HFBasis(jjj)%Value)        
 
             Delta(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*                    & 
             &            (sum(   DBLE(Temp)  * DBLE(PairingField(:,:,:,it)))  &
@@ -2015,7 +2014,7 @@ subroutine InsertionSortQPEnergies
 
     !---------------------------------------------------------------------------
     ! Check if Kappa couples correctly between signatures
-    if(SC) then
+    if(SC .and. HFBCHECK) then
       do it=1,Iindex
           do P=1,Pindex
               do i=1,blocksizes(P,it)
@@ -2054,7 +2053,7 @@ subroutine InsertionSortQPEnergies
   real(KIND=dp)                             :: Energy,  RhoII, SR
   integer                                   :: it,P,i,j,S,ii,iii,loc(1),TS,jj,jjj,k
   integer                                   :: Columns(nwt,Pindex,Iindex)
-  integer                                   :: P2, C, index
+  integer                                   :: P2, C, index, N
 
   PairingDisp = 0.0_dp
   !-----------------------------------------------------------------------------
@@ -2134,22 +2133,26 @@ subroutine InsertionSortQPEnergies
           ! quantum numbers.
           if(jj.eq.jjj) then
             if(TSC) then
-                CanBasis(index) = Canbasis(index) + DBLE(CanTransfo(j,C,P,it))*&
-                &                                                    HFBasis(jjj)
-                !CanBasis(index) = SaxpyWF(CanBasis(index),DBLE(CanTransfo(j,C,P,it)),HFBasis(jjj))
+                do k=1,nx*ny*nz*4
+                  CanBasis(index)%Value%Grid(k,1,1,1,1) = Canbasis(index)%Value%Grid(k,1,1,1,1) + &
+                  &           DBLE(CanTransfo(j,C,P,it))* HFBasis(jjj)%Value%Grid(k,1,1,1,1)
+                enddo
+
+                !CanBasis(index)%Value = Canbasis(index)%Value + DBLE(CanTransfo(j,C,P,it))*&
+                !&                                                    HFBasis(jjj)%Value
             else
-                CanBasis(index) = Canbasis(index) +       CanTransfo(j,C,P,it)*&
-                &                                                    HFBasis(jjj)
+                CanBasis(index)%Value = Canbasis(index)%Value +       CanTransfo(j,C,P,it)*&
+                &                                                    HFBasis(jjj)%Value
             endif
           else
             ! Note that this should only happen when signature is not conserved,
             ! but TimeReversal is.
             if(TSC) then
-                CanBasis(index) = Canbasis(index) + DBLE(CanTransfo(j,C,P,it))*&
-                &                                  TimeReverseSpwf(HFBasis(jjj))
+                CanBasis(index)%Value = Canbasis(index)%Value + DBLE(CanTransfo(j,C,P,it))*&
+                &                                  TimeReverse(HFBasis(jjj)%Value)
             else
-                CanBasis(index) = Canbasis(index) +       CanTransfo(j,C,P,it)*&
-                &                                  TimeReverseSpwf(HFBasis(jjj))
+                CanBasis(index)%Value = Canbasis(index)%Value +       CanTransfo(j,C,P,it)*&
+                &                                  TimeReverse(HFBasis(jjj)%Value)
             endif
           endif          
         enddo
@@ -2174,10 +2177,6 @@ subroutine InsertionSortQPEnergies
   enddo
   if(index.ne.nwt+1) call stp('Not enough canonical spwfs were constructed.')
   !Do some stuff to get the canbasis in fighting condition
-  do i=1,nwt !Here there has to be 'nwt' instead of HFBSize
-    call CanBasis(i)%SymmetryOperators()
-    call CanBasis(i)%CompDer()
-  enddo
   !-----------------------------------------------------------------------------
   ! Another important observable is the single-particle energy of these
   ! wavefunctions, but this module has no access to the hPsi routine 
@@ -2196,7 +2195,13 @@ subroutine InsertionSortQPEnergies
   enddo
   !-----------------------------------------------------------------------------
   ! Save old density and anomalous density matrix.
-  OldRhoHFB = RhoHFB ; OldKappaHFB = KappaHFB
+  do it=1,Iindex
+    do P=1,Pindex
+      N = blocksizes(P,it)
+      OldRhoHFB(1:N,1:N,P,it) = RhoHFB(1:N,1:N,P,it) 
+      OldKappaHFB(1:N,1:N,P,it) = KappaHFB(1:N,1:N,P,it)
+    enddo
+  enddo
   
   end subroutine HFBOccupations
 
@@ -2725,7 +2730,7 @@ subroutine PrintBlocking
      !           n   <Rz>   E_qp   
     99  format ( i3, f7.2 , f10.5,2x, i3,2x, i3, 5(3x, f7.2))
 
-    align = QPalignment()
+    !align = QPalignment()
     do it=1,Iindex
         do P=1,Pindex
           print 10

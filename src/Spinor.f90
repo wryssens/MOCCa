@@ -510,20 +510,14 @@ contains
     do i=1,3
          allocate(DPsi(i)%Grid(nx,ny,nz,4,1))
     enddo
-    GridPsi = Psi%Grid
     do k=1, size(Psi%Grid,5)
       do l=1,4
-        DerivResult(:,:,:,1) = &
-        & DeriveX(GridPsi(:,:,:,l,k),Parity,Signature,TimeSimplex,l)
-        DerivResult(:,:,:,2) = &
-        & DeriveY(GridPsi(:,:,:,l,k),Parity,Signature,TimeSimplex,l)
-        DerivResult(:,:,:,3) = &
-        & DeriveZ(GridPsi(:,:,:,l,k),Parity,Signature,TimeSimplex,l)
-        do i=1,3
-          do n=1,nx*ny*nz
-            dPsi(i)%Grid(n,1,1,l,k) = DerivResult(n,1,1,i)
-          enddo
-        enddo 
+        dPsi(1)%Grid(:,:,:,l,k) = &
+        & DeriveX(Psi%Grid(:,:,:,l,k),Parity,Signature,TimeSimplex,l)
+        dPsi(2)%Grid(:,:,:,l,k) = &
+        & DeriveY(Psi%Grid(:,:,:,l,k),Parity,Signature,TimeSimplex,l)
+        dPsi(3)%Grid(:,:,:,l,k) = &
+        & DeriveZ(Psi%Grid(:,:,:,l,k),Parity,Signature,TimeSimplex,l)
       enddo
     enddo
     return    
@@ -542,12 +536,10 @@ contains
   
     dPsi = NewSPinor()
     
-    GridPsi = Psi%Grid
     do k=1, size(Psi%Grid,5)
       do l=1,4
-        DerivResult(:,:,:) = SecondDer_Central(GridPsi(:,:,:,l,k),             &
+        dPsi%Grid(:,:,:,l,k) = SecondDer_Central(Psi%Grid(:,:,:,l,k),             &
         & Direction,Parity,Signature,TimeSimplex,l)      
-        dPsi%Grid(:,:,:,l,k) = DerivResult(:,:,:)
       enddo
     enddo
   end function SecondDerivativeSpinor
@@ -568,17 +560,15 @@ contains
     integer, intent(in)       :: Parity,Signature,TimeSimplex
     integer                   :: i,k
     
-    LapPsi = NewSPinor()
+    allocate(LapPsi%Grid(nx,ny,nz,4,1))
 
     GridPsi = Psi%Grid
-    
-    do k=1, size(Psi%Grid,5)
+    !do k=1, size(Psi%Grid,5)
       do i=1,4
-        LapGrid(:,:,:,i,k) = &
-        & Laplacian(GridPsi(:,:,:,i,k),Parity,Signature,TimeSimplex,i)
+        LapPsi%Grid(:,:,:,i,1) = &
+        & Laplacian(GridPsi(:,:,:,i,1),Parity,Signature,TimeSimplex,i)
       enddo
-    enddo
-    LapPsi%Grid = LapGrid
+    !enddo
     return
   end function LapSpinor
   

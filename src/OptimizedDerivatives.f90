@@ -46,7 +46,7 @@ contains
       integer            :: i,j,k
       real(KIND=dp), intent(in) ::w(nx,ny,nz)
       real(KIND=dp), intent(out)::wx(nx,ny,nz)
-
+      real(KIND=dp)           :: ccdx  
       real(KIND=dp),parameter :: ca=45.0d0,cb=9.0d0,cc=60.0d0
 
       if (ix.gt.0) then
@@ -101,8 +101,9 @@ contains
       enddo
       enddo
 
+      ccdx = 1.0_dp / (cc*dx)
       do i=1,nx*ny*nz
-        wx(i,1,1) = wx(i,1,1) / (cc*dx)
+        wx(i,1,1) = wx(i,1,1) * ccdx
       enddo
 
       return
@@ -136,6 +137,7 @@ contains
       integer            :: i,j,k
       real(KIND=dp), intent(in) ::w(nx,ny,nz)
       real(KIND=dp), intent(out)::wy(nx,ny,nz)
+      real(KIND=dp)             :: ccdx
 
       real(KIND=dp),parameter :: ca=45.0d0,cb=9.0d0,cc=60.0d0
 
@@ -197,8 +199,9 @@ contains
       enddo
       enddo
 
+      ccdx= 1/(cc*dx)
       do i=1,nx*ny*nz
-        wy(i,1,1) = wy(i,1,1) / (cc*dx)
+        wy(i,1,1) = wy(i,1,1) *ccdx
       enddo
 
       return
@@ -232,7 +235,7 @@ contains
       integer            :: i,j,k
       real(KIND=dp), intent(in) ::w(nx,ny,nz)
       real(KIND=dp), intent(out)::wz(nx,ny,nz)
-
+      real(KIND=dp)             :: ccdx
       real(KIND=dp),parameter :: ca=45.0d0,cb=9.0d0,cc=60.0d0
 
 
@@ -289,8 +292,9 @@ contains
       enddo
       enddo
 
+      ccdx=1.0_dp/ (cc*dx)
       do i=1,nx*ny*nz
-        wz(i,1,1) = wz(i,1,1) / (cc*dx)
+        wz(i,1,1) = wz(i,1,1) * ccdx
       enddo
       return
   end subroutine derz
@@ -301,7 +305,6 @@ contains
     real(KIND=dp), target, intent(in) :: Grid(:,:,:)
     real(KIND=dp),allocatable         :: Der(:,:,:)
     integer                           :: i,j,k, S
-
     allocate(Der(nx,ny,nz)) ; Der = 0.0_dp
     call derz_ev4(Grid, der)
 
@@ -312,7 +315,7 @@ contains
       integer            :: i,j,k
       real(KIND=dp), intent(in) ::w(nx,ny,nz)
       real(KIND=dp), intent(out)::wz(nx,ny,nz)
-
+      real(KIND=dp)                     :: ccdx
       real(KIND=dp),parameter :: ca=45.0d0,cb=9.0d0,cc=60.0d0
 
       do i=1,nx*ny
@@ -344,8 +347,9 @@ contains
       enddo
       enddo
 
+      ccdx = 1.0_dp/(cc*dx)
       do i=1,nx*ny*nz
-        wz(i,1,1) = wz(i,1,1) / (cc*dx)
+        wz(i,1,1) = wz(i,1,1) *ccdx
       enddo
       return
   end subroutine derz_EV4
@@ -388,16 +392,17 @@ contains
       real(KIND=dp)            :: dw(nx,ny,nz)
       real(KIND=dp)            :: xf, xm, x2,x3,x4, xd
       integer                  :: i,j,k
-      
+
       xf = xxf                  ! = -8064.0d0
-      xm = xxm / xf             ! = 43050.0d0 / xf
+      xm = xxm / (xf*3)         ! = 43050.0d0 / xf
       x2 = xx2 / xf             ! =  1008.0d0 / xf
       x3 = xx3 / xf             ! =  -128.0d0 / xf
       x4 = xx4 / xf             ! =     9.0d0 / xf
       xd = xxd / xf * (dx*dx)   ! =  5040.0d0 / xf * (dx*dx)
+      xd = 1.0/xd
 
       do i=1,nx*ny*nz
-        dw(i,1,1) = xm * w(i,1,1)/3
+        dw(i,1,1) = xm * w(i,1,1)
       enddo
 
       do j=1,ny*nz
@@ -428,7 +433,7 @@ contains
       enddo
 
       do i=1,nx*ny*nz
-        dw(i,1,1) = - dw(i,1,1) / xd
+        dw(i,1,1) = - dw(i,1,1) * xd
       enddo
 
       return
@@ -445,14 +450,15 @@ contains
       integer                  :: i,j,k
       
       xf = xxf                  ! = -8064.0d0
-      xm = xxm / xf             ! = 43050.0d0 / xf
+      xm = xxm / (xf*3)         ! = 43050.0d0 / xf
       x2 = xx2 / xf             ! =  1008.0d0 / xf
       x3 = xx3 / xf             ! =  -128.0d0 / xf
       x4 = xx4 / xf             ! =     9.0d0 / xf
       xd = xxd / xf * (dx*dx)   ! =  5040.0d0 / xf * (dx*dx)
+      xd = 1.0_dp/xd
 
       do i=1,nx*ny*nz
-        dw(i,1,1) = xm * w(i,1,1)/3
+        dw(i,1,1) = xm * w(i,1,1)
       enddo
 
       do i=1,nx
@@ -498,7 +504,7 @@ contains
       enddo
 
       do i=1,nx*ny*nz
-        dw(i,1,1) = - dw(i,1,1) / xd
+        dw(i,1,1) = - dw(i,1,1) * xd
       enddo
 
     end subroutine lapla_Y_ev8
@@ -514,14 +520,15 @@ contains
         integer                  :: i,j,k
 
         xf = xxf                  ! = -8064.0d0
-        xm = xxm / xf             ! = 43050.0d0 / xf
+        xm = xxm / (xf*3)         ! = 43050.0d0 / xf
         x2 = xx2 / xf             ! =  1008.0d0 / xf
         x3 = xx3 / xf             ! =  -128.0d0 / xf
         x4 = xx4 / xf             ! =     9.0d0 / xf
         xd = xxd / xf * (dx*dx)   ! =  5040.0d0 / xf * (dx*dx)
+        xd = 1.0_dp/xd
 
         do i=1,nx*ny*nz
-            dw(i,1,1) = xm * w(i,1,1)/3
+            dw(i,1,1) = xm * w(i,1,1)
         enddo
 
         do i=1,nx*ny 
@@ -552,7 +559,7 @@ contains
         enddo
 
         do i=1,nx*ny*nz
-            dw(i,1,1) = - dw(i,1,1) / xd
+            dw(i,1,1) = - dw(i,1,1) * xd
         enddo
     end subroutine lapla_Z_ev8
 

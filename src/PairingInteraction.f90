@@ -74,51 +74,63 @@ contains
     type(Spinor), intent(in) :: wf1, wf2
     
     complex(KIND=dp)         :: ActionOfPairing(nx,ny,nz)
-    real(KIND=dp)            :: Temp(2,nx,ny,nz)
+    real(KIND=dp)            :: Temp(nx,ny,nz,2), l1,l2,l3,l4,r1,r2,r3,r4
     integer                  :: i
-
-    !ActionOfPairing = 0.0_dp
     
     if(.not.TRC) then 
       !---------------------------------------------------------------------------
       ! Real part
       do i=1,nx*ny*nz
-        Temp(1,i,1,1) =                                                      &
+        Temp(i,1,1,1) =                                                      &
         &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,3,1)            &
         &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,4,1)            &
         &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,1,1)            &
-        &             + wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,2,1)  
+        &             + wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,2,1) 
+      enddo
+
+      do i=1,nx*ny*nz
         !---------------------------------------------------------------------------
         ! Imaginary Part 
-        Temp(2,i,1,1) =                                                      &
+        Temp(i,1,1,2) =                                                      &
         &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,4,1)            &
         &             + wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,3,1)            &
         &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,2,1)            &
         &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,1,1)
       enddo
     else
-      !---------------------------------------------------------------------------
-      ! Real part
       do i=1,nx*ny*nz
-        Temp(1,i,1,1) =                                                      &
-        &             - wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,1,1)            &
-        &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,2,1)            &
-        &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,3,1)            &
-        &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,4,1)  
-        !---------------------------------------------------------------------------
-        ! Imaginary Part 
-        Temp(2,i,1,1) =                                                      &
-        &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,2,1)            &
-        &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,1,1)            &
-        &             + wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,4,1)            &
-        &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,3,1)
+        !---------------------------------------------------------------------
+        ! Real part
+        l1 = wf1%Grid(i,1,1,1,1) ; r1 = wf2%Grid(i,1,1,1,1)
+        l2 = wf1%Grid(i,1,1,2,1) ; r2 = wf2%Grid(i,1,1,2,1)
+        l3 = wf1%Grid(i,1,1,3,1) ; r3 = wf2%Grid(i,1,1,3,1)
+        l4 = wf1%Grid(i,1,1,4,1) ; r4 = wf2%Grid(i,1,1,4,1)
+        
+        ActionofPairing(i,1,1) = dcmplx( & 
+        !Temp(i,1,1,1) = -l1*r1 - l2*r2 - l3*r3 - l4*r4
+        !Temp(i,1,1,2) =  l1*r2 - l2*r1 + l3*r4 - l4*r3
+        & -l1*r1 - l2*r2 - l3*r3 - l4*r4, l1*r2 - l2*r1 + l3*r4 - l4*r3 )
+
+!         Temp(i,1,1,1) =                                                      &
+!         &             - wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,1,1)            &
+!         &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,2,1)            &
+!         &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,3,1)            &
+!         &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,4,1) 
+!      enddo
+!     do i=1,nx*ny*nz           
+!---------------------------------------------------------------------
+! Imaginary Part 
+!         Temp(i,1,1,2) =                  wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,2,1)            !&
+!         Temp(i,1,1,2) = Temp(i,1,1,2)  - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,1,1)            !&
+!         Temp(i,1,1,2) = Temp(i,1,1,2)  + wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,4,1)            !&
+!         Temp(i,1,1,2) = Temp(i,1,1,2)  - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,3,1) 
       enddo
     endif
 
-    do i=1,nx*ny*nz
-       ActionOfPairing(i,1,1) = dcmplx(Temp(1,i,1,1), Temp(2,i,1,1))
-    enddo
-    !if(all(ActionOfPairing .eq. 0.0 )) call stp('Action')
+!      do i=1,nx*ny*nz
+!         ActionOfPairing(i,1,1) = dcmplx(Temp(i,1,1,1), Temp(i,1,1,2))
+!      enddo
+
     return
   end function GetPairDensity
   

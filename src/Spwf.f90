@@ -12,7 +12,7 @@ module WaveFunctions
   public
 
   type Spwf 
-    private 
+    
 
     !---------------------------------------------------------------------------
     ! Value
@@ -246,10 +246,10 @@ contains
     real(KIND=dp), intent(in)    :: A
     type(Spinor)                 :: Psi
   
-    Psi = A * WF%Value
+    !AWF%Value = A * WF%Value
     AWF = NewWaveFunction(Psi, WF%Isospin, WF%TimeSimplex, WF%Parity, &
     &                     WF%Signature, WF%TimeReversal)
-  
+
   end function MultiplySpwfReal
 
   function MultiplySpwfComplex(A, WF) result(AWF)
@@ -281,26 +281,26 @@ contains
     integer                      :: i
     real(KIND=dp)                :: r(nx,ny,nz,4,1)
 
-    if(Phi%Parity.ne.Psi%Parity) then
-      call stp("You can't add wavefunctions with different parity!")
-    endif
-    if(Phi%Signature.ne.Psi%Signature) then
-      call stp("You can't add wavefunctions with different signature!")
-    endif
-    if(Phi%TimeSimplex.ne.Psi%TimeSimplex) then
-      call stp("You can't add wavefunctions with different TimeSimplex!")
-    endif
-    if(Phi%Isospin.ne.Psi%Isospin) then
-      call stp("You can't add wavefunctions with different isospin!")
-    endif
+!     if(Phi%Parity.ne.Psi%Parity) then
+!       call stp("You can't add wavefunctions with different parity!")
+!     endif
+!     if(Phi%Signature.ne.Psi%Signature) then
+!       call stp("You can't add wavefunctions with different signature!")
+!     endif
+!     if(Phi%TimeSimplex.ne.Psi%TimeSimplex) then
+!       call stp("You can't add wavefunctions with different TimeSimplex!")
+!     endif
+!     if(Phi%Isospin.ne.Psi%Isospin) then
+!       call stp("You can't add wavefunctions with different isospin!")
+!     endif
 
-    c = Psi%GetValue()
-    v = Phi%GetValue()
-
+!    c = Psi%GetValue()
+!    v = Phi%GetValue()
+    allocate(Chi%Value%Grid(nx,ny,nz,4,1))
     do i=1,4*nx*ny*nz
-        r(i,1,1,1,1) = v%Grid(i,1,1,1,1) + A * c%Grid(i,1,1,1,1)
+        Chi%Value%Grid(i,1,1,1,1) = Phi%Value%Grid(i,1,1,1,1) + A*Psi%Value%Grid(i,1,1,1,1)
     enddo
-    call Chi%SetGrid(r)
+    !call Chi%SetGrid(r)
 
     Chi%Isospin      = Phi%Isospin
     Chi%TimeSimplex  = Phi%TimeSimplex

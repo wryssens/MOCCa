@@ -178,10 +178,12 @@ contains
       call HFBasis(nw)%CompNorm()
       Norm=HFBasis(nw)%GetNorm()
 
-      ValueOne = HFBasis(nw)%GetValue()
-      ValueOne = (1.0d0/sqrt(Norm)) * ValueOne
+!       ValueOne = HFBasis(nw)%GetValue()
+!       ValueOne = (1.0d0/sqrt(Norm)) * ValueOne
       
-      call HFBasis(nw)%SetGrid(ValueOne)
+      do i=1,4*nx*ny*nz
+        HFBasis(nw)%Value%Grid(i,1,1,1,1) = (1.0d0/sqrt(Norm)) * HFBasis(nw)%Value%Grid(i,1,1,1,1)
+      enddo
       call HFBasis(nw)%CompNorm()
 
       Isospin   = HFBasis(nw)%GetIsospin()
@@ -210,8 +212,7 @@ contains
         if(HFBasis(mw)%GetSignature().ne.Signature) cycle
 
         MatrixElement=InProduct(HFBasis(mw),HFBasis(nw))            
-        ValueTwo = HFBasis(mw)%GetValue()
-
+        !ValueTwo = HFBasis(mw)%GetValue()
         !________________________________________________________
         ! Working version with overloaded operators.
         ! However, this is slow due to repeated loading/storing.
@@ -224,33 +225,33 @@ contains
         ! signature and/or timereversal
         !_________________________________________________________
 
-        !Don't use the builtins to gain some time
         do i=1,4*nx*ny*nz
-          Temp%Grid(i,1,1,1,1) = ValueTwo%Grid(i,1,1,1,1) - MatrixElement(1) * ValueOne%Grid(i,1,1,1,1) 
+          HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
+          &                                   MatrixElement(1) * HFBasis(nw)%Value%Grid(i,1,1,1,1) 
         enddo
 
-        if(.not.TSC) then
-         !Imaginary Part of MatrixElement (Zero when timesimplex is conserved).
-         Temp2 = MultiplyI(ValueOne)
-         Temp2 = (MatrixElement(2))*Temp2
-         Temp  = Temp + Temp2
-        endif
+!         if(.not.TSC) then
+!          !Imaginary Part of MatrixElement (Zero when timesimplex is conserved).
+!          Temp2 = MultiplyI(ValueOne)
+!          Temp2 = (MatrixElement(2))*Temp2
+!          Temp  = Temp + Temp2
+!         endif
         
-        ! If signature is broken, but time reversal is conserved, also 
-        ! orthogonalise against the time-reversed functions
-        if(.not.SC .and. TRC) then
-          Temp2 = TimeReverse(ValueOne)
-          MatrixElement(1)  = InproductSpinorReal(Temp2, Temp)
-          if(.not.TSC) then
-            MatrixElement(2)  = InproductSpinorImaginary(Temp2, Temp)
-            Temp2 = MultiplyI(Temp2)
-            Temp = Temp - MatrixElement(2)*Temp2
-            Temp2 = -MultiplyI(Temp2)
-          endif                    
-          Temp = Temp - MatrixElement(1)*Temp2                                  
-        endif
+!         ! If signature is broken, but time reversal is conserved, also 
+!         ! orthogonalise against the time-reversed functions
+!         if(.not.SC .and. TRC) then
+!           Temp2 = TimeReverse(ValueOne)
+!           MatrixElement(1)  = InproductSpinorReal(Temp2, Temp)
+!           if(.not.TSC) then
+!             MatrixElement(2)  = InproductSpinorImaginary(Temp2, Temp)
+!             Temp2 = MultiplyI(Temp2)
+!             Temp = Temp - MatrixElement(2)*Temp2
+!             Temp2 = -MultiplyI(Temp2)
+!           endif                    
+!           Temp = Temp - MatrixElement(1)*Temp2                                  
+!         endif
         !Save the result to the corresponding wavefunction
-        call HFBasis(mw)%SetGrid(Temp)     
+        !call HFBasis(mw)%SetGrid(Temp)     
       enddo
     enddo
   end subroutine GramSchmidt
@@ -260,11 +261,17 @@ contains
     ! This subroutine derives all of the Spwf, using the subroutine CompDer.
     !---------------------------------------------------------------------------
     integer            :: i
+    INTEGER            :: NTHREADS, TID, OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
+    real(KIND=dp)      :: time(2)
 
     do i=1,nwt
         call HFBasis(i)%CompDer()
     enddo
-
+    if(allocated(CanBasis)) then
+      do i=1,nwt
+        call CanBasis(i)%CompDer()
+      enddo
+    endif
     return
   end subroutine DeriveAll
   

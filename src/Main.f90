@@ -246,6 +246,7 @@ subroutine Evolve(MaxIterations, iprint)
       if(Pairingtype.eq.2) then
         CanEnergy = InproductSpinorReal(CanBasis(i)%GetValue(), hPsi(Canbasis(i)))
         call Canbasis(i)%SetEnergy(CanEnergy)
+        call CanBasis(i)%SymmetryOperators()
       endif
     enddo
 

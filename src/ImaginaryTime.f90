@@ -180,7 +180,7 @@ contains
     integer :: i
     real(KIND=dp)             :: SpEnergy, SpDispersion, Propfactor
     type(Spinor)              :: Current, ActionOfH
-    integer, intent(in)     :: iteration
+    integer, intent(in)       :: iteration
 
     Propfactor = dt/hbar
 

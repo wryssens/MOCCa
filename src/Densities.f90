@@ -123,8 +123,7 @@ contains
       R%Vecs=0.0_dp ; R%RotVecj =0.0_dp ; R%DerS=0.0_dp ;
            
       !Derivatives of s
-      if(B18.ne.0.0_dp .or. B19.ne.0.0_dp.or.B20.ne.0.0_dp .or. B21.ne.0.0_dp) &
-      & then
+      if(B18 .ne. 0.0_dp .or. B19 .ne. 0.0_dp .or. B20.ne.0.0_dp .or. B21.ne.0.0_dp) then
         allocate(R%LapS(sizex,sizey,sizez,3,2))
         R%LapS=0.0_dp ;        
         allocate(R%GradDivS(sizex,sizey,sizez,3,2))
@@ -132,6 +131,7 @@ contains
         allocate(R%DivS(sizex,sizey,sizez,2))
         R%DivS = 0.0_dp
       endif
+
       !F & T densities.      
       if(B15.ne.0.0_dp .or. B16.ne.0.0_dp) then
         allocate(R%VecT(sizex,sizey,sizez,3,2))
@@ -405,7 +405,6 @@ contains
     !Computing the derivatives of vecj & vecs
     if(.not.TRC) then
       DenIn%RotVecJ = DeriveVecJ(DenIn%VecJ)    
-      
       call DeriveVecS(DenIn)
     endif
   end subroutine ComputeDensity
@@ -484,44 +483,48 @@ contains
     integer :: i,it
     type(DensityVector), intent(inout) :: DenIn
     real(KIND=dp)                      :: DivS(nx,ny,nz,2)
-    
+    logical                            :: MoreDers
+
+    MoreDers=.true.
+    if(B18.eq.0.0_dp.and.B19.eq.0.0_dp.and.B20.eq.0.0_dp .and. B21.eq.0.0_dp) then
+      MoreDers = .false.
+    endif
+
     do it=1,2
       !-------------------------------------------------------------------------
       ! See for instance Table V in 
       !                      V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
-      
+      !-------------------------------------------------------------------------
+      ! Double checked on 02/01/2016
       !--------------------- X Components---------------------------------------                   
-      if(B18.ne.0.0_dp.or.B19.ne.0.0_dp .or. B20.ne.0.0_dp .or. B21.ne.0.0_dp)&
-      & then
-      DenIn%LapS(:,:,:,1,it) = Laplacian(DenIn%VecS(:,:,:,1,it),               &
-      &                                ParityInt,-SignatureInt,TimeSimplexInt,1)
+      if(MoreDers) then
+        DenIn%LapS(:,:,:,1,it) = Laplacian(DenIn%VecS(:,:,:,1,it),             &
+        &                              ParityInt,-SignatureInt,TimeSimplexInt,1)
       endif
-      
+ 
       DenIn%DerS(:,:,:,1,1,it) = &
       & DeriveX(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)    
       DenIn%DerS(:,:,:,2,1,it) = &
       & DeriveY(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1) 
       DenIn%DerS(:,:,:,3,1,it) = &
-      & DeriveZ(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)    
+      & DeriveZ(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)
 
       !--------------------- Y Components--------------------------------------  
-      if(B18.ne.0.0_dp.or.B19.ne.0.0_dp .or. B20.ne.0.0_dp .or. B21.ne.0.0_dp)&
-      & then
-      DenIn%LapS(:,:,:,2,it) = Laplacian(DenIn%VecS(:,:,:,2,it),               &
-      &                               ParityInt,-SignatureInt,-TimeSimplexInt,1)
+      if(MoreDers) then
+        DenIn%LapS(:,:,:,2,it) = Laplacian(DenIn%VecS(:,:,:,2,it),             &
+        &                             ParityInt,-SignatureInt,TimeSimplexInt,2)
       endif
       DenIn%DerS(:,:,:,1,2,it) = &
-      &DeriveX(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,-TimeSimplexInt,1)    
+      &DeriveX(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)    
       DenIn%DerS(:,:,:,2,2,it) = &
-      &DeriveY(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,-TimeSimplexInt,1) 
+      &DeriveY(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2) 
       DenIn%DerS(:,:,:,3,2,it) = &
-      &DeriveZ(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,-TimeSimplexInt,1)    
+      &DeriveZ(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)    
 
       !--------------------- Z Components--------------------------------------  
-      if(B18.ne.0.0_dp.or.B19.ne.0.0_dp .or. B20.ne.0.0_dp .or. B21.ne.0.0_dp)&
-      & then
-      DenIn%LapS(:,:,:,3,it) = Laplacian(DenIn%VecS(:,:,:,3,it),               &
-      &                                 ParityInt,SignatureInt,TimeSimplexInt,1)
+      if(MoreDers) then
+        DenIn%LapS(:,:,:,3,it) = Laplacian(DenIn%VecS(:,:,:,3,it),             &
+        &                              ParityInt,SignatureInt,TimeSimplexInt,1)
       endif
       DenIn%DerS(:,:,:,1,3,it) = &
       & DeriveX(DenIn%VecS(:,:,:,3,it),ParityInt,Signatureint,TimeSimplexInt,1)    
@@ -535,8 +538,7 @@ contains
       DenIn%RotS(:,:,:,2,it) = DenIn%DerS(:,:,:,3,1,it)-DenIn%DerS(:,:,:,1,3,it)
       DenIn%RotS(:,:,:,3,it) = DenIn%DerS(:,:,:,1,2,it)-DenIn%DerS(:,:,:,2,1,it)
       
-      if(B18.ne.0.0_dp.or.B19.ne.0.0_dp .or. B20.ne.0.0_dp .or. B21.ne.0.0_dp)&
-      & then
+      if(MoreDers) then
         DivS(:,:,:,it)=0.0_dp   
         do i=1,3
           DivS(:,:,:,it) = DenIn%DivS(:,:,:,it) + DenIn%DerS(:,:,:,i,i,it)
@@ -544,20 +546,18 @@ contains
       endif
     enddo
             
+    if(.not. MoreDers) return
      !This one is dubious: several numerical derivatives are "stacked".
-    if(B18.ne.0.0_dp.or.B19.ne.0.0_dp .or. B20.ne.0.0_dp .or. B21.ne.0.0_dp)&
-    & then
-      do it=1,2
-        ! See for instance Table V in 
-        ! V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
-        DenIn%GradDivS(:,:,:,1,it) = DeriveX( &
-        &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
-        DenIn%GradDivS(:,:,:,2,it) = DeriveY( & 
-        &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
-        DenIn%GradDivS(:,:,:,3,it) = DeriveZ( &
-        &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
-      enddo
-    endif
+    do it=1,2
+      ! See for instance Table V in 
+      ! V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
+      DenIn%GradDivS(:,:,:,1,it) = DeriveX( &
+      &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
+      DenIn%GradDivS(:,:,:,2,it) = DeriveY( & 
+      &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
+      DenIn%GradDivS(:,:,:,3,it) = DeriveZ( &
+      &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
+    enddo
   end subroutine DeriveVecs
   
   subroutine WriteDensity(Den, unit)

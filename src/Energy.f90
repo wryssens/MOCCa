@@ -169,7 +169,7 @@ contains
     B(8) = B8a*dv*B(8)
 
     !B9 Terms
-    B(9) = sum(RhoT*NablaJT) 
+    B(9) = sum(RhoT*NablaJT)
     if(.not.TRC) then
       B(9) = B(9) + sum(sum(vecJT*RotST,4))
     endif
@@ -178,6 +178,7 @@ contains
       B(9) = B(9) + B9q*(sum(Den%Rho(:,:,:,it)*Den%NablaJ(:,:,:,it)))
       if(.not.TRC) then
         B(9) = B(9) + B9q* sum(sum(Den%vecJ(:,:,:,:,it)*Den%RotS(:,:,:,:,it),4))
+        
       endif
     enddo
     B(9) = B(9) * dv
@@ -203,20 +204,20 @@ contains
     if(B14.ne. 0.0_dp) then
       B(14)=(sum(JMuNuT**2))
       if(.not.TRC) then
-        B(14) = B(14)  -sum(VecST(:,:,:,1)*VecTT(:,:,:,1)-                   &
-        & VecST(:,:,:,2)*VecTT(:,:,:,2)-VecST(:,:,:,3)*VecTT(:,:,:,3))
+        B(14) = B(14)  - sum(VecST(:,:,:,1)*VecTT(:,:,:,1)+                   &
+        & VecST(:,:,:,2)*VecTT(:,:,:,2)+VecST(:,:,:,3)*VecTT(:,:,:,3))
       endif
       B(14) = B14*dv*B(14)
     endif
 
     !B15 Terms
     if(B15.ne. 0.0_dp) then
-      do it=1,2
-        B(15)= B(15) + sum(Den%JMuNu(:,:,:,:,:,it)**2)
-        if(.not.TRC) then
-          B(15) = B(15)  - sum(sum(Den%VecS(:,:,:,:,it)*Den%VecT(:,:,:,:,it),4))
-        endif
-      enddo
+      B(15)= sum(Den%JMuNu(:,:,:,:,:,:)**2)
+      if(.not.TRC) then
+        B(15) = B(15) +(- sum(Den%VecS(:,:,:,1,:)*Den%VecT(:,:,:,1,:))    &
+          &             - sum(Den%VecS(:,:,:,2,:)*Den%VecT(:,:,:,2,:))    &
+          &             - sum(Den%VecS(:,:,:,3,:)*Den%VecT(:,:,:,3,:)) ) 
+      endif
       B(15) = B15*dv*B(15)
     endif
 
@@ -470,32 +471,25 @@ contains
     do i=1,nwt
       SpwfEnergy=SpwfEnergy+DensityBasis(i)%GetOcc()*DensityBasis(i)%GetEnergy()
     enddo
-        
     ! Adding the kinetic energy and the rearrangement term due to the density
     ! dependence and Coulomb Exchange
     SpwfEnergy = 0.5_dp*(SpwfEnergy + sum(Kinetic)-byt3a*(Bterm(7) + BTerm(8)))&
     &            + CoulombExchange/3.d0
-        
-    !Remove the contribution from the multipole constraints
+     !Remove the contribution from the multipole constraints
     SpwfEnergy = SpwfEnergy - sum(ConstraintEnergy*Density%Rho)*dv/2.0_dp
-    
-    !Remove contribution from the cranking constraints
+     !Remove contribution from the cranking constraints
     SpwfEnergy = SpwfEnergy - sum(CrankEnergy)/2.0_dp
-    
     !Add the pairing Energy and Lipkin-Nogami energy
     SpwfEnergy = SpwfEnergy + sum(PairingEnergy) + sum(LNEnergy)
-    
     ! Always add the 1-body COMcorrection. In case it is used iteratively, it
     ! is double counted along with the kinetic energy!
     if(COM1body.gt.0) then
     	SpwfEnergy = SpwfEnergy  + sum(COMCorrection(1,:))/2.0_dp
     endif
-    
     !Add the 2-COMcorrection energy when they are not used iteratively.
     if(COM2body.eq.1) then
     	SpwfEnergy = SpwfEnergy  + sum(COMCorrection(2,:))
     endif
-  
     return
   end function SpwfEnergy
   

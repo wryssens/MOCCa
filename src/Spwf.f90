@@ -1517,33 +1517,27 @@ contains
     type(Spinor)            :: Psi
 
     VecT(:,:,:,:)=0.0_dp
-
-    if(WF%Signature.eq.0)  then
-      !-------------------------------------------------------------------------
-      !X component
-      !T_x = 2*Re[\nabla \Psi^*(r,+)\cdot\nabla \Psi(r,-) ]
-      ! This is constrained by signature symmetry.
-      !-------------------------------------------------------------------------
-      Temp =0.0_dp
-      do l=1,3
+    !-------------------------------------------------------------------------
+    !X component
+    !T_x = 2*Re[\nabla \Psi^*(r,+)\cdot\nabla \Psi(r,-) ]
+    !-------------------------------------------------------------------------
+    Temp =0.0_dp
+    do l=1,3
         Psi  = Pauli(WF%Der(l),1)
         Temp = Temp + RealMultiplySPinor(WF%Der(l) , Psi)
-      enddo
-      VecT(:,:,:,1)  = Temp
+    enddo
+    VecT(:,:,:,1)  = Temp
 
-    elseif((WF%Signature.eq.0).and.(WF%TimeSimplex.eq.0))then
-      !-------------------------------------------------------------------------
-      !Y component
-      !T_y = 2*Im[\nabla \Psi^*(r,+)\cdot\nabla \Psi(r,-) ]
-      !This is constrained by both time simplex and signature.
-      !-------------------------------------------------------------------------
-      Temp =0.0_dp
-      do l=1,3
+    !-------------------------------------------------------------------------
+    !Y component
+    !T_y = 2*Im[\nabla \Psi^*(r,+)\cdot\nabla \Psi(r,-) ]
+    !-------------------------------------------------------------------------
+    Temp =0.0_dp
+    do l=1,3
         Psi  = Pauli(WF%Der(l),2)
         Temp = Temp + RealMultiplySpinor(WF%Der(l) , Psi)
-      enddo
-      VecT(:,:,:,2)  = Temp
-    endif
+    enddo
+    VecT(:,:,:,2)  = Temp
     !---------------------------------------------------------------------------
     !Z component
     ! T_z = \nabla \Psi^*(r,+)\cdot\nabla \Psi(r,+)

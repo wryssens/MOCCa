@@ -339,6 +339,13 @@ contains
         GetOccupations    => HFBOccupations
         GetGaps           => HFBGaps!_TIMEREV!HFBGaps
         
+        !Decide on the diagonalization routine
+        if(SC) then
+          DiagonaliseHFBHamiltonian => DiagonaliseHFBHamiltonian_Signature
+        else
+          DiagonaliseHFBHamiltonian => DiagonaliseHFBHamiltonian_NoSignature !DiagonaliseHFBHamiltonian_ZHEEVR !
+        endif
+
         if(trim(FermiSolver).eq.'BROYDEN') then
           FindFermiEnergy   => HFBFindFermiEnergyBroyden
         elseif(trim(FermiSolver).eq.'BISECTION') then

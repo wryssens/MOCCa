@@ -1172,7 +1172,7 @@ contains
         allocate(InputKappa(filenwt,filenwt,Pin,IIn))
       endif
 
-      read(ICHan,iostat=ioerror) InputKappa      
+      read(ICHan,iostat=ioerror) InputKappa     
       if(ioerror.ne.0) then
         call stp('Did not read InputKappa correctly' , &
              &   'Iostat', ioerror)

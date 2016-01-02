@@ -97,6 +97,11 @@ contains
         &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,2,1)            &
         &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,1,1)
       enddo
+
+      do i=1,nx*ny*nz
+        ActionOfPairing(i,1,1) = dcmplx(Temp(i,1,1,1), Temp(i,1,1,2))
+      enddo
+
     else
       do i=1,nx*ny*nz
         !---------------------------------------------------------------------

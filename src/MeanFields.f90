@@ -138,38 +138,39 @@ contains
       & DeriveZ(BPot(:,:,:,it), ParityInt,SignatureInt,TimeSimplexInt, 1)
     enddo
 
-    !Calculating the divergence
+    !Calculating the divergence of the Dpotential
     do it=1,2
         DerXDX(:,:,:,it) = &
-        & DeriveX(DPot(:,:,:,1,it), ParityInt, TimeSimplexInt,SignatureInt, 1)
+        & DeriveX(DPot(:,:,:,1,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
         DerYDY(:,:,:,it) = &
-        & DeriveY(DPot(:,:,:,2,it), ParityInt, TimeSimplexInt,SignatureInt, 2)
+        & DeriveY(DPot(:,:,:,2,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
         DerZDZ(:,:,:,it) = &
-        & DeriveZ(DPot(:,:,:,3,it), ParityInt, TimeSimplexInt,SignatureInt, 1)
+        & DeriveZ(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
     enddo
     DivDPot = DerXDX + DerYDY + DerZDZ
 
+    !The derivative of the cpotential
     do it=1,2                 
         DerCPot(:,:,:,1,1,it) = &
-        & DeriveX(CPot(:,:,:,1,it), ParityInt,TimeSimplexInt,SignatureInt,1)
+        & DeriveX(CPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt,1)
         DerCPot(:,:,:,1,2,it) = &
-        & DeriveY(CPot(:,:,:,1,it), ParityInt,TimeSimplexInt,SignatureInt,1)
+        & DeriveY(CPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt,1)
         DerCPot(:,:,:,1,3,it) = &
-        & DeriveZ(CPot(:,:,:,1,it), ParityInt,TimeSimplexInt,SignatureInt,1)
+        & DeriveZ(CPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt,1)
     
         DerCPot(:,:,:,2,1,it) = &
-        & DeriveX(CPot(:,:,:,2,it), ParityInt,TimeSimplexInt,SignatureInt,2)
+        & DeriveX(CPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt,2)
         DerCPot(:,:,:,2,2,it) = &
-        & DeriveY(CPot(:,:,:,2,it), ParityInt,TimeSimplexInt,SignatureInt,2)
+        & DeriveY(CPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt,2)
         DerCPot(:,:,:,2,3,it) = &
-        & DeriveZ(CPot(:,:,:,2,it), ParityInt,TimeSimplexInt,SignatureInt,2)
+        & DeriveZ(CPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt,2)
     
         DerCPot(:,:,:,3,1,it) = &
-        & DeriveX(CPot(:,:,:,1,it), ParityInt,TimeSimplexInt,SignatureInt,1)
+        & DeriveX(CPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt,1)
         DerCPot(:,:,:,3,2,it) = &
-        & DeriveX(CPot(:,:,:,2,it), ParityInt,TimeSimplexInt,SignatureInt,1)
+        & DeriveY(CPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt,1)
         DerCPot(:,:,:,3,3,it) = &
-        & DeriveX(CPot(:,:,:,3,it), ParityInt,TimeSimplexInt,SignatureInt,1)
+        & DeriveZ(CPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt,1)
     enddo
   end subroutine DerivePotentials
   !=============================================================================
@@ -412,7 +413,7 @@ contains
        
        if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
         SPot(:,:,:,:,it) = SPot(:,:,:,:,it) &           
-         &          -((B14+B15)          *Density%VecT(:,:,:,:,it)             &
+         &          -        ((B14+B15)  *Density%VecT(:,:,:,:,it)     &
          &          - B14                *Density%VecT(:,:,:,:,at))            
        endif
        if(B16.ne.0.0_dp .or. B17.ne.0.0_dp) then  
@@ -425,7 +426,7 @@ contains
          &          + 2.0_dp*((B18+B19)  *Density%LapS(:,:,:,:,it)             &
          &          + B18                *Density%LapS(:,:,:,:,at))            &
          &          - 2.0_dp*((B20+B21)  *Density%GradDivS(:,:,:,:,it)         &
-         &          - B20                *Density%GradDivS(:,:,:,:,at)) 
+         &          - B20                *Density%GradDivS(:,:,:,:,at))
        endif
     enddo
 
@@ -471,7 +472,7 @@ contains
           CPot(:,:,:,:,it)=CPot(:,:,:,:,it)-2*B14*sum(Density%VecS(:,:,:,:,:),5)
       enddo
       do it=1,2
-          CPot(:,:,:,:,it)=CPot(:,:,:,:,it) - 2*B16*Density%VecS(:,:,:,:,it)
+          CPot(:,:,:,:,it)=CPot(:,:,:,:,it)-2*B15*Density%VecS(:,:,:,:,it)
       enddo
 
       return
@@ -699,7 +700,7 @@ contains
     type(Spwf) , intent(in) ::Psi
     type(Spinor)            ::ActionOfD, Der(3)
 
-    it = Psi%GetIsospin()
+    it = (Psi%GetIsospin() + 3)/2
 
     do m=1,3
         Der(m) = Psi%GetDer(m)
@@ -709,7 +710,7 @@ contains
     ActionOfD = ActionOfD + Der(2)
     ActionOfD = ActionOfD + Der(3)
 
-    ActionOfD = DivDPot(:,:,:,it) * ActionOfD
+    ActionOfD = - DivDPot(:,:,:,it) * ActionOfD
   end function ActionOfD
 
   function ActionOfC(Psi)
@@ -722,7 +723,7 @@ contains
     type(Spinor)            :: ActionOfC, Value, Der(3), Lap, Temp
 
     Value = Psi%GetValue()
-    it    = Psi%GetIsospin()
+    it    = (Psi%GetIsospin() + 3)/2
 
     !Terms involving the laplacian
     Lap = Psi%GetLap()
@@ -730,7 +731,7 @@ contains
     ActionOfC = NewSpinor()
     do m=1,3
         Temp = Pauli(Lap,m)
-        ActionOfC = ActionOfC  + CPot(:,:,:,m,it) * Temp
+        ActionOfC = ActionOfC  - CPot(:,:,:,m,it) * Temp
     enddo
 
     !Terms involving the derivatives
@@ -740,7 +741,7 @@ contains
     do m=1,3
         do n=1,3
             Temp = Pauli(Der(m), n)
-            ActionOfC = ActionOfC + DerCPot(:,:,:,n,m,it)*Temp
+            ActionOfC = ActionOfC - DerCPot(:,:,:,n,m,it)*Temp
         enddo
     enddo
   end function ActionOfC 

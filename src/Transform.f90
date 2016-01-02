@@ -1036,24 +1036,6 @@ contains
                 OutKappa(i,j,1,it) = - OutKappa(j,i,1,it)
               enddo
             enddo
-            
-!             print *, 'it = ', it
-!             print *, 'sizes', sizes
-!             print *, 'In, negative parity'
-!             do j=1,sizes(1)
-!               print *, DBLE(Inkappa( j, 1:sizes(1), 1,it))
-!             enddo
-!             print * 
-!             print *, 'In, positive parity'
-!             do j=1,sizes(2)
-!               print *, DBLE(Inkappa(j , 1:sizes(2), 2,it))
-!             enddo
-!             print *
-!             print *, 'out, all parity'
-!             do j=1,sizes(1) + sizes(2)
-!               print *, DBLE(OutKappa(j, 1:sum(sizes), 1, it ))
-!             enddo
-!             print *
         enddo
     endif
 
@@ -1509,8 +1491,8 @@ contains
     call NewWfTwo%SetOcc(NewWfTwo%GetOcc()/2.0_dp)
 
     !Changing signature quantum number
-    call NewWfOne%SetSignature(1)
-    call NewWfTwo%SetSignature(-1)
+    call NewWfOne%SetSignature( wf%signature)
+    call NewWfTwo%SetSignature(-wf%signature)
 
     !Switching the components of nr.2 around
     ! Action of timereversal is -i *\sigma_y * K

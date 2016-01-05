@@ -14,7 +14,7 @@ program MOCCa
     !---------------------------------------------------------------------------
 
     use GenInfo
-    use InOutput, only    : Input, Output, Pictures, Visualise
+    use InOutput, only    : Input, Output, PlotDensity
     use SpwfStorage, only : PrintSpwf, DensityBasis, HFBasis
     use Pairing, only     : PairingType
     use Testing
@@ -49,19 +49,12 @@ program MOCCa
      !--------------------------------------------------------------------------
      ! In testing mode.
      if(TestRun.eq.1) then
-        print*, "MOCCa is entering test mode!"
-        call DeriveAll()
-        call TestJ2
+        print*, "MOCCa is entering test mode!"  
         call stp('End of TestRun')
      endif   
      !--------------------------------------------------------------------------
      ! Solve the mean-field equations.
      call Evolve(MaxIter, .true.)     
-     !--------------------------------------------------------------------------
-     ! Make some pictures if wanted.
-     if(Pictures) then
-      call Visualise()
-     endif     
      !--------------------------------------------------------------------------
      ! Write wavefunctions to file!
      call Output
@@ -447,6 +440,7 @@ subroutine FinalIteration()
   use Densities,   only : UpdateDensities
   use Energy,      only : CompEnergy, PrintEnergy
   use Pairing,     only : SolvePairing
+  use InOutput,    only : Pictures, PlotDensity
   
   implicit none
   
@@ -476,6 +470,10 @@ subroutine FinalIteration()
   do i=1,nwt
     call DensityBasis(i)%CompDer()
   enddo
+
+  !Write densities to files.
+  if(Pictures) call PlotDensity()
+
   call UpdateDensities(0)
 
 end subroutine FinalIteration

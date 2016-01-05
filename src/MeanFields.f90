@@ -339,14 +339,14 @@ contains
       enddo                               
     enddo 
 
-    if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
-        do it=1,2                       
-          !B14&15 Contribution
-           WPot(:,:,:,:,:,it) =   WPot(:,:,:,:,:,it   )                &
-           & + 2.0_dp *(B14+B15)*Density%Jmunu(:,:,:,:,:,it   )        &
-           & + 2.0_dp * B14     *Density%Jmunu(:,:,:,:,:,3-it )
-        enddo
-   endif
+!     if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
+!         do it=1,2                       
+!           !B14&15 Contribution
+!            WPot(:,:,:,:,:,it) =   WPot(:,:,:,:,:,it   )                &
+!            & + 2.0_dp *(B14+B15)*Density%Jmunu(:,:,:,:,:,it   )        &
+!            & + 2.0_dp * B14     *Density%Jmunu(:,:,:,:,:,3-it )
+!         enddo
+!    endif
    if(B16 .ne. 0.0_dp .or. B17 .ne. 0.0_dp) then
       do it=1,2                       
         do m=1,3
@@ -411,11 +411,11 @@ contains
        &          + 2.0_dp*((B12a+B13a)*        RhoVecS(:,:,:,:,it)   &
        &          + B12a               *        RhoVecS(:,:,:,:,at))
        
-       if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
-        SPot(:,:,:,:,it) = SPot(:,:,:,:,it) &           
-         &          -        ((B14+B15)  *Density%VecT(:,:,:,:,it)     &
-         &          - B14                *Density%VecT(:,:,:,:,at))            
-       endif
+!        if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
+!         SPot(:,:,:,:,it) = SPot(:,:,:,:,it) &           
+!          &          -        ((B14+B15)  *Density%VecT(:,:,:,:,it)     &
+!          &          - B14                *Density%VecT(:,:,:,:,at))            
+!        endif
        if(B16.ne.0.0_dp .or. B17.ne.0.0_dp) then  
          SPot(:,:,:,:,it) = SPot(:,:,:,:,it) & 
          &          - 2.0_dp*((B16+B17)  *Density%VecF(:,:,:,:,it)             &
@@ -718,12 +718,29 @@ contains
     ! Function that computes the action of the C potential
     !  ActionOfC = - \nabla \cdot [\sigma \cdot C_q ] \nabla
     !---------------------------------------------------------------------------
-    integer                 :: m, it, n
+    use Derivatives
+
+    integer                 :: m, it, n,l
     type(Spwf) , intent(in) :: Psi
     type(Spinor)            :: ActionOfC, Value, Der(3), Lap, Temp
 
     Value = Psi%GetValue()
     it    = (Psi%GetIsospin() + 3)/2
+    ActionOfC = NewSPinor()
+
+!     do n=1,3
+!         Der(n)  = Psi%GetDer(n)      
+!         Temp(n) = NewSpinor()
+!         do m=1,3
+!             Temp(n) = Temp(n) - CPot(:,:,:,m,it)*Pauli(Der(n),m)
+!         enddo
+!     enddo
+!     do l=1,4
+!         Temp(1)%Grid(:,:,:,l,1) = DeriveX(Temp(1)%Grid(:,:,:,l,1),Psi%Parity,Psi%Signature,Psi%TimeSimplex,l)
+!         Temp(2)%Grid(:,:,:,l,1) = DeriveY(Temp(2)%Grid(:,:,:,l,1),Psi%Parity,Psi%Signature,Psi%TimeSimplex,l)
+!         Temp(3)%Grid(:,:,:,l,1) = DeriveZ(Temp(3)%Grid(:,:,:,l,1),Psi%Parity,Psi%Signature,Psi%TimeSimplex,l)
+!     enddo
+!     ActionOfC = ActionOfC + Temp(1) + Temp(2) + Temp(3)
 
     !Terms involving the laplacian
     Lap = Psi%GetLap()
@@ -731,8 +748,9 @@ contains
     ActionOfC = NewSpinor()
     do m=1,3
         Temp = Pauli(Lap,m)
-        ActionOfC = ActionOfC  - CPot(:,:,:,m,it) * Temp
+        ActionOfC = ActionOfC  + CPot(:,:,:,m,it) * Temp
     enddo
+
 
     !Terms involving the derivatives
     do m=1,3
@@ -741,7 +759,7 @@ contains
     do m=1,3
         do n=1,3
             Temp = Pauli(Der(m), n)
-            ActionOfC = ActionOfC - DerCPot(:,:,:,n,m,it)*Temp
+            ActionOfC = ActionOfC + DerCPot(:,:,:,n,m,it)*Temp
         enddo
     enddo
   end function ActionOfC 

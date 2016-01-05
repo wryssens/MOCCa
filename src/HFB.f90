@@ -557,7 +557,7 @@ contains
     enddo
   end subroutine HFBGaps_TIMEREV
 
-  function HFBNumberOfParticles_OLD(Lambda, Delta, LNLambda) result(N)
+  function HFBNumberOfParticles(Lambda, Delta, LNLambda) result(N)
   !-----------------------------------------------------------------------------
   ! Diagonalise the HFB Hamiltonian as a function of Lambda to get the number
   ! of particles of species it.
@@ -588,9 +588,9 @@ contains
       enddo
     enddo
 
-  end function HFBNumberOfParticles_OLD
+  end function HFBNumberOfParticles
 
-  function HFBNumberofParticles(Lambda, Delta, LNLambda) result(N)
+  function HFBNumberofParticles_NEW(Lambda, Delta, LNLambda) result(N)
     !-----------------------------------------------------------------------------------------------------
     ! Constructs the HFB state ( consisting of RhoHFB and KappaHFB ).
     !
@@ -618,16 +618,17 @@ contains
     complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
     real(KIND=dp), allocatable               :: GaugeEnergies(:,:,:)
 
-    real(KIND=dp) :: N(2)
+    real(KIND=dp) :: N(2), lowE
     integer       :: it, P, i, index, sanitycheck
 
     !if(.not.TRC) then
     if(.not. all(abs(OldRhoHFB).eq.0.0)) then
+
         if(.not.allocated(GaugeEnergies)) then
             allocate(GaugeEnergies(2*maxval(blocksizes),2,2))
         endif
 
-        call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge+0.2_dp)
+        call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,0.1_dp)
         call DiagonaliseHFBHamiltonian
         !Copy the quasienergies for comparison
         do it=1,Iindex
@@ -639,7 +640,7 @@ contains
 
     !----------------------------------------------------------------------
     ! This part is sufficient when Timereversal is conserved
-    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge)
+    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,0.0_dp)
     ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
     call DiagonaliseHFBHamiltonian
 
@@ -663,14 +664,14 @@ contains
             do P=1,Pindex
                 index = 1
                 do i=1,2*blocksizes(P,it)
-                    if(abs(GaugeEnergies(i,P,it) - QuasiEnergies(i,P,it)).gt. 0.05) cycle                     
+                    if( abs( GaugeEnergies(i,P,it) - QuasiEnergies(i,P,it) ) .gt. 0.05) cycle                     
                     HFBColumns(index,P,it) = i
                     index = index + 1
                     sanitycheck = sanitycheck + 1
                 enddo
             enddo
         enddo
-         if((TRC .and. SanityCheck.ne.2*nwt).or.(.not.TRC.and.SanityCheck.ne.nwt) ) then
+         !if((TRC .and. SanityCheck.ne.2*nwt).or.(.not.TRC.and.SanityCheck.ne.nwt) ) then
            do it=1,2
             do P=1,2
                print *
@@ -679,30 +680,32 @@ contains
                print *, HFBcolumns(1:blocksizes(P,it),P,it)
             enddo
            enddo
-         call stp('Sanity check failed in HFBParticleNumber', 'Sanity', SanityCheck)        
-         endif
-        do it=1,2
-            do P=1,2
-                index=0
-                do i=1,blocksizes(P,it)
-                    if(abs(Occupations(i,P,it)-1).lt.1d-10 ) index = index + 1 
-                enddo
-                if(mod(index,2) .ne.0) then
-                    print *, 'Wrong number parity'
-                    print *, 'P, it', P, it
-                    print *, index
-                    print *, quasienergies(1:2*blocksizes(P,it),P,it)
-                    print *, gaugeenergies(1:2*blocksizes(P,it),P,it)
-                    print *, hfbcolumns(1:blocksizes(P,it),P,it)
-                    stop
-                endif
-            enddo
-        enddo
-   
+         !call stp('Sanity check failed in HFBParticleNumber', 'Sanity', SanityCheck)        
+        !endif  
     endif
 
     call constructRhoHFB(HFBColumns)
     call DiagonaliseRhoHFB()
+
+    do it=1,2
+        do P=1,2
+            index=0
+            do i=1,blocksizes(P,it)
+                if(abs(Occupations(i,P,it)-1).lt.1d-10 ) index = index + 1 
+            enddo
+            if(mod(index,2) .ne.0) then
+                print *, 'Wrong number parity'
+                print *, 'P, it', P, it
+                print *, index
+                print *, quasienergies(1:2*blocksizes(P,it),P,it)
+                print *, gaugeenergies(1:2*blocksizes(P,it),P,it)
+                print *, hfbcolumns(1:blocksizes(P,it),P,it)
+                stop
+            endif
+        enddo
+    enddo
+
+    
     if(HFBCheck) call CheckRho(RhoHFB)
     call constructKappaHFB(HFBColumns)
     !--------------------------------------------------------------------
@@ -1197,7 +1200,7 @@ contains
       !-------------------------------------------------------------------------
       do i=1,N
         ! The 1 of the 1-Rho^*
-        HFBHamil(i+N,i+N,P,it) = HFBHamil(i+N,i+N,P,it) + Gauge
+        HFBHamil(i+N,i+N,P,it) = HFBHamil(i+N,i+N,P,it) + Gauge 
         do j=1,N
             ! Rho
             HFBHamil(i,j,P,it)     = HFBHamil(i,j,P,it)     + Gauge*OldRhoHFB(i,j,P,it)

@@ -28,9 +28,8 @@ module InOutput
   !for debugging purposes. Not active at the moment.
   logical :: ExtraOutput=.false.
   !-----------------------------------------------------------------------------
-  ! Whether or not to draw density pictures at the end.
+  ! Whether or not to write densities to file at the end of the iterations
   logical, public    :: Pictures=.false.
-  character(len=256) :: PictureFileName='Default'
   !-----------------------------------------------------------------------------
   ! Temporary storage for Kappa matrix, in order to be able to 
   ! continue HFB calculations. There needs to be some kind of temporary storage,
@@ -200,8 +199,7 @@ contains
     
     implicit none
     
-    NameList /InAndOutput/ InputFileName,OutputFileName,ExtraOutput, &
-    &                      Pictures, PictureFileName
+    NameList /InAndOutput/ InputFileName,OutputFileName,ExtraOutput,Pictures
     !--------------- Reading Input---------------------------------------   
     !Info for the GenInfo Module
     call ReadGenInfo()  
@@ -229,11 +227,6 @@ contains
     !Reading the names for the in- and outputfiles.
     read (unit=*, nml=InAndOutput)
         
-    !If picturefilename was blank, but the user asked for pictures, set default
-    !picture to the outfilename.
-    if(Pictures .and. len(PictureFileName) .eq. 0 ) then
-        PictureFileName = OutputFileName
-    endif
     ! Force namelist
     call ReadForceInfo()
     
@@ -1328,219 +1321,272 @@ contains
     close (OChan)
     
   end subroutine WriteMOCCa
-  
-  subroutine PlotDensity(Direction,Coord,Isospin)
-    !---------------------------------------------------------------------------
-    ! This subroutine uses the GnuForInterface module to plot a cutthrough view 
-    ! of the density.
-    ! Direction controls the direction along which the view is "cut", Coord the 
-    ! place of cutting.
-    !    Direction=1 : Y-Z plane is plotted, with X=Coordinate
-    !    Direction=2 : X-Z plane is plotted, with Y=Coordinate
-    !    Direction=3 : Y-Z plane is plotted, with Z=Coordinate
-    ! Isospin controls which density should be plotted:
-    !    Isospin=-1 : Neutron density
-    !    Isospin= 0 : Total Density
-    !    Isospin= 1 : Proton Density
-    !---------------------------------------------------------------------------
-    ! Filenames are Picturefilename + '.X/Y/Z.' + '.eps'
-    !---------------------------------------------------------------------------   
-    use GnuFor
-    use Mesh
+
+  subroutine PlotDensity()
+    !---------------------------------------------------------------------
+    ! Writes densities to file in formatted output, for plotting purposes.
+    ! 
+    !
+    !---------------------------------------------------------------------
     use Densities
-    
-    1 format (60('-'))
-    2 format ('Creating Density plot.')
-    3 format (' Cutthrough at ', A1, ' = ' , i2 )
-  
-    integer, intent(in)        :: Direction, Coord,Isospin
-    integer                    :: ierrorData,ierrorCommand,i,j,k
-    real(KIND=dp), allocatable :: ToPlot(:,:,:)
-    character(len=6)           :: xlabel,ylabel
-    character(len=256)         :: PlotFileName
 
-    !These ierror are useful for handling I/O errors. See the documentation of 
-    !the GnuFor module.
-    ierrorData = 0 ;   ierrorCommand=0
+    integer :: iunit,i,j,k
 
-    print 1
-    print 2
-    select case(Direction)
-      case (1)
-        print 3, 'X' , Coord
-      case (2)
-        print 3, 'Y' , Coord
-      case(3)
-        print 3, 'Z' , Coord
-    end select
-    print 1     
-    ! Cut along the X-direction
-    if(Direction.eq.1) then
-      xlabel='z (fm)'
-      ylabel='y (fm)'
-      PlotFileName=adjustl(adjustr(PictureFileName) // '.X')
-      !Formatting the data that should be used by gnuplot
-      allocate(ToPlot(3,ny,nz))
-      do k=1,nz
-        ToPlot(2,:,k)=MeshY
-      enddo
+    call get_unit(iunit)
+    open(iunit, File='density.X.dat')
+
+    do k=1,nz
       do j=1,ny
-        ToPlot(1,j,:)=MeshZ
+          i = nx/2+1
+          if(SC) i = 1
+          write(iunit, '(3f10.5)') Density%Rho(i,j,k,1), Density%Rho(i,j,k,2),&
+          &                       sum(Density%Rho(i,j,k,:))
+
       enddo
-      ! Choosing the correct density to plot and putting it into the correct 
-      !formatting.
-      if(Isospin.eq.-1)then
-        do k=1,nz
-          do j=1,ny
-              ToPlot(3,j,k)=Density%Rho(Coord,j,k,1)
-          enddo
-        enddo    
-      elseif(Isospin.eq.0) then
-        do k=1,nz
-          do j=1,ny
-              ToPlot(3,j,k)=Density%Rho(Coord,j,k,1)+Density%Rho(Coord,j,k,2)
-          enddo
-        enddo    
-      else
-        do k=1,nz
-          do j=1,ny
-              ToPlot(3,j,k)=Density%Rho(Coord,j,k,2)
-          enddo
-        enddo            
-      endif
-      ! Writing the gnuplot data to a file.
-      call write_xyzgrid_data("DensityProfile", ny,nz, ToPlot, ierrorData)
-    elseif(Direction.eq.2) then
-      xlabel='z (fm)'
-      ylabel='x (fm)'
-      PlotFileName=adjustl(adjustr(PictureFileName) // '.Y')
-      !Formatting the data that should be used by gnuplot
-      allocate(ToPlot(3,nx,nz))
-      do k=1,nz
-        ToPlot(2,:,k)=MeshX
+    enddo
+
+    close(iunit)
+
+    call get_unit(iunit)
+    open(iunit, File='density.Y.dat')
+
+    do k=1,nz
+        j = ny/2+1
+        if(TSC) j = 1
+        do i=1,nx
+          write(iunit, '(3f10.5)') Density%Rho(i,j,k,1), Density%Rho(i,j,k,2),&
+          &                       sum(Density%Rho(i,j,k,:))
+        enddo
+    enddo
+
+    close(iunit)
+
+    open(iunit, File='density.Z.dat')
+
+    k=nz/2+1
+    if(PC) k =1
+       do j=1,ny
+        do i=1,nx
+          write(iunit, '(3f10.5)') Density%Rho(i,j,k,1), Density%Rho(i,j,k,2),&
+          &                       sum(Density%Rho(i,j,k,:))
+        enddo
       enddo
-      do i=1,nx
-        ToPlot(1,i,:)=MeshZ
-      enddo
-      ! Choosing the correct density to plot and putting it into the correct 
-      ! formatting.
-      if(Isospin.eq.-1)then
-        do k=1,nz
-          do i=1,nx
-              ToPlot(3,i,k)=Density%Rho(i,Coord,k,1)
-          enddo
-        enddo    
-      elseif(Isospin.eq.0) then
-        do k=1,nz
-          do i=1,nx
-              ToPlot(3,i,k)=Density%Rho(i,Coord,k,1)+Density%Rho(i,Coord,k,2)
-          enddo
-        enddo    
-      else
-        do k=1,nz
-          do i=1,nx
-              ToPlot(3,i,k)=Density%Rho(i,Coord,k,2)
-          enddo
-        enddo            
-      endif
-      ! Writing the gnuplot data to a file.
-      call write_xyzgrid_data("DensityProfile", nx,nz, ToPlot, ierrorData)    
-    elseif(Direction.eq.3) then
-      xlabel='y (fm)'
-      ylabel='x (fm)'
-      PlotFileName=adjustl(adjustr(PictureFileName) // '.Z')
-      !Formatting the data that should be used by gnuplot
-      allocate(ToPlot(3,nx,ny))
-      do j=1,ny
-        ToPlot(2,:,j)=MeshX
-      enddo
-      do i=1,nx
-        ToPlot(1,i,:)=MeshY
-      enddo
-      ! Choosing the correct density to plot and putting it into the correct 
-      ! formatting.
-      if(Isospin.eq.-1)then
-        do j=1,ny
-          do i=1,nx
-              ToPlot(3,i,j)=Density%Rho(i,j,Coord,1)
-          enddo
-        enddo    
-      elseif(Isospin.eq.0) then
-        do j=1,ny
-          do i=1,nx
-              ToPlot(3,i,j)=Density%Rho(i,j,Coord,1)+Density%Rho(i,j,Coord,2)
-          enddo
-        enddo    
-      else
-        do j=1,ny
-          do i=1,nx
-              ToPlot(3,i,j)=Density%Rho(i,j,Coord,2)
-          enddo
-        enddo            
-      endif
-      ! Writing the gnuplot data to a file.
-      call write_xyzgrid_data("DensityProfile", nx,ny, ToPlot, ierrorData)
-    else
-      call stp('Wrong Direction in subroutine PlotDensity')    
-    endif
-    if(ierrorData.eq.0) then
-      ! Writing the gnuplot command script
-      call write_xyzgrid_contour ( "Command", "DensityProfile" ,               &
-      &                      trim(plotFilename), xlabel, ylabel, ierrorCommand )
-      if(ierrorCommand.eq.0) then
-          !Run Gnuplot with the command file
-          call run_gnuplot("Command")
-      else
-          call stp('Writing gnuplot command file was unsuccesful.')
-      endif
-    else
-      call stp('Writing datafile for gnuplot was unsuccesful.')
-    endif
-    deallocate(ToPlot)
-    return
+    close(iunit)
+
   end subroutine PlotDensity
   
-  subroutine Visualise
-  !-----------------------------------------------------------------------------
-  ! Subroutine for drawing some density profiles.
-  !-----------------------------------------------------------------------------
-    use Mesh
-    use SpwfStorage
-    use Densities
+!   subroutine PlotDensity(Direction,Coord,Isospin)
+!     !---------------------------------------------------------------------------
+!     ! This subroutine uses the GnuForInterface module to plot a cutthrough view 
+!     ! of the density.
+!     ! Direction controls the direction along which the view is "cut", Coord the 
+!     ! place of cutting.
+!     !    Direction=1 : Y-Z plane is plotted, with X=Coordinate
+!     !    Direction=2 : X-Z plane is plotted, with Y=Coordinate
+!     !    Direction=3 : Y-Z plane is plotted, with Z=Coordinate
+!     ! Isospin controls which density should be plotted:
+!     !    Isospin=-1 : Neutron density
+!     !    Isospin= 0 : Total Density
+!     !    Isospin= 1 : Proton Density
+!     !---------------------------------------------------------------------------
+!     ! Filenames are Picturefilename + '.X/Y/Z.' + '.eps'
+!     !---------------------------------------------------------------------------   
+!     use GnuFor
+!     use Mesh
+!     use Densities
     
-    integer :: PlotX, PlotY, PlotZ
+!     1 format (60('-'))
+!     2 format ('Creating Density plot.')
+!     3 format (' Cutthrough at ', A1, ' = ' , i2 )
   
-    if(.not.allocated(DensityHistory)) then
-      call iniden
-    endif
-    
-    if(.not.allocated(MeshX)) then
-      call inimesh
-    endif
-    
-    call UpdateDensities(1,.true.)
-    
-    if(SC) then
-      PlotX = 1
-    else
-      PlotX = nx/2+1
-    endif
-    if(TSC) then
-      PlotY = 1
-    else
-      PlotY = ny/2+1
-    endif
-    if(PC) then
-      PlotZ = 1
-    else
-      PlotZ = nz/2+1
-    endif
+!     integer, intent(in)        :: Direction, Coord,Isospin
+!     integer                    :: ierrorData,ierrorCommand,i,j,k
+!     real(KIND=dp), allocatable :: ToPlot(:,:,:)
+!     character(len=6)           :: xlabel,ylabel
+!     character(len=256)         :: PlotFileName
 
-    call PlotDensity(1,PlotX,0)
-    call sleep(2)
-    call PlotDensity(2,PlotY,0)
-    call sleep(2)
-    call PlotDensity(3,PlotZ,0)   
-  end subroutine Visualise
+!     !These ierror are useful for handling I/O errors. See the documentation of 
+!     !the GnuFor module.
+!     ierrorData = 0 ;   ierrorCommand=0
+
+!     print 1
+!     print 2
+!     select case(Direction)
+!       case (1)
+!         print 3, 'X' , Coord
+!       case (2)
+!         print 3, 'Y' , Coord
+!       case(3)
+!         print 3, 'Z' , Coord
+!     end select
+!     print 1     
+!     ! Cut along the X-direction
+!     if(Direction.eq.1) then
+!       xlabel='z (fm)'
+!       ylabel='y (fm)'
+!       PlotFileName=adjustl(adjustr(PictureFileName) // '.X')
+!       !Formatting the data that should be used by gnuplot
+!       allocate(ToPlot(3,ny,nz))
+!       do k=1,nz
+!         ToPlot(2,:,k)=MeshY
+!       enddo
+!       do j=1,ny
+!         ToPlot(1,j,:)=MeshZ
+!       enddo
+!       ! Choosing the correct density to plot and putting it into the correct 
+!       !formatting.
+!       if(Isospin.eq.-1)then
+!         do k=1,nz
+!           do j=1,ny
+!               ToPlot(3,j,k)=Density%Rho(Coord,j,k,1)
+!           enddo
+!         enddo    
+!       elseif(Isospin.eq.0) then
+!         do k=1,nz
+!           do j=1,ny
+!               ToPlot(3,j,k)=Density%Rho(Coord,j,k,1)+Density%Rho(Coord,j,k,2)
+!           enddo
+!         enddo    
+!       else
+!         do k=1,nz
+!           do j=1,ny
+!               ToPlot(3,j,k)=Density%Rho(Coord,j,k,2)
+!           enddo
+!         enddo            
+!       endif
+!       ! Writing the gnuplot data to a file.
+!       call write_xyzgrid_data("DensityProfile", ny,nz, ToPlot, ierrorData)
+!     elseif(Direction.eq.2) then
+!       xlabel='z (fm)'
+!       ylabel='x (fm)'
+!       PlotFileName=adjustl(adjustr(PictureFileName) // '.Y')
+!       !Formatting the data that should be used by gnuplot
+!       allocate(ToPlot(3,nx,nz))
+!       do k=1,nz
+!         ToPlot(2,:,k)=MeshX
+!       enddo
+!       do i=1,nx
+!         ToPlot(1,i,:)=MeshZ
+!       enddo
+!       ! Choosing the correct density to plot and putting it into the correct 
+!       ! formatting.
+!       if(Isospin.eq.-1)then
+!         do k=1,nz
+!           do i=1,nx
+!               ToPlot(3,i,k)=Density%Rho(i,Coord,k,1)
+!           enddo
+!         enddo    
+!       elseif(Isospin.eq.0) then
+!         do k=1,nz
+!           do i=1,nx
+!               ToPlot(3,i,k)=Density%Rho(i,Coord,k,1)+Density%Rho(i,Coord,k,2)
+!           enddo
+!         enddo    
+!       else
+!         do k=1,nz
+!           do i=1,nx
+!               ToPlot(3,i,k)=Density%Rho(i,Coord,k,2)
+!           enddo
+!         enddo            
+!       endif
+!       ! Writing the gnuplot data to a file.
+!       call write_xyzgrid_data("DensityProfile", nx,nz, ToPlot, ierrorData)    
+!     elseif(Direction.eq.3) then
+!       xlabel='y (fm)'
+!       ylabel='x (fm)'
+!       PlotFileName=adjustl(adjustr(PictureFileName) // '.Z')
+!       !Formatting the data that should be used by gnuplot
+!       allocate(ToPlot(3,nx,ny))
+!       do j=1,ny
+!         ToPlot(2,:,j)=MeshX
+!       enddo
+!       do i=1,nx
+!         ToPlot(1,i,:)=MeshY
+!       enddo
+!       ! Choosing the correct density to plot and putting it into the correct 
+!       ! formatting.
+!       if(Isospin.eq.-1)then
+!         do j=1,ny
+!           do i=1,nx
+!               ToPlot(3,i,j)=Density%Rho(i,j,Coord,1)
+!           enddo
+!         enddo    
+!       elseif(Isospin.eq.0) then
+!         do j=1,ny
+!           do i=1,nx
+!               ToPlot(3,i,j)=Density%Rho(i,j,Coord,1)+Density%Rho(i,j,Coord,2)
+!           enddo
+!         enddo    
+!       else
+!         do j=1,ny
+!           do i=1,nx
+!               ToPlot(3,i,j)=Density%Rho(i,j,Coord,2)
+!           enddo
+!         enddo            
+!       endif
+!       ! Writing the gnuplot data to a file.
+!       call write_xyzgrid_data("DensityProfile", nx,ny, ToPlot, ierrorData)
+!     else
+!       call stp('Wrong Direction in subroutine PlotDensity')    
+!     endif
+!     if(ierrorData.eq.0) then
+!       ! Writing the gnuplot command script
+!       call write_xyzgrid_contour ( "Command", "DensityProfile" ,               &
+!       &                      trim(plotFilename), xlabel, ylabel, ierrorCommand )
+!       if(ierrorCommand.eq.0) then
+!           !Run Gnuplot with the command file
+!           call run_gnuplot("Command")
+!       else
+!           call stp('Writing gnuplot command file was unsuccesful.')
+!       endif
+!     else
+!       call stp('Writing datafile for gnuplot was unsuccesful.')
+!     endif
+!     deallocate(ToPlot)
+!     return
+!   end subroutine PlotDensity
+  
+!   subroutine Visualise
+!   !-----------------------------------------------------------------------------
+!   ! Subroutine for drawing some density profiles.
+!   !-----------------------------------------------------------------------------
+!     use Mesh
+!     use SpwfStorage
+!     use Densities
+    
+!     integer :: PlotX, PlotY, PlotZ
+  
+!     if(.not.allocated(DensityHistory)) then
+!       call iniden
+!     endif
+    
+!     if(.not.allocated(MeshX)) then
+!       call inimesh
+!     endif
+    
+!     call UpdateDensities(1,.true.)
+    
+!     if(SC) then
+!       PlotX = 1
+!     else
+!       PlotX = nx/2+1
+!     endif
+!     if(TSC) then
+!       PlotY = 1
+!     else
+!       PlotY = ny/2+1
+!     endif
+!     if(PC) then
+!       PlotZ = 1
+!     else
+!       PlotZ = nz/2+1
+!     endif
+
+!     call PlotDensity(1,PlotX,0)
+!     call sleep(2)
+!     call PlotDensity(2,PlotY,0)
+!     call sleep(2)
+!     call PlotDensity(3,PlotZ,0)   
+!   end subroutine Visualise
 
 end module InOutput

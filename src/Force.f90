@@ -322,7 +322,7 @@ contains
 
     if(J2Terms) then
       B14  = -(1.0_dp/8.0_dp) * (t1*x1 + t2*x2)
-      B15  = (1.0_dp/8.0_dp) * (t1 - t2) 
+      B15  =  (1.0_dp/8.0_dp) * (t1 - t2) 
       ! Tensor contribution
       B14 = B14 + (1.0_dp/4.0_dp) * (te + to)
       B15 = B15 - (1.0_dp/4.0_dp) * (te - to)

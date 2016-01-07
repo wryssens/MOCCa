@@ -133,7 +133,7 @@ contains
       endif
 
       !F & T densities.      
-      if(B15.ne.0.0_dp .or. B16.ne.0.0_dp) then
+      if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
         allocate(R%VecT(sizex,sizey,sizez,3,2))
         R%VecT=0.0_dp ; 
       endif
@@ -177,7 +177,15 @@ contains
         Sum%DivS = Den1%DivS + Den2%DivS
       endif
     endif
-  
+
+    if(allocated(Sum%VecT)) then
+      Sum%VecT = Den1%VecT + Den2%VecT
+    endif
+
+    if(allocated(Sum%VecF)) then
+      Sum%VecF = Den1%VecF + Den2%VecF
+    endif
+
   end function Add
   
   function MultiplyScalar(A,Den) result(Prod)
@@ -206,6 +214,7 @@ contains
       Prod%RotVecj= A*Den%RotVecJ 
       Prod%Vecs   = A*Den%vecs
       Prod%RotS   = A*Den%RotS    
+      
       if(allocated(Prod%LapS)) then
         Prod%LapS     = A*Den%LapS             
         Prod%GradDivS = A*Den%GradDivS 
@@ -213,6 +222,15 @@ contains
         Prod%DerS     = A*Den%DerS
       endif
     endif
+
+    if(allocated(Prod%VecT)) then
+      Prod%VecT = A*Den%VecT
+    endif
+
+    if(allocated(Prod%VecF)) then
+      Prod%VecF = A*Den%VecF
+    endif
+
   end function MultiplyScalar
   
   real(KIND=dp) function Inproduct(Den1, Den2) 

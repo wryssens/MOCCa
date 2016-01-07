@@ -137,41 +137,44 @@ contains
       NablaBPot(:,:,:,3,it) = &
       & DeriveZ(BPot(:,:,:,it), ParityInt,SignatureInt,TimeSimplexInt, 1)
     enddo
+    !--------------------------------------------------------------------------
+    ! Unneccessary now, as we do no longer use this. 
+    ! See the remarks in function ActionOfC
+    !--------------------------------------------------------------------------
+!     !Calculating the divergence of the Dpotential
+!     do it=1,2
+!         DerXDX(:,:,:,it) = &
+!         & DeriveX(DPot(:,:,:,1,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
+!         DerYDY(:,:,:,it) = &
+!         & DeriveY(DPot(:,:,:,2,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
+!         DerZDZ(:,:,:,it) = &
+!         & DeriveZ(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
+!     enddo
+!     DivDPot = DerXDX + DerYDY + DerZDZ
 
-    !Calculating the divergence of the Dpotential
-    do it=1,2
-        DerXDX(:,:,:,it) = &
-        & DeriveX(DPot(:,:,:,1,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
-        DerYDY(:,:,:,it) = &
-        & DeriveY(DPot(:,:,:,2,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
-        DerZDZ(:,:,:,it) = &
-        & DeriveZ(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
-    enddo
-    DivDPot = DerXDX + DerYDY + DerZDZ
-
-    !The derivative of the cpotential
-    do it=1,2                 
-        DerCPot(:,:,:,1,1,it) = &
-        & DeriveX(CPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt,1)
-        DerCPot(:,:,:,1,2,it) = &
-        & DeriveY(CPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt,1)
-        DerCPot(:,:,:,1,3,it) = &
-        & DeriveZ(CPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt,1)
+!     !The derivative of the cpotential
+!     do it=1,2                 
+!         DerCPot(:,:,:,1,1,it) = &
+!         & DeriveX(CPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt,1)
+!         DerCPot(:,:,:,1,2,it) = &
+!         & DeriveY(CPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt,1)
+!         DerCPot(:,:,:,1,3,it) = &
+!         & DeriveZ(CPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt,1)
     
-        DerCPot(:,:,:,2,1,it) = &
-        & DeriveX(CPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt,2)
-        DerCPot(:,:,:,2,2,it) = &
-        & DeriveY(CPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt,2)
-        DerCPot(:,:,:,2,3,it) = &
-        & DeriveZ(CPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt,2)
+!         DerCPot(:,:,:,2,1,it) = &
+!         & DeriveX(CPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt,2)
+!         DerCPot(:,:,:,2,2,it) = &
+!         & DeriveY(CPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt,2)
+!         DerCPot(:,:,:,2,3,it) = &
+!         & DeriveZ(CPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt,2)
     
-        DerCPot(:,:,:,3,1,it) = &
-        & DeriveX(CPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt,1)
-        DerCPot(:,:,:,3,2,it) = &
-        & DeriveY(CPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt,1)
-        DerCPot(:,:,:,3,3,it) = &
-        & DeriveZ(CPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt,1)
-    enddo
+!         DerCPot(:,:,:,3,1,it) = &
+!         & DeriveX(CPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt,1)
+!         DerCPot(:,:,:,3,2,it) = &
+!         & DeriveY(CPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt,1)
+!         DerCPot(:,:,:,3,3,it) = &
+!         & DeriveZ(CPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt,1)
+!     enddo
   end subroutine DerivePotentials
   !=============================================================================
   ! Subroutines for calculating all the different potentials.
@@ -339,15 +342,15 @@ contains
       enddo                               
     enddo 
 
-!     if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
-!         do it=1,2                       
-!           !B14&15 Contribution
-!            WPot(:,:,:,:,:,it) =   WPot(:,:,:,:,:,it   )                &
-!            & + 2.0_dp *(B14+B15)*Density%Jmunu(:,:,:,:,:,it   )        &
-!            & + 2.0_dp * B14     *Density%Jmunu(:,:,:,:,:,3-it )
-!         enddo
-!    endif
-   if(B16 .ne. 0.0_dp .or. B17 .ne. 0.0_dp) then
+    if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
+        do it=1,2                       
+           !B14&15 Contribution
+           WPot(:,:,:,:,:,it) =   WPot(:,:,:,:,:,it)                   &
+           & + 2.0_dp *(B14+B15)*Density%Jmunu(:,:,:,:,:,it   )        &
+           & + 2.0_dp * B14     *Density%Jmunu(:,:,:,:,:,3-it )
+        enddo
+    endif
+    if(B16 .ne. 0.0_dp .or. B17 .ne. 0.0_dp) then
       do it=1,2                       
         do m=1,3
            do n=1,3
@@ -385,8 +388,6 @@ contains
     !             - B20*2*\nabla(\nabla \cdot \vec{s}) 
     !             - B21*2*\nabla(\nabla \cdot \vec{s})
     !
-    ! Notice that I think the sign in Hellemans et al. is wrong for the B9 
-    ! terms here.
     !---------------------------------------------------------------------------
     use Cranking, only : CrankSPot
    
@@ -411,11 +412,12 @@ contains
        &          + 2.0_dp*((B12a+B13a)*        RhoVecS(:,:,:,:,it)   &
        &          + B12a               *        RhoVecS(:,:,:,:,at))
        
-!        if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
-!         SPot(:,:,:,:,it) = SPot(:,:,:,:,it) &           
-!          &          -        ((B14+B15)  *Density%VecT(:,:,:,:,it)     &
-!          &          - B14                *Density%VecT(:,:,:,:,at))            
-!        endif
+       if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
+        print *, B14+B15
+        SPot(:,:,:,:,it) = SPot(:,:,:,:,it) &           
+        &          -         (B14+B15)  *Density%VecT(:,:,:,:,it)     &
+        &          -          B14       *Density%VecT(:,:,:,:,at)            
+       endif
        if(B16.ne.0.0_dp .or. B17.ne.0.0_dp) then  
          SPot(:,:,:,:,it) = SPot(:,:,:,:,it) & 
          &          - 2.0_dp*((B16+B17)  *Density%VecF(:,:,:,:,it)             &
@@ -468,11 +470,14 @@ contains
 
       CPot=0.0_dp
       if(B14 .eq. 0.0_dp .and. B15 .eq. 0.0_dp) return
+
       do it=1,2
-          CPot(:,:,:,:,it)=CPot(:,:,:,:,it)-2*B14*sum(Density%VecS(:,:,:,:,:),5)
+          CPot(:,:,:,:,it) = CPot(:,:,:,:,it)                                  &
+          &                - B14*(Density%VecS(:,:,:,:,1)+Density%VecS(:,:,:,:,2))
       enddo
       do it=1,2
-          CPot(:,:,:,:,it)=CPot(:,:,:,:,it)-2*B15*Density%VecS(:,:,:,:,it)
+          CPot(:,:,:,:,it) = CPot(:,:,:,:,it)                                   &
+          &                - B15*Density%VecS(:,:,:,:,it)
       enddo
 
       return
@@ -718,50 +723,65 @@ contains
     ! Function that computes the action of the C potential
     !  ActionOfC = - \nabla \cdot [\sigma \cdot C_q ] \nabla
     !---------------------------------------------------------------------------
+    ! Notice that there are two ways of calculating this, which numerically 
+    ! are NOT EQUIVALENT.
+    !
+    ! 1) Calculate
+    !       \sigma \cdot C \nabla \Psi. 
+    !    Then apply \nabla on that.
+    ! 2) Calculate 
+    !       \sigma \cdot C \Delta \Psi + (\sigma \cdot \nabla C) \nabla Psi
+    !
+    ! We use the first formulation, as this is the one CR8 uses.  
+    ! 
+    ! Why are they not equivalent? 
+    ! The first reason is that the \nabla and \Delta operators usually are not
+    ! represented to the same order in finite difference formulas (respectively
+    ! order 3 and order 4). This is likely the biggest source of the difference.
+    !
+    !---------------------------------------------------------------------------
     use Derivatives
 
     integer                 :: m, it, n,l
     type(Spwf) , intent(in) :: Psi
-    type(Spinor)            :: ActionOfC, Value, Der(3), Lap, Temp
+    type(Spinor)            :: ActionOfC, Der(3), Lap, Temp(3)
 
-    Value = Psi%GetValue()
     it    = (Psi%GetIsospin() + 3)/2
     ActionOfC = NewSPinor()
 
-!     do n=1,3
-!         Der(n)  = Psi%GetDer(n)      
-!         Temp(n) = NewSpinor()
-!         do m=1,3
-!             Temp(n) = Temp(n) - CPot(:,:,:,m,it)*Pauli(Der(n),m)
-!         enddo
-!     enddo
-!     do l=1,4
-!         Temp(1)%Grid(:,:,:,l,1) = DeriveX(Temp(1)%Grid(:,:,:,l,1),Psi%Parity,Psi%Signature,Psi%TimeSimplex,l)
-!         Temp(2)%Grid(:,:,:,l,1) = DeriveY(Temp(2)%Grid(:,:,:,l,1),Psi%Parity,Psi%Signature,Psi%TimeSimplex,l)
-!         Temp(3)%Grid(:,:,:,l,1) = DeriveZ(Temp(3)%Grid(:,:,:,l,1),Psi%Parity,Psi%Signature,Psi%TimeSimplex,l)
-!     enddo
-!     ActionOfC = ActionOfC + Temp(1) + Temp(2) + Temp(3)
-
-    !Terms involving the laplacian
-    Lap = Psi%GetLap()
-
-    ActionOfC = NewSpinor()
-    do m=1,3
-        Temp = Pauli(Lap,m)
-        ActionOfC = ActionOfC  + CPot(:,:,:,m,it) * Temp
-    enddo
-
-
-    !Terms involving the derivatives
-    do m=1,3
-        Der(m) = Psi%GetDer(m)
-    enddo
-    do m=1,3
-        do n=1,3
-            Temp = Pauli(Der(m), n)
-            ActionOfC = ActionOfC + DerCPot(:,:,:,n,m,it)*Temp
+    do n=1,3
+        Der(n)  = Psi%GetDer(n)      
+        Temp(n) = NewSpinor()
+        do m=1,3
+            Temp(n) = Temp(n) - CPot(:,:,:,m,it)*Pauli(Der(n),m)
         enddo
     enddo
-  end function ActionOfC 
+    
+    !---------------------------------------------------------------------------
+    ! Small explanation on the symmetries here, as I spent quite some time
+    ! getting this right.
+    !
+    ! 1) Notice that \sum_m C_m \sigma_m is a scalar, having +1 for all quantum
+    !    numbers. (Because \sigma_m is the generator of C_m ofcourse.)
+    ! 2) There are derivatives already present here. 
+    !    \nabla_x , \nabla_y , \nabla_z all anticommute with parity
+    !    \nabla_x and \nabla_y anticommute with signature
+    !    \nabla_z commutes with signature
+    !    \nabla_y anticommutes with Time-Simplex
+    !    \nabla_x and \nabla_z commute with TimeSimplex
+    !---------------------------------------------------------------------------
+
+    do l=1,4
+        Temp(1)%Grid(:,:,:,l,1) =                                                     &
+    &   DeriveX(Temp(1)%Grid(:,:,:,l,1), -Psi%Parity,-Psi%Signature, Psi%TimeSimplex,l)
+        Temp(2)%Grid(:,:,:,l,1) =                                                     &
+    &   DeriveY(Temp(2)%Grid(:,:,:,l,1), -Psi%Parity,-Psi%Signature,-Psi%TimeSimplex,l)
+        Temp(3)%Grid(:,:,:,l,1) =                                                     &
+    &   DeriveZ(Temp(3)%Grid(:,:,:,l,1), -Psi%Parity, Psi%Signature, Psi%TimeSimplex,l)
+    enddo
+
+    ActionOfC = ActionOfC + Temp(1) + Temp(2) + Temp(3)
+
+   end function ActionOfC 
   
 end module MeanFields

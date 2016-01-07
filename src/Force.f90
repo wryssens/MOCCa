@@ -64,8 +64,6 @@ module Force
     ! is for input purposes that people that want to read a force can input 
     ! 20.something. In the forcereading routine, hbm is multiplied again by 2.
     !-----------------------------------------------------------------------------
-
-
     !-----------------------------------------------------------------------------
     ! Integers governing COM-mass correction. They are intrinsically connected to 
     ! an interaction.
@@ -332,8 +330,8 @@ contains
     B17  = (3.0_dp/8.0_dp) * (te - to)
     
     if(J2Terms .and. (.not. TRC)) then
-      B18 = -(1.0_dp/32.0_dp)* (3 * t1 * x1 - t2 *x2)
-      B19 =  (1.0_dp/32.0_dp)* (3 * t1      + t2    )
+      B18 =-(1.0_dp/32.0_dp)* (3 * t1 * x1 - t2 *x2)
+      B19 = (1.0_dp/32.0_dp)* (3 * t1      + t2    )
       !Tensor contribution
       B18 = B18 + (1.0_dp/16.0_dp) * (3*te - to)
       B19 = B19 - (1.0_dp/16.0_dp) * (3*te + to)

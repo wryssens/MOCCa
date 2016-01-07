@@ -85,7 +85,7 @@ contains
         Desired = Current%Constraint(1)
         if(Current%Total) then
           power = 2
-          O2    = sum(sum(Density%Rho,4)*Current%SpherHarm**4)
+          O2    = 16 * pi/(2*Current%l + 1) * sum(sum(Density%Rho,4)*Current%SpherHarm**4)
           Value = sum(CalculateTotalQl(Current%l))**2
         else
           power = 1

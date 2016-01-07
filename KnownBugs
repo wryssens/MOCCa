@@ -12,3 +12,9 @@
   -> Either signature breaking is wrong
   -> Or Jx calculation is wrong (more probable)
   
+  
+- Breaking two spatial symmetries at once is maybe broken? Breaking one at a time
+  with a two-step procedure works fine however. To be investigated.
+  
+- ContinueMoment parameter sometimes gives rise to errors on reading input. This
+  happens when changing pairing parameters (BCS <=> HFB).

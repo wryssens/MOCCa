@@ -681,7 +681,6 @@ contains
       nullify(Current)
     endif
     
-    
     print *
     
   end subroutine PrintConstraints
@@ -742,7 +741,7 @@ contains
       print 1, ReIm, ToPrint%l, ToPrint%m, ToPrint%Value(1), ToPrint%Value(2) &
       &        , Sum(ToPrint%Value)
       
-      if(.not.ToPrint%Total) then
+      !if(.not.ToPrint%Total) then
         if(ToPrint%ConstraintType.ne.0) then
           select case(ToPrint%Isoswitch)
           case(1)
@@ -758,7 +757,7 @@ contains
             print 7, ToPrint%TrueConstraint, ToPrint%Value(1) - ToPrint%Value(2)
           end select
         endif
-      endif
+      !endif
     end select
     
   end subroutine PrintMoment
@@ -1017,13 +1016,13 @@ contains
           Desired= Current%Constraint(1)
           
           if(Current%Total) then
-            Value  = sum(CalculateTotalQl(Current%l))
+            Value  = sum(CalculateTotalQl(Current%l))**2
             power  = 2
           else
             Value  = sum(Current%Value)          
             power  = 1
           endif
-        
+
         case(2)
           ! Proton & Neutron independently constrained
           Factor = 2.0_dp * Current%Intensity
@@ -1084,7 +1083,7 @@ contains
       do it=1,2
         ConstraintEnergy(:,:,:,it)=ConstraintEnergy(:,:,:,it)                  &
         & +                      Factor(it)*(Value(it) - Desired(it))*         &
-        &                        Current%SpherHarm(:,:,:)**power*Cutoff(:,:,:,it)
+        &                        Current%SpherHarm(:,:,:)**power*Cutoff(:,:,:,it)**power
       enddo   
     enddo
     nullify(Current)
@@ -1425,7 +1424,7 @@ contains
     
     case (1) 
       !-------------------------------------------------------------------------
-      !Quadratically constrained. 
+      !Quadratically constrained.     
       select case(ToReadjust%Isoswitch)
       case(1)
         ToReadjust%Constraint(1) = ToReadjust%Constraint(1) &
@@ -1448,6 +1447,8 @@ contains
      case(1)    
       !Calculate < O^2 >
       O2 = sum(ToReadjust%Squared)
+
+      if(ToReadjust%Total) O2 = O2 * 16 * pi/(2*ToReadjust%l + 1)
      
       ToReadjust%Intensity = ToReadjust%Intensity +                            &
       & epsilon *  (sum(ToReadjust%Value) - sum(ToReadjust%OldValue(:,1))) /   &
@@ -1458,6 +1459,8 @@ contains
       do it=1,2
         O2(it) = ToReadjust%Squared(it)
         
+        if(ToReadjust%Total) O2(it) = O2(it) * 16 * pi/(2*ToReadjust%l + 1)
+
         ToReadjust%Intensity(it) = ToReadjust%Intensity(it)+                   &
         & epsilon *  ( ToReadjust%Value(it) - ToReadjust%OldValue(it,1))/      &
         & (O2(it) + d0)     
@@ -1466,6 +1469,8 @@ contains
      case(3) 
       ! Calculate < O^2 >
       O2 = sum(ToReadjust%Squared)
+
+      if(ToReadjust%Total) O2(it) = O2(it) * 16 * pi/(2*ToReadjust%l + 1)
       
       ToReadjust%Intensity = ToReadjust%Intensity +                            &
       & epsilon *  (ToReadjust%Value(1) - ToReadjust%Value(2)                  &
@@ -1993,6 +1998,7 @@ contains
               do while(New%l .eq. Current%l)
                 New%ConstraintType = Current%ConstraintType
                 New%Constraint     = Current%Constraint
+                New%TrueConstraint = Current%TrueConstraint
                 New%Total          = Total
                 New%Intensity      = Current%Intensity
                 

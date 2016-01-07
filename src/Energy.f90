@@ -178,7 +178,6 @@ contains
       B(9) = B(9) + B9q*(sum(Den%Rho(:,:,:,it)*Den%NablaJ(:,:,:,it)))
       if(.not.TRC) then
         B(9) = B(9) + B9q* sum(sum(Den%vecJ(:,:,:,:,it)*Den%RotS(:,:,:,:,it),4))
-        
       endif
     enddo
     B(9) = B(9) * dv
@@ -220,7 +219,7 @@ contains
       endif
       B(15) = B15*dv*B(15)
     endif
-
+   
     !B16 Terms  
     if(B16.ne. 0.0_dp) then     
       !Sum_{mu}J_{mumu}^2 terms  

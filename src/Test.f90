@@ -434,6 +434,7 @@ module Testing
      real(KIND=dp) :: N(2)
    
      call ComputePairingCutoffs(Fermi)
+     call CompDensityFactor
 
      call HFBPairingField(PairingField,PairingFieldLN, Delta)
 

@@ -413,7 +413,6 @@ contains
        &          + B12a               *        RhoVecS(:,:,:,:,at))
        
        if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
-        print *, B14+B15
         SPot(:,:,:,:,it) = SPot(:,:,:,:,it) &           
         &          -         (B14+B15)  *Density%VecT(:,:,:,:,it)     &
         &          -          B14       *Density%VecT(:,:,:,:,at)            

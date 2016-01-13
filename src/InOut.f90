@@ -1144,7 +1144,9 @@ contains
     
     !Cranking Variables
     if(ContinueCrank) then
-      read(IChan,iostat=ioerror) Omega, CrankValues
+      ! Only read omega from file, not the crankvalues. 
+      ! Otherwise they will get overwritten
+      read(IChan,iostat=ioerror) Omega !, CrankValues
       if(ioerror.ne.0) then
         call stp('Did not read CrankValues correctly' , &
              &   'Iostat', ioerror)

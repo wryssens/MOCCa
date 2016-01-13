@@ -302,7 +302,6 @@ contains
           HFFill => PickHFConfig
         endif
 
-
       case(1)
         if(Lipkin) call stp('Lipkin-Nogami is not implemented for BCS yet.')
         !-----------------------------------------------------------------------

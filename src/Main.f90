@@ -50,6 +50,8 @@ program MOCCa
      ! In testing mode.
      if(TestRun.eq.1) then
         print*, "MOCCa is entering test mode!"  
+        call TestPairingFields()
+        !call TestDelta
         call stp('End of TestRun')
      endif   
      !--------------------------------------------------------------------------
@@ -503,6 +505,7 @@ subroutine PrintSummary_v2(Iteration)
   2 format("Summ.    E=" f10.3, "   dE=",e10.3)
   3 format("Summ.  Q20=" f10.3, "  Q22=",f10.3)
   4 format("Summ. dQ20=" e10.3, " dQ22=",e10.3)
+  5 format('Summ.   Jz=',f10.3, '  OmZ=',f10.3)
   
   ! Printing energy
   print 1, Iteration
@@ -512,6 +515,10 @@ subroutine PrintSummary_v2(Iteration)
   Current => FindMoment(2,2,.false.) ; Q22 = sum(Current%Value) ; dQ22 = Q22 - sum(Current%OldValue(:,1))
   print 3, Q20,Q22
   print 4, dQ20, dQ22
+
+  if(CrankType(3).ne.0) then
+    print 5, TotalAngMom(3), Omega(3)
+  endif
 
 end subroutine PrintSummary_v2
 

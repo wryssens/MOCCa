@@ -115,26 +115,8 @@ contains
         !Temp(i,1,1,1) = -l1*r1 - l2*r2 - l3*r3 - l4*r4
         !Temp(i,1,1,2) =  l1*r2 - l2*r1 + l3*r4 - l4*r3
         & -l1*r1 - l2*r2 - l3*r3 - l4*r4, l1*r2 - l2*r1 + l3*r4 - l4*r3 )
-
-!         Temp(i,1,1,1) =                                                      &
-!         &             - wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,1,1)            &
-!         &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,2,1)            &
-!         &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,3,1)            &
-!         &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,4,1) 
-!      enddo
-!     do i=1,nx*ny*nz           
-!---------------------------------------------------------------------
-! Imaginary Part 
-!         Temp(i,1,1,2) =                  wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,2,1)            !&
-!         Temp(i,1,1,2) = Temp(i,1,1,2)  - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,1,1)            !&
-!         Temp(i,1,1,2) = Temp(i,1,1,2)  + wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,4,1)            !&
-!         Temp(i,1,1,2) = Temp(i,1,1,2)  - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,3,1) 
       enddo
     endif
-
-!      do i=1,nx*ny*nz
-!         ActionOfPairing(i,1,1) = dcmplx(Temp(i,1,1,1), Temp(i,1,1,2))
-!      enddo
 
     return
   end function GetPairDensity

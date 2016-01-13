@@ -13,6 +13,8 @@ module PairingInteraction
   use Densities
   
   implicit none
+
+  public
   
   !-----------------------------------------------------------------------------
   ! Properties of the interaction.
@@ -28,6 +30,9 @@ module PairingInteraction
   ! 1) Symmetric Fermi
   ! 2) Cosine
   integer       :: CutType=1
+
+  ! Density-dependent factor for density-dependent pairing
+  real(KIND=dp), allocatable :: DensityFactor(:,:,:,:)
 
   !-----------------------------------------------------------------------------
   !Again an abstract interface for the use of PGI compilers....
@@ -49,6 +54,72 @@ module PairingInteraction
   real(KIND=dp), allocatable :: PCutoffs(:)
   
 contains
+
+  pure function GetPairDensity(wf1,wf2) result( ActionOfPairing)
+    !---------------------------------------------------------------------------
+    ! Calculate the action of the pairing interaction on a twobody state,
+    ! represented by spinor 1 and 2.
+    !
+    ! So the result of this function is
+    ! Sum_{s} s  < r , s ; r, -s | psi_1, psi_2 >
+    ! 
+    !---------------------------------------------------------------------------
+    ! Note that this routine includes a TimeReversal operator if timereversal
+    ! is conserved.
+    !---------------------------------------------------------------------------
+    ! Indices of the array ActionOfPairing.
+    ! postion_x, position_y, position_z, real or imaginary
+    !---------------------------------------------------------------------------
+
+    type(Spinor), intent(in) :: wf1, wf2
+    
+    complex(KIND=dp)         :: ActionOfPairing(nx,ny,nz)
+    real(KIND=dp)            :: Temp(nx,ny,nz,2), l1,l2,l3,l4,r1,r2,r3,r4
+    integer                  :: i
+    
+    if(.not.TRC) then 
+      !---------------------------------------------------------------------------
+      ! Real part
+      do i=1,nx*ny*nz
+        Temp(i,1,1,1) =                                                      &
+        &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,3,1)            &
+        &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,4,1)            &
+        &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,1,1)            &
+        &             + wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,2,1) 
+      enddo
+
+      do i=1,nx*ny*nz
+        !---------------------------------------------------------------------------
+        ! Imaginary Part 
+        Temp(i,1,1,2) =                                                      &
+        &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,4,1)            &
+        &             + wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,3,1)            &
+        &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,2,1)            &
+        &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,1,1)
+      enddo
+
+      do i=1,nx*ny*nz
+        ActionOfPairing(i,1,1) = dcmplx(Temp(i,1,1,1), Temp(i,1,1,2))
+      enddo
+
+    else
+      do i=1,nx*ny*nz
+        !---------------------------------------------------------------------
+        ! Real part
+        l1 = wf1%Grid(i,1,1,1,1) ; r1 = wf2%Grid(i,1,1,1,1)
+        l2 = wf1%Grid(i,1,1,2,1) ; r2 = wf2%Grid(i,1,1,2,1)
+        l3 = wf1%Grid(i,1,1,3,1) ; r3 = wf2%Grid(i,1,1,3,1)
+        l4 = wf1%Grid(i,1,1,4,1) ; r4 = wf2%Grid(i,1,1,4,1)
+        
+        ActionofPairing(i,1,1) = dcmplx( & 
+        !Temp(i,1,1,1) = -l1*r1 - l2*r2 - l3*r3 - l4*r4
+        !Temp(i,1,1,2) =  l1*r2 - l2*r1 + l3*r4 - l4*r3
+        & -l1*r1 - l2*r2 - l3*r3 - l4*r4, l1*r2 - l2*r1 + l3*r4 - l4*r3 )
+      enddo
+    endif
+
+    return
+  end function GetPairDensity
   
   subroutine ComputePairingCutoffs(Lambda)
   !-----------------------------------------------------------------------------
@@ -124,68 +195,110 @@ contains
     endif
   
   end function Cosinecut
-  
-  function PairingInter(wf1,wf2, it) result( ActionOfPairing)
-    !---------------------------------------------------------------------------
-    ! Calculate the action of the pairing interaction on a twobody state,
-    ! represented by spinor 1 and 2.
-    !
-    ! So the result of this function is
-    ! Sum_{s} s  < r , s ; r, -s | V |psi_1, psi_2 >
-    ! as a function of both spin and position.
-    ! Note that it is not antisymmetrised.
-    !---------------------------------------------------------------------------
-    ! Currently the only part of a general operator V that is implemented 
+
+  subroutine CompDensityFactor
+    !-----------------------------------------------------------------------------
+    !Currently the only part of a general operator V that is implemented 
     ! is the Delta interaction with a density dependent part.
     ! It is described in
     !      S.J. Krieger et al., Nucl. Phys.A517 (1990) 275
     !
     ! This force is given by:
     !   v12 = 0.5 * strength * ( 1 - alpha * rho/rhosat) * (1-ps12)*delta(r12)
-    !---------------------------------------------------------------------------
-    ! Note that no cutoff factors are taken into account in this routine!
-    !---------------------------------------------------------------------------
-    ! Indices of the array ActionOfPairing.
-    ! postion_x, position_y, position_z, real or imaginary
-    !---------------------------------------------------------------------------
-    use Densities, only : Density
-    
-    type(Spinor), intent(in) :: wf1, wf2
-    complex(KIND=dp)         :: ActionOfPairing(nx,ny,nz)
-    real(KIND=dp)            :: factor(nx,ny,nz), Temp(nx,ny,nz,2)
-    integer, intent(in)      :: it
-    integer                  :: i
+    !----------------------------------------------------------------------------
+    integer :: i, it
 
-    ActionOfPairing = 0.0_dp ; factor = 0.0_dp
+    if(.not.allocated(DensityFactor)) allocate(DensityFactor(nx,ny,nz,2))
+    do it=1,2
+      do i=1,nx*ny*nz
+         DensityFactor(i,1,1,it) =  - PairingStrength(it) *  ( 1.0_dp - alpha(it)/rhosat* &
+         &                         (Density%Rho(i,1,1,1) + Density%Rho(i,1,1,2)))
+      enddo
+    enddo
+  end subroutine CompDensityFactor
+  
+!   pure function PairingInter(wf1,wf2, it) result( ActionOfPairing)
+!     !---------------------------------------------------------------------------
+!     ! Calculate the action of the pairing interaction on a twobody state,
+!     ! represented by spinor 1 and 2.
+!     !
+!     ! So the result of this function is
+!     ! Sum_{s} s  < r , s ; r, -s | V |psi_1, psi_2 >
+!     ! as a function of both spin and position.
+!     ! Note that it is not antisymmetrised.
+!     !---------------------------------------------------------------------------
+!     ! Currently the only part of a general operator V that is implemented 
+!     ! is the Delta interaction with a density dependent part.
+!     ! It is described in
+!     !      S.J. Krieger et al., Nucl. Phys.A517 (1990) 275
+!     !
+!     ! This force is given by:
+!     !   v12 = 0.5 * strength * ( 1 - alpha * rho/rhosat) * (1-ps12)*delta(r12)
+!     !---------------------------------------------------------------------------
+!     ! Note that no cutoff factors are taken into account in this routine!
+!     !---------------------------------------------------------------------------
+!     ! Indices of the array ActionOfPairing.
+!     ! postion_x, position_y, position_z, real or imaginary
+!     !---------------------------------------------------------------------------
+!     use Densities, only : Density
     
-    !---------------------------------------------------------------------------
-    ! Real part
-    do i=1,nx*ny*nz
-      Temp(i,1,1,1) =                                                      &
-      &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,3,1)            &
-      &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,4,1)            &
-      &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,1,1)            &
-      &             + wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,2,1)  
-      !---------------------------------------------------------------------------
-      ! Imaginary Part 
-      Temp(i,1,1,2) =                                                      &
-      &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,4,1)            &
-      &             + wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,3,1)            &
-      &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,2,1)            &
-      &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,1,1)
-    enddo
-
-    !---------------------------------------------------------------------------
-    ! Density dependent interaction factor.
-    do i=1,nx*ny*nz
-      factor(i,1,1) =  - PairingStrength(it) *  ( 1.0_dp - alpha(it)/rhosat* &
-      &      (Density%Rho(i,1,1,1) + Density%Rho(i,1,1,2)))
-    enddo
+!     type(Spinor), intent(in) :: wf1, wf2
+!     integer, intent(in)      :: it
     
-    do i=1,nx*ny*nz
-      ActionOfPairing(i,1,1) = factor(i,1,1) * dcmplx(Temp(i,1,1,1), Temp(i,1,1,2))
-    enddo
+!     complex(KIND=dp)         :: ActionOfPairing(nx,ny,nz)
+!     real(KIND=dp)            :: factor(nx,ny,nz), Temp(nx,ny,nz,2)
+!     integer                  :: i
 
-  end function PairingInter
+
+!     ActionOfPairing = 0.0_dp ; factor = 0.0_dp
+    
+!     if(.not.TRC) then 
+!       !---------------------------------------------------------------------------
+!       ! Real part
+!       do i=1,nx*ny*nz
+!         Temp(i,1,1,1) =                                                      &
+!         &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,3,1)            &
+!         &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,4,1)            &
+!         &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,1,1)            &
+!         &             + wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,2,1)  
+!         !---------------------------------------------------------------------------
+!         ! Imaginary Part 
+!         Temp(i,1,1,2) =                                                      &
+!         &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,4,1)            &
+!         &             + wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,3,1)            &
+!         &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,2,1)            &
+!         &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,1,1)
+!       enddo
+!     else
+!       !---------------------------------------------------------------------------
+!       ! Real part
+!       do i=1,nx*ny*nz
+!         Temp(i,1,1,1) =                                                      &
+!         &             - wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,1,1)            &
+!         &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,2,1)            &
+!         &             - wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,3,1)            &
+!         &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,4,1)  
+!         !---------------------------------------------------------------------------
+!         ! Imaginary Part 
+!         Temp(i,1,1,2) =                                                      &
+!         &               wf1%Grid(i,1,1,1,1) * wf2%Grid(i,1,1,2,1)            &
+!         &             - wf1%Grid(i,1,1,2,1) * wf2%Grid(i,1,1,1,1)            &
+!         &             + wf1%Grid(i,1,1,3,1) * wf2%Grid(i,1,1,4,1)            &
+!         &             - wf1%Grid(i,1,1,4,1) * wf2%Grid(i,1,1,3,1)
+!       enddo
+!     endif
+
+!     !---------------------------------------------------------------------------
+!     ! Density dependent interaction factor.
+!     do i=1,nx*ny*nz
+!       factor(i,1,1) =  - PairingStrength(it) *  ( 1.0_dp - alpha(it)/rhosat* &
+!       &      (Density%Rho(i,1,1,1) + Density%Rho(i,1,1,2)))
+!     enddo
+    
+!      do i=1,nx*ny*nz
+!        ActionOfPairing(i,1,1) = factor(i,1,1) * dcmplx(Temp(i,1,1,1), Temp(i,1,1,2))
+!      enddo
+
+!   end function PairingInter
 
 end module PairingInteraction

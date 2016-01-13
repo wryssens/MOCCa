@@ -28,6 +28,7 @@ module Pairing
   use HFB
   use PairingInteraction
   use LipkinNogami
+  use HartreeFock
 
   implicit none
 
@@ -50,7 +51,6 @@ module Pairing
   procedure(BCSPairingField), pointer             :: GetPairingFields !Pairing fields
   procedure(BCSFindFermiEnergy), pointer          :: FindFermiEnergy  !Fermi Energy
   procedure(BCSOccupations), pointer              :: GetOccupations   !Occupations
-  procedure(HFBComputePairingDensity), pointer    :: CompPDensity     
   !-----------------------------------------------------------------------------
   ! Universal properties
   !-----------------------------------------------------------------------------
@@ -131,16 +131,17 @@ contains
     ! Pairing. It then checks as far as possible the input on consistency errors
     ! and allocates the necessary variables.
     !---------------------------------------------------------------------------
+
      real(KIND=dp) :: PairingNeutron=-100.0_dp, PairingProton=-100.0_dp
-     real(KIND=dp) :: CutProton=-100.0_dp, CutNeutron=-100.0_dp
-     real(KIND=dp) :: AlphaProton=-100.0_dp, AlphaNeutron=-100.0_dp
-     real(KIND=dp) :: Protongap=0.0_dp, NeutronGap=0.0_dp
+     real(KIND=dp) :: CutProton     =-100.0_dp, CutNeutron   =-100.0_dp
+     real(KIND=dp) :: AlphaProton   =-100.0_dp, AlphaNeutron =-100.0_dp
+     real(KIND=dp) :: Protongap     =   0.0_dp, NeutronGap   =   0.0_dp
      integer       :: i
      logical       :: SemiBCS=.false., SemiBCSNeutron=.false.
      logical       :: SemiBCSProton=.false.
+     logical       :: HFConfig=.false.
      character(len=3) :: UpperType
 
-  
      NameList /Pairing/ PairingNeutron, PairingProton, CutProton , RhoSat,     &
      &                  alphaProton, AlphaNeutron,                             &
      &                  Type, CutNeutron, FreezeOccupation, PairingIter,       &
@@ -148,7 +149,7 @@ contains
      &                  Lipkin, LNFraction, GuessKappa, PairingMu, CutType,    &
      &                  MaxLambdaIter, SemiBCS, SemiBCSNeutron, SemiBCSProton, &
      &                  QPinHFBasis, SolvePairingStart,QPPrintWindow, Block,   &
-     &                  FermiSolver
+     &                  FermiSolver, HFBIter,HFBgauge,HFConfig
 
      read(unit=*, NML=Pairing)
   
@@ -295,7 +296,12 @@ contains
         if((int(Protons) - Protons).ne.0.0_dp) then
           call stp('Number of protons should be integer for HF calculations.')
         endif
-        
+        !See if the user asked for a specific configuration
+        if(HFConfig) then
+          call ReadHFConfig()
+          HFFill => PickHFConfig
+        endif
+
       case(1)
         if(Lipkin) call stp('Lipkin-Nogami is not implemented for BCS yet.')
         !-----------------------------------------------------------------------
@@ -331,7 +337,13 @@ contains
         GetPairingFields  => HFBPairingField
         GetOccupations    => HFBOccupations
         GetGaps           => HFBGaps!_TIMEREV!HFBGaps
-        CompPDensity      => HFBComputePairingDensity
+        
+        !Decide on the diagonalization routine
+        if(SC) then
+          DiagonaliseHFBHamiltonian => DiagonaliseHFBHamiltonian_Signature
+        else
+          DiagonaliseHFBHamiltonian => DiagonaliseHFBHamiltonian_NoSignature !DiagonaliseHFBHamiltonian_ZHEEVR !
+        endif
 
         if(trim(FermiSolver).eq.'BROYDEN') then
           FindFermiEnergy   => HFBFindFermiEnergyBroyden
@@ -391,7 +403,7 @@ contains
     !---------------------------------------------------------------------------
     ! Subroutine prints pairing info to STDOUT at the start of the program.
     !---------------------------------------------------------------------------
-    
+
     1  format (22('-'), 'Pairing Parameters', 21('-'))
     2  format (A26) 
     3  format (33x, ' N ',7x, ' P ') 
@@ -410,10 +422,12 @@ contains
    12  format ('  Lipkin-Nogami prescription active.' )
    13  format ('  Cosine cutoff used. ')
    14  format ('  Symmetric Fermi cutoff used.')
-   15  format ('  Maximum number of times the FermiSolver is called: ', i3)
-   16  format ('  LNFraction on the hamiltonian:' , f8.3)
-   17  format ('  Fermisolver used: ', a9)
-
+   15  format ('  Fermisolver iterations (external): ', i3)
+   16  format ('  Fermisolver iterations (internal): ', i3)
+   17  format ('  LNFraction on the HFB hamiltonian: ', f8.3)
+   18  format ('  Gauge of the HFB hamiltonian:      ', f8.3)
+   19  format ('  Fermisolver used: ', a9)
+   
     print 1
     select case(PairingType)
       case(0)
@@ -451,9 +465,12 @@ contains
     if(Lipkin)           print 12
     
     print *
+    if(PairingType .eq. 2) print 19, FermiSolver
     print 15 , PairingIter
-    print 16 , LNFraction
-    if(PairingType.eq.2) print 17, FermiSolver
+    if(PairingType .eq. 2) print 16, HFBIter
+    if(Lipkin)             print 17, LNFraction
+    if(PairingType .eq. 2) print 18, HFBGauge
+    
     
     print * 
 
@@ -476,128 +493,63 @@ contains
     5 format (' Dispersion        ',2x,f10.5,2x,f10.5)
     6 format (' Lipkin-N. Lambda_2',2x,f10.5,2x,f10.5)
     7 format (60('-'))
-    
+
+
+    print 1
+
     select case(PairingType)   
       case (0) 
-        !Don't print anything when doing HF
+        !Print Configuration counting
+        call PrintHFConfiguration
         return 
-      case (1)
-        !Print all that is below for BCS pairing
+      case (1,2)
+        print 2
+        print 3, Fermi
+        print 4, sum(Density%Rho(:,:,:,1))*dv, sum(Density%Rho(:,:,:,2))*dv
+        print 5, PairingDisp
+        if(Lipkin) print 6, LNLambda
     end select
-    
-    print 1
-    print 2
-    print 3, Fermi
-    print 4, sum(Density%Rho(:,:,:,1))*dv, sum(Density%Rho(:,:,:,2))*dv
-    print 5, PairingDisp
-    if(Lipkin) print 6, LNLambda
+
+
     print 7
   end subroutine PrintPairing
 
-  function HFEnergy( Delta) result(E)
+  subroutine PrintHFConfiguration
     !---------------------------------------------------------------------------
-    ! Returns the pairing energy of a HF calculation, namely 0.
+    ! Simple subroutine to count in what kind of Hartree-Fock configuration
+    ! we are currently sitting.
     !---------------------------------------------------------------------------
-    real(KIND=dp) :: E(2) 
-    complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
-  
-    E = 0.0_dp
-  
-    return  
-  end function HFEnergy
-  
-  subroutine HFFill()
-    !---------------------------------------------------------------------------
-    ! This subroutine finds the orbitals with the lowest single particle 
-    ! energy and fills them, after sorting all the levels.
-    ! Of course, nothing happens if the user has asked to freeze the occupation.
-    !---------------------------------------------------------------------------
-    integer :: i, n,p, ProtonUpperBound, NeutronUpperBound, order(nwt),j
-    
-    if(FreezeOccupation) return
-    
-    n=0; p=0
-    !---------------------------------------------------------------------------
-    !Setting all occupation numbers to Zero
-    do i=1,nwt
-            call HFBasis(i)%SetOcc(0.0_dp)                     
-    enddo
-    !---------------------------------------------------------------------------
-    ! We can distribute the neutrons and protons in pairs in the case of
-    ! Time Reversal Invariance
-    if(TRC) then
-      ProtonUpperBound  = floor(Protons/2)
-      NeutronUpperBound = floor(Neutrons/2)
-    else
-      ProtonUpperBound  = floor(Protons)
-      NeutronUpperBound = floor(Neutrons)
-    endif
-    !---------------------------------------------------------------------------
-    !Finding the order of the spwfs, in terms of energy
-    order = OrderSpwfs(.false.)
-    !---------------------------------------------------------------------------
-    !Filling in the lowest Proton orbitals. This is easy, since we know 
-    !the order of Spwfs.
-    i=1
-    do while(p.lt.ProtonUpperBound .and. i.le.nwt)
-       j = order(i)
 
-      if(HFBasis(j)%GetOcc().eq.0.0_dp .and. HFBasis(j)%GetIsospin().eq.1) then
-      !We've found an unoccupied Proton orbital
-          call HFBasis(j)%SetOcc(1.0_dp)
-          p = p + 1
-      endif       
-      i = i + 1     
-    enddo
-    !---------------------------------------------------------------------------
-    !Filling in the lowest Neutron orbitals. This is easy,since we know the
-    ! order of Spwfs.
-    i=1
-    do while(n.lt.NeutronUpperBound .and. i.le.nwt)
-      j = order(i)
-      if(HFBasis(j)%GetOcc().eq.0.0_dp .and. HFBasis(j)%GetIsospin().eq.-1) then
-        !We've found an unoccupied Neutron orbital
-        call HFBasis(j)%SetOcc(1.0_dp)
-        n = n + 1
-      endif       
-      i = i + 1     
-    enddo
-    !---------------------------------------------------------------------------
-    !Double all occupation Numbers in the case of Time Reversal Symmetry
-    if(TRC) then
-       do i=1,nwt
-         call SetOcc(HFBasis(i),2.0_dp * HFBasis(i)%GetOcc())
-       enddo
-    endif
-    !---------------------------------------------------------------------------
-    !Putting the FermiEnergy equal to the energy of the highest occupied state
-    do i=nwt,1,-1      
-      j = order(i)               
-      FermiEnergy = HFBasis(j)%GetEnergy()
-      
-      if(HfBasis(j)%GetOcc().ne.0.0_dp) exit
-    enddo
-    return
-  end subroutine HFFill
+    1 format (' Hartree-Fock Configuration          ')
+    2 format (' ------------------------------------')
+    3 format ('  P, Rz      + +   + -   - +   - - ')
+    4 format ('Neutron | ', 4i6)
+    5 format ('Proton  | ', 4i6)
 
-  subroutine HFFermi
-  !-----------------------------------------------------------------------------
-  ! Find the fermi energy of a HF calculation. Trivial, since it is just the 
-  ! energy of the highest occupied level.
-  !-----------------------------------------------------------------------------
-    integer       :: i, it
-    real(KIND=dp) :: E
-  
-    Fermi = -1000000.0_dp
+    integer :: N(2,2,2), it, P, S,i
+
+    print 1
+    print 2
+    print 3
+    print 2
+
+    ! Count
+    N = 0
     do i=1,nwt
-        it = (HFBasis(i)%GetIsospin() + 3)/2
-        E  = HFBasis(i)%GetEnergy()
-        if(HFBasis(i)%GetOcc().gt.0.0_dp.and.Fermi(it) .lt. E)then
-            Fermi(it) = E
-        endif
+        if(HFBasis(i)%GetOcc() .lt. 0.5_dp) cycle
+        it = (HFBasis(i)%GetIsospin()  + 3)/2
+        P  = (HFBasis(i)%GetParity()   + 3)/2
+        S  = (HFBasis(i)%GetSignature()+ 3)/2
+
+        N(P,S,it) = N(P,S,it) + 1
+        if(TRC) N(P,mod(S,2)+1,it) = N(P,mod(S,2)+1,it) + 1
     enddo
-  
-  end subroutine HFFermi
+
+    print 4, N(2,2,1), N(2,1,1),N(1,2,1), N(1,1,1)
+    print 5, N(2,2,2), N(2,1,2),N(1,2,2), N(1,1,2)
+    print 2
+
+  end subroutine PrintHFConfiguration
 
   subroutine SolvePairing
   !-----------------------------------------------------------------------------
@@ -627,11 +579,10 @@ contains
     
     real(KIND=dp)    :: OldFermi(2), Particles(2)
     integer          :: outeriter
-    !logical          :: ForceBisection=.false.
-  
-    if(PairingType.eq.0) then
-     call HFFill()
-     call HFFermi()
+ 
+    if(PairingType.eq.0) then     
+      if(FreezeOccupation) return
+     call HFFill(HFConfiguration)
      return
     endif
 
@@ -659,6 +610,8 @@ contains
     if(PairingType.eq.1 .and. maxval(abs(Delta)).lt.1d-5) Delta = 1.0_dp
     if(Lipkin)  where(LNLambda  .eq.0.0_dp) LNLambda= 0.1_dp
     if(.not.Lipkin) LNLambda= 0.0_dp
+
+    call CompDensityFactor
     !---------------------------------------------------------------------------
     ! Outer iterations: iterating gaps and pairingfield.
     do outerIter=1,PairingIter

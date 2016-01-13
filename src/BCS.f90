@@ -77,21 +77,25 @@ contains
       complex(KIND=dp), allocatable, intent(inout) :: FieldLN(:,:,:,:)
       complex(KIND=dp), allocatable,intent(inout)  :: Delta(:,:,:,:)
       integer      :: i, it,j
-      real(KIND=dp):: Cutoff 
+      real(KIND=dp):: Cutoff, factor
       type(Spinor) :: Psi
       complex(KIND=dp)                             :: Temp(nx,ny,nz)
   
       Field  = 0.0_dp
       do i=1,nwt
-          it = (HFBasis(i)%GetIsospin()+3)/2
+          it = (HFBasis(i)%GetIsospin() +3)/2
           Cutoff = PCutoffs(i)
           Psi  = HFBasis(i)%GetValue()
-          Temp = PairingInter(Psi,TimeReverse(Psi), it )
+          Temp = GetPairDensity(Psi,Psi)
+          factor = 0.5_dp*Cutoff**2*Delta(i,1,1,1)/(HFBasis(i)%GetEqp())
           do j=1,nx*ny*nz
-            Field(i,1,1,it) =  Field(i,1,1,it) + 0.5_dp*Cutoff**2                &
-            &               * Delta(i,1,1,1)/(HFBasis(i)%GetEqp())               & 
-            &               * Temp(i,1,1)
+            Field(j,1,1,it) =  Field(j,1,1,it) + factor*Temp(j,1,1)
           enddo
+      enddo
+      do it=1,2
+        do j=1,nx*ny*nz
+          Field(j,1,1,it) = DensityFactor(j,1,1,it) * Field(j,1,1,it)
+        enddo
       enddo
     end subroutine BCSPairingField
 

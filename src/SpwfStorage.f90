@@ -165,20 +165,25 @@ contains
 
     implicit none
 
-    integer      :: nw,mw, Signature, Parity, Isospin
+    integer      :: nw,mw, Signature, Parity, Isospin, i
     real(KIND=dp):: Norm
     type(Spinor) :: ValueOne,ValueTwo,Temp, Temp2
     real(KIND=dp):: MatrixElement(2)
+
+
+    if(.not.allocated(Temp%Grid)) allocate(Temp%Grid(nx,ny,nz,4,1))
       
     do nw=1,nwt
       ! First normalise \Psi_{nw}
       call HFBasis(nw)%CompNorm()
       Norm=HFBasis(nw)%GetNorm()
 
-      ValueOne = HFBasis(nw)%GetValue()
-      ValueOne = (1.0d0/sqrt(Norm)) * ValueOne
+!       ValueOne = HFBasis(nw)%GetValue()
+!       ValueOne = (1.0d0/sqrt(Norm)) * ValueOne
       
-      call HFBasis(nw)%SetGrid(ValueOne)
+      do i=1,4*nx*ny*nz
+        HFBasis(nw)%Value%Grid(i,1,1,1,1) = (1.0d0/sqrt(Norm)) * HFBasis(nw)%Value%Grid(i,1,1,1,1)
+      enddo
       call HFBasis(nw)%CompNorm()
 
       Isospin   = HFBasis(nw)%GetIsospin()
@@ -207,35 +212,52 @@ contains
         if(HFBasis(mw)%GetSignature().ne.Signature) cycle
 
         MatrixElement=InProduct(HFBasis(mw),HFBasis(nw))            
-        ValueTwo = HFBasis(mw)%GetValue()
-
+        !ValueTwo = HFBasis(mw)%GetValue()
+        !________________________________________________________
+        ! Working version with overloaded operators.
+        ! However, this is slow due to repeated loading/storing.
         !Real Part of MatrixElement
-        Temp = ValueOne
-        Temp = (-MatrixElement(1))*Temp
-        Temp = Temp + ValueTwo
+        !Temp = ValueOne
+        !Temp = (-MatrixElement(1))*Temp
+        !Temp = Temp + ValueTwo
+        !________________________________________________________
+        ! TODO: rewrite the rest of the routine too when breaking
+        ! signature and/or timereversal
+        !_________________________________________________________
+
+        do i=1,4*nx*ny*nz
+          HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
+          &                                   MatrixElement(1) * HFBasis(nw)%Value%Grid(i,1,1,1,1) 
+        enddo
 
         if(.not.TSC) then
          !Imaginary Part of MatrixElement (Zero when timesimplex is conserved).
-         Temp2 = MultiplyI(ValueOne)
-         Temp2 = (MatrixElement(2))*Temp2
-         Temp  = Temp + Temp2
+         Temp2 = MultiplyI(HFBasis(nw)%Value)
+         do i=1,4*nx*ny*nz
+            HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
+            &                                   MatrixElement(2) * Temp2%Grid(i,1,1,1,1) 
+         enddo
         endif
         
         ! If signature is broken, but time reversal is conserved, also 
         ! orthogonalise against the time-reversed functions
         if(.not.SC .and. TRC) then
-          Temp2 = TimeReverse(ValueOne)
-          MatrixElement(1)  = InproductSpinorReal(Temp2, Temp)
+          Temp2 = TimeReverse(HFBasis(nw)%Value)
+          MatrixElement(1)  = InproductSpinorReal(Temp2, HFBasis(mw)%Value)
           if(.not.TSC) then
-            MatrixElement(2)  = InproductSpinorImaginary(Temp2, Temp)
-            Temp2 = MultiplyI(Temp2)
-            Temp = Temp - MatrixElement(2)*Temp2
-            Temp2 = -MultiplyI(Temp2)
-          endif                    
-          Temp = Temp - MatrixElement(1)*Temp2                                  
+             MatrixElement(2)  = InproductSpinorImaginary(Temp2, HFBasis(mw)%Value)
+             Temp2 = MultiplyI(Temp2)
+             Temp = Temp - MatrixElement(2)*Temp2
+             Temp2 = -MultiplyI(Temp2)
+          endif
+          do i=1,4*nx*ny*nz
+            HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
+            &                                   MatrixElement(1) * Temp2%Grid(i,1,1,1,1) 
+          enddo                    
+          !Temp = Temp - MatrixElement(1)*Temp2                                  
         endif
         !Save the result to the corresponding wavefunction
-        call HFBasis(mw)%SetGrid(Temp)     
+        !call HFBasis(mw)%SetGrid(Temp)     
       enddo
     enddo
   end subroutine GramSchmidt
@@ -245,11 +267,17 @@ contains
     ! This subroutine derives all of the Spwf, using the subroutine CompDer.
     !---------------------------------------------------------------------------
     integer            :: i
+    INTEGER            :: NTHREADS, TID, OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
+    real(KIND=dp)      :: time(2)
 
     do i=1,nwt
         call HFBasis(i)%CompDer()
     enddo
-
+    if(allocated(CanBasis)) then
+      do i=1,nwt
+        call CanBasis(i)%CompDer()
+      enddo
+    endif
     return
   end subroutine DeriveAll
   

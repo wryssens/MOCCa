@@ -64,8 +64,6 @@ module Force
     ! is for input purposes that people that want to read a force can input 
     ! 20.something. In the forcereading routine, hbm is multiplied again by 2.
     !-----------------------------------------------------------------------------
-
-
     !-----------------------------------------------------------------------------
     ! Integers governing COM-mass correction. They are intrinsically connected to 
     ! an interaction.
@@ -167,8 +165,8 @@ contains
     close(inunit)
     !Averaging masses if needed:
     if(Averagemass) nucleonmass = (nucleonmass(1) + nucleonmass(2))/2
-    !Multiply hbm by two
-    hbm = hbm*2.0
+!     !Multiply hbm by two
+     hbm = hbm*2.0
 
   end subroutine ReadForce
 
@@ -321,8 +319,8 @@ contains
     endif
 
     if(J2Terms) then
-      B14  =-(1.0_dp/8.0_dp) * (t1*x1 + t2*x2)
-      B15  = (1.0_dp/8.0_dp) * (t1 - t2) 
+      B14  = -(1.0_dp/8.0_dp) * (t1*x1 + t2*x2)
+      B15  =  (1.0_dp/8.0_dp) * (t1 - t2) 
       ! Tensor contribution
       B14 = B14 + (1.0_dp/4.0_dp) * (te + to)
       B15 = B15 - (1.0_dp/4.0_dp) * (te - to)
@@ -332,8 +330,8 @@ contains
     B17  = (3.0_dp/8.0_dp) * (te - to)
     
     if(J2Terms .and. (.not. TRC)) then
-      B18 = -(1.0_dp/32.0_dp)* (3 * t1 * x1 - t2 *x2)
-      B19 =  (1.0_dp/32.0_dp)* (3 * t1      + t2    )
+      B18 =-(1.0_dp/32.0_dp)* (3 * t1 * x1 - t2 *x2)
+      B19 = (1.0_dp/32.0_dp)* (3 * t1      + t2    )
       !Tensor contribution
       B18 = B18 + (1.0_dp/16.0_dp) * (3*te - to)
       B19 = B19 - (1.0_dp/16.0_dp) * (3*te + to)

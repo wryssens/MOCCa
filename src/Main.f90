@@ -14,7 +14,7 @@ program MOCCa
     !---------------------------------------------------------------------------
 
     use GenInfo
-    use InOutput, only    : Input, Output, Pictures, Visualise
+    use InOutput, only    : Input, Output, PlotDensity
     use SpwfStorage, only : PrintSpwf, DensityBasis, HFBasis
     use Pairing, only     : PairingType
     use Testing
@@ -45,22 +45,18 @@ program MOCCa
      !--------------------------------------------------------------------------
      !Canbasis needs to be properly initialised in order to start if doing HFB
      DensityBasis => HFBasis
- 
+
      !--------------------------------------------------------------------------
      ! In testing mode.
      if(TestRun.eq.1) then
-        print*, "MOCCa is entering test mode!"
-        !call CompareDer
+        print*, "MOCCa is entering test mode!"  
+        call TestPairingFields()
+        !call TestDelta
         call stp('End of TestRun')
      endif   
      !--------------------------------------------------------------------------
      ! Solve the mean-field equations.
      call Evolve(MaxIter, .true.)     
-     !--------------------------------------------------------------------------
-     ! Make some pictures if wanted.
-     if(Pictures) then
-      call Visualise()
-     endif     
      !--------------------------------------------------------------------------
      ! Write wavefunctions to file!
      call Output
@@ -91,9 +87,23 @@ subroutine Evolve(MaxIterations, iprint)
   use Cranking, only    : RutzCrank, CrankType
   use Testing
   use HFB
-      
+
   implicit none
-  
+
+  !---------------------------------------------------------------------------
+  ! Interface for the Summaryprinting routines, since FORTRAN is rather
+  ! peculiar about routines in the same program...
+  interface 
+    subroutine PrintSummary_v1(Iteration)
+      integer, intent(in) :: iteration
+    end subroutine PrintSummary_v1
+    subroutine PrintSummary_v2(Iteration)
+      integer, intent(in) :: iteration
+    end subroutine PrintSummary_v2        
+  end interface
+
+  procedure(PrintSummary_v1), pointer :: PrintSummary
+      
   1 format ( 20x, "Iteration ", i4, 20x,/)
   2 format ( "Total Time Elapsed:", f8.3 )
   3 format (A11 , f8.3 , " or ", f8.3 , " %")
@@ -113,9 +123,12 @@ subroutine Evolve(MaxIterations, iprint)
   logical, external   :: ConvergenceCheck 
   integer             :: i,wave
   logical             :: RutzCheck
-
   real(KIND=dp)       :: Canenergy
-  
+
+  !--------------------------------------------------------------------------
+  ! Decide which summary to print
+  PrintSummary => PrintSummary_v2
+ 
   ! Assign correct evolution operator for the iterations
   select case(IterType)
   case('IMTS')
@@ -131,9 +144,6 @@ subroutine Evolve(MaxIterations, iprint)
     call HFBasis(i)%SymmetryOperators()
   enddo
 
-  !Computing the initial densities
-  call DeriveAll()
-
   if(SolvePairingStart) then
     call SolvePairing
   else
@@ -143,6 +153,9 @@ subroutine Evolve(MaxIterations, iprint)
     endif
   endif
   
+  !Computing the initial densities
+  call DeriveAll()
+
   !Update the Angular momentum variables
   call UpdateAm(.true.)
   !Make sure that there is no improper readjusting of cranking constraints
@@ -189,6 +202,7 @@ subroutine Evolve(MaxIterations, iprint)
   !Printing observables
   call PrintIterationInfo(0)
 
+
   !Checking for the presence of Rutz-Type constraints
   RutzCheck = CheckForRutzMoments()
 
@@ -213,6 +227,7 @@ subroutine Evolve(MaxIterations, iprint)
     ! When moments or angular moments are constrained according to K.Rutz' 
     ! prescription, there needs to be a correction step, dependent on the 
     ! density or angular moment obtained in  the meantime.
+
     if(RutzCheck) then
       call UpdateDensities(0,.true.)    
       call CalculateAllMoments(1) ! Save old values to history
@@ -224,11 +239,15 @@ subroutine Evolve(MaxIterations, iprint)
         call updateAm(.true.) 
         call ReadjustCranking(.true.)
     endif   
+    !Checking for the presence of Rutz-Type constraints
+    RutzCheck = CheckForRutzMoments()
+
     if(RutzCheck .or. RutzCrank) then
         !Apply Corrections and resolve pairing
         call RutzCorrectionStep
         call SolvePairing
     endif
+
     !---------------------------------------------------------------------------   
     !Deriving all Spwf
     call DeriveAll()
@@ -240,6 +259,7 @@ subroutine Evolve(MaxIterations, iprint)
       if(Pairingtype.eq.2) then
         CanEnergy = InproductSpinorReal(CanBasis(i)%GetValue(), hPsi(Canbasis(i)))
         call Canbasis(i)%SetEnergy(CanEnergy)
+        call CanBasis(i)%SymmetryOperators()
       endif
     enddo
 
@@ -422,6 +442,7 @@ subroutine FinalIteration()
   use Densities,   only : UpdateDensities
   use Energy,      only : CompEnergy, PrintEnergy
   use Pairing,     only : SolvePairing
+  use InOutput,    only : Pictures, PlotDensity
   
   implicit none
   
@@ -451,11 +472,57 @@ subroutine FinalIteration()
   do i=1,nwt
     call DensityBasis(i)%CompDer()
   enddo
+
+  !Write densities to files.
+  if(Pictures) call PlotDensity()
+
   call UpdateDensities(0)
 
 end subroutine FinalIteration
 
-subroutine PrintSummary(Iteration)
+subroutine PrintSummary_v2(Iteration)
+  !-----------------------------------------------------------------------------
+  ! This routine prints a summary of the iteration.
+  ! Multilined, as I like to have plenty of info.
+  !
+  !-----------------------------------------------------------------------------
+
+  use CompilationInfo
+  use Energy, only: TotalEnergy, OldEnergy
+  use Spwfstorage, only : TotalAngMom
+  use Densities,   only : DensityChange
+  use Cranking
+  use Moments
+  use GenInfo
+
+  implicit none
+
+  integer, intent(in)  :: Iteration
+  type(Moment),pointer :: Current
+  real(KIND=dp):: Q20, Q22, dQ20, dQ22
+
+  1 format('----------- Iteration ', i6,'--------------')
+  2 format("Summ.    E=" f10.3, "   dE=",e10.3)
+  3 format("Summ.  Q20=" f10.3, "  Q22=",f10.3)
+  4 format("Summ. dQ20=" e10.3, " dQ22=",e10.3)
+  5 format('Summ.   Jz=',f10.3, '  OmZ=',f10.3)
+  
+  ! Printing energy
+  print 1, Iteration
+  print 2, TotalEnergy,abs((TotalEnergy - OldEnergy(1))/TotalEnergy)
+  !
+  Current => FindMoment(2,0,.false.) ; Q20 = sum(Current%Value) ; dQ20 = Q20 - sum(Current%OldValue(:,1))
+  Current => FindMoment(2,2,.false.) ; Q22 = sum(Current%Value) ; dQ22 = Q22 - sum(Current%OldValue(:,1))
+  print 3, Q20,Q22
+  print 4, dQ20, dQ22
+
+  if(CrankType(3).ne.0) then
+    print 5, TotalAngMom(3), Omega(3)
+  endif
+
+end subroutine PrintSummary_v2
+
+subroutine PrintSummary_v1(Iteration)
 	!-----------------------------------------------------------------------------
 	! This subroutine prints a summary of the iteration.
 	!
@@ -520,4 +587,4 @@ subroutine PrintSummary(Iteration)
 	&        adjustl(adjustr(MomString)//adjustl(CrankString))
 
 	nullify(Current)
-end subroutine PrintSummary
+end subroutine PrintSummary_v1

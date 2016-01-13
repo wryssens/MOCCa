@@ -12,7 +12,7 @@ module WaveFunctions
   public
 
   type Spwf 
-    private 
+    
 
     !---------------------------------------------------------------------------
     ! Value
@@ -246,10 +246,10 @@ contains
     real(KIND=dp), intent(in)    :: A
     type(Spinor)                 :: Psi
   
-    Psi = A * WF%Value
+    !AWF%Value = A * WF%Value
     AWF = NewWaveFunction(Psi, WF%Isospin, WF%TimeSimplex, WF%Parity, &
     &                     WF%Signature, WF%TimeReversal)
-  
+
   end function MultiplySpwfReal
 
   function MultiplySpwfComplex(A, WF) result(AWF)
@@ -265,19 +265,21 @@ contains
   
   end function MultiplySpwfComplex
 
-!   function SaxPyWF(Phi,A,Psi) result(Chi)
-!     !--------------------------------------------------------
-!     ! Function to perform
-!     ! Phi =Phi + A * Psi
-!     ! without making temporary wavefunctions in the meantime
-!     !--------------------------------------------------------
-!     ! The inclusion of this did not speedup the program at all...
-!     !--------------------------------------------------------
+  function SaxPyWF(Phi,A,Psi) result(Chi)
+    !--------------------------------------------------------
+    ! Function to perform
+    ! Phi =Phi + A * Psi
+    ! without making temporary wavefunctions in the meantime
+    !--------------------------------------------------------
+    ! The inclusion of this did not speedup the program at all...
+    !--------------------------------------------------------
 
-!     type(Spwf), intent(in)       :: Phi,Psi
-!     type(Spwf)                   :: Chi
-!     complex(KIND=dp), intent(in) :: A
-!     type(Spinor)                 :: temp
+    type(Spwf), intent(in)       :: Phi,Psi
+    type(Spwf)                   :: Chi
+    real(KIND=dp), intent(in)    :: A
+    type(Spinor)                 :: c,v
+    integer                      :: i
+    real(KIND=dp)                :: r(nx,ny,nz,4,1)
 
 !     if(Phi%Parity.ne.Psi%Parity) then
 !       call stp("You can't add wavefunctions with different parity!")
@@ -292,23 +294,28 @@ contains
 !       call stp("You can't add wavefunctions with different isospin!")
 !     endif
 
-!     temp = A * Psi%GetValue()
-!     Chi%Value = Phi%GetValue() + temp
+!    c = Psi%GetValue()
+!    v = Phi%GetValue()
+    allocate(Chi%Value%Grid(nx,ny,nz,4,1))
+    do i=1,4*nx*ny*nz
+        Chi%Value%Grid(i,1,1,1,1) = Phi%Value%Grid(i,1,1,1,1) + A*Psi%Value%Grid(i,1,1,1,1)
+    enddo
+    !call Chi%SetGrid(r)
 
-!     Chi%Isospin      = Phi%Isospin
-!     Chi%TimeSimplex  = Phi%TimeSimplex
-!     Chi%Parity       = Phi%Parity
-!     Chi%TimeReversal = Phi%TimeReversal
-!     Chi%Signature    = Phi%Signature
+    Chi%Isospin      = Phi%Isospin
+    Chi%TimeSimplex  = Phi%TimeSimplex
+    Chi%Parity       = Phi%Parity
+    Chi%TimeReversal = Phi%TimeReversal
+    Chi%Signature    = Phi%Signature
 
-!     Chi%Norm         = 0.0_dp
-!     Chi%Energy       = 0.0_dp
-!     Chi%Occupation   = 0.0_dp
-!     Chi%Dispersion   = 0.0_dp
-!     Chi%AngMoment    = 0.0_dp
-!     Chi%J2           = 0.0_dp
+    Chi%Norm         = 0.0_dp
+    Chi%Energy       = 0.0_dp
+    Chi%Occupation   = 0.0_dp
+    Chi%Dispersion   = 0.0_dp
+    Chi%AngMoment    = 0.0_dp
+    Chi%J2           = 0.0_dp
 
-!   end function SaxPyWF
+  end function SaxPyWF
     
   function MinusSpwf (WF1, WF2) result (DiffWF)
   !-----------------------------------------------------------------------------
@@ -482,6 +489,7 @@ contains
     real(KIND=dp), intent(in)  :: Grid(:,:,:,:,:)
     class (Spwf)               :: WaveFunction
 
+    Wavefunction%Value = NewSpinor()
     WaveFunction%Value%Grid(:,:,:,:,:) = Grid
     return
   end subroutine SetGridMesh
@@ -604,7 +612,7 @@ contains
     ! The solution is obviously:
     ! j = [- 1 + sqrt( 1 + 4 * <J^2>)]/2
     WaveFunction%AngQuantum=                                                   &
-    &                  - 0.5_dp*(1.0_dp-sqrt( 1.0_dp + 4.0_dp*sum(Temp(4:6,1)))) 
+    &                  - 0.5_dp*(1.0_dp-sqrt( 1.0_dp + 4.0_dp*sum(Temp(4:6,1))))
   end subroutine CompAngMoment
  
   subroutine SetEnergy(WaveFunction,Energy) 
@@ -815,7 +823,7 @@ contains
     WF%Lap = LapSpinor(WF%Value,P,S,TS)    
   end subroutine CompDer
         
- function GetDer(WF,Direction) result(Der)
+ pure function GetDer(WF,Direction) result(Der)
     !---------------------------------------------------------------------------
     ! Function that returns the laplacian of the Spwf.
     !---------------------------------------------------------------------------
@@ -928,11 +936,12 @@ contains
       !The action of Jz
       Temp1 = Pauli(WF%Value,3)
       Temp1 = (1.0_dp/2.0_dp)*Temp1
+
       do k=1,4
-          do i=1,4
+          do i=1,nx*ny*nz
             Temp2%Grid(i,1,1,k,1) = Mesh3D(1,i,1,1) * WF%Der(2)%Grid(i,1,1,k,1)
           enddo      
-          do i=1,4
+          do i=1,nx*ny*nz
             Temp3%Grid(i,1,1,k,1) = Mesh3D(2,i,1,1) * WF%Der(1)%Grid(i,1,1,k,1)
           enddo
       enddo
@@ -943,105 +952,33 @@ contains
     ActionOfJ = Temp1 + Temp4
   end function AngMomOperator
 
-!   function AngularMomentum(WF2,WF1, quadratic,trx,try,trz) result(AngMom)
-!     !---------------------------------------------------------------------------
-!     ! This function returns the matrix element 
-!     !       < WF1 | \hat{J} | WF2 > 
-!     ! and the matrix elements of
-!     !       < WF1 | J_i**2 | WF2 >      
-!     ! if the quadratic is true.            
-!     ! Notice the ordering of the arguments in this expression!
-!     ! 
-!     ! If TRX_i is present, this routine includes an extra time-reversal operator
-!     !
-!     ! < WF1 | \hat{J}_{x_i}   \check{T} | WF2 >
-!     ! and
-!     ! < WF1 | \hat{J}_{x_i}^2 \check{T} | WF2 >
-!     !
-!     !---------------------------------------------------------------------------
-!     ! Note:
-!     ! - When dictated by symmetry, it returns zero. 
-!     !
-!     ! - The matrix elements < WF2 | \hat{J} | WF1 > are only guaranteed to be 
-!     !   real in the case of time simplex symmetry. This is the reason why J has 
-!     !   two columns: the real and imaginary part.
-!     !---------------------------------------------------------------------------
-!     class(Spwf), intent(in) :: WF1,WF2
-!     type(Spinor)            :: Intermediate(3), Intermediate2(3)
-!     real(KIND=dp)           :: AngMom(6,2)
-!     integer                 :: i
-!     logical, intent(in)     :: Quadratic
-!     logical, intent(in), optional :: TRX,TRY,TRZ
-
-!     AngMom=0.0_dp
-!     if(WF1%Parity.ne.WF2%Parity .or. WF1%Isospin.ne.WF2%Isospin) then
-!         ! The matrix element is zero when opposite parities or isospins
-!         ! are involved.
-!         return
-!     endif
-
-!     do i=1,3
-!       Intermediate(i) = NewSpinor()
-!       Intermediate(i) = AngMomOperator(wf1,i)
-!     enddo
-!     !X Component
-!     if(SC                                                                      &
-!     &  .and. wf1%GetSignature().eq.wf2%GetSignature()) then
-!       !Good signature quantum numbers prohibit <Jx>
-!       AngMom(1,:) = 0.0_dp
-!     else    
-!       AngMom(1,1) = InproductSpinorReal(wf2%Value, Intermediate(1))
-!       AngMom(1,2) = InproductSpinorImaginary(wf2%Value, Intermediate(1))
-!     endif
-    
-!     !Y Component
-!     if(SC                                                                      &
-!     &  .and. wf1%GetTimeSimplex().eq.wf2%GetTimeSimplex()) then
-!       !Good time simplex quantum numbers prohibit <Jy>
-!       AngMom(2,:) = 0.0_dp
-!     else
-!       AngMom(2,1) = InproductSpinorReal(wf2%Value, Intermediate(2))
-!       AngMom(2,2) = InproductSpinorImaginary(wf2%Value, Intermediate(2))
-!     endif 
-    
-!     !Z Component
-!     if( SC  .and.                                                              &
-!         & wf1%GetSignature() .ne. wf2%Getsignature() ) then
-!         AngMom(3,:) = 0.0
-!     else
-!         AngMom(3,1) = InproductSpinorReal(wf2%Value, Intermediate(3))
-!         AngMom(3,2) = InproductSpinorImaginary(wf2%Value, Intermediate(3))
-!     endif
-!     if(Quadratic) then
-!       !J**2 components, only compute these if desired.
-!       do i=1,3
-!         Intermediate2(i) = AngMomOperator(wf2,i)
-!         AngMom(3+i,1)=InproductSpinorReal(Intermediate2(i),Intermediate(i))
-!         AngMom(3+i,2)=InproductSpinorImaginary(Intermediate2(i),Intermediate(i))                
-!       enddo
-!     endif  
-!   end function AngularMomentum
-
-    function AngularMomentum(WF2,WF1, quadratic,TRX,TRY,TRZ) result(AngMom)
-        !--------------------------------------------------------------------------
-        ! 
+  function AngularMomentum(WF2,WF1, quadratic,TRX,TRY,TRZ) result(AngMom)
+        !-----------------------------------------------------------------
+        ! Optimized routine for the computation of angularmomentum.
         !
+        !---------------------------------------------------------------------------
+        !       J_x = 1/2*( 0  1 ) + i z \partial_y - i y\partial_z
+        !                 ( 1  0 )
         !
-        !--------------------------------------------------------------------------
-        ! Note:
-        ! The matrix elements < WF2 | \hat{J} | WF1 > are only guaranteed to 
-        ! be real in the case of time simplex symmetry. This is the reason 
-        ! why J has two columns: the real and imaginary part.
-        !--------------------------------------------------------------------------
+        !       J_y = 1/2*( 0 -i ) + i x \partial_z - i z\partial_x
+        !                 ( i  0 )
+        !
+        !       J_z = 1/2*( 1  0 ) + i y \partial_x - i x\partial_y
+        !                 ( 0 -1 )
+        !---------------------------------------------------------------------------
+        !---------------------------------------------------------------------------
 
         class(Spwf), intent(in) :: WF1,WF2
-        type(Spinor)            :: Intermediate(3), Intermediate2(3)
-        real(KIND=dp)           :: AngMom(6,2)
-        integer                 :: i, sig1(3), sig2(3)
+        type(Spinor)            :: psi,phi, derphi(3), derpsi(3)
+        real(KIND=dp)           :: AngMom(6,2), r1,r2,r3,r4,l1,l2,l3,l4
+        integer                 :: i, sig1(3), sig2(3),j,k
         logical, intent(in)     :: Quadratic
         logical, intent(in)     :: TRX,TRY,TRZ
 
-        AngMom=0.0_dp
+        AngMom = 0.0_dp
+
+        if(WF1%GetParity().ne.WF2%GetParity())   return
+        if(WF1%GetIsospin().ne.WF2%GetIsospin()) return
         
         ! Get the signatures for checking in every Cartesian direction
         sig1 = wf1%GetSignature()
@@ -1052,98 +989,258 @@ contains
         if(TRY) sig1(2) = - sig1(2)
         if(TRZ) sig1(3) = - sig1(3)
 
-        if(Quadratic) then
-            do i=1,3
-              Intermediate(i) = AngMomOperator(wf1,i)
+        phi=WF1%GetValue()
+        psi=WF2%GetValue()
+        derphi(1) = WF1%GetDer(1) ; derpsi(1) = WF2%GetDer(1)
+        derphi(2) = WF1%GetDer(2) ; derpsi(2) = WF2%GetDer(2)
+        derphi(3) = WF1%GetDer(3) ; derpsi(3) = WF2%GetDer(3)
+
+        !-------------------------------------------------------------------------------
+        ! X-direction
+        if(TRX) then
+            do i=1,nx*ny*nz
+                AngMom(1,1) = AngMom(1,1) + 0.5_dp * (                              &
+                &                         - Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) & 
+                &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
+                &                         + Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) & 
+                &                         - Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
+                AngMom(1,1) = AngMom(1,1)    &
+                &           + Psi%Grid(i,1,1,2,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+                &           - Psi%Grid(i,1,1,2,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,3,1) & 
+                !
+                &           + Psi%Grid(i,1,1,1,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,4,1) &
+                &           - Psi%Grid(i,1,1,1,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
+                !
+                &           - Psi%Grid(i,1,1,4,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
+                &           + Psi%Grid(i,1,1,4,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
+                !
+                &           - Psi%Grid(i,1,1,3,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
+                &           + Psi%Grid(i,1,1,3,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,2,1)
+            enddo
+
+        else
+            do i=1,nx*ny*nz
+                AngMom(1,1) = AngMom(1,1) + 0.5_dp * (                              &
+                &                           Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,3,1) & 
+                &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,4,1) &
+                &                         + Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,1,1) & 
+                &                         + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,2,1))
+
+                AngMom(1,1) = AngMom(1,1)    &
+                &           + Psi%Grid(i,1,1,2,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
+                &           - Psi%Grid(i,1,1,2,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,1,1) & 
+                !
+                &           - Psi%Grid(i,1,1,1,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
+                &           + Psi%Grid(i,1,1,1,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
+                !
+                &           + Psi%Grid(i,1,1,4,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+                &           - Psi%Grid(i,1,1,4,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
+                !
+                &           - Psi%Grid(i,1,1,3,1)*Mesh3DZ(i,1,1)*derphi(2)%Grid(i,1,1,4,1) &
+                &           + Psi%Grid(i,1,1,3,1)*Mesh3DY(i,1,1)*derphi(3)%Grid(i,1,1,4,1)
             enddo
         endif
-        !--------------------------------------------------------------------------
-        !--------------------------------------------------------------------------
-        ! Compute < J_x >
-        if(SC .and. sig1(1) .eq. sig2(1) ) then
-            AngMom(1,:) = 0.0_dp
-        else
-            if(.not. Quadratic) Intermediate(1) = AngMomOperator(wf1,1)
-            if(TRX) then
-                AngMom(1,1) = InproductSpinorReal(wf2%Value,                      &
-                    &                                 TimeReverse(Intermediate(1)))
-            else
-                AngMom(1,1) = InproductSpinorReal(wf2%Value,                      &
-                    &                                              Intermediate(1))
-            endif
-            ! The imaginary part is zero when TimeSimplex is conserved
-            if(.not. TSC) then
-                if(TRX) then
-                    AngMom(1,2) = InproductSpinorImaginary(wf2%Value,             &
-                        &                             TimeReverse(Intermediate(1)))
-                else
-                    AngMom(1,2) = InproductSpinorImaginary(wf2%Value,             &
-                        &                                          Intermediate(1))
-                endif
-            endif
-        endif
-        !--------------------------------------------------------------------------
-        ! Compute < J_y >
-        if( (SC .and. sig1(2) .eq. sig2(2)) .or. (TSC .and. sig1(2).eq.sig2(2))) then
-            AngMom(2,:) = 0.0_dp
-        else
-            if(.not. Quadratic) Intermediate(2) = AngMomOperator(wf1,2)
-            if(TRY) then
-                AngMom(2,1) = InproductSpinorReal(wf2%Value,                      &
-                    &                                 TimeReverse(Intermediate(2)))
-            else
-                AngMom(2,1) = InproductSpinorReal(wf2%Value,                      &
-                    &                                              Intermediate(2))
-            endif
-            ! The imaginary part is zero when TimeSimplex is conserved
-            if(.not. TSC) then
-                if(TRY) then
-                    AngMom(2,2) = InproductSpinorImaginary(wf2%Value,             &
-                        &                             TimeReverse(Intermediate(2)))
-                else
-                    AngMom(2,2) = InproductSpinorImaginary(wf2%Value,             &
-                    &                                              Intermediate(2))
-                endif
-            endif
-        endif
-        !--------------------------------------------------------------------------
-        ! Compute < J_z >
-        if( SC .and. sig1(3) .ne. sig1(3) ) then
-            AngMom(3,:) = 0.0_dp
-        else
-            if(.not. Quadratic) Intermediate(3) = AngMomOperator(wf1,3)
-            if(TRZ) then
-                AngMom(3,1) = InproductSpinorReal(wf2%Value,                      &
-                    &                                 TimeReverse(Intermediate(3)))
-            else
-                AngMom(3,1) = InproductSpinorReal(wf2%Value,                      &
-                 &                                                Intermediate(3))
-            endif
-             ! The imaginary part is zero when TimeSimplex is conserved
-            if(.not. TSC) then
-                if(TRZ) then
-                    AngMom(3,2) = InproductSpinorImaginary(wf2%Value,             &
-                        &                             TimeReverse(Intermediate(3)))
-                else
-                    AngMom(3,2) = InproductSpinorImaginary(wf2%Value,             &
-                        &                                          Intermediate(3))
-                endif
-            endif   
-        endif
-        !--------------------------------------------------------------------------
-        !--------------------------------------------------------------------------
-        if(Quadratic) then
-          !J**2 components, only compute these if desired.
-          ! Note that these are never constrained by symmetries
-          do i=1,3
-            Intermediate2(i) = AngMomOperator(wf2,i)
-            AngMom(3+i,1)=InproductSpinorReal(Intermediate2(i),Intermediate(i))
-            AngMom(3+i,2)=InproductSpinorImaginary(Intermediate2(i),Intermediate(i))                
-          enddo
-        endif
-        !--------------------------------------------------------------------------
 
-    end function AngularMomentum
+
+        !-------------------------------------------------------------------------------
+        ! Y-direction
+        if(TRY) then
+            do i=1,nx*ny*nz
+                ! Action of J_y to the right
+                r1 = - Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,2,1) &
+                &    + Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,4,1)
+                r2 =   Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,1,1) &
+                &    - Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,1,1) &
+                &    - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+                r3 = - Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,4,1) &
+                &    + Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,4,1) &
+                &    - 0.5_dp        * Phi%Grid(i,1,1,2,1)
+                r4 =   Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,3,1) &
+                &    - Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,3,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+
+
+                l1 =  Psi%Grid(i,1,1,1,1)
+                l2 =  Psi%Grid(i,1,1,2,1)
+                l3 =  Psi%Grid(i,1,1,3,1)
+                l4 =  Psi%Grid(i,1,1,4,1)
+                AngMom(2,1) = AngMom(2,1) + l1*r1 + l2*r2 +l3*r3 + l4*r4
+!                 AngMom(2,1) = AngMom(2,1) + 0.5_dp * (                              &
+!                 &                         - Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,2,1) & 
+!                 &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,1,1) &
+!                 &                         - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,4,1) & 
+!                 &                         + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,3,1))
+
+!                 !Orbital 
+!                 AngMom(2,1) = AngMom(2,1)    &
+!                 &           - Psi%Grid(i,1,1,1,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
+!                 &           + Psi%Grid(i,1,1,1,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,3,1) & 
+!                 !
+!                 &           - Psi%Grid(i,1,1,2,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
+!                 &           + Psi%Grid(i,1,1,2,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
+!                 !
+!                 &           - Psi%Grid(i,1,1,3,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
+!                 &           + Psi%Grid(i,1,1,3,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
+!                 !
+!                 &           - Psi%Grid(i,1,1,4,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
+!                 &           + Psi%Grid(i,1,1,4,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,2,1) 
+            enddo
+        else
+            do i=1,nx*ny*nz
+                ! Spin
+                AngMom(2,1) = AngMom(2,1) + 0.5_dp * (                              &
+                &                         + Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,4,1) & 
+                &                         - Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,3,1) &
+                &                         - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,2,1) & 
+                &                         + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,1,1))
+
+                !Orbital 
+                AngMom(2,1) = AngMom(2,1)    &
+                &           + Psi%Grid(i,1,1,2,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
+                &           - Psi%Grid(i,1,1,2,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,1,1) & 
+                !
+                &           - Psi%Grid(i,1,1,1,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
+                &           + Psi%Grid(i,1,1,1,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
+                !
+                &           + Psi%Grid(i,1,1,4,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
+                &           - Psi%Grid(i,1,1,4,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
+                !
+                &           - Psi%Grid(i,1,1,3,1)*Mesh3DX(i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
+                &           + Psi%Grid(i,1,1,3,1)*Mesh3DZ(i,1,1)*derphi(1)%Grid(i,1,1,4,1) 
+            enddo
+        endif
+
+        !-------------------------------------------------------------------------------
+        ! Z-direction
+        do i=1,nx*ny*nz            
+            AngMom(3,1) = AngMom(3,1) + 0.5_dp * (                              &
+            &                           Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) & 
+            &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
+            &                         - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) & 
+            &                         - Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
+            AngMom(3,1) = AngMom(3,1)    &
+            &           + Psi%Grid(i,1,1,2,1)*Mesh3DY(i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
+            &           - Psi%Grid(i,1,1,2,1)*Mesh3DX(i,1,1)*derphi(2)%Grid(i,1,1,1,1) & 
+            !
+            &           - Psi%Grid(i,1,1,1,1)*Mesh3DY(i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
+            &           + Psi%Grid(i,1,1,1,1)*Mesh3DX(i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
+            !
+            &           + Psi%Grid(i,1,1,4,1)*Mesh3DY(i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
+            &           - Psi%Grid(i,1,1,4,1)*Mesh3DX(i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+            !
+            &           - Psi%Grid(i,1,1,3,1)*Mesh3DY(i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
+            &           + Psi%Grid(i,1,1,3,1)*Mesh3DX(i,1,1)*derphi(2)%Grid(i,1,1,4,1) 
+        enddo
+
+        if(Quadratic) then
+             !---------------------------------------------------------------------------
+             ! X direction
+             do i=1,nx*ny*nz
+                ! Action of J_x to the right
+                r1 = - Mesh3DZ(i,1,1)* DerPhi(2)%Grid(i,1,1,2,1) &
+                &    + Mesh3DY(i,1,1)* DerPhi(3)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,3,1)
+                r2 =   Mesh3DZ(i,1,1)* DerPhi(2)%Grid(i,1,1,1,1) &
+                &    - Mesh3DY(i,1,1)* DerPhi(3)%Grid(i,1,1,1,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,4,1)
+                r3 = - Mesh3DZ(i,1,1)* DerPhi(2)%Grid(i,1,1,4,1) &
+                &    + Mesh3DY(i,1,1)* DerPhi(3)%Grid(i,1,1,4,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+                r4 =   Mesh3DZ(i,1,1)* DerPhi(2)%Grid(i,1,1,3,1) &
+                &    - Mesh3DY(i,1,1)* DerPhi(3)%Grid(i,1,1,3,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,2,1)
+
+                !Action of J_x to the left
+                l1 = - Mesh3DZ(i,1,1)* DerPsi(2)%Grid(i,1,1,2,1) &
+                &    + Mesh3DY(i,1,1)* DerPsi(3)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,3,1)
+                l2 =   Mesh3DZ(i,1,1)* DerPsi(2)%Grid(i,1,1,1,1) &
+                &    - Mesh3DY(i,1,1)* DerPsi(3)%Grid(i,1,1,1,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,4,1)
+                l3 = - Mesh3DZ(i,1,1)* DerPsi(2)%Grid(i,1,1,4,1) &
+                &    + Mesh3DY(i,1,1)* DerPsi(3)%Grid(i,1,1,4,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,1,1)
+                l4 =   Mesh3DZ(i,1,1)* DerPsi(2)%Grid(i,1,1,3,1) &
+                &    - Mesh3DY(i,1,1)* DerPsi(3)%Grid(i,1,1,3,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,2,1)
+
+                AngMom(4,1) = AngMom(4,1) + l1*r1 + l2*r2 + l3*r3 + l4*r4
+
+             enddo
+             !---------------------------------------------------------------------------
+             ! Y direction
+             do i=1,nx*ny*nz
+                ! Action of J_y to the right
+                r1 = - Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,2,1) &
+                &    + Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,4,1)
+                r2 =   Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,1,1) &
+                &    - Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,1,1) &
+                &    - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+                r3 = - Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,4,1) &
+                &    + Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,4,1) &
+                &    - 0.5_dp        * Phi%Grid(i,1,1,2,1)
+                r4 =   Mesh3DX(i,1,1)* DerPhi(3)%Grid(i,1,1,3,1) &
+                &    - Mesh3DZ(i,1,1)* DerPhi(1)%Grid(i,1,1,3,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+
+                !Action of J_y to the left
+                l1 = - Mesh3DX(i,1,1)* DerPsi(3)%Grid(i,1,1,2,1) &
+                &    + Mesh3DZ(i,1,1)* DerPsi(1)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,4,1)
+                l2 =   Mesh3DX(i,1,1)* DerPsi(3)%Grid(i,1,1,1,1) &
+                &    - Mesh3DZ(i,1,1)* DerPsi(1)%Grid(i,1,1,1,1) &
+                &    - 0.5_dp        * Psi%Grid(i,1,1,3,1)
+                l3 = - Mesh3DX(i,1,1)* DerPsi(3)%Grid(i,1,1,4,1) &
+                &    + Mesh3DZ(i,1,1)* DerPsi(1)%Grid(i,1,1,4,1) &
+                &    - 0.5_dp        * Psi%Grid(i,1,1,2,1)
+                l4 =   Mesh3DX(i,1,1)* DerPsi(3)%Grid(i,1,1,3,1) &
+                &    - Mesh3DZ(i,1,1)* DerPsi(1)%Grid(i,1,1,3,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,1,1)
+
+                AngMom(5,1) = AngMom(5,1) + l1*r1 + l2*r2 + l3*r3 + l4*r4
+             enddo
+
+             !---------------------------------------------------------------------------
+             ! Z direction
+             do i=1,nx*ny*nz
+                ! Action of J_z to the right
+                r1 = - Mesh3DY(i,1,1)* DerPhi(1)%Grid(i,1,1,2,1) &
+                &    + Mesh3DX(i,1,1)* DerPhi(2)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+                r2 =   Mesh3DY(i,1,1)* DerPhi(1)%Grid(i,1,1,1,1) &
+                &    - Mesh3DX(i,1,1)* DerPhi(2)%Grid(i,1,1,1,1) &
+                &    + 0.5_dp        * Phi%Grid(i,1,1,2,1)
+                r3 = - Mesh3DY(i,1,1)* DerPhi(1)%Grid(i,1,1,4,1) &
+                &    + Mesh3DX(i,1,1)* DerPhi(2)%Grid(i,1,1,4,1) &
+                &    - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+                r4 =   Mesh3DY(i,1,1)* DerPhi(1)%Grid(i,1,1,3,1) &
+                &    - Mesh3DX(i,1,1)* DerPhi(2)%Grid(i,1,1,3,1) &
+                &    - 0.5_dp        * Phi%Grid(i,1,1,4,1)
+
+                !Action of J_z to the left
+                l1 = - Mesh3DY(i,1,1)* DerPsi(1)%Grid(i,1,1,2,1) &
+                &    + Mesh3DX(i,1,1)* DerPsi(2)%Grid(i,1,1,2,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,1,1)
+                l2 =   Mesh3DY(i,1,1)* DerPsi(1)%Grid(i,1,1,1,1) &
+                &    - Mesh3DX(i,1,1)* DerPsi(2)%Grid(i,1,1,1,1) &
+                &    + 0.5_dp        * Psi%Grid(i,1,1,2,1)
+                l3 = - Mesh3DY(i,1,1)* DerPsi(1)%Grid(i,1,1,4,1) &
+                &    + Mesh3DX(i,1,1)* DerPsi(2)%Grid(i,1,1,4,1) &
+                &    - 0.5_dp        * Psi%Grid(i,1,1,3,1)
+                l4 =   Mesh3DY(i,1,1)* DerPsi(1)%Grid(i,1,1,3,1) &
+                &    - Mesh3DX(i,1,1)* DerPsi(2)%Grid(i,1,1,3,1) &
+                &    - 0.5_dp        * Psi%Grid(i,1,1,4,1)
+
+                AngMom(6,1) = AngMom(6,1) + l1*r1 + l2*r2 + l3*r3 + l4*r4
+             enddo
+             
+         endif
+
+        AngMom = AngMom * dv
+
+  end function AngularMomentum
 
   subroutine PrintHF(WF,i,PrintType)
   !-----------------------------------------------------------------------------
@@ -1405,8 +1502,8 @@ contains
 
     Vecs=0.0_dp
     do l=1,3
-            Psi = Pauli(WaveFunction%Value,l)
-            Vecs(:,:,:,l) = RealMultiplySpinor(WaveFunction%Value,Psi)   
+        Psi = Pauli(WaveFunction%Value,l)
+        Vecs(:,:,:,l) = RealMultiplySpinor(WaveFunction%Value,Psi)   
     enddo
   end function GetVecs
   
@@ -1420,33 +1517,27 @@ contains
     type(Spinor)            :: Psi
 
     VecT(:,:,:,:)=0.0_dp
-
-    if(WF%Signature.eq.0)  then
-      !-------------------------------------------------------------------------
-      !X component
-      !T_x = 2*Re[\nabla \Psi^*(r,+)\cdot\nabla \Psi(r,-) ]
-      ! This is constrained by signature symmetry.
-      !-------------------------------------------------------------------------
-      Temp =0.0_dp
-      do l=1,3
+    !-------------------------------------------------------------------------
+    !X component
+    !T_x = 2*Re[\nabla \Psi^*(r,+)\cdot\nabla \Psi(r,-) ]
+    !-------------------------------------------------------------------------
+    Temp =0.0_dp
+    do l=1,3
         Psi  = Pauli(WF%Der(l),1)
         Temp = Temp + RealMultiplySPinor(WF%Der(l) , Psi)
-      enddo
-      VecT(:,:,:,1)  = Temp
+    enddo
+    VecT(:,:,:,1)  = Temp
 
-    elseif((WF%Signature.eq.0).and.(WF%TimeSimplex.eq.0))then
-      !-------------------------------------------------------------------------
-      !Y component
-      !T_y = 2*Im[\nabla \Psi^*(r,+)\cdot\nabla \Psi(r,-) ]
-      !This is constrained by both time simplex and signature.
-      !-------------------------------------------------------------------------
-      Temp =0.0_dp
-      do l=1,3
+    !-------------------------------------------------------------------------
+    !Y component
+    !T_y = 2*Im[\nabla \Psi^*(r,+)\cdot\nabla \Psi(r,-) ]
+    !-------------------------------------------------------------------------
+    Temp =0.0_dp
+    do l=1,3
         Psi  = Pauli(WF%Der(l),2)
         Temp = Temp + RealMultiplySpinor(WF%Der(l) , Psi)
-      enddo
-      VecT(:,:,:,2)  = Temp
-    endif
+    enddo
+    VecT(:,:,:,2)  = Temp
     !---------------------------------------------------------------------------
     !Z component
     ! T_z = \nabla \Psi^*(r,+)\cdot\nabla \Psi(r,+)

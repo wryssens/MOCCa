@@ -7,7 +7,6 @@ module ImaginaryTime
 
   implicit none
   
-
   !-----------------------------------------------------------------------------
   !Procedure that determines the evolution of a Spwf under imaginary time.
   procedure(GradDesc),pointer :: EvolveSpwf
@@ -85,7 +84,7 @@ contains
         Desired = Current%Constraint(1)
         if(Current%Total) then
           power = 2
-          O2    = sum(sum(Density%Rho,4)*Current%SpherHarm**4)
+          O2    = 16 * pi/(2*Current%l + 1) * sum(sum(Density%Rho,4)*Current%SpherHarm**4)
           Value = sum(CalculateTotalQl(Current%l))**2
         else
           power = 1
@@ -131,7 +130,7 @@ contains
       
       !Calculate the update
       do it=1,2
-        Update(:,:,:,it) = c0*( Value(it)  - Desired(it))/(O2(it) + d0)*       &
+        Update(:,:,:,it) = c0*(Value(it)  - Desired(it))/(O2(it) + d0)*       &
         &                  Current%SpherHarm**power
       enddo
       Correction = Correction + Update
@@ -161,8 +160,7 @@ contains
       enddo
       
       !Substituting the correction
-      QPsi = QPsi - Correction(:,:,:,it)*Cutoff(:,:,:,it)*QPsi                 &
-      &    - TempSpinor
+      QPsi = QPsi - Correction(:,:,:,it)*Cutoff(:,:,:,it)*QPsi - TempSpinor
       call HFBasis(i)%SetGrid(QPsi)
     enddo
     ! Finally, orthonormalisation
@@ -181,7 +179,7 @@ contains
     integer :: i
     real(KIND=dp)             :: SpEnergy, SpDispersion, Propfactor
     type(Spinor)              :: Current, ActionOfH
-    integer, intent(in)     :: iteration
+    integer, intent(in)       :: iteration
 
     Propfactor = dt/hbar
 

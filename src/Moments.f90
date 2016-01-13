@@ -136,7 +136,6 @@ module Moments
       ! Deformation parameter Beta_lm associated with the moment.
       !-------------------------------------------------------------------------
       real(KIND=dp)         :: Beta(3)
-
     contains
       procedure, pass, public :: WriteMoment
       generic :: Write=> WriteMoment
@@ -178,7 +177,7 @@ module Moments
   !-----------------------------------------------------------------------------
   !Damping associated with the readjustment of quadratic constraints
   !-----------------------------------------------------------------------------
-  real(KIND=dp)  :: ReadjustSlowDown=0.1_dp
+  real(KIND=dp)  :: ReadjustSlowDown=0.01_dp
   !-----------------------------------------------------------------------------
   !Pointer to the cutoff procedure chosen. 
   !-----------------------------------------------------------------------------
@@ -198,6 +197,8 @@ module Moments
   !-----------------------------------------------------------------------------
   ! Numerical parameters for the Rutz-constraint update scheme
   real(KIND=dp) :: c0=0.2_dp, d0=0.01_dp, epsilon=7.0_dp
+
+  logical :: RutzToQuadratic = .false.
 
 contains
 
@@ -680,12 +681,10 @@ contains
       nullify(Current)
     endif
     
-    
     print *
     
   end subroutine PrintConstraints
   
-
   subroutine PrintMoment(ToPrint)
     !---------------------------------------------------------------------------
     ! This subroutine provides the printing of all relevant info of a Moment.
@@ -704,7 +703,9 @@ contains
       5 format (' RMS radius',  3(1x,f15.4))
       6 format ('Pulling to ',  33x, f15.4)
       7 format ('Constrained Difference: ', 3x, 2(1x,f15.4))
-    
+      8 format ('Parameter  ', 33x,  f15.4)
+      9 format ('Parameter  ', 2(1x,f15.4))
+      
     select case(ToPrint%l)
     
     case(0)
@@ -740,19 +741,23 @@ contains
       print 1, ReIm, ToPrint%l, ToPrint%m, ToPrint%Value(1), ToPrint%Value(2) &
       &        , Sum(ToPrint%Value)
       
-      if(.not.ToPrint%Total) then
+      !if(.not.ToPrint%Total) then
         if(ToPrint%ConstraintType.ne.0) then
           select case(ToPrint%Isoswitch)
           case(1)
             print 3, ToPrint%TrueConstraint
-            if(ToPrint%ConstraintType.eq.1) print 6, ToPrint%Constraint
+            if(ToPrint%ConstraintType.eq.1) then
+              print 6, ToPrint%Constraint
+            endif
+            print 8, ToPrint%Intensity(1)    
           case(2)
             print 2, ToPrint%TrueConstraint
+            print 9, ToPrint%Intensity
           case(3)
             print 7, ToPrint%TrueConstraint, ToPrint%Value(1) - ToPrint%Value(2)
           end select
         endif
-      endif
+      !endif
     end select
     
   end subroutine PrintMoment
@@ -879,18 +884,17 @@ contains
       &       sum(ToCalculate%SpherHarm(:,:,:)*Density%Rho(:,:,:,it)           &
       &       *CutOff(:,:,:,it))
     enddo
-    
-    if(ToCalculate%ConstraintType.eq.2 .or. ToCalculate%Total) then    
+      
+    !Do this anyway, since it does not cost any time at all
+    !if(ToCalculate%ConstraintType.eq.2 .or. ToCalculate%Total) then    
       do it=1,2
-        ! When Rutz-Constrained or 'total' constrained compute the 
-        ! value of <Q_{lm}>^2
         ToCalculate%Squared(it)    = ToCalculate%Squared(it)    + &
         &       sum(ToCalculate%SpherHarm(:,:,:)**2*Density%Rho(:,:,:,it))
         ToCalculate%SquaredCut(it) = ToCalculate%SquaredCut(it) + &
         &       sum(ToCalculate%SpherHarm(:,:,:)**2*Density%Rho(:,:,:,it)      &
         &       *CutOff(:,:,:,it))
       enddo
-    endif
+    !endif
 
     if(any(ToCalculate%Value.eq.ToCalculate%Value+1)) then
       call stp('Nan in the calculation of multipole moments.', 'l=',           &
@@ -955,130 +959,11 @@ contains
         call Readjust(Current)    
     enddo      
     nullify(Current)   
+
+    if(RutzToQuadratic .and. NoRutz.eq.0) call ChangeRutzIntoQuadraticMoments
  
   end subroutine ReadjustAllMoments
   
-!  subroutine CalcConstraintEnergy()
-!  !-----------------------------------------------------------------------------
-!  ! This function calculates the energy contribution associated with the 
-!  ! constraints on the multipole moments.
-!  !
-!  ! For quadratic constraints of the form the contribution is:
-!  !    U = 2*C*(<Q_{lm}> - A)* Q_{lm}
-!  ! For linear constraints (and Rutz-type Constraints) this becomes:
-!  !    U = C*Q_{lm}        
-!  ! For quadratic-logarithmic constraints this becomes:
-!  !    U = 2*C*(<Q_{lm}> - A)       * Q_{lm} when <Q_{lm}> < 1/(2C)
-!  !      = 1/(2*C * (<Q_{lm}> - A)) * Q_{lm} when <Q_{lm}> > 1/(2C)
-!  !
-!  ! Note that there is damping of this energy in this routine with 
-!  ! the parameter damping:
-!  !       E_new = Damping* E_old + (1-Damping)*ConstraintContribution
-!  !-----------------------------------------------------------------------------
-!    integer               :: it
-!    real(KIND=dp)         :: Factor(2), Qlm(2)
-!    type(Moment), pointer :: Current, Extra
-!  
-!    Current => Root
-!    ConstraintEnergy = Damping*ConstraintEnergy
-!    
-!    do while(associated(Current%Next))
-!      Current => Current%Next
-!      Factor = 0.0_dp
-!      if(.not. Current%Total) then
-!        !-----------------------------------------------------------------------
-!        ! Ordinary constraints
-!        !-----------------------------------------------------------------------
-!        select case(Current%ConstraintType)
-!        case(0)
-!          !---------------------------------------------------------------------
-!          ! Go to the next moment if this moment is not constrained
-!          cycle
-!                  
-!        case(1)
-!          !---------------------------------------------------------------------
-!          ! Quadratic constraints
-!          select case(Current%Isoswitch)
-!          case(1)
-!            ! Total value constrained
-!            factor(1) = 2.0_dp *(sum(Current%Value) - Current%Constraint(1))
-!            factor(2) = factor(1)
-!            factor=factor*Current%Intensity
-!          case(2)
-!            ! Proton & Neutron independently constrained
-!            do it=1,2
-!              factor(it) = 2.0_dp * Current%Intensity(it)*                     &
-!              &                  (Current%Value(it) - Current%Constraint(it))
-!            enddo          
-!            factor=factor*Current%Intensity             
-!          case(3)
-!             ! Difference of proton & neutron constrained
-!              factor(1) = 2.0_dp *(Current%Value(1)-Current%Value(2)           &
-!              &                  - Current%Constraint(1))
-!              factor(2) =-2.0_dp *(Current%Value(1)-Current%Value(2)           &
-!              &                  - Current%Constraint(1))
-!              factor = factor*Current%Intensity
-!          end select
-!          
-!        case(2)
-!          !---------------------------------------------------------------------
-!          ! Rutz self-correcting constraints                
-!          select case(Current%Isoswitch)
-!          case(1)
-!            Factor = Current%Intensity
-!          case(2)
-!            Factor = Current%Intensity
-!          case(3)
-!            Factor(1) =   Current%Intensity(1)
-!            Factor(2) = - Current%Intensity(1)
-!          end select 
-!        case DEFAULT
-!          call stp('Not implemented constrainttype.')  
-!        end select
-!      else
-!        !-----------------------------------------------------------------------
-!        ! Total size Q_{l} is constrained. Note the inefficiency in traversing 
-!        ! all the multipole moments. Feel free to improve the efficiency, but 
-!        ! this is the most transparant treatment I could come up with.
-!        !-----------------------------------------------------------------------
-!        qlm = 0.0_dp
-!        ! Step 1: Calculate 16 * pi / (2*l + 1) *Sum_{l} <Q_{lm}^2>
-!        Extra => FindMoment(Current%l,0,.false.)
-!        do while(Extra%l .eq. Current%l)
-!          qlm = qlm + Extra%Squared      
-!        enddo
-!        qlm = 16 * pi/(2*Current%l + 1) * qlm
-!      
-!        ! Step 2: add contribution of this individual Qlm to the constraints
-!        select case(Current%ConstraintType)
-!        case(0)
-!          !---------------------------------------------------------------------
-!          ! Go to the next moment if this moment is not constrained
-!          cycle
-!        case(1)
-!        
-!        
-!        
-!        case(2)
-!        
-!        case DEFAULT
-!          call stp('Not implemented constrainttype.')  
-!        
-!        end select
-!      endif
-!      !-------------------------------------------------------------------------      
-!      ! Multiplying by (1-Damp) if this is not the first time that
-!      ! ConstraintEnergy is calculated
-!      if(.not.all(ConstraintEnergy.eq.0.0_dp)) then
-!        Factor = Factor * (1.0_dp - Damping)
-!      endif                        
-!      do it=1,2
-!        ConstraintEnergy(:,:,:,it)=ConstraintEnergy(:,:,:,it) &
-!        & + Factor(it)*Current%SpherHarm(:,:,:)*Cutoff(:,:,:,it)
-!      enddo       
-!    enddo
-!  end subroutine CalcConstraintEnergy
-
   subroutine CalcConstraintEnergy()
     !---------------------------------------------------------------------------
     ! This function calculates the energy contribution associated with the 
@@ -1131,13 +1016,13 @@ contains
           Desired= Current%Constraint(1)
           
           if(Current%Total) then
-            Value  = sum(CalculateTotalQl(Current%l))
+            Value  = sum(CalculateTotalQl(Current%l))**2
             power  = 2
           else
             Value  = sum(Current%Value)          
             power  = 1
           endif
-        
+
         case(2)
           ! Proton & Neutron independently constrained
           Factor = 2.0_dp * Current%Intensity
@@ -1198,7 +1083,7 @@ contains
       do it=1,2
         ConstraintEnergy(:,:,:,it)=ConstraintEnergy(:,:,:,it)                  &
         & +                      Factor(it)*(Value(it) - Desired(it))*         &
-        &                       Current%SpherHarm(:,:,:)**power*Cutoff(:,:,:,it)
+        &                        Current%SpherHarm(:,:,:)**power*Cutoff(:,:,:,it)**power
       enddo   
     enddo
     nullify(Current)
@@ -1539,7 +1424,7 @@ contains
     
     case (1) 
       !-------------------------------------------------------------------------
-      !Quadratically constrained. 
+      !Quadratically constrained.     
       select case(ToReadjust%Isoswitch)
       case(1)
         ToReadjust%Constraint(1) = ToReadjust%Constraint(1) &
@@ -1562,16 +1447,20 @@ contains
      case(1)    
       !Calculate < O^2 >
       O2 = sum(ToReadjust%Squared)
+
+      if(ToReadjust%Total) O2 = O2 * 16 * pi/(2*ToReadjust%l + 1)
      
       ToReadjust%Intensity = ToReadjust%Intensity +                            &
       & epsilon *  (sum(ToReadjust%Value) - sum(ToReadjust%OldValue(:,1))) /   &
       & (O2(1) + d0)
-     
+    
      case(2)
       !Calculate < O^2 >
       do it=1,2
         O2(it) = ToReadjust%Squared(it)
         
+        if(ToReadjust%Total) O2(it) = O2(it) * 16 * pi/(2*ToReadjust%l + 1)
+
         ToReadjust%Intensity(it) = ToReadjust%Intensity(it)+                   &
         & epsilon *  ( ToReadjust%Value(it) - ToReadjust%OldValue(it,1))/      &
         & (O2(it) + d0)     
@@ -1580,6 +1469,8 @@ contains
      case(3) 
       ! Calculate < O^2 >
       O2 = sum(ToReadjust%Squared)
+
+      if(ToReadjust%Total) O2(it) = O2(it) * 16 * pi/(2*ToReadjust%l + 1)
       
       ToReadjust%Intensity = ToReadjust%Intensity +                            &
       & epsilon *  (ToReadjust%Value(1) - ToReadjust%Value(2)                  &
@@ -2107,6 +1998,7 @@ contains
               do while(New%l .eq. Current%l)
                 New%ConstraintType = Current%ConstraintType
                 New%Constraint     = Current%Constraint
+                New%TrueConstraint = Current%TrueConstraint
                 New%Total          = Total
                 New%Intensity      = Current%Intensity
                 
@@ -2120,5 +2012,50 @@ contains
      nullify(Current)
      return
   end subroutine ReadMomentData
+
+  subroutine ChangeRutzIntoQuadraticMoments
+    !-----------------------------------------------------------------------------------
+    ! In order to gain speed we try to replace Rutzconstraints by quadratic constraints
+    ! once close enough to the solution.
+    !
+    ! The scheme is simple, close to convergence the Rutz Constraint will have the following
+    ! form:
+    ! 
+    !  h - \lambda O
+    !
+    ! And we then seek a quadratic constraint that gives the same contribution to the
+    ! single-particle Hamiltonian.
+    ! Remember that if E - C(<O> - O_0)^2 then the contribution to the single-particle
+    ! Hamiltonian is:
+    !
+    ! h - c( <O> - O_0 ) * O
+    !
+    ! Thus, we replace a Rutz-Constraint with a quadratic constraint at iteration i
+    ! with
+    !
+    ! c = \lambda/( <O> - O_0 )
+    !------------------------------------------------------------------------------------
+    integer :: it
+    real(KIND=dp) :: Treshold = 0.1, Deviation(2), O2(2)
+    type(MOment), pointer :: Current
+
+    Current => Root
+
+    do while(associated(Current%Next))
+      Current => Current%Next
+      !Don't pay attention to non-Rutz moments
+      if(Current%ConstraintType .ne. 2) cycle
+      Deviation = abs(sum(Current%Value)  - sum(Current%Constraint))/(sum(abs(Current%Constraint)))
+      !print *, Deviation, Current%Value, Current%Constraint
+      !Check if is close enough
+      
+      if(all(Deviation.lt. Treshold)) then
+        print *, 'Changed ConstraintType ', Current%l, Current%m, Deviation
+        Current%ConstraintType = 1
+        Current%Intensity      = abs(Current%Intensity/(sum(Current%Value) - sum(Current%Constraint)))
+        print *, 'New Intensity', Current%Intensity
+      endif
+    enddo
+  end subroutine ChangeRutzIntoQuadraticMoments
 
 end module Moments

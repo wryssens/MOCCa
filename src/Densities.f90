@@ -110,7 +110,6 @@ contains
     !Time-even density with Jmunu!
     if(B14.ne.0.0_dp .or. B15.ne.0.0_dp .or. B16.ne.0.0_dp .or. B17.ne.0.0_dp)&
     & then
-      
       allocate(R%JMuNu(sizex,sizey,sizez,3,3,2))
       R%Jmunu = 0.0_dp
     endif
@@ -124,8 +123,7 @@ contains
       R%Vecs=0.0_dp ; R%RotVecj =0.0_dp ; R%DerS=0.0_dp ;
            
       !Derivatives of s
-      if(B18.ne.0.0_dp .or. B19.ne.0.0_dp.or.B20.ne.0.0_dp .or. B21.ne.0.0_dp) &
-      & then
+      if(B18 .ne. 0.0_dp .or. B19 .ne. 0.0_dp .or. B20.ne.0.0_dp .or. B21.ne.0.0_dp) then
         allocate(R%LapS(sizex,sizey,sizez,3,2))
         R%LapS=0.0_dp ;        
         allocate(R%GradDivS(sizex,sizey,sizez,3,2))
@@ -133,8 +131,9 @@ contains
         allocate(R%DivS(sizex,sizey,sizez,2))
         R%DivS = 0.0_dp
       endif
+
       !F & T densities.      
-      if(B15.ne.0.0_dp .or. B16.ne.0.0_dp) then
+      if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
         allocate(R%VecT(sizex,sizey,sizez,3,2))
         R%VecT=0.0_dp ; 
       endif
@@ -178,7 +177,15 @@ contains
         Sum%DivS = Den1%DivS + Den2%DivS
       endif
     endif
-  
+
+    if(allocated(Sum%VecT)) then
+      Sum%VecT = Den1%VecT + Den2%VecT
+    endif
+
+    if(allocated(Sum%VecF)) then
+      Sum%VecF = Den1%VecF + Den2%VecF
+    endif
+
   end function Add
   
   function MultiplyScalar(A,Den) result(Prod)
@@ -207,6 +214,7 @@ contains
       Prod%RotVecj= A*Den%RotVecJ 
       Prod%Vecs   = A*Den%vecs
       Prod%RotS   = A*Den%RotS    
+      
       if(allocated(Prod%LapS)) then
         Prod%LapS     = A*Den%LapS             
         Prod%GradDivS = A*Den%GradDivS 
@@ -214,6 +222,15 @@ contains
         Prod%DerS     = A*Den%DerS
       endif
     endif
+
+    if(allocated(Prod%VecT)) then
+      Prod%VecT = A*Den%VecT
+    endif
+
+    if(allocated(Prod%VecF)) then
+      Prod%VecF = A*Den%VecF
+    endif
+
   end function MultiplyScalar
   
   real(KIND=dp) function Inproduct(Den1, Den2) 
@@ -406,7 +423,6 @@ contains
     !Computing the derivatives of vecj & vecs
     if(.not.TRC) then
       DenIn%RotVecJ = DeriveVecJ(DenIn%VecJ)    
-      
       call DeriveVecS(DenIn)
     endif
   end subroutine ComputeDensity
@@ -485,44 +501,48 @@ contains
     integer :: i,it
     type(DensityVector), intent(inout) :: DenIn
     real(KIND=dp)                      :: DivS(nx,ny,nz,2)
-    
+    logical                            :: MoreDers
+
+    MoreDers=.true.
+    if(B18.eq.0.0_dp.and.B19.eq.0.0_dp.and.B20.eq.0.0_dp .and. B21.eq.0.0_dp) then
+      MoreDers = .false.
+    endif
+
     do it=1,2
       !-------------------------------------------------------------------------
       ! See for instance Table V in 
       !                      V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
-      
+      !-------------------------------------------------------------------------
+      ! Double checked on 02/01/2016
       !--------------------- X Components---------------------------------------                   
-      if(B18.ne.0.0_dp.or.B19.ne.0.0_dp .or. B20.ne.0.0_dp .or. B21.ne.0.0_dp)&
-      & then
-      DenIn%LapS(:,:,:,1,it) = Laplacian(DenIn%VecS(:,:,:,1,it),               &
-      &                                ParityInt,-SignatureInt,TimeSimplexInt,1)
+      if(MoreDers) then
+        DenIn%LapS(:,:,:,1,it) = Laplacian(DenIn%VecS(:,:,:,1,it),             &
+        &                              ParityInt,-SignatureInt,TimeSimplexInt,1)
       endif
-      
+ 
       DenIn%DerS(:,:,:,1,1,it) = &
       & DeriveX(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)    
       DenIn%DerS(:,:,:,2,1,it) = &
       & DeriveY(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1) 
       DenIn%DerS(:,:,:,3,1,it) = &
-      & DeriveZ(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)    
+      & DeriveZ(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)
 
       !--------------------- Y Components--------------------------------------  
-      if(B18.ne.0.0_dp.or.B19.ne.0.0_dp .or. B20.ne.0.0_dp .or. B21.ne.0.0_dp)&
-      & then
-      DenIn%LapS(:,:,:,2,it) = Laplacian(DenIn%VecS(:,:,:,2,it),               &
-      &                               ParityInt,-SignatureInt,-TimeSimplexInt,1)
+      if(MoreDers) then
+        DenIn%LapS(:,:,:,2,it) = Laplacian(DenIn%VecS(:,:,:,2,it),             &
+        &                             ParityInt,-SignatureInt,TimeSimplexInt,2)
       endif
       DenIn%DerS(:,:,:,1,2,it) = &
-      &DeriveX(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,-TimeSimplexInt,1)    
+      &DeriveX(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)    
       DenIn%DerS(:,:,:,2,2,it) = &
-      &DeriveY(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,-TimeSimplexInt,1) 
+      &DeriveY(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2) 
       DenIn%DerS(:,:,:,3,2,it) = &
-      &DeriveZ(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,-TimeSimplexInt,1)    
+      &DeriveZ(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)    
 
       !--------------------- Z Components--------------------------------------  
-      if(B18.ne.0.0_dp.or.B19.ne.0.0_dp .or. B20.ne.0.0_dp .or. B21.ne.0.0_dp)&
-      & then
-      DenIn%LapS(:,:,:,3,it) = Laplacian(DenIn%VecS(:,:,:,3,it),               &
-      &                                 ParityInt,SignatureInt,TimeSimplexInt,1)
+      if(MoreDers) then
+        DenIn%LapS(:,:,:,3,it) = Laplacian(DenIn%VecS(:,:,:,3,it),             &
+        &                              ParityInt,SignatureInt,TimeSimplexInt,1)
       endif
       DenIn%DerS(:,:,:,1,3,it) = &
       & DeriveX(DenIn%VecS(:,:,:,3,it),ParityInt,Signatureint,TimeSimplexInt,1)    
@@ -536,8 +556,7 @@ contains
       DenIn%RotS(:,:,:,2,it) = DenIn%DerS(:,:,:,3,1,it)-DenIn%DerS(:,:,:,1,3,it)
       DenIn%RotS(:,:,:,3,it) = DenIn%DerS(:,:,:,1,2,it)-DenIn%DerS(:,:,:,2,1,it)
       
-      if(B18.ne.0.0_dp.or.B19.ne.0.0_dp .or. B20.ne.0.0_dp .or. B21.ne.0.0_dp)&
-      & then
+      if(MoreDers) then
         DivS(:,:,:,it)=0.0_dp   
         do i=1,3
           DivS(:,:,:,it) = DenIn%DivS(:,:,:,it) + DenIn%DerS(:,:,:,i,i,it)
@@ -545,20 +564,18 @@ contains
       endif
     enddo
             
+    if(.not. MoreDers) return
      !This one is dubious: several numerical derivatives are "stacked".
-    if(B18.ne.0.0_dp.or.B19.ne.0.0_dp .or. B20.ne.0.0_dp .or. B21.ne.0.0_dp)&
-    & then
-      do it=1,2
-        ! See for instance Table V in 
-        ! V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
-        DenIn%GradDivS(:,:,:,1,it) = DeriveX( &
-        &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
-        DenIn%GradDivS(:,:,:,2,it) = DeriveY( & 
-        &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
-        DenIn%GradDivS(:,:,:,3,it) = DeriveZ( &
-        &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
-      enddo
-    endif
+    do it=1,2
+      ! See for instance Table V in 
+      ! V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
+      DenIn%GradDivS(:,:,:,1,it) = DeriveX( &
+      &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
+      DenIn%GradDivS(:,:,:,2,it) = DeriveY( & 
+      &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
+      DenIn%GradDivS(:,:,:,3,it) = DeriveZ( &
+      &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
+    enddo
   end subroutine DeriveVecs
   
   subroutine WriteDensity(Den, unit)
@@ -582,11 +599,11 @@ contains
       write(unit) Den%JMuNu
     else
       !Write an empty line
-      write(unit) 
+      write(unit)
     endif
     !---------------------------------------------------------------------------
     ! Things that are not necessarily allocated
-    if(TRC) then
+    if(.not.TRC) then
       write(unit) Den%vecj, Den%RotVecj
       write(unit) Den%Vecs, Den%Rots, Den%DerS
       
@@ -614,27 +631,35 @@ contains
 
   end subroutine WriteDensity
   
-  subroutine ReadDensity(Den, unit, filenx,fileny,filenz)
+  subroutine ReadDensity(Den, unit, filenx,fileny,filenz, flag)
   !-----------------------------------------------------------------------------
   ! Assigns a density vector den values read from file unit.
   ! Everything gets newly allocated.
+  !
+  ! Flag signals if problems have been encountered.
+  ! 
   !----------------------------------------------------------------------------- 
     type(DensityVector), intent(inout) :: Den
     integer, intent(in)                :: unit
-    integer                            :: io, i
+    integer                            :: io, i, SizeOfDen
     integer, intent(in)                :: filenx, fileny, filenz
+    integer, intent(inout)             :: flag
         
-    Den = NewDensityVector(filenx,fileny,filenz)    
+    Den = NewDensityVector(filenx,fileny,filenz) 
+
+    Flag = 0   
         
-    read(unit) Den%Rho, Den%DerRho, Den%LapRho
-    read(unit) Den%Tau
-    read(unit) Den%NablaJ
+    read(unit,iostat=flag) Den%Rho, Den%DerRho, Den%LapRho
+    read(unit,iostat=flag) Den%Tau
+    read(unit,iostat=flag) Den%NablaJ
     
     if(allocated(Den%Jmunu)) then
       io = 0
-      read(unit, iostat=io) Den%JMuNu
-      if(io.ne.0.0_dp) then
-        !End-of-record problem, no densities on file
+      SizeOfDen = size(Den%JMuNu)
+      ! Read the density as a vector. My clever scheme of trying to read
+      ! the densities fails if this is read as a matrix.
+      read(unit,iostat=io) Den%JMuNu(1:SizeOfDen,1,1,1,1,1)
+      if(io.ne.0) then
         Den%JMuNu = 0.0_dp
       endif
     else
@@ -645,7 +670,7 @@ contains
     ! The densities however are not guaranteed to be on file, which is why we
     ! utilize some iostat tricks. 
     ! Note that the IOSTAT end-of-record code on FORTRAN is -2.
-    if(TRC) then      
+    if( TRC) then      
       io = 0
       read(unit, iostat=io) Den%vecj,Den%RotVecj
       if(io.ne.0) then
@@ -696,8 +721,7 @@ contains
         endif     
       else
         read(unit)              
-      endif
-      
+      endif  
     else
       do i=1,5
         read(unit)

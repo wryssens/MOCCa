@@ -26,31 +26,97 @@ module Testing
 
     contains
 
-!     subroutine CompareDer
-!       integer :: i,j,k,l
-!       type(Spinor) :: opt(3), nonopt(3)
+    subroutine TestJ2
 
-!       i = 1
-!       DeriveX => Opt_X_EV8
-!       opt    = DeriveSpinor(HFBasis(i)%GetValue(),HFBasis(i)%GetParity(),1,1)
-!       DeriveX   => CentralX
-!       nonopt = DeriveSpinor(HFBasis(i)%GetValue(),HFBasis(i)%GetParity(),1,1)
+      integer :: i,j
+      real(KIND=dp) :: AngMom(6,2)
 
-!       do l=1,4
-!       do k=1,nz
-!         do j=1,ny
-!           do i=1,nx
-!             if(abs(nonopt(1)%Grid(i,j,k,l,1) - opt(1)%Grid(i,j,k,l,1)) .gt. 1d-10) then
-!             print *, nonopt(1)%Grid(i,j,k,l,1) - opt(1)%Grid(i,j,k,l,1), i,j,k,l
-!             endif
-!           enddo 
-!         enddo
-!       enddo
-!       enddo
-!       stop
+      print *, '< Jx >'
+      do i=1,nwt
+        j = i
+        !do j=1,nwt
+          AngMom = Angularmomentum(HFBasis(i), HFBasis(j),.false.,.false.,.false.,.false.)
+          print *, i,j,AngMom(1,1),InproductSpinorReal(HFBasis(i)%GetValue(), AngMomOperator(HFBasis(j),1))
+        !enddo
+      enddo
+      print *
 
-!     end subroutine CompareDer
-    
+      print *, '< Jy >'
+      do i=1,nwt
+        j= i
+        !do j=1,nwt
+          AngMom = Angularmomentum(HFBasis(i), HFBasis(j),.false.,.false.,.false.,.false.)
+          print *, i,j,AngMom(2,1),InproductSpinorReal(HFBasis(i)%GetValue(), AngMomOperator(HFBasis(j),2))
+        !enddo
+      enddo
+      print *
+
+      print *, '< Jz >'
+      do i=1,nwt
+        j = i
+        !do j=1,nwt
+          AngMom = Angularmomentum(HFBasis(i), HFBasis(j),.false.,.false.,.false.,.false.)
+          print *, i,j,AngMom(3,1),InproductSpinorReal(HFBasis(i)%GetValue(), AngMomOperator(HFBasis(j),3))
+        !enddo
+      enddo
+      print *
+
+      print *, '< Jx | T >'
+      do i=1,nwt
+        j = i
+        !do j=1,nwt
+          AngMom = Angularmomentum(HFBasis(i), HFBasis(j),.false.,.true.,.true.,.true.)
+          print *, i,j,AngMom(1,1),InproductSpinorReal(TimeReverse(HFBasis(i)%GetValue()), AngMomOperator(HFBasis(j),1))
+        !enddo
+      enddo
+      print *
+
+      print *, '< Jy | T >'
+      do i=1,nwt
+        j= i
+        !do j=1,nwt
+          AngMom = Angularmomentum(HFBasis(i), HFBasis(j),.false.,.true.,.true.,.true.)
+          print *, i,j,AngMom(2,1),InproductSpinorReal(TimeReverse(HFBasis(i)%GetValue()), AngMomOperator(HFBasis(j),2))
+        !enddo
+      enddo
+      print *
+
+      print *, '< Jx**2 >'
+      do i=1,nwt
+        j = i
+        !do j=1,nwt
+          AngMom = Angularmomentum(HFBasis(i), HFBasis(j),.true.,.true.,.true.,.true.)
+          print *, i,j,AngMom(4,1),InproductSpinorReal(AngMomOperator(HFBasis(i),1), AngMomOperator(HFBasis(j),1))
+        !enddo
+      enddo
+      print *
+
+      print *, '< Jy**2 >'
+      do i=1,nwt
+        j = i
+        !do j=1,nwt
+          AngMom = Angularmomentum(HFBasis(i), HFBasis(j),.true.,.true.,.true.,.true.)
+          print *, i,j,AngMom(5,1),InproductSpinorReal(AngMomOperator(HFBasis(i),2), AngMomOperator(HFBasis(j),2))
+        !enddo
+      enddo
+      print *
+
+      print *, '< Jz**2 >'
+      do i=1,nwt
+        j = i
+        !do j=1,nwt
+          AngMom = Angularmomentum(HFBasis(i), HFBasis(j),.true.,.true.,.true.,.true.)
+          print *, i,j,AngMom(6,1),InproductSpinorReal(AngMomOperator(HFBasis(i),3), AngMomOperator(HFBasis(j),3))
+        !enddo
+      enddo
+      print *
+
+
+      stop
+
+    end subroutine TestJ2
+
+
 
     subroutine OddTpot
 
@@ -368,6 +434,7 @@ module Testing
      real(KIND=dp) :: N(2)
    
      call ComputePairingCutoffs(Fermi)
+     call CompDensityFactor
 
      call HFBPairingField(PairingField,PairingFieldLN, Delta)
 

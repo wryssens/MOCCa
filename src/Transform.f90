@@ -152,7 +152,7 @@ contains
     !instead of only half.
     !Note that the x and y dimensions need not be nx/ny when we are breaking 
     !more than one symmetry.
-    Temp = NewSpinor(size(Value%Grid,1), size(Value%Grid,2), nz)
+    Temp = NewSizeSpinor(size(Value%Grid,1), size(Value%Grid,2), nz)
     ! Moving the old values to their correct place in the new spinor.
     Temp%Grid(:,:,nz/2+1:nz ,:,:) = Value%Grid(:,:,1:nz/2,:,:)
 
@@ -210,7 +210,7 @@ contains
 
     ! When breaking parity, we need to store the values for the entire x-axis, 
     ! instead of only half.
-    Temp = NewSpinor(nx,size(Value%Grid,2), size(Value%Grid,3))
+    Temp = NewSizeSpinor(nx,size(Value%Grid,2), size(Value%Grid,3))
 
     ! Moving the old values to their correct place in the new spinor.
     Temp%Grid(nx/2+1:nx,:,:,:,:) = Value%Grid(1:nx/2,:,:,:,:)
@@ -267,7 +267,7 @@ contains
     if(TimeSimplex.eq.0) call stp("Signature is already broken!")
           
     !When breaking parity, we need to store the values for the entire y-axis.
-    Temp=NewSpinor(size(Value%Grid,1),ny,size(Value%Grid,3))
+    Temp=NewSizeSpinor(size(Value%Grid,1),ny,size(Value%Grid,3))
 
     ! Moving the old values to their correct place in the new spinor.
     Temp%Grid(:, ny/2+1:ny,:,:,:) = Value%Grid(:,1:ny/2,:,:,:)
@@ -1036,24 +1036,6 @@ contains
                 OutKappa(i,j,1,it) = - OutKappa(j,i,1,it)
               enddo
             enddo
-            
-!             print *, 'it = ', it
-!             print *, 'sizes', sizes
-!             print *, 'In, negative parity'
-!             do j=1,sizes(1)
-!               print *, DBLE(Inkappa( j, 1:sizes(1), 1,it))
-!             enddo
-!             print * 
-!             print *, 'In, positive parity'
-!             do j=1,sizes(2)
-!               print *, DBLE(Inkappa(j , 1:sizes(2), 2,it))
-!             enddo
-!             print *
-!             print *, 'out, all parity'
-!             do j=1,sizes(1) + sizes(2)
-!               print *, DBLE(OutKappa(j, 1:sum(sizes), 1, it ))
-!             enddo
-!             print *
         enddo
     endif
 
@@ -1509,8 +1491,8 @@ contains
     call NewWfTwo%SetOcc(NewWfTwo%GetOcc()/2.0_dp)
 
     !Changing signature quantum number
-    call NewWfOne%SetSignature(1)
-    call NewWfTwo%SetSignature(-1)
+    call NewWfOne%SetSignature( wf%signature)
+    call NewWfTwo%SetSignature(-wf%signature)
 
     !Switching the components of nr.2 around
     ! Action of timereversal is -i *\sigma_y * K

@@ -235,7 +235,7 @@ contains
               DeriveZ => Opt_Z_EV8
               Laplacian => Lapla_EV8
           elseif(SC .and. TSC) then
-              ! Parity broken, signature and timereversal conserved
+              ! Parity broken, signature and timesimplex conserved
               DeriveX => Opt_X_EV8
               DeriveY => Opt_Y_EV8
               DeriveZ => Opt_Z_EV4

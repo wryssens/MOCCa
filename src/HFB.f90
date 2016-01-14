@@ -62,7 +62,7 @@ module HFB
   ! DO NOT immediately correspond to U and V in most texts. In fact the U and V
   ! in texts are one half of these matrices.
   ! Third and fourth index are for parity & isospin blocks.
-  complex(KIND=dp), allocatable :: U(:,:,:,:), V(:,:,:,:)
+  complex(KIND=dp), allocatable :: U(:,:,:,:), V(:,:,:,:), OldU(:,:,:,:), OldV(:,:,:,:)
   !-----------------------------------------------------------------------------
   ! HFB Hamiltonian
   ! Matrix of the form
@@ -595,8 +595,9 @@ contains
     real(KIND=dp), allocatable               :: GaugeEnergies(:,:,:)
 
 
-    real(KIND=dp) :: N(2), E, MinE
-    integer       :: it, P, i,j,k,S, ind(2,2), ind2(2,2)
+    real(KIND=dp)    :: N(2), E, MinE
+    complex(KIND=dp) :: Overlaps(nwt,nwt)
+    integer          :: it, P, i,j,k,S, ind(2,2), ind2(2,2), loc(2)
 
     !----------------------------------------------------------------------
     ! This part is sufficient when Timereversal is conserved
@@ -607,47 +608,110 @@ contains
     ! Determining which eigenvectors of the HFB Hamiltonian to use
     HFBColumns  = 0    
 
-    ! Our first try is always just taking the positive energy quasiparticle
-    ! columns. These are the last columns in U and V, since the Hamiltonian
-    ! diagonalisation ordered the eigenvalues in ascending order.
+!     ! Our first try is always just taking the positive energy quasiparticle
+!     ! columns. These are the last columns in U and V, since the Hamiltonian
+!     ! diagonalisation ordered the eigenvalues in ascending order.
+!     ind = 1
+!     do it=1,Iindex
+!         do P=1,Pindex
+!             S = blocksizes(P,it)
+!             do i=1,2*S
+!                 if(QuasiEnergies(i,P,it) .gt. 0.0_dp) then
+!                     HFBColumns(ind(P,it),P,it) = i
+!                     ind(P,it) = ind(P,it) + 1
+!                 endif
+!             enddo
+!             !print *, 'P,it', P,it, HFBColumns(1:S,P,it)
+!         enddo
+!     enddo
+
+    ! Do as in CR8: take only the first half of the matrix, and conjugate the first quarter.
     do it=1,Iindex
         do P=1,Pindex
-            do i=1,blocksizes(P,it)
-                HFBColumns(i,P,it) = i + blocksizes(P,it)
+            S = blocksizes(P,it)
+            do i=1,S/2
+                HFBColumns(i,P,it) = 2*S - i + 1
+            enddo 
+            do i=S/2+1,S
+                HFBColumns(i,P,it) = i
             enddo
         enddo
     enddo
+    
+!     print *,
+!     print *, 'Overlaps'
+!     print *
 
-    call constructRhoHFB(HFBColumns)
-    call DiagonaliseRhoHFB()
-    !----------------------------------------------------------------------
-    ! Check for the number parity
-    do it=1,2
-        do P=1,2
-            ind(P,it) = 0
-            S= blocksizes(P,it)
-            do i=1,S
-                if(abs(Occupations(i,P,it)-1).lt.1d-10 ) ind(P,it) = ind(P,it) + 1
-            enddo
-            if(mod(ind(P,it),2) .ne.0) then
-                HFBColumns(1,P,it) = 2 * S - HFBColumns(1,P,it) + 1
-                print *, 'encountered transition'
-            endif
-        enddo
-    enddo
+!     if(allocated(OldU)) then
+!         if(.not. all (abs(OldU) .eq. 0.0_dp)) then
+!         do it=1,Iindex
+!             do P=1,Pindex
+!                 S = blocksizes(P,it)
+!                 Overlaps = 0.0_dp
+!                 do i=1,2*S
+!                     do j=1,2*S
+!                         do k=1,S
+!                             Overlaps(i,j) = Overlaps(i,j) + U(k,i,P,it)*OldU(k,j,P,it) &
+!                             &                             + V(k,i,P,it)*OldV(k,j,P,it)
+!                         enddo
+!                     enddo
+!                 enddo
+!                 do i=1,2*S
+!                     print *, DBLE(Overlaps(i,1:2*S))
+!                 enddo
+!                 print *
+
+!                 ! Search for maximum overlaps
+!                 do i=1,S
+!                     loc = maxloc(abs(Overlaps))
+!                     HFBColumns(i,P,it) = loc(2)
+!                     Overlaps(:,loc(2)) = 0.0_dp
+!                 enddo
+!                 print *, HFBColumns(1:S,P,it)
+!             enddo
+! !             print *
+!         enddo
+!         !stop
+!     endif
+!     endif
+!     do it=1,Iindex
+!         do P=1,Pindex
+!             do i=1,blocksizes(P,it)
+!                 HFBColumns(i,P,it) = i + blocksizes(P,it)
+!             enddo
+!         enddo
+!     enddo
+
+!     call constructRhoHFB(HFBColumns)
+!     call DiagonaliseRhoHFB()
+!     !----------------------------------------------------------------------
+!     ! Check for the number parity
+!     do it=1,2
+!         do P=1,2
+!             ind(P,it) = 0
+!             S= blocksizes(P,it)
+!             do i=1,S
+!                 if(abs(Occupations(i,P,it)-1).lt.1d-10 ) ind(P,it) = ind(P,it) + 1
+!             enddo
+!             if(mod(ind(P,it),2) .ne.0) then
+!                 HFBColumns(1,P,it) = 2 * S - HFBColumns(1,P,it) + 1
+!                 print *, 'encountered transition'
+!             endif
+!         enddo
+!     enddo
     !---------------------------------------------------------------------
     call constructRhoHFB(HFBColumns)
     call DiagonaliseRhoHFB()
     call constructKappaHFB(HFBColumns)
-    do it=1,2
-        do P=1,2
-            ind2(P,it)=0
-            S= blocksizes(P,it)
-            do i=1,S
-                if(abs(Occupations(i,P,it)-1).lt.1d-10 ) ind2(P,it) = ind2(P,it) + 1
-            enddo
-        enddo
-    enddo
+!     do it=1,2
+!         do P=1,2
+!             ind2(P,it)=0
+!             S= blocksizes(P,it)
+!             do i=1,S
+!                 if(abs(Occupations(i,P,it)-1).lt.1d-10 ) ind2(P,it) = ind2(P,it) + 1
+!             enddo
+!         enddo
+!     enddo
     !--------------------------------------------------------------------
     ! Calculate the number of particles in this configuration and return.
     ! The Fermi energy can then use this to get adjusted.
@@ -1368,7 +1432,7 @@ contains
             endif
         enddo
     enddo
-    call InsertionSortQPEnergies
+    !call InsertionSortQPEnergies
 end subroutine DiagonaliseHFBHamiltonian_Signature
 
 subroutine DiagonaliseHFBHamiltonian_NoSignature
@@ -2157,6 +2221,21 @@ subroutine InsertionSortQPEnergies
   if( .not. all(KappaHFB.eq.0.0_dp) ) then
     KappaHFB = HFBMix * KappaHFB + (1.0_dp - HFBMix) * OldKappaHFB
   endif    
+
+  !----------------------------------------------------------------------------
+  ! Store old U and V 
+  if(.not.allocated(OldU)) OldU = U ; OldV = V 
+  OldU = 0.0 ; OldV = 0.0
+  do it=1,Iindex
+    do P=1,Pindex
+        N = blocksizes(P,it)
+        do i=1,N
+            OldU(1:N,HFBColumns(i,P,it),P,it) = U(1:N,HFBColumns(i,P,it),P,it)
+            OldV(1:N,HFBColumns(i,P,it),P,it) = V(1:N,HFBColumns(i,P,it),P,it)
+        enddo
+    enddo
+  enddo
+
   ! Actual diagonalisation
   call DiagonaliseRHOHFB!_ZHEEV
   !-----------------------------------------------------------------------------

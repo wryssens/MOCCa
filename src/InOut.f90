@@ -7,6 +7,7 @@ module InOutput
   use Pairing
   use Transform
   use SpwfFactory
+  use Interfaces
   
   implicit none
   public
@@ -37,6 +38,9 @@ module InOutput
   ! The array FileBlocksizes handles the effective sizes of the matrices
   complex(KIND=dp), allocatable :: InputKappa(:,:,:,:)
   integer, allocatable          :: FileBlocksizes(:,:)
+  !-----------------------------------------------------------------------------
+  ! Whether or not to write extra output files for various other codes.
+  logical :: Prom4Output = .false.
 
   !-----------------------------------------------------------------------------
   ! Variables read from the files of the ancient codes, mostly used for 
@@ -110,6 +114,9 @@ contains
     
     !Writing to the output channel
     call writeMOCCa(OutputChannel)
+
+    ! Writing extra files if asked for
+    if(Prom4Output) call writeProm4(trim(OutputFileName)//'.prom4')
     
   end subroutine Output
   
@@ -199,7 +206,7 @@ contains
     
     implicit none
     
-    NameList /InAndOutput/ InputFileName,OutputFileName,ExtraOutput,Pictures
+    NameList /InAndOutput/ InputFileName,OutputFileName,ExtraOutput,Pictures,Prom4Output
     !--------------- Reading Input---------------------------------------   
     !Info for the GenInfo Module
     call ReadGenInfo()  

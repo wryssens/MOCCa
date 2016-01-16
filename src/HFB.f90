@@ -597,121 +597,50 @@ contains
 
     real(KIND=dp)    :: N(2), E, MinE
     complex(KIND=dp) :: Overlaps(nwt,nwt)
-    integer          :: it, P, i,j,k,S, ind(2,2), ind2(2,2), loc(2)
+    integer          :: it, P, i,j,k,S, ind(2,2)
 
     !----------------------------------------------------------------------
     ! This part is sufficient when Timereversal is conserved
-    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,0.0_dp)
+    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge)
     ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
     call DiagonaliseHFBHamiltonian
 
+    !----------------------------------------------------------------------
     ! Determining which eigenvectors of the HFB Hamiltonian to use
     HFBColumns  = 0    
-
-!     ! Our first try is always just taking the positive energy quasiparticle
-!     ! columns. These are the last columns in U and V, since the Hamiltonian
-!     ! diagonalisation ordered the eigenvalues in ascending order.
-!     ind = 1
-!     do it=1,Iindex
-!         do P=1,Pindex
-!             S = blocksizes(P,it)
-!             do i=1,2*S
-!                 if(QuasiEnergies(i,P,it) .gt. 0.0_dp) then
-!                     HFBColumns(ind(P,it),P,it) = i
-!                     ind(P,it) = ind(P,it) + 1
-!                 endif
-!             enddo
-!             !print *, 'P,it', P,it, HFBColumns(1:S,P,it)
-!         enddo
-!     enddo
-
-    ! Do as in CR8: take only the first half of the matrix, and conjugate the first quarter.
-    do it=1,Iindex
-        do P=1,Pindex
-            S = blocksizes(P,it)
-            do i=1,S/2
-                HFBColumns(i,P,it) = 2*S - i + 1
-            enddo 
-            do i=S/2+1,S
-                HFBColumns(i,P,it) = i
+    !----------------------------------------------------------------------
+    ! Do as in CR8: take only the first half of the matrix, and conjugate 
+    ! the first quarter.
+    if(SC) then
+        do it=1,Iindex
+            do P=1,Pindex
+                S = blocksizes(P,it)
+                do i=1,S/2
+                    HFBColumns(i,P,it) = 2*S - i + 1
+                enddo 
+                do i=S/2+1,S
+                    HFBColumns(i,P,it) = i
+                enddo
             enddo
         enddo
-    enddo
-    
-!     print *,
-!     print *, 'Overlaps'
-!     print *
-
-!     if(allocated(OldU)) then
-!         if(.not. all (abs(OldU) .eq. 0.0_dp)) then
-!         do it=1,Iindex
-!             do P=1,Pindex
-!                 S = blocksizes(P,it)
-!                 Overlaps = 0.0_dp
-!                 do i=1,2*S
-!                     do j=1,2*S
-!                         do k=1,S
-!                             Overlaps(i,j) = Overlaps(i,j) + U(k,i,P,it)*OldU(k,j,P,it) &
-!                             &                             + V(k,i,P,it)*OldV(k,j,P,it)
-!                         enddo
-!                     enddo
-!                 enddo
-!                 do i=1,2*S
-!                     print *, DBLE(Overlaps(i,1:2*S))
-!                 enddo
-!                 print *
-
-!                 ! Search for maximum overlaps
-!                 do i=1,S
-!                     loc = maxloc(abs(Overlaps))
-!                     HFBColumns(i,P,it) = loc(2)
-!                     Overlaps(:,loc(2)) = 0.0_dp
-!                 enddo
-!                 print *, HFBColumns(1:S,P,it)
-!             enddo
-! !             print *
-!         enddo
-!         !stop
-!     endif
-!     endif
-!     do it=1,Iindex
-!         do P=1,Pindex
-!             do i=1,blocksizes(P,it)
-!                 HFBColumns(i,P,it) = i + blocksizes(P,it)
-!             enddo
-!         enddo
-!     enddo
-
-!     call constructRhoHFB(HFBColumns)
-!     call DiagonaliseRhoHFB()
-!     !----------------------------------------------------------------------
-!     ! Check for the number parity
-!     do it=1,2
-!         do P=1,2
-!             ind(P,it) = 0
-!             S= blocksizes(P,it)
-!             do i=1,S
-!                 if(abs(Occupations(i,P,it)-1).lt.1d-10 ) ind(P,it) = ind(P,it) + 1
-!             enddo
-!             if(mod(ind(P,it),2) .ne.0) then
-!                 HFBColumns(1,P,it) = 2 * S - HFBColumns(1,P,it) + 1
-!                 print *, 'encountered transition'
-!             endif
-!         enddo
-!     enddo
+    else
+        ind = 1
+        do it=1,Iindex
+            do P=1,Pindex
+                S = blocksizes(P,it)
+                do i=1,2*S
+                    if(QuasiEnergies(i,P,it) .gt. 0.0_dp) then
+                        HFBColumns(ind(P,it),P,it) = i
+                        ind(P,it) = ind(P,it) + 1
+                    endif
+                enddo
+            enddo
+        enddo
+    endif
     !---------------------------------------------------------------------
     call constructRhoHFB(HFBColumns)
     call DiagonaliseRhoHFB()
     call constructKappaHFB(HFBColumns)
-!     do it=1,2
-!         do P=1,2
-!             ind2(P,it)=0
-!             S= blocksizes(P,it)
-!             do i=1,S
-!                 if(abs(Occupations(i,P,it)-1).lt.1d-10 ) ind2(P,it) = ind2(P,it) + 1
-!             enddo
-!         enddo
-!     enddo
     !--------------------------------------------------------------------
     ! Calculate the number of particles in this configuration and return.
     ! The Fermi energy can then use this to get adjusted.
@@ -726,138 +655,7 @@ contains
 
   end function 
 
-  function HFBNumberofParticles_NOT(Lambda, Delta, LNLambda) result(N)
-    !-----------------------------------------------------------------------------------------------------
-    ! Constructs the HFB state ( consisting of RhoHFB and KappaHFB ).
-    !
-    ! When time-reversal is conserved, and gapless superconductivity is not a problem we do:
-    !
-    ! 1) HFBHamiltonian is constructed and diagonalised
-    ! 2) We select all columns in the U and V matrices that correspond to positive quasiparticle energy
-    ! 3) We construct Rho and Kappa from these
-    ! 4) We trace Rho
-    !
-    !
-    ! When gapless superconductivity is a problem, we need slightly more steps
-    ! 
-    ! 1a) Construct HFBHamiltonian with HFBgauge + epsilon
-    ! 1b) Diagonalise HFBHamiltonian 
-    ! 1c) Construct HFBHamiltonian with normal HFBgauge 
-    ! 1d) Diagonalise HFBHamiltonian 
-    ! 2) Select all columns of U and V for which increasing the gauge increases the qp energy
-    ! 3) Construct Rho & Kappa from these
-    ! 4) Trace Rho
-    !
-    ! A practical calculation of epsilon would need some thinking.
-    !-----------------------------------------------------------------------------------------------------
-    real(Kind=dp), intent(in)                :: Lambda(2),LNLambda(2)
-    complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
-    real(KIND=dp), allocatable               :: GaugeEnergies(:,:,:)
 
-    real(KIND=dp) :: N(2), lowE
-    integer       :: it, P, i, index, sanitycheck
-
-!     !if(.not.TRC) then
-!     !if(.not. all(abs(OldRhoHFB).eq.0.0)) then
-
-!         if(.not.allocated(GaugeEnergies)) then
-!             allocate(GaugeEnergies(2*maxval(blocksizes),2,2))
-!         endif
-
-!         call ConstructHFBHamiltonian(Lambda, Delta, LNLambda+1.0,0.0_dp)
-!         call DiagonaliseHFBHamiltonian
-!         !Copy the quasienergies for comparison
-!         do it=1,Iindex
-!             do P=1,Pindex
-!                 GaugeEnergies(1:2*blocksizes(P,it),P,it) = QuasiEnergies(1:2*blocksizes(P,it),P,it)        
-!             enddo
-!         enddo
-!     !endif
-
-    !----------------------------------------------------------------------
-    ! This part is sufficient when Timereversal is conserved
-    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,0.0_dp)
-    ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
-    call DiagonaliseHFBHamiltonian
-
-    ! Determining which eigenvectors of the HFB Hamiltonian to use
-    HFBColumns  = 0    
-!     if(all(abs(OldRhoHFB).eq.0.0)) then
-!     !if(TRC) then
-!         ! Our first try is always just taking the positive energy quasiparticle
-!         ! columns. These are the last columns in U and V, since the Hamiltonian
-!         ! diagonalisation ordered the eigenvalues in ascending order.
-!         do it=1,Iindex
-!             do P=1,Pindex
-!                 do i=1,blocksizes(P,it)
-!                     HFBColumns(i,P,it) = i + blocksizes(P,it)
-!                 enddo
-!             enddo
-!         enddo
-!     else 
-        sanitycheck=0  
-        do it=1,Iindex
-            do P=1,Pindex
-                index = 1
-                do i=1,2*blocksizes(P,it)
-                    if( - GaugeEnergies(i,P,it) + QuasiEnergies(i,P,it) .gt. 0.05) cycle                     
-                    HFBColumns(index,P,it) = i
-                    index = index + 1
-                    sanitycheck = sanitycheck + 1
-                enddo
-            enddo
-        enddo
-         !if((TRC .and. SanityCheck.ne.2*nwt).or.(.not.TRC.and.SanityCheck.ne.nwt) ) then
-           do it=1,2
-            do P=1,2
-               print *
-               print *, GaugeEnergies(1:2*blocksizes(P,it),P,it)
-               print *, QuasiEnergies(1:2*blocksizes(P,it),P,it)
-               print *, HFBcolumns(1:blocksizes(P,it),P,it)
-            enddo
-           enddo
-         !call stp('Sanity check failed in HFBParticleNumber', 'Sanity', SanityCheck)        
-        !endif  
-    !endif
-
-    call constructRhoHFB(HFBColumns)
-    call DiagonaliseRhoHFB()
-
-    do it=1,2
-        do P=1,2
-            index=0
-            do i=1,blocksizes(P,it)
-                if(abs(Occupations(i,P,it)-1).lt.1d-10 ) index = index + 1 
-            enddo
-            if(mod(index,2) .ne.0) then
-                print *, 'Wrong number parity'
-                print *, 'P, it', P, it
-                print *, index
-                print *, quasienergies(1:2*blocksizes(P,it),P,it)
-                print *, gaugeenergies(1:2*blocksizes(P,it),P,it)
-                print *, hfbcolumns(1:blocksizes(P,it),P,it)
-                stop
-            endif
-        enddo
-    enddo
-
-    if(HFBCheck) call CheckRho(RhoHFB)
-    call constructKappaHFB(HFBColumns)
-    !--------------------------------------------------------------------
-    ! Calculate the number of particles in this configuration and return.
-    ! The Fermi energy can then use this to get adjusted.
-    N = 0.0_dp 
-    do it=1,Iindex
-      do P=1,Pindex
-        do i=1,blocksizes(P,it)
-          N(it) = N(it) + real(RhoHFB(i,i,P,it))
-        enddo
-      enddo
-    enddo
-
-    call printSpwf(2, Lambda)
-  stop
-  end function 
   subroutine HFBFindFermiEnergyBisection(Fermi,L2,Delta,DeltaLN,Lipkin,Prec)
   !-------------------------------------------------------------------------------
   ! The idea is simple. Note:
@@ -1335,23 +1133,23 @@ contains
 !       ! ( Rho       Kappa   )
 !       ! ( -Kappa^*  1-Rho^* )
 !       !-------------------------------------------------------------------------
-!       do i=1,N
-!         ! The 1 of the 1-Rho^*
-!         k = blockindices(i,P,it)
-!         HFBHamil(i+N,i+N,P,it) = HFBHamil(i+N,i+N,P,it) - Gauge 
-!         HFBHamil(i,i,P,it)     = HFBHamil(i,i,P,it)     + Gauge 
+      do i=1,N
+        ! The 1 of the 1-Rho^*
+        k = blockindices(i,P,it)
+        !HFBHamil(i+N,i+N,P,it) = HFBHamil(i+N,i+N,P,it) - Gauge 
+        !HFBHamil(i,i,P,it)     = HFBHamil(i,i,P,it)     + Gauge 
 
-! !         HFBHamil(i+N,i+N,P,it) = HFBHamil(i+N,i+N,P,it) + Gauge 
-! !         do j=1,N
-! !             ! Rho
-! !             HFBHamil(i,j,P,it)     = HFBHamil(i,j,P,it)     + Gauge*OldRhoHFB(i,j,P,it)
-! !             ! Kappa
-! !             HFBHamil(i,j+N,P,it)   = HFBHamil(i,j+N,P,it)   + Gauge*OldKappaHFB(i,j,P,it)
-! !             HFBHamil(i+N,j,P,it)   = HFBHamil(i+N,j,P,it)   - Gauge*OldKappaHFB(i,j,P,it)
-! !             ! - Rho
-! !             HFBHamil(i+N,j+N,P,it) = HFBHamil(i+N,j+N,P,it) - Gauge*Conjg(OldRhoHFB(i,j,P,it))
-! !         enddo
-!       enddo
+        !HFBHamil(i+N,i+N,P,it) = HFBHamil(i+N,i+N,P,it) + Gauge 
+        do j=1,N
+            ! Rho
+            HFBHamil(i,j,P,it)     = HFBHamil(i,j,P,it)     - Gauge*OldRhoHFB(i,j,P,it)
+            ! Kappa
+            HFBHamil(i,j+N,P,it)   = HFBHamil(i,j+N,P,it)   - Gauge*OldKappaHFB(i,j,P,it)
+            HFBHamil(i+N,j,P,it)   = HFBHamil(i+N,j,P,it)   + Gauge*OldKappaHFB(i,j,P,it)
+            ! - Rho
+            HFBHamil(i+N,j+N,P,it) = HFBHamil(i+N,j+N,P,it) + Gauge*Conjg(OldRhoHFB(i,j,P,it))
+        enddo
+      enddo
     enddo
   enddo
 
@@ -1474,12 +1272,7 @@ subroutine DiagonaliseHFBHamiltonian_NoSignature
                     Temp(j,i) = Temp(i,j)
                 enddo
             enddo
-!             print *
-!             do i=1,N
-!                 print *, Temp(i,1:N)
-!             enddo
-!             print *
-!             print *
+
             !-------------------------------------------------------------------------
             ! Diagonalize
             call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work, 'DiagHamil ')        
@@ -1488,22 +1281,6 @@ subroutine DiagonaliseHFBHamiltonian_NoSignature
             QuasiEnergies(1:N,P,it)   = EigenValues(1:N)   
         enddo
     enddo
-!     do it=1,2
-!         do P=1,2
-!             N = 2*blocksizes(P,it)
-!             do i=1,N/2
-!                 print *, DBLE(U(i,1:N,P,it))
-!             enddo
-!             print *
-!             do i=1,N/2
-!                 print *, DBLE(V(i,1:N,P,it))
-!             enddo
-!             print *
-!             print *, QuasiEnergies(1:N,P,it)
-!             print *
-!         enddo
-!     enddo
-!     stop
 end subroutine DiagonaliseHFBHamiltonian_NoSignature
 
   subroutine DiagonaliseHFBHamiltonian_ZHEEVR
@@ -2092,7 +1869,6 @@ subroutine InsertionSortQPEnergies
           enddo
         enddo
         where (abs(CanTransfo) .lt. 1d-11) CanTransfo = 0.0_dp
-        !stop
   end subroutine DiagonaliseRhoHFB!_diagoncr8
 
   subroutine CheckRho(Rho)
@@ -2309,9 +2085,6 @@ subroutine InsertionSortQPEnergies
                   CanBasis(index)%Value%Grid(k,1,1,1,1) = Canbasis(index)%Value%Grid(k,1,1,1,1) + &
                   &           DBLE(CanTransfo(j,C,P,it))* HFBasis(jjj)%Value%Grid(k,1,1,1,1)
                 enddo
-
-                !CanBasis(index)%Value = Canbasis(index)%Value + DBLE(CanTransfo(j,C,P,it))*&
-                !&                                                    HFBasis(jjj)%Value
             else
                 CanBasis(index)%Value = Canbasis(index)%Value +       CanTransfo(j,C,P,it)*&
                 &                                                    HFBasis(jjj)%Value
@@ -2869,10 +2642,7 @@ subroutine PrintBlocking
   
         do j=1,blocksizes(P,it)
             if(HFBColumns(j,P,it) .eq. C) then
-                !print *, 'after', 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
                 HFBColumns(j,P,it) = 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
-                !print *, 'Blocked', HFBColumns(j,P,it) 
-                !print *, 'Signature', QuasiSignatures(HFBColumns(j,P,it),P,it)
             endif
         enddo
     enddo

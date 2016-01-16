@@ -18,3 +18,11 @@
   
 - ContinueMoment parameter sometimes gives rise to errors on reading input. This
   happens when changing pairing parameters (BCS <=> HFB).
+  
+- Cannot break Time-reversal and signature in one go. Seems to be no problem
+  at all with an intermediate step.
+  => Something is wrong with the transformation of Kappa
+  
+- When nwt is not correct MOCCa segfaults instead of printing an error
+
+- Check signature breaking transformation => weir behaviour of Jz

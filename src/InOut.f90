@@ -40,7 +40,7 @@ module InOutput
   integer, allocatable          :: FileBlocksizes(:,:)
   !-----------------------------------------------------------------------------
   ! Whether or not to write extra output files for various other codes.
-  logical :: Prom4Output = .false.
+  logical :: PromOutput = .false.
 
   !-----------------------------------------------------------------------------
   ! Variables read from the files of the ancient codes, mostly used for 
@@ -116,7 +116,7 @@ contains
     call writeMOCCa(OutputChannel)
 
     ! Writing extra files if asked for
-    if(Prom4Output) call writeProm4(trim(OutputFileName)//'.prom4')
+    if(PromOutput) call writePromesse(trim(OutputFileName)//'.prom')
     
   end subroutine Output
   
@@ -206,7 +206,7 @@ contains
     
     implicit none
     
-    NameList /InAndOutput/ InputFileName,OutputFileName,ExtraOutput,Pictures,Prom4Output
+    NameList /InAndOutput/ InputFileName,OutputFileName,ExtraOutput,Pictures,PromOutput
     !--------------- Reading Input---------------------------------------   
     !Info for the GenInfo Module
     call ReadGenInfo()  
@@ -1350,7 +1350,6 @@ contains
           if(SC) i = 1
           write(iunit, '(3f10.5)') Density%Rho(i,j,k,1), Density%Rho(i,j,k,2),&
           &                       sum(Density%Rho(i,j,k,:))
-
       enddo
     enddo
 

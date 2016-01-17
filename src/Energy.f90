@@ -406,6 +406,7 @@ contains
     do l=1,nwt
         Isospin    = DensityBasis(l)%GetIsospin()
         Occupation = DensityBasis(l)%GetOcc()
+
         
         it = (IsoSpin + 3)/2
 
@@ -414,6 +415,7 @@ contains
         Inproduct = InproductSpinorReal(Value,Lap)
         
         Kinetic(it)= Kinetic(it) + Occupation*Inproduct
+        !print *, l, occupation, Inproduct, -occupation*Inproduct/2.0_dp * hbm(1)
     enddo
 
     Kinetic=-Kinetic/2.0_dp * hbm

@@ -86,11 +86,6 @@ contains
         Mesh3D(3,:,:,k)= MeshZ(k)
     enddo            
 
-    print *, 'Mesh3DZ', Mesh3DZ(1,1,1)
-    print *, 'Mesh3DZ', Mesh3DZ(2,1,1)
-    print *, 'Mesh3DZ', Mesh3DZ(1,1,2)
-    
-
     return
   end subroutine IniMesh
         

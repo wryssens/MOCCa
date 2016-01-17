@@ -86,7 +86,7 @@ contains
           it = (HFBasis(i)%GetIsospin() +3)/2
           Cutoff = PCutoffs(i)
           Psi  = HFBasis(i)%GetValue()
-          Temp = GetPairDensity(Psi,Psi)
+          Temp = GetPairDensity(Psi,Psi,.true.)
           factor = 0.5_dp*Cutoff**2*Delta(i,1,1,1)/(HFBasis(i)%GetEqp())
           do j=1,nx*ny*nz
             Field(j,1,1,it) =  Field(j,1,1,it) + factor*Temp(j,1,1)

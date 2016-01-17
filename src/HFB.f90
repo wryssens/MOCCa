@@ -238,6 +238,8 @@ contains
     integer      :: i, it, j, ii, sig1, sig2, jj,k,P, iii, jjj,l
     real(KIND=dp):: Cutoff(2) 
     type(Spinor) :: Temp(2)
+    logical      :: TR
+
 
     !Make sure the indices re correctly initiated
     if(.not.allocated(blocksizes)) then
@@ -296,8 +298,16 @@ contains
               Cutoff(2) = PCutoffs(iii)                        
               ! Save some CPU cycles
               if(Cutoff(1)*Cutoff(2)*abs(KappaHFB(i,j,P,it)) .lt. HFBNumCut) cycle
+
+              if(TRC .and. ( ii.ne. iii  .or. jj.ne.jjj ) .and. .not. (ii .ne. iii .and. jj .ne. jjj )) then
+                TR = .true.
+              else
+                ! Should only happen when Time⁻reversal is conserved, but signature
+                ! isn't.
+                TR = .false.
+              endif
         
-              ActionOfPairing = GetPairDensity(HFBasis(jjj)%Value,HFBasis(iii)%Value)
+              ActionOfPairing = GetPairDensity(HFBasis(jjj)%Value,HFBasis(iii)%Value,TR)
               factor    = Cutoff(1)*Cutoff(2)*DBLE(KappaHFB(i,j,P,it))
               factorLN  = Cutoff(1)*Cutoff(2)*DBLE(Gamma(i,j,P,it))
               do l=1,nx*ny*nz
@@ -340,9 +350,18 @@ contains
               
               ! Save some CPU cycles
               if(Cutoff(1)*Cutoff(2)*abs(KappaHFB(i,j,P,it)) .lt. HFBNumCut) cycle
+
+              if(TRC .and. ( ii.ne. iii  .or. jj.ne.jjj ) .and. .not. (ii .ne. iii .and. jj .ne. jjj )) then
+                TR = .true.
+              else
+                ! Should only happen when Time⁻reversal is conserved, but signature
+                ! isn't.
+                TR = .false.
+              endif      
+
               ! Note that this does automatically include a Time-reversal operator
               ! when appropriate
-              ActionOfPairing = GetPairDensity(HFBasis(jjj)%Value,HFBasis(iii)%Value)
+              ActionOfPairing = GetPairDensity(HFBasis(jjj)%Value,HFBasis(iii)%Value,TR)
               factor          = Cutoff(1)*Cutoff(2)*DBLE(KappaHFB(i,j,P,it))
               if(isnan(abs(KappaHFB(i,j,P,it)))) call stp("Isnan Kappa")
               if(any(isnan(abs(ActionOfPairing)))) call stp('Isnan AP')
@@ -397,7 +416,8 @@ contains
     real(KIND=dp)                               :: TempIm(nx,ny,nz)
     complex(KIND=dp)                            :: Temp(nx,ny,nz)
     real(KIND=dp)                               :: Cutoff(2)
-    
+    logical                                     :: TR
+
     if(ConstantGap) call stp('Trying to do constant gap pairing in HFB!')
 
     Delta = 0.0_dp ; if(allocated(DeltaLN)) DeltaLN = 0.0_dp
@@ -440,7 +460,14 @@ contains
 
             if(Cutoff(1)*Cutoff(2) .lt. HFBNumCut) cycle
 
-            Temp = GetPairDensity(HFBasis(iii)%Value,HFBasis(jjj)%Value)        
+            if(TRC .and. ( ii.ne. iii  .or. jj.ne.jjj ) .and. .not. (ii .ne. iii .and. jj .ne. jjj )) then
+              TR = .true.
+            else
+              ! Should only happen when Time⁻reversal is conserved, but signature
+              ! isn't.
+              TR = .false.
+            endif
+            Temp = GetPairDensity(HFBasis(iii)%Value,HFBasis(jjj)%Value,TR)        
             !-------------------------------------------------------------------
             ! Don't forget the complex conjugate here!
             Delta(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*                        & 
@@ -1150,8 +1177,15 @@ contains
             HFBHamil(i+N,j+N,P,it) = HFBHamil(i+N,j+N,P,it) + Gauge*Conjg(OldRhoHFB(i,j,P,it))
         enddo
       enddo
+
+!       do i=1,2*N
+!         print *, DBLE(HFBHamil(i,1:2*N,P,it))
+!       enddo
+!       print *
     enddo
   enddo
+!   call PrintSpwf(2, Lambda)
+!   stop
 
   if(all(HFBHamil.eq.0.0_dp)) call stp('HFBHamiltonian completely zero!')
   end subroutine ConstructHFBHamiltonian  
@@ -1272,7 +1306,6 @@ subroutine DiagonaliseHFBHamiltonian_NoSignature
                     Temp(j,i) = Temp(i,j)
                 enddo
             enddo
-
             !-------------------------------------------------------------------------
             ! Diagonalize
             call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work, 'DiagHamil ')        
@@ -1406,7 +1439,7 @@ end subroutine DiagonaliseHFBHamiltonian_NoSignature
 
     if(SC) call InsertionSortQPEnergies()
 
-   end subroutine DiagonaliseHFBHamiltonian_ZHEEVR
+end subroutine DiagonaliseHFBHamiltonian_ZHEEVR
 
 subroutine InsertionSortQPEnergies
     !-----------------------------------------------------------------------
@@ -1983,7 +2016,7 @@ subroutine InsertionSortQPEnergies
   real(KIND=dp), intent(inout)              :: PairingDisp(2)
   real(KIND=dp), intent(in)                 :: Fermi(2), LNLambda(2)                          
   complex(KIND=dp), intent(in), allocatable :: Delta(:,:,:,:)
-  real(KIND=dp)                             :: Energy,  RhoII, SR
+  real(KIND=dp)                             :: Energy,  RhoII, SR, overlaps(nwt,nwt)
   integer                                   :: it,P,i,j,S,ii,iii,loc(1),TS,jj,jjj,k
   integer                                   :: Columns(nwt,Pindex,Iindex)
   integer                                   :: P2, C, index, N
@@ -2022,6 +2055,7 @@ subroutine InsertionSortQPEnergies
   if(any(Occupations - 1.0_dp.gt.1d-5)) then
     call stp('Some occupations are bigger than one in the canonical basis.')
   endif
+  where(Occupations.gt.1.0_dp) Occupations=1.0_dp
   if(any(Occupations .lt. -HFBNumCut)) then
     ! Notice that we allow some very small negative occupation numbers.
     ! They are entirely due to numerical error, and such errors are present
@@ -2094,10 +2128,10 @@ subroutine InsertionSortQPEnergies
             ! but TimeReversal is.
             if(TSC) then
                 CanBasis(index)%Value = Canbasis(index)%Value + DBLE(CanTransfo(j,C,P,it))*&
-                &                                  TimeReverse(HFBasis(jjj)%Value)
+                &                                          TimeReverse(HFBasis(jjj)%Value)
             else
                 CanBasis(index)%Value = Canbasis(index)%Value +       CanTransfo(j,C,P,it)*&
-                &                                  TimeReverse(HFBasis(jjj)%Value)
+                &                                          TimeReverse(HFBasis(jjj)%Value)
             endif
           endif          
         enddo
@@ -2120,8 +2154,19 @@ subroutine InsertionSortQPEnergies
       enddo
     enddo
   enddo
-  if(index.ne.nwt+1) call stp('Not enough canonical spwfs were constructed.')
-  !Do some stuff to get the canbasis in fighting condition
+  if(index.ne.nwt+1) call stp('Not enough canonical spwfs were constructed.') 
+!   Overlaps = 0.0_dp
+!   do i=1,nwt
+!     do j=i,nwt
+!         if(CanBasis(i)%Parity .eq. CanBasis(j)%Parity .and. CanBasis(i)%Isospin .eq. CanBasis(j)%Isospin) then 
+!             Overlaps(j,i) = InproductSpinorReal(CanBasis(i)%Value, CanBasis(j)%Value)
+!         endif
+!     enddo
+!   enddo
+!   do i=1,nwt
+!     print *, Overlaps(i,:)
+!   enddo
+
   !-----------------------------------------------------------------------------
   ! Another important observable is the single-particle energy of these
   ! wavefunctions, but this module has no access to the hPsi routine 

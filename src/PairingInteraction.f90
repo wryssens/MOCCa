@@ -55,7 +55,7 @@ module PairingInteraction
   
 contains
 
-  pure function GetPairDensity(wf1,wf2) result( ActionOfPairing)
+  pure function GetPairDensity(wf1,wf2,TR) result( ActionOfPairing)
     !---------------------------------------------------------------------------
     ! Calculate the action of the pairing interaction on a twobody state,
     ! represented by spinor 1 and 2.
@@ -64,8 +64,8 @@ contains
     ! Sum_{s} s  < r , s ; r, -s | psi_1, psi_2 >
     ! 
     !---------------------------------------------------------------------------
-    ! Note that this routine includes a TimeReversal operator if timereversal
-    ! is conserved.
+    ! This routine includes a Time-reversal operator if asked for, by option
+    ! TR.
     !---------------------------------------------------------------------------
     ! Indices of the array ActionOfPairing.
     ! postion_x, position_y, position_z, real or imaginary
@@ -76,8 +76,9 @@ contains
     complex(KIND=dp)         :: ActionOfPairing(nx,ny,nz)
     real(KIND=dp)            :: Temp(nx,ny,nz,2), l1,l2,l3,l4,r1,r2,r3,r4
     integer                  :: i
+    logical, intent(in)      :: TR
     
-    if(.not.TRC) then 
+    if(.not. TR) then 
       !---------------------------------------------------------------------------
       ! Real part
       do i=1,nx*ny*nz
@@ -101,19 +102,14 @@ contains
       do i=1,nx*ny*nz
         ActionOfPairing(i,1,1) = dcmplx(Temp(i,1,1,1), Temp(i,1,1,2))
       enddo
-
     else
       do i=1,nx*ny*nz
-        !---------------------------------------------------------------------
-        ! Real part
         l1 = wf1%Grid(i,1,1,1,1) ; r1 = wf2%Grid(i,1,1,1,1)
         l2 = wf1%Grid(i,1,1,2,1) ; r2 = wf2%Grid(i,1,1,2,1)
         l3 = wf1%Grid(i,1,1,3,1) ; r3 = wf2%Grid(i,1,1,3,1)
         l4 = wf1%Grid(i,1,1,4,1) ; r4 = wf2%Grid(i,1,1,4,1)
         
         ActionofPairing(i,1,1) = dcmplx( & 
-        !Temp(i,1,1,1) = -l1*r1 - l2*r2 - l3*r3 - l4*r4
-        !Temp(i,1,1,2) =  l1*r2 - l2*r1 + l3*r4 - l4*r3
         & -l1*r1 - l2*r2 - l3*r3 - l4*r4, l1*r2 - l2*r1 + l3*r4 - l4*r3 )
       enddo
     endif

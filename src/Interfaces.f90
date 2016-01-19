@@ -75,15 +75,14 @@ contains
                 npair = 4
             endif
         elseif(PairingType.eq.2) then
-            print *,"--------------------------------------------------------------" 
-            print *,"Don't try to write HFB wavefunctions to a promesse file (yet)."
-            print *,'--------------------------------------------------------------'
-            close (iunit)
-            return
+            if(Lipkin) then
+                npair = 5
+            else
+                npair = 4
+            endif
         else
             npair = 1
         endif
-
 
         if(PC) then
             ! Prom8 output
@@ -127,16 +126,16 @@ contains
 
         !Write parities
         if(PC) then
-            write(iunit) (HFBasis(i)%GetParity(), i=1,nwt)
+            write(iunit) (DensityBasis(i)%GetParity(), i=1,nwt)
         endif
 
         ! Single particle energies
-        write(iunit) (HFBasis(i)%GetEnergy(),i=1,nwt)
+        write(iunit) (DensityBasis(i)%GetEnergy(),i=1,nwt)
         !Occupation numbers
         if(TRC) then
-            write(iunit) (HFBasis(i)%GetOcc()/2.0_dp,i=1,nwt)
+            write(iunit) (DensityBasis(i)%GetOcc()/2.0_dp,i=1,nwt)
         else
-            write(iunit) (HFBasis(i)%GetOcc(),i=1,nwt)
+            write(iunit) (DensityBasis(i)%GetOcc(),i=1,nwt)
         endif
         !Not yet sure what this is supposed to be.
         write(iunit) (0.0_dp, i=1,nwt)
@@ -153,10 +152,10 @@ contains
 
         ! Prom8 & Prom4 expect wavefunctions normalised to 2!
         do i=1,nwt
-            write(iunit) HFBasis(i)%Value%Grid(:,:,:,1,1)*sqrt(2.0_dp)
-            write(iunit) HFBasis(i)%Value%Grid(:,:,:,2,1)*sqrt(2.0_dp)
-            write(iunit) HFBasis(i)%Value%Grid(:,:,:,3,1)*sqrt(2.0_dp)
-            write(iunit) HFBasis(i)%Value%Grid(:,:,:,4,1)*sqrt(2.0_dp)
+            write(iunit) DensityBasis(i)%Value%Grid(:,:,:,1,1)*sqrt(2.0_dp)
+            write(iunit) DensityBasis(i)%Value%Grid(:,:,:,2,1)*sqrt(2.0_dp)
+            write(iunit) DensityBasis(i)%Value%Grid(:,:,:,3,1)*sqrt(2.0_dp)
+            write(iunit) DensityBasis(i)%Value%Grid(:,:,:,4,1)*sqrt(2.0_dp)
         enddo
 
         close(iunit)

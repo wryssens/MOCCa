@@ -651,6 +651,8 @@ contains
             enddo
         enddo
     else
+        ! If signature is not conserved, just take all the positive
+        ! qp energies.
         ind = 1
         do it=1,Iindex
             do P=1,Pindex
@@ -663,6 +665,11 @@ contains
                 enddo
             enddo
         enddo
+    endif
+    ! Block some quasiparticles 
+    if(allocated(qpexcitations)) then
+      print *, 'Blocking'
+      call BlockQuasiParticles
     endif
     !---------------------------------------------------------------------
     call constructRhoHFB(HFBColumns)
@@ -1153,20 +1160,15 @@ contains
           &                    - LNFraction*4*LNLambda(it)*OldKappaHFB(i,j,P,it) 
         enddo
       enddo
-
-!       !-------------------------------------------------------------------------
-!       !Add the generalized density matrix to the HFBHamiltonian
-!       !-------------------------------------------------------------------------
-!       ! ( Rho       Kappa   )
-!       ! ( -Kappa^*  1-Rho^* )
-!       !-------------------------------------------------------------------------
+      !-------------------------------------------------------------------------
+      !Add the generalized density matrix to the HFBHamiltonian
+      !-------------------------------------------------------------------------
+      ! ( Rho       Kappa   )
+      ! ( -Kappa^*  1-Rho^* )
+      !-------------------------------------------------------------------------
       do i=1,N
         ! The 1 of the 1-Rho^*
         k = blockindices(i,P,it)
-        !HFBHamil(i+N,i+N,P,it) = HFBHamil(i+N,i+N,P,it) - Gauge 
-        !HFBHamil(i,i,P,it)     = HFBHamil(i,i,P,it)     + Gauge 
-
-        !HFBHamil(i+N,i+N,P,it) = HFBHamil(i+N,i+N,P,it) + Gauge 
         do j=1,N
             ! Rho
             HFBHamil(i,j,P,it)     = HFBHamil(i,j,P,it)     - Gauge*OldRhoHFB(i,j,P,it)
@@ -1177,15 +1179,8 @@ contains
             HFBHamil(i+N,j+N,P,it) = HFBHamil(i+N,j+N,P,it) + Gauge*Conjg(OldRhoHFB(i,j,P,it))
         enddo
       enddo
-
-!       do i=1,2*N
-!         print *, DBLE(HFBHamil(i,1:2*N,P,it))
-!       enddo
-!       print *
     enddo
   enddo
-!   call PrintSpwf(2, Lambda)
-!   stop
 
   if(all(HFBHamil.eq.0.0_dp)) call stp('HFBHamiltonian completely zero!')
   end subroutine ConstructHFBHamiltonian  
@@ -1257,7 +1252,7 @@ contains
                         Temp(j-N,i-N) = Temp(i-N,j-N)
                     enddo
                 enddo
-                call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work, 'DiagHamil2 ')
+                call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work, 'DiagHamil2')
                 U(  N/2+1:N  ,N+1:2*N  ,P,it) = Eigenvectors(    1:N/2 ,1:N)
                 V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(N/2+1:N   ,1:N)
                 QuasiEnergies(N+1:2*N  ,P,it) = EigenValues(     1:N)
@@ -2549,7 +2544,6 @@ subroutine InsertionSortQPEnergies
     if(any(Blocked.le.0) .or. any(Blocked.gt.nwt)) then
         call stp('Invalid quasiparticle index.')
     endif
-
     QPexcitations=blocked
   end subroutine ReadBlockingInfo
 
@@ -2684,7 +2678,6 @@ subroutine PrintBlocking
             endif
         enddo
         C   = loc(1)
-  
         do j=1,blocksizes(P,it)
             if(HFBColumns(j,P,it) .eq. C) then
                 HFBColumns(j,P,it) = 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
@@ -2997,7 +2990,7 @@ subroutine PrintBlocking
         if (m.eq.l) go to 211
   204   continue
         if (j.eq.jstop) then
-          call stp (' Diagoncr8 failed, caller '// Callrout)
+          call stp (' Diagoncr8 failed')
         endif
         j = j + 1
         p = (d(l+1)-d(l))/(two*wd(l))

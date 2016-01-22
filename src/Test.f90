@@ -19,6 +19,7 @@ module Testing
     use Pairing 
     use MeanFields
     use Spinors
+    use Interfaces
 
     implicit none
 

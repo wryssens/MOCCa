@@ -668,12 +668,23 @@ contains
     endif
     ! Block some quasiparticles 
     if(allocated(qpexcitations)) then
-      print *, 'Blocking'
       call BlockQuasiParticles
     endif
     !---------------------------------------------------------------------
     call constructRhoHFB(HFBColumns)
     call DiagonaliseRhoHFB()
+
+    do it=1,2
+      do P=1,2
+        ind(P,it) = 0
+        do i=1,Blocksizes(P,it)
+          if(abs(Occupations(i,P,it) - 1) .lt. 1d-10) then
+            ind(P,it) = ind(P,it) + 1
+          endif
+        enddo
+      enddo
+    enddo
+
     call constructKappaHFB(HFBColumns)
     !--------------------------------------------------------------------
     ! Calculate the number of particles in this configuration and return.
@@ -688,7 +699,6 @@ contains
     enddo
 
   end function 
-
 
   subroutine HFBFindFermiEnergyBisection(Fermi,L2,Delta,DeltaLN,Lipkin,Prec)
   !-------------------------------------------------------------------------------
@@ -784,8 +794,8 @@ contains
     do while(.not. Succes)
       Succes = .true.
       FailCount = FailCount + 1
-      InitialBracket(:,1) = InitialBracket(:,1) - 0.1_dp
-      InitialBracket(:,2) = InitialBracket(:,2) + 0.1_dp
+      InitialBracket(:,1) = InitialBracket(:,1) - 1_dp
+      InitialBracket(:,2) = InitialBracket(:,2) + 1_dp
       
       FA = HFBNumberofParticles(InitialBracket(:,1), Delta, L2 ) - Particles
       FB = HFBNumberofParticles(InitialBracket(:,2), Delta, L2 ) - Particles
@@ -915,7 +925,7 @@ contains
   integer                                   :: it, iter, flag(2)
   ! Previous values of the Fermi energy and LNLambda parameter
   real(KIND=dp), save                   :: FermiHistory(2)=100.0_dp
-  real(KIND=dp), save                   :: LNhistory(2)=100.0_dp
+  real(KIND=dp), save                   :: LNhistory(2)   =100.0_dp
   ! Checking if this is the first time this routine is called
   logical, save                         :: FirstTime=.true.
   !Jacobian matrix, or at least its current approximation and its inverse
@@ -933,7 +943,7 @@ contains
 
   ! First time, take some guess for the histories
   FermiHistory = Fermi    + 0.01_dp
-  LNHistory    = LNLambda - 0.01_dp    
+  LNHistory    = LNLambda + 0.01_dp    
   Particles(1) = Neutrons
   Particles(2) = Protons
   Converged    = .false.
@@ -966,13 +976,14 @@ contains
   endif
 
   do iter=1,HFBIter
+
      !Invert the Jacobian
       if (Lipkin) then
-        det = Jacobian(1,1,:)*Jacobian(2,2,:) - Jacobian(1,2,:)*Jacobian(2,1,:) 
+        det = Jacobian(1,1,:)*Jacobian(2,2,:) - Jacobian(1,2,:)*Jacobian(2,1,:)
       else
         det = Jacobian(1,1,:)
       endif
-    
+  
       !Invert the jacobian
       if(Lipkin) then
        invJ(1,1,:) =   Jacobian(2,2,:)/det 
@@ -985,6 +996,9 @@ contains
 
       !Find a good direction to update in
       do it=1,2
+
+         !if(it.eq.1)print *, 'Fermi', iter, Fermi(it), LNLambda(it), N(it), LN(it), det(it)
+
         !Don't update if converged
         if(Converged(it)) cycle
         !Find Update directions
@@ -1034,9 +1048,9 @@ contains
       if(iter.gt.1) then
         do it=1,2
           if(Converged(it)) cycle    
-          Jacobian(1,1,it) = Jacobian(1,1,it)  +N(it)*FermiUpdate(it)/norm(it)
+          Jacobian(1,1,it) = Jacobian(1,1,it)  + N(it)*FermiUpdate(it)/norm(it)
           if(Lipkin) then           
-            Jacobian(1,2,it) = Jacobian(1,2,it)+N(it) *LNUpdate(it)   /norm(it)
+            Jacobian(1,2,it) = Jacobian(1,2,it)+ N(it)*LNUpdate(it)   /norm(it)
             Jacobian(2,1,it) = Jacobian(2,1,it)+LN(it)*FermiUpdate(it)/norm(it)
             Jacobian(2,2,it) = Jacobian(2,2,it)+LN(it)*LNUpdate(it)   /norm(it)
           endif
@@ -1047,6 +1061,8 @@ contains
       if(iter.eq.HFBIter) then
           print 1, HFBIter, N + Particles
           print 2, abs(LN)
+          FermiHistory = 0.0_dp
+          call printSpwf(2,FermiHistory)
       endif
   enddo
   end subroutine HFBFindFermiEnergyBroyden
@@ -1193,6 +1209,7 @@ contains
     ! away with diagonalising only one half. 
     !-------------------------------------------------------------------------------
     integer                         :: i,j,k,it, P,jj,ii,jjj,S,Sig1,iii,sig2, Nmax,N
+    integer                         :: ifail
     real(KIND=dp), allocatable,save ::  Eigenvectors(:,:),Eigenvalues(:)
     real(KIND=dp), allocatable,save :: WORK(:)
     real(KIND=dp), allocatable,save :: Temp(:,:)
@@ -1231,12 +1248,25 @@ contains
             enddo
             !-------------------------------------------------------------------------
             ! Diagonalize
-            call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work, 'DiagHamil ')        
+            call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work, 'DiagHamil ',ifail)
+            if(ifail.eq.1) then
+              do i=1,N
+                print *, Temp(i,1:N)
+              enddo
+
+              print *
+              do i=1,N
+                print *, DBLE(HFBHamil(i,1:2*N,P,it))
+              enddo
+
+              call stp('1st')
+            endif        
             U(      1:N/2,    1:N  ,P,it) = Eigenvectors(       1:N/2   ,  1:N  )
             V(  N/2+1:N  ,    1:N  ,P,it) = Eigenvectors(   N/2+1:N     ,  1:N  )
             QuasiEnergies(1:N,P,it)       = EigenValues(1:N)
 
             if(TRC) then
+                !------------------------------------------------------------
                 ! We can get the other half of the eigenvectors by symmetry
                 U(  N/2+1:N  ,N+1:2*N  ,P,it) =-Eigenvectors(       1:N/2   ,  1:N  )
                 V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(   N/2+1:N     ,  1:N  )
@@ -1252,14 +1282,14 @@ contains
                         Temp(j-N,i-N) = Temp(i-N,j-N)
                     enddo
                 enddo
-                call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work, 'DiagHamil2')
+                call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work, 'DiagHamil2',ifail)
+                if(ifail.eq.1) call stp('2nd')        
                 U(  N/2+1:N  ,N+1:2*N  ,P,it) = Eigenvectors(    1:N/2 ,1:N)
                 V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(N/2+1:N   ,1:N)
                 QuasiEnergies(N+1:2*N  ,P,it) = EigenValues(     1:N)
             endif
         enddo
     enddo
-    !call InsertionSortQPEnergies
 end subroutine DiagonaliseHFBHamiltonian_Signature
 
 subroutine DiagonaliseHFBHamiltonian_NoSignature
@@ -1268,6 +1298,7 @@ subroutine DiagonaliseHFBHamiltonian_NoSignature
     ! is not conserved.
     !-------------------------------------------------------------------------------
     integer                         :: i,j,k,it, P,jj,ii,jjj,S,Sig1,iii,sig2, Nmax,N
+    integer                         :: ifail
     real(KIND=dp), allocatable,save :: Eigenvectors(:,:),Eigenvalues(:)
     real(KIND=dp), allocatable,save :: WORK(:)
     real(KIND=dp), allocatable,save :: Temp(:,:)
@@ -1303,7 +1334,7 @@ subroutine DiagonaliseHFBHamiltonian_NoSignature
             enddo
             !-------------------------------------------------------------------------
             ! Diagonalize
-            call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work, 'DiagHamil ')        
+            call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work, 'DiagHamil ',ifail)        
             U(      1:N/2, 1:N ,P,it) = Eigenvectors(      1:N/2,  1:N  )
             V(      1:N/2, 1:N ,P,it) = Eigenvectors(  N/2+1:N  ,  1:N  )
             QuasiEnergies(1:N,P,it)   = EigenValues(1:N)   
@@ -1842,7 +1873,7 @@ subroutine InsertionSortQPEnergies
         real(KIND=dp), allocatable :: Work(:), Eigenvalues(:)
         real(KIND=dp), allocatable :: Temp(:,:)
         real(KIND=dp), allocatable :: Eigenvectors(:,:)
-        integer                          :: P, it, N, i, Nmax, ii, iii
+        integer                          :: P, it, N, i, Nmax, ii, iii, ifail
 
         Nmax = maxval(Blocksizes)
          if(.not. allocated(Work)) then
@@ -1884,7 +1915,7 @@ subroutine InsertionSortQPEnergies
                 enddo
               endif
 
-              call diagoncr8(temp,Nmax,N,Eigenvectors,Eigenvalues, Work, 'DiagRho   ')
+              call diagoncr8(temp,Nmax,N,Eigenvectors,Eigenvalues, Work, 'DiagRho   ',ifail)
 
               CanTransfo (1:N,1:N,P,it) = Eigenvectors(1:N,1:N)
               Occupations(1:N,P,it)     = Eigenvalues(1:N)
@@ -2666,6 +2697,7 @@ subroutine PrintBlocking
         P     = QPParities(i)
         it    = QPIsospins(i)
 
+
         ! Identify the quasiparticle excitation
         loc = 0
         TempU2 = 0.0_dp
@@ -2861,7 +2893,7 @@ subroutine PrintBlocking
     enddo
   end function QPAlignment
 
-  subroutine diagoncr8 (a,ndim,n,v,d,wd, callrout)
+  subroutine diagoncr8 (a,ndim,n,v,d,wd, callrout,ifail)
   !..............................................................................
   !  diagonalization of a real symmetric matrix a(i,j)                         .
   !     input : a  n*n matrix           (with declared dimensions ndim*ndim)    .
@@ -2880,9 +2912,12 @@ subroutine PrintBlocking
 
       real(KIND=dp), intent(inout) :: a(ndim,ndim),v(ndim,ndim),d(ndim),wd(ndim)
       integer, intent(in)          :: ndim,n
+      integer, intent(inout)       :: ifail
 
       integer       :: i,j,ml, m1,m,n1, k, ii, j1, l
       real(KIND=dp) :: p, scale, g,r, s, c, hh, b, f, h
+
+      ifail = 0
 
       v(1,1) = one
       d(1)   = a(1,1)
@@ -2990,7 +3025,8 @@ subroutine PrintBlocking
         if (m.eq.l) go to 211
   204   continue
         if (j.eq.jstop) then
-          call stp (' Diagoncr8 failed')
+          ifail = 1
+          return
         endif
         j = j + 1
         p = (d(l+1)-d(l))/(two*wd(l))

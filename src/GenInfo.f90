@@ -110,11 +110,11 @@ contains
     write (ErrorChannel,*) ' ',message
     write (ErrorChannel,*) ' '
     
-    if(present(PrintReal)) then
+    if(present(NameReal)) then
       write (ErrorChannel,*) , NameReal, PrintReal
       write (ErrorChannel,*) , ""
     endif
-    if(present(PrintReal2)) then
+    if(present(NameReal2)) then
       write (ErrorChannel,*) , NameReal2, PrintReal2
       write (ErrorChannel,*) , ""
     endif

@@ -1,8 +1,3 @@
-- C potential
-  When using Sly5like forces and breaking time-reversal symmetry, the presence
-  of this potential makes the time-broken groundstate not be time-reversal
-  symmetric.
-
 - <J_y| T> calculation
   The calculation of <Jy|T> is messed up and does not coincide with cr8s calculation
   
@@ -25,4 +20,6 @@
   
 - When nwt is not correct MOCCa segfaults instead of printing an error
 
-- Check signature breaking transformation => weir behaviour of Jz
+- When pairing is not strong it can be very hard to block qps in HFB. Some fail-safe
+  or resetting procedure should be made.
+

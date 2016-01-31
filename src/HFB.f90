@@ -614,22 +614,19 @@ contains
   end function HFBNumberOfParticles_OLD
 
   function HFBNumberofParticles(Lambda, Delta, LNLambda) result(N)
-    !-----------------------------------------------------------------------------------------------------
-    ! Constructs the HFB state ( consisting of RhoHFB and KappaHFB ).
-    !
+    !---------------------------------------------------------------------
+    ! Constructs the HFB state ( consisting of RhoHFB and KappaHFB) and 
+    ! returns the number of particles present.
+    !---------------------------------------------------------------------
     real(Kind=dp), intent(in)                :: Lambda(2),LNLambda(2)
     complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
     real(KIND=dp), allocatable               :: GaugeEnergies(:,:,:)
 
-
     real(KIND=dp)    :: N(2), E, MinE
     complex(KIND=dp) :: Overlaps(nwt,nwt)
     integer          :: it, P, i,j,k,S, ind(2,2)
-
-    !----------------------------------------------------------------------
-    ! This part is sufficient when Timereversal is conserved
+    
     call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge)
-    ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
     call DiagonaliseHFBHamiltonian
 
     !----------------------------------------------------------------------
@@ -651,8 +648,9 @@ contains
             enddo
         enddo
     else
+        !-----------------------------------------------------------------
         ! If signature is not conserved, just take all the positive
-        ! qp energies.
+        ! qp energies and pray it will work.
         ind = 1
         do it=1,Iindex
             do P=1,Pindex
@@ -666,13 +664,16 @@ contains
             enddo
         enddo
     endif
+    !--------------------------------
     ! Block some quasiparticles 
     if(allocated(qpexcitations)) then
       call BlockQuasiParticles
     endif
-    !---------------------------------------------------------------------
+
     call constructRhoHFB(HFBColumns)
-    call DiagonaliseRhoHFB()
+
+    ! This is not strictly needed here.
+    !call DiagonaliseRhoHFB()
 
     do it=1,2
       do P=1,2
@@ -1036,6 +1037,8 @@ contains
       flag = 0
       N    = HFBNumberOfParticles(Fermi,Delta,LNLambda )  - Particles
       if(Lipkin) LN   = LNLambda - LNCR8(Delta,DeltaLN, flag)
+
+      !print *, iter, N, LN
 
       !Convergence check
       do it=1,2
@@ -2048,15 +2051,6 @@ subroutine InsertionSortQPEnergies
   integer                                   :: P2, C, index, N
 
   PairingDisp = 0.0_dp
-  !-----------------------------------------------------------------------------
-  !Mix the densities, if there is a saved density
-  if( .not. all(OldRhoHFB.eq.0.0_dp) ) then
-    RhoHFB   = HFBMix * RhoHFB   + (1.0_dp - HFBMix) * OldRhoHFB
-  endif
-  if( .not. all(KappaHFB.eq.0.0_dp) ) then
-    KappaHFB = HFBMix * KappaHFB + (1.0_dp - HFBMix) * OldKappaHFB
-  endif    
-
   !----------------------------------------------------------------------------
   ! Store old U and V 
   if(.not.allocated(OldU)) OldU = U ; OldV = V 
@@ -2072,7 +2066,7 @@ subroutine InsertionSortQPEnergies
   enddo
 
   ! Actual diagonalisation
-  call DiagonaliseRHOHFB!_ZHEEV
+  call DiagonaliseRHOHFB 
   !-----------------------------------------------------------------------------
   ! Check the diagonalisation
   if(all(Occupations.eq.0.0_dp)) then
@@ -2181,18 +2175,6 @@ subroutine InsertionSortQPEnergies
     enddo
   enddo
   if(index.ne.nwt+1) call stp('Not enough canonical spwfs were constructed.') 
-!   Overlaps = 0.0_dp
-!   do i=1,nwt
-!     do j=i,nwt
-!         if(CanBasis(i)%Parity .eq. CanBasis(j)%Parity .and. CanBasis(i)%Isospin .eq. CanBasis(j)%Isospin) then 
-!             Overlaps(j,i) = InproductSpinorReal(CanBasis(i)%Value, CanBasis(j)%Value)
-!         endif
-!     enddo
-!   enddo
-!   do i=1,nwt
-!     print *, Overlaps(i,:)
-!   enddo
-
   !-----------------------------------------------------------------------------
   ! Another important observable is the single-particle energy of these
   ! wavefunctions, but this module has no access to the hPsi routine 
@@ -2209,6 +2191,16 @@ subroutine InsertionSortQPEnergies
       enddo
     enddo
   enddo
+  !-----------------------------------------------------------------------------
+  !Mix the densities, if there is a saved density
+  if( .not. all(OldRhoHFB.eq.0.0_dp) ) then
+    RhoHFB   = HFBMix * RhoHFB   + (1.0_dp - HFBMix) * OldRhoHFB
+  endif
+  if( .not. all(KappaHFB.eq.0.0_dp) ) then
+    KappaHFB = HFBMix * KappaHFB + (1.0_dp - HFBMix) * OldKappaHFB
+  endif    
+
+
   !-----------------------------------------------------------------------------
   ! Save old density and anomalous density matrix.
   do it=1,Iindex
@@ -2679,14 +2671,14 @@ subroutine PrintBlocking
     ! U^a_{ia} = V^*_{ia} V^a_{ij} = U^*_{ia} 
     !
     !---------------------------------------------------------------------------
-    ! The identification of the quasiparticle state is something else. It either
-    ! proceeds directly in the canonical basis or in the HF Basis (not 
-    ! implemented yet.)
+    ! The identification of the quasiparticle state is rather intuitive, we just
+    ! (de)excite the column in the HFB matrix which has the largest overlap
+    ! with a given HF index. 
     !---------------------------------------------------------------------------
 
     integer          :: N, i, index , j, P, it, C, K, loc(1)
     complex(KIND=dp) :: Temp(HFBSize)
-    real(KIND=dp)    :: TempU2
+    real(KIND=dp)    :: TempU2, Overlap, A, B
 
     N = size(QPExcitations)
 
@@ -2697,22 +2689,30 @@ subroutine PrintBlocking
         P     = QPParities(i)
         it    = QPIsospins(i)
 
-
+        !----------------------------------------------------------------------
         ! Identify the quasiparticle excitation
         loc = 0
-        TempU2 = 0.0_dp
+        TempU2 = 0.0_dp ; Overlap = 0.0_dp
+
+        !----------------------------------------------------------------------
         ! Search among the currently occupied columns for which qp 
         ! has the biggest overlap with the asked-for HF state.
         do j=1,blocksizes(P,it)
-            if(DBLE(U(index,HFBColumns(j,P,it),P,it)**2) .gt. TempU2) then
+            TempU2 = DBLE(U(index,HFBColumns(j,P,it),P,it)**2) 
+            if( TempU2 .gt. Overlap) then
                 loc = HFBColumns(j,P,it)
-                TempU2 = DBLE(U(index,HFBColumns(j,P,it),P,it)**2)
+                Overlap = TempU2
             endif
         enddo
+        !----------------------------------------------------------------------
+        ! When found, exchange it with its conjugate partner.
         C   = loc(1)
         do j=1,blocksizes(P,it)
             if(HFBColumns(j,P,it) .eq. C) then
+                A = QuasiEnergies(HFBColumns(j,P,it), P,it)
                 HFBColumns(j,P,it) = 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
+                B = QuasiEnergies(HFBColumns(j,P,it), P,it)
+                print *, 'check', A + B
             endif
         enddo
     enddo
@@ -2892,6 +2892,36 @@ subroutine PrintBlocking
         enddo
     enddo
   end function QPAlignment
+
+  subroutine PrintNumberParities
+    !---------------------------------------------------------------------------
+    ! Count and print the number parities of the HFB vacuum we are currently in.
+    !
+    ! The number parity is the multiplicity of the number of 1 eigenvalues of 
+    ! the RhoHFB matrix.
+    !---------------------------------------------------------------------------
+
+    integer :: NP(2,2), P, it,j
+
+    1 format(' Number Parities')
+    3 format(' P =+1', 17x, i5,5x,i5)
+    2 format(' P =-1', 17x, i5,5x,i5)
+
+    NP = 0
+    do it=1,Iindex
+        do P=1,Iindex
+            do j=1, Blocksizes(P,it)
+                if(abs(Occupations(j,P,it) - 1.0_dp).lt.1d-10) NP(P,it) = NP(P,it) + 1
+            enddo
+        enddo
+    enddo
+
+    print *
+    print 1
+    print 2, (-1)**NP(1,:)
+    print 3, (-1)**NP(2,:)
+
+  end subroutine PrintNumberParities
 
   subroutine diagoncr8 (a,ndim,n,v,d,wd, callrout,ifail)
   !..............................................................................

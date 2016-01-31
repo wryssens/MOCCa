@@ -480,7 +480,7 @@ contains
 
   subroutine PrintPairing
     !---------------------------------------------------------------------------
-    ! Subroutine that prints intermediate info on the pairing
+    ! Subroutine that prints intermediate info on the pairing.
     !
     !---------------------------------------------------------------------------
   
@@ -510,6 +510,8 @@ contains
         if(Lipkin) print 6, LNLambda
     end select
 
+    ! Print the number parity of the HFB vacuum
+    if(PairingType.eq.2) call PrintNumberParities
 
     print 7
   end subroutine PrintPairing

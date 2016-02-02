@@ -1632,14 +1632,19 @@ contains
     ! This should be the numbers to compare with EV8/CR8 and EV4.
     !---------------------------------------------------------------------------
     
+    use Densities
+
    10 format(' Cart. Moments', ' X' , 14x, 'Y', 14x, 'Z')  
     1 format( 'N', 7x ,3f15.7)
     2 format( 'P', 7x ,3f15.7)
     3 format( 'T', 7x ,3f15.7)
    11 format(' (Q, gamma)   ', ' Q', 14x, 'Gamma') 
    12 format(' (iq1, iq2)   ', ' iq1', 12x, 'iq2') 
+   13 format('              ', ' X^2', 12x, 'Y^2', 12x, 'Z^2')
 
     !real(kind=DP)        :: QAlt(3), GAlt(3)
+    real(KIND=dp) :: Qi(3,3)
+    integer       :: i
 
     print 10
     !Printing only the diagonal components
@@ -1667,6 +1672,18 @@ contains
     print 1, iq1(1), iq2(1)
     print 2, iq1(2), iq2(2)
     print 3, iq1(3), iq2(3)
+
+    ! The expectation values of X^2, Y^2 and Z^2
+    do i=1,3
+      Qi(i,1) = dv*sum(Density%Rho(:,:,:,1)*Mesh3D(i,:,:,:)**2)
+      Qi(i,2) = dv*sum(Density%Rho(:,:,:,2)*Mesh3D(i,:,:,:)**2)
+      Qi(i,3) = Qi(i,1) + Qi(i,1)
+    enddo
+
+    print 13
+    print 1, Qi(:,1)
+    print 2, Qi(:,2)
+    print 3, Qi(:,3)
     
   end subroutine PrintQuadrupoleAlt
   

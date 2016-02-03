@@ -666,9 +666,7 @@ contains
  
   end subroutine CR8state
    
-
-
-    subroutine writePromesse(OutputFilename)
+  subroutine writePromesse(OutputFilename)
         !--------------------------------------------------------------
         ! Writes a file to OUTPUTFILENAME that is suited for reading 
         ! with prom8 or prom4.
@@ -812,8 +810,5 @@ contains
 
         close(iunit)
 
-    end subroutine writepromesse
-
-
-
+  end subroutine writepromesse
 end module Interfaces

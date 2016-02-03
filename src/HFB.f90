@@ -78,7 +78,7 @@ module HFB
   !-----------------------------------------------------------------------------
   ! Logical. Check all kinds of relations that should hold for correct HFB
   ! calculations. Only to be used for debugging purposes.
-  logical,parameter :: HFBCheck=.false.
+  logical,parameter :: HFBCheck=.true.
   !-----------------------------------------------------------------------------
   ! Real that determines how much to damp the RhoHFB and KappaHFB matrices.
   real(KIND=dp) :: HFBMix=0.1_dp
@@ -672,9 +672,6 @@ contains
 
     call constructRhoHFB(HFBColumns)
 
-    ! This is not strictly needed here.
-    !call DiagonaliseRhoHFB()
-
     do it=1,2
       do P=1,2
         ind(P,it) = 0
@@ -1038,7 +1035,7 @@ contains
       N    = HFBNumberOfParticles(Fermi,Delta,LNLambda )  - Particles
       if(Lipkin) LN   = LNLambda - LNCR8(Delta,DeltaLN, flag)
 
-      !print *, iter, N, LN
+      print *, iter, N, LN
 
       !Convergence check
       do it=1,2
@@ -1071,7 +1068,6 @@ contains
   end subroutine HFBFindFermiEnergyBroyden
 
   recursive function FermiBisection(A,B,FA,FB,Depth,Delta,L2,Prec) result(C)
-
   !-----------------------------------------------------------------------------
   ! For a given L2, this routine recursively searches for the Fermi energy
   ! by a simple bisection method. Very slow, but completely reliable.
@@ -2709,10 +2705,20 @@ subroutine PrintBlocking
         C   = loc(1)
         do j=1,blocksizes(P,it)
             if(HFBColumns(j,P,it) .eq. C) then
-                A = QuasiEnergies(HFBColumns(j,P,it), P,it)
+!                 print * , QuasiEnergies(HFBColumns(j,P,it),P,it) 
+!                 do k =1,blocksizes(P,it)
+!                   print *, DBLE(U(k,HFBColumns(j,P,it),P,it)), DBLE(V(k,HFBColumns(j,P,it),P,it))
+!                 enddo
+!                 print *
                 HFBColumns(j,P,it) = 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
-                B = QuasiEnergies(HFBColumns(j,P,it), P,it)
-                print *, 'check', A + B
+!                 print * , QuasiEnergies(HFBColumns(j,P,it),P,it)
+!                 do k =1,blocksizes(P,it)
+!                   print *, DBLE(U(k,HFBColumns(j,P,it),P,it)), DBLE(V(k,HFBColumns(j,P,it),P,it))
+!                 enddo
+                
+!                 print *
+!                 call CheckUandVColumns(HFBColumns)
+!                 stop  
             endif
         enddo
     enddo
@@ -2906,20 +2912,28 @@ subroutine PrintBlocking
     1 format(' Number Parities')
     3 format(' P =+1', 17x, i5,5x,i5)
     2 format(' P =-1', 17x, i5,5x,i5)
+    4 format(' P = 0', 17x, i5,5x,i5)
 
     NP = 0
     do it=1,Iindex
-        do P=1,Iindex
-            do j=1, Blocksizes(P,it)
+        do P=1,Pindex
+            do j=1,Blocksizes(P,it)
+                ! This activates when Time-reversal is not conserved
                 if(abs(Occupations(j,P,it) - 1.0_dp).lt.1d-10) NP(P,it) = NP(P,it) + 1
+                ! This activates when Time-reversal is conserved
+                if(abs(Occupations(j,P,it) - 2.0_dp).lt.1d-10) NP(P,it) = NP(P,it) + 1
             enddo
         enddo
     enddo
 
     print *
     print 1
-    print 2, (-1)**NP(1,:)
-    print 3, (-1)**NP(2,:)
+    if(PC) then
+      print 2, NP(1,:)
+      print 3, NP(2,:)
+    else
+      print 4, NP(1,:)
+    endif
 
   end subroutine PrintNumberParities
 

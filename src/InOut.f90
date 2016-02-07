@@ -354,7 +354,6 @@ contains
     endif         
   end subroutine PrintInput
   
-
   subroutine ReadMOCCa(Ichan)
   !-----------------------------------------------------------------------------
   ! Read info from an input file in the MOCCa format.
@@ -490,7 +489,7 @@ contains
     ! 9 )  Cranking effective, true values & intensity
     ! 10)  Constraint Values
     ! 11)  Get the initial guess for KappaHFB
-    ! 12)  Get an intial guess for the Fermi levels
+    ! 12)  Get an initial guess for the Fermi levels
     ! 13)  Initial guess for Lipkin-Nogami parameter
     ! 14)  Get Momentparameters
     !---------------------------------------------------------------------------

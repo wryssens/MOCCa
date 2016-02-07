@@ -336,17 +336,19 @@ contains
         DensityBasis      => CanBasis
         GetPairingFields  => HFBPairingField
         GetOccupations    => HFBOccupations
-        GetGaps           => HFBGaps!_TIMEREV!HFBGaps
+        GetGaps           => HFBGaps
         
         !Decide on the diagonalization routine
         if(SC) then
           DiagonaliseHFBHamiltonian => DiagonaliseHFBHamiltonian_Signature
         else
-          DiagonaliseHFBHamiltonian => DiagonaliseHFBHamiltonian_NoSignature !DiagonaliseHFBHamiltonian_ZHEEVR !
+          DiagonaliseHFBHamiltonian => DiagonaliseHFBHamiltonian_NoSignature
         endif
 
         if(trim(FermiSolver).eq.'BROYDEN') then
           FindFermiEnergy   => HFBFindFermiEnergyBroyden
+        elseif(trim(FermiSolver).eq.'GRADIENT') then
+          FindFermiEnergy   => HFBFermiGradient
         elseif(trim(FermiSolver).eq.'BISECTION') then
           FindFermiEnergy   => HFBFindFermiEnergyBisection
         else

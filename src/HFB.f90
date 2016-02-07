@@ -833,9 +833,7 @@ contains
       if(flag(it).eq.0) then
         L2 = L2 - (L2 - L2Old)/(G - Gold)*G
       else
-      ! Make some guess for kappa for this isospin, in order to kickstart
-      ! the pairing.
-        call writeOutKappa(2,it)
+        call stp('L2 in bisection failed.')
       endif
     enddo
 
@@ -3012,23 +3010,26 @@ subroutine InsertionSortQPEnergies
     endif
   end function FindCorrectColumns
 
-  subroutine WriteOutKappa(PairingType, OnlyIso)
+  subroutine GuessHFBMatrices(PairingType)
   !-----------------------------------------------------------------------------
-  ! Construct a certain Kappa matrix for writing to an output file. In this way
-  ! new calculations need not start from a very bad initial guess.
+  ! In order to start calculations with bad initial guesses and to write 
+  ! something to file, this routine constructs Fileblocksizes (if needed)
+  ! and takes a guess at KappaHFB.
+  ! It also allocates and puts to zero RhoHFB, U, V and Cantransfo.  
   !-----------------------------------------------------------------------------
-  ! In addition, this routine can supply a nonzero guess for kappa which can 
-  ! also be very useful for not getting stuck in a trivial solution with HFB.
-  !
-  !-----------------------------------------------------------------------------
-  ! OnlyIso is an optional integer argument that can make this guess only 
-  ! for a specific isospin.
+  ! Note that this DESTROYS ALL INFORMATION on HFB that MOCCa currently has.
   !-----------------------------------------------------------------------------
     integer, intent(in)       :: PairingType
     integer                   :: i, ii, it, P, sig1,sig2, j,jj,iii,jjj, S1, S2
     integer                   :: startit, stopit
-    integer, intent(in), optional :: OnlyIso
-    real(KIND=dp)                 :: Occ
+    real(KIND=dp)             :: Occ
+
+    if(.not. allocated(RhoHFB)) then
+      allocate(RhoHFB(HFBSize,HFBSize,2,2)) ; RhoHFB = 0.0_dp
+      allocate(U(HFBSize,HFBSize,2,2))      ; U      = 0.0_dp
+      allocate(V(HFBSize,HFBSize,2,2))      ; V      = 0.0_dp
+      allocate(CanTransfo(HFBSize,HFBSize,2,2))      ; V      = 0.0_dp
+    endif
   
     select case (PairingType) 
     case(0)
@@ -3037,8 +3038,6 @@ subroutine InsertionSortQPEnergies
       ! not allow us to start HFB calculations from converged HF calculations.
       ! So we try something more clever. 
       !------------------------------------------------------------------------
-      if(present(OnlyIso)) call stp('A guess for KappaHFB for only one isospin' &
-      &  //'should not be made in a HF calculation.')
       allocate(KappaHFB(HFBSize,HFBSize,2,2)) ; KappaHFB=0.0_dp
       call PrepareHFBModule()
       do it=1,Iindex
@@ -3066,9 +3065,6 @@ subroutine InsertionSortQPEnergies
        
        return
     case(1)
-      if(present(OnlyIso)) call stp('A guess for KappaHFB for only one isospin' &
-      &  //'should not be made in a BCS calculation.')
-
       !BCS Calculation
       allocate(KappaHFB(HFBSize,HFBSize,2,2)); KappaHFB=0.0_dp
       call PrepareHFBModule()
@@ -3104,14 +3100,7 @@ subroutine InsertionSortQPEnergies
         ! HFB calculation: Kappa should already be ok, but when asked MOCCa should 
         ! be able to make some guess.
         Occ = 0.1_dp
-        if(present(OnlyIso)) then
-          startit=OnlyIso
-          stopit =OnlyIso
-        else
-          startit=1
-          stopit=Iindex
-        endif
-        do it=startit,stopit
+        do it=1,Iindex
           KappaHFB(:,:,:,it)=0.0_dp
           do P=1,Pindex
             do i=1,blocksizes(P,it)
@@ -3135,7 +3124,7 @@ subroutine InsertionSortQPEnergies
     case DEFAULT
         call stp('Unknow PairingType in WriteOutKappa.')
     end select
-  end subroutine WriteOutKappa
+  end subroutine GuessHFBMatrices
   
   function LNCr8(Delta, DeltaLN, flag) result(LNLambda)
   !-----------------------------------------------------------------------------

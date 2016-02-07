@@ -598,7 +598,7 @@ contains
     !---------------------------------------------------------------------------
     ! Reinitialise Kappa when asked for
     if(GuessKappa .and. PairingType.eq.2) then 
-      call WriteOutKappa(PairingType)
+      call GuessHFBMatrices(PairingType)
       GuessKappa = .false.
     endif
     !---------------------------------------------------------------------------

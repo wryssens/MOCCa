@@ -2,11 +2,6 @@
   The calculation of <Jy|T> is messed up and does not coincide with cr8s calculation
   
 - Single-particle header when breaking time-reversal is not aligned
-
-- Jx is not zero when signature is broken from time-reversal file.
-  -> Either signature breaking is wrong
-  -> Or Jx calculation is wrong (more probable)
-  
   
 - Breaking two spatial symmetries at once is maybe broken? Breaking one at a time
   with a two-step procedure works fine however. To be investigated.
@@ -22,4 +17,5 @@
 
 - When pairing is not strong it can be very hard to block qps in HFB. Some fail-safe
   or resetting procedure should be made.
+
 

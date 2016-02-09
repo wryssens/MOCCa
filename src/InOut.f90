@@ -87,8 +87,9 @@ contains
       print 1, inPC, PC, inSC, SC, inTSC, TSC, inTRC, TRC, inIC, IC,           &
       &       filenx,nx,fileny,ny,filenz,nz,filenwt, nwt
     endif
-    ! Special mention here for the HFB anomalous density matrix.
+    ! Special mention here for the HFB matrices.
     if(allocated(InputKappa)) then
+      !RhoHFB   = TransformRho(InputRho, inPC, inIC, FileBlocksizes)
       KappaHFB = TransformKappa(InputKappa, inPC, inIC, FileBlocksizes)
     endif
   end subroutine Input
@@ -793,6 +794,7 @@ contains
     write(OChan,iostat=io) blocksizes
     write(OChan,iostat=io) U,V
     write(Ochan,iostat=io) RhoHFB,KappaHFB
+    write(Ochan,iostat=io) CanTransfo
 
     !---------------------------------------------------------------------------
     ! Multipole constraint variables
@@ -1040,7 +1042,10 @@ subroutine ReadMOCCa_v1(Ichan)
         if(ioerror.ne.0) then
             call stp('Did not read Rho and Kappa correctly' ,'Iostat', ioerror)
         endif
-
+        read(ICHan,iostat=ioerror) InputCanTransfo
+        if(ioerror.ne.0) then
+            call stp('Did not read Rho and Kappa correctly' ,'Iostat', ioerror)
+        endif
     case DEFAULT
         !--------------------------------------
         ! HF & BCS case. Don't read anything at all.

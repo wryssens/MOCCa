@@ -32,6 +32,16 @@ contains
     hPsi = NewSpinor()
     hPsi = B + U + W
     
+    if(B14.ne.0.0_dp .or. B15 .ne. 0.0_dp) then
+        C = ActionOfC(Psi)
+        hPsi = hPsi + C
+    endif
+
+    if(B16.ne.0.0_dp .or. B17 .ne. 0.0_dp) then
+        D = ActionOfD(Psi)
+        hPsi = hPsi + D
+    endif
+
     if(.not.TRC) then
         S = ActionOfS(Psi)
         A = ActionOfA(Psi)
@@ -39,15 +49,6 @@ contains
         hPsi = hPsi + S
         hPsi = hPsi + A
             
-        if(B14.ne.0.0_dp .or. B15 .ne. 0.0_dp) then
-          C = ActionOfC(Psi)
-          hPsi = hPsi + C
-        endif
-
-        if(B16.ne.0.0_dp .or. B17 .ne. 0.0_dp) then
-          D = ActionOfD(Psi)
-          hPsi = hPsi + D
-        endif
     endif 
   end function hPsi
 

@@ -336,7 +336,7 @@ contains
            do k=1,3 
              WPot(:,:,:,m,n,it) = WPot(:,:,:,m,n,it) - LeviCivita(k,m,n)*      &
              &        ((B9 + B9q)*Density%DerRho(:,:,:,k,it)                   &
-             &        + B9*Density%DerRho(:,:,:,k,3-it))
+             &        + B9       *Density%DerRho(:,:,:,k,3-it))
            enddo        
          enddo
       enddo                               
@@ -357,16 +357,15 @@ contains
              !B16 & B17 Contribution 
              ! a) J_{nu mu}
              WPot(:,:,:,m,n,it) = WPot(:,:,:,m,n,it)                   &
-             & + 2.0_dp*((B16+B17)*Density%Jmunu(:,:,:,n,m,it)         &
-             & + B16*Density%Jmunu(:,:,:,n,m,3-it))
-             !b) \delta_{mu,nu}
-             if(m.eq.n) then
-                do k=1,3
-                  WPot(:,:,:,m,n,it) = WPot(:,:,:,m,n,it)              &
-                  & + (B16+B17)*Density%Jmunu(:,:,:,k,k,it)            &
-                  & + B16*Density%Jmunu(:,:,:,k,k,3-it)
-                enddo
-             endif
+             & + 2.0_dp * (B16+B17)*Density%Jmunu(:,:,:,n,m,it)        &
+             & + 2.0_dp *  B16     *Density%Jmunu(:,:,:,n,m,3-it)
+             
+           enddo
+           !b) \delta_{mu,nu}
+           do k=1,3
+                WPot(:,:,:,m,m,it) = WPot(:,:,:,m,m,it)                &
+                & + 2 * (B16+B17) * Density%Jmunu(:,:,:,k,k,it)         &
+                & + 2 *  B16      * Density%Jmunu(:,:,:,k,k,3-it)
            enddo
         enddo                               
       enddo 

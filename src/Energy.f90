@@ -112,7 +112,7 @@ contains
     real(KIND=dp) :: vecJT(nx,ny,nz,3), LapRhoT(nx,ny,nz), RotST(nx,ny,nz,3)
     real(KIND=dp) :: JMuNuT(nx,ny,nz,3,3), VecTT(nx,ny,nz,3), LapST(nx,ny,nz,3)
     real(KIND=dp) :: DivST(nx,ny,nz), VecST(nx,ny,nz,3)
-    real(KIND=dp) :: VecFT(nx,ny,nz,3)
+    real(KIND=dp) :: VecFT(nx,ny,nz,3), ref
     
     RhoT = sum(Den%Rho,4); TauT = sum(Den%Tau,4)
     NablaJT = sum(Den%NablaJ,4) ; LapRhoT = sum(Den%LapRho,4)
@@ -223,27 +223,39 @@ contains
     !B16 Terms  
     if(B16.ne. 0.0_dp) then     
       !Sum_{mu}J_{mumu}^2 terms  
-      B(16)= sum((JMuNuT(:,:,:,1,1)+JMuNuT(:,:,:,2,2)+JMuNuT(:,:,:,3,3))**2) 
+      B(16)= sum((JMuNuT(:,:,:,1,1)+JMuNuT(:,:,:,2,2)+JMuNuT(:,:,:,3,3))**2)
+
+      print *, 'Pseudoscalar'
+      print *, B(16) * B16 * dv
+      ref = B(16) * B16 * dv
+
       do l=1,3        
         do m=1,3
           ! Sum_{mu,nu} J_{mu,nu}J_{nu,mu}
           B(16) = B(16) + sum(JMuNuT(:,:,:,l,m)*JMuNuT(:,:,:,m,l))
-          enddo
+        enddo
       enddo 
       ! 2*s*F
       if(.not.TRC) then
-      B(16) = B(16)  - 2.0*(sum(sum(VecST*VecFT,4)))
-        B(16) = B(16)*B16*dv
+        B(16) = B(16)  - 2.0*(sum(sum(VecST*VecFT,4)))
       endif
+      B(16) = B(16)*B16*dv
+
+      print *, 'Tensor'
+      print *, B(16) - ref
     endif
 
     !B17 Terms
     if(B17.ne.0.0_dp) then
-      B(17)= 0.0_dp        
+      B(17)= 0.0_dp  
+      ref =  0.0_dp    
       do it=1,2  
         !Sum_{mu}J_{mumu}^2 terms       
         B(17) = B(17) + sum((Den%JMuNu(:,:,:,1,1,it)+Den%JMuNu(:,:,:,2,2,it)   &
-        &             + Den%JMuNu(:,:,:,3,3,it))**2) 
+        &             + Den%JMuNu(:,:,:,3,3,it))**2)
+
+        ref = ref +     sum((Den%JMuNu(:,:,:,1,1,it)+Den%JMuNu(:,:,:,2,2,it)   &
+        &             + Den%JMuNu(:,:,:,3,3,it))**2)
 
         do l=1,3
           do m=1,3
@@ -258,7 +270,11 @@ contains
           &                sum(sum(Den%VecS(:,:,:,:,it)*Den%VecF(:,:,:,:,it),4))
         endif
       enddo
+      ref = B17*dv*ref
       B(17)= B17*dv*B(17)
+
+      print *, 'Pseudoscalar'
+      print *, ref
     endif
 
     !B18 Terms

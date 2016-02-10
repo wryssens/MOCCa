@@ -151,8 +151,8 @@ contains
     integer, intent(in)       :: it
     real(Kind=dp)             :: Up, Down
     
-    Up   =   (E - Lambda - PairingCut(it))/PairingMu(it)
-    Down = - 2*(E - Lambda + PairingCut(it))/PairingMu(it)
+    Up   =     (E - Lambda - PairingCut(it))/PairingMu(it)
+    Down =   - (E - Lambda + PairingCut(it))/PairingMu(it)
     Cutoff = sqrt(sqrt(1.0_dp/(1.0_dp + exp(Up))))
     Cutoff = Cutoff * sqrt(sqrt(1.0_dp/(1.0_dp + exp(Down))))
 

@@ -438,20 +438,7 @@ module Testing
      call CompDensityFactor
 
      call HFBPairingField(PairingField,PairingFieldLN, Delta)
-
-     !call ConstructHFBHamiltonian(Fermi, Delta, LNLambda)
-     !call DiagonaliseHFBHamiltonian()
-     !call ConstructHFBstate
-     N = 0.0
-     do it=1,2
-      do P=1,2
-        do i=1,blocksizes(P,it)
-          N(it) = N(it) + RhoHFB(i,i,P,it)
-        enddo   
-      enddo 
-    enddo
-    print *, N
-     
+    
       do it=1,2
         print *
         print *, ' Isospin it = ', it

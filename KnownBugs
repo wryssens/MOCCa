@@ -18,4 +18,5 @@
 - When pairing is not strong it can be very hard to block qps in HFB. Some fail-safe
   or resetting procedure should be made.
 
-
+- MOCCa cannot properly continue from non-tensor interactions + HFB to tensor interactions
+  from file.

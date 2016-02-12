@@ -1546,18 +1546,18 @@ contains
     ! Function that returns the density \vec{F}
     !-------------------------------------------------------
     class (Spwf),intent(in) :: WaveFunction
-    real(KIND=dp)           :: VecF(nx,ny,nz,3), Temp(nx,ny,nz)
+    real(KIND=dp)           :: VecF(nx,ny,nz,3)
     integer                 :: mu,nu
     type(Spinor)            :: Psi
 
     VecF=0.0_dp
-    do mu=1,3  
-      Temp = 0.0_dp
-      do nu=1,3
-        Psi  = Pauli(WaveFunction%Der(mu),nu) 
-        Temp = Temp + RealMultiplySpinor(WaveFunction%Der(nu) , Psi)
-      enddo
-      VecF(:,:,:,mu) = Temp                            
+
+    Psi = NewSpinor()
+    do nu=1,3
+        Psi  = Psi + Pauli(WaveFunction%Der(nu),nu) 
+    enddo
+    do mu=1,3
+        VecF(:,:,:,mu) = RealMultiplySpinor(Wavefunction%Der(mu),Psi)                            
     enddo
     return            
   end function GetVecF

@@ -48,7 +48,6 @@ contains
             D = ActionOfD(Psi)
             hPsi = hPsi + D
         endif
-
     endif 
   end function hPsi
 

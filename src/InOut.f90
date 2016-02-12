@@ -24,6 +24,7 @@ module InOutput
   !-----------------------------------------------------------------------------
   ! Parameters of the input file.
   integer :: filenx,fileny,filenz, filenwt
+  real*8  :: filedx
   !-----------------------------------------------------------------------------
   !Determining if MOCCa needs to write extra information to the output file, 
   !for debugging purposes. Not active at the moment.
@@ -44,8 +45,65 @@ module InOutput
   logical :: PromOutput = .false.
   !-----------------------------------------------------------------------------
   logical :: LegacyInput=.false.
-
+  ! Convergence information
+  real*8 :: fileE, filedE
+  ! Force name that was used on the file
+  character(len=200) :: fileforce
+  ! Pairing information from file
+  integer:: fileptype
+  real*8 :: filegn,filegp
 contains
+
+  subroutine PrintFileInfo
+    !---------------------------------------------------------------------------
+    ! Subroutine that prints info to standardout that was found on a MOCCa
+    ! file.
+    !---------------------------------------------------------------------------
+
+    1 format(20('-'), 'Information from file', 19('-'))
+  100 format(60('-'))
+    2 format('File:', a20)
+    3 format('Mesh parameters:')
+    4 format('  nx=',i5,'  ny=',i5,'  nz=',i5 )
+    5 format('  dx=',f12.8, '(fm)')
+    6 format(' nwt=',i5)
+    7 format('Convergence:')
+    8 format('   E=',f10.3)
+    9 format('  dE=',e10.3)
+   10 format('Skyrme parametrization:',3x, a20)
+   11 format('Hartree-Fock')
+   12 format('BCS pairing')
+   13 format('HFB pairing')
+   14 format('  Neutron pairingstrength:', f10.3)
+   15 format('  Proton  pairingstrength:', f10.3)
+
+    print 1
+    print 2, trim(InputFilename)
+    print 3 
+    print 4, filenx,fileny,filenz
+    print 5, filedx
+    print 6, filenwt
+    print *
+    print 10, fileforce
+    print *
+    select case(fileptype)
+    case (0)
+      print 11
+    case (1)
+      print 12
+      print 14, filegn
+      print 15, filegp
+    case (2)
+      print 13
+      print 14, filegn
+      print 15, filegp
+    end select
+    print *
+    print 7
+    print 8, fileE
+    print 9, filedE
+
+  end subroutine PrintFileInfo
 
   subroutine Input()
   !-----------------------------------------------------------------------------
@@ -703,7 +761,7 @@ contains
   end subroutine WriteMOCCa_v0
 
   subroutine WriteMOCCa_v1(OChan)
-    !----------------------------------------------------
+    !----------------------------------------------------------------------------
     ! Write info to an output file in the MOCCa format.
     !
     ! Current version of this routine :
@@ -711,31 +769,34 @@ contains
     ! 
     ! Previous routine versions:
     !  Version            Difference
-    ! -------------------------------
+    ! ---------------------------------------------------------------------------
     !   0                 * Added version number
     !                     * Added storage of U and V HFB matrices
     !                     * Added storage of CanTransfo
     !----------------------------------------------------------------------------
     ! File format version 1
-    ! ---------
-    ! Version            
+    ! ----------------------
+    ! Version
+    ! Convergence information: E, dE                         (*)
     ! nx,ny,nz,dx,dt
     ! TRC,PC,SC,TSC,IC
     ! nwt,neutrons,protons
     ! (nwt) Wavefunctions                                    => see Spwf module
     ! Densities                                              => See densities module
     ! MaxFDOrder, MaxFDLapOrder, CoulombLapOrder             (*)
+    ! Forcename                                              (*)
     ! t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,wso,wsoq   (*)
     ! afor,hbar,hbm,xm,njmunu,nmass,COM1Body,COM2Body        (*)
     ! Functional Coefficients                                (*)
     ! PairingType, PairingStrength, alpha, PairingCut        (*)
+    ! Pairing Cutoffs                                        (*)
     ! FileBlocksizes
     ! U, V
     ! Rho, Kappa
     ! CanTransfo
     ! Omega, Crankvalues
     ! Moments                                                => See moments module
-    ! ----------
+    ! ----------------------------------------------------------------------------
     ! * indicates that no action is done with this info at the moment
     !-----------------------------------------------------------------------------
 
@@ -748,6 +809,7 @@ contains
     use Derivatives, only : MaxFDOrder, MaxFDLapOrder, CoulombLapOrder
     use Pairing,     only : PairingType, PairingStrength, alpha, PairingCut
     use Densities
+    use Energy
 
     integer, intent(in)   :: Ochan
     integer               :: i, io,P,it
@@ -756,6 +818,8 @@ contains
     open (OChan,form='unformatted',file=OutputFileName)
     ! File version
     write(Ochan, iostat=io) 1
+    ! Convergence information
+    write(Ochan,iostat=io) TotalEnergy, TotalEnergy-OldEnergy
     !Parameters of the mesh
     write(OChan,iostat=io) nx,ny,nz, dx
     !Conservation of symmetries
@@ -772,6 +836,8 @@ contains
     !---------------------------------------------------------------------------
     !Specifics of the Finite Difference scheme
     write(OChan,iostat=io) MaxFDOrder, MaxFDLapOrder, CoulombLapOrder
+    ! Force name
+    write(Ochan,iostat=io) afor
     !Straight Force parameters
     write(OChan,iostat=io) t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,wso,wsoq
     !Extra parameters
@@ -782,6 +848,11 @@ contains
     &                      B19,B20,B21
     !Pairing Variables
     write(OChan,iostat=io) PairingType, PairingStrength, alpha, PairingCut
+    if(allocated(Pcutoffs)) then
+      write(Ochan,iostat=io) Pcutoffs 
+    else
+      write(Ochan,iostat=io)
+    endif
     write(OChan,iostat=io) Fermi, LNLambda
     ! No need to guess for the HFB matrices and variables if 
     ! PairingType = 'HFB' already.
@@ -834,18 +905,21 @@ subroutine ReadMOCCa_v1(Ichan)
     !
     !----------------------------------------------------------------------------
     ! File format version 1
-    ! ---------
-    ! Version            
+    ! ----------------------
+    ! Version
+    ! Convergence information: E, dE                         
     ! nx,ny,nz,dx,dt
     ! TRC,PC,SC,TSC,IC
     ! nwt,neutrons,protons
     ! (nwt) Wavefunctions                                    => see Spwf module
     ! Densities                                              => See densities module
     ! MaxFDOrder, MaxFDLapOrder, CoulombLapOrder             (*)
+    ! Forcename                                              (*)
     ! t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,wso,wsoq   (*)
     ! afor,hbar,hbm,xm,njmunu,nmass,COM1Body,COM2Body        (*)
     ! Functional Coefficients                                (*)
     ! PairingType, PairingStrength, alpha, PairingCut        (*)
+    ! Pairing Cutoffs                                        (*)
     ! FileBlocksizes
     ! U, V
     ! Rho, Kappa
@@ -872,7 +946,7 @@ subroutine ReadMOCCa_v1(Ichan)
 
     !File parameters to compare against
     integer       :: fileneutrons,fileprotons,i, version
-    real(KIND=dp) :: filedx, fileintensity(4)
+    real(KIND=dp) :: fileintensity(4)
     
     !---------------------------------------------------------------------------
     ! Checking for a valid input file
@@ -885,6 +959,9 @@ subroutine ReadMOCCa_v1(Ichan)
     &                         'ioerror', ioerror)
     if(Version.ne.1) call stp('File format has unrecognised version.',         &
     &                       'Version', Version)
+
+    !Convergence info
+    read(Ichan,iostat=ioerror) fileE, filedE
 
     read(IChan, iostat=ioerror) filenx,fileny,filenz, filedx
     if(ioerror.ne.0) call stp('Input error for the mesh parameters.',          &
@@ -992,6 +1069,8 @@ subroutine ReadMOCCa_v1(Ichan)
     !      b) afor,hbar,hbm,xm,njmunu,nmass,COM1Body,COM2Body
     !      c) Functional Coefficients
     !
+    ! Force name
+    read(Ichan,iostat=ioerror)  fileforce
     !Straight force parameters
     read(IChan,iostat=ioerror)
     !Extra parameters
@@ -1000,8 +1079,10 @@ subroutine ReadMOCCa_v1(Ichan)
     read(IChan,iostat=ioerror)
     !---------------------------------------------------------------------------
     ! 8) Pairing: type, strength, alphas and PairingCut
+    !             Cutoffs
     !             Fermi, Lambda2
-    read(IChan,iostat=ioerror)
+    read(IChan,iostat=ioerror) fileptype,filegn,filegp
+    read(Ichan,iostat=ioerror)
     read(ICHan,iostat=ioerror)  Fermi, LNLambda
     if(ioerror.ne.0) then
         call stp('Did not read Fermi and LNLambda correctly' , &

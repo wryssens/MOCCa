@@ -367,7 +367,7 @@ subroutine PrintStartInfo()
     ! A subroutine that prints all the relevant info that is available at 
     ! the start of MOCCa.
     !---------------------------------------------------------------------------
-    use InOutput, only : PrintInput
+    use InOutput, only : PrintInput,PrintFileInfo
     use Coulomb, only  : PrintCoulombInfo
     use Force,   only  : PrintForce
     use Moments, only  : PrintConstraints, PrintMomentInfo
@@ -392,6 +392,8 @@ subroutine PrintStartInfo()
     call printMomentInfo  
     !Print info on the cranking
     call DeriveAll() 
+    ! Print info from the file
+    call PrintFileInfo
     
     call UpdateAm(.true.)
     if(.not.TRC) then

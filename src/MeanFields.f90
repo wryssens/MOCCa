@@ -46,7 +46,8 @@ module MeanFields
   real(KIND=dp),allocatable :: SPot(:,:,:,:,:)
   real(KIND=dp),allocatable :: Cpot(:,:,:,:,:),WPot(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: DPot(:,:,:,:,:)
-  real(KIND=dp),allocatable :: DerCPot(:,:,:,:,:,:),DivDPot(:,:,:,:)
+  real(KIND=dp),allocatable :: DerCPot(:,:,:,:,:,:),DerDPot(:,:,:,:,:,:)
+  real(KIND=dp),allocatable :: DivDpot(:,:,:,:)
   !-----------------------------------------------------------------------------
   !For experimentally calculating B in a more logical way.
   ! And including an astract interface for the PGI compilers (sigh....)
@@ -79,7 +80,8 @@ contains
       allocate(BPot(nx,ny,nz,2), NablaBPot(nx,ny,nz,3,2),UPot(nx,ny,nz,2))
       allocate(SPot(nx,ny,nz,3,2),APot(nx,ny,nz,3,2))
       allocate(Cpot(nx,ny,nz,3,2),WPot(nx,ny,nz,3,3,2),DPot(nx,ny,nz,3,2))
-      allocate(DerCPot(nx,ny,nz,3,3,2),DivDPot(nx,ny,nz,2))
+      allocate(DerCPot(nx,ny,nz,3,3,2),DerDPot(nx,ny,nz,3,3,2))
+      allocate(DivDpot(nx,ny,nz,2))
 
       BPot     =0.0_dp
       NablaBPot=0.0_dp
@@ -90,7 +92,8 @@ contains
       Wpot     =0.0_dp
       DPot     =0.0_dp
       DerCPot  =0.0_dp
-      DivDPot  =0.0_dp
+      DerDPot  =0.0_dp
+      DivDpot  =0.0_dp 
     endif
     
     !Done here for the ifort compiler
@@ -125,8 +128,7 @@ contains
   !-----------------------------------------------------------------------------
     use Derivatives
     
-    integer :: it
-    real(KIND=dp):: DerXDX(nx,ny,nz,2),DerYDY(nx,ny,nz,2), DerZDZ(nx,ny,nz,2) 
+    integer :: it,n
     
     do it=1,2
       !Gradient of B
@@ -137,44 +139,36 @@ contains
       NablaBPot(:,:,:,3,it) = &
       & DeriveZ(BPot(:,:,:,it), ParityInt,SignatureInt,TimeSimplexInt, 1)
     enddo
-    !--------------------------------------------------------------------------
-    ! Unneccessary now, as we do no longer use this. 
-    ! See the remarks in function ActionOfC
-    !--------------------------------------------------------------------------
-!     !Calculating the divergence of the Dpotential
-!     do it=1,2
-!         DerXDX(:,:,:,it) = &
-!         & DeriveX(DPot(:,:,:,1,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
-!         DerYDY(:,:,:,it) = &
-!         & DeriveY(DPot(:,:,:,2,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
-!         DerZDZ(:,:,:,it) = &
-!         & DeriveZ(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
-!     enddo
-!     DivDPot = DerXDX + DerYDY + DerZDZ
 
-!     !The derivative of the cpotential
-!     do it=1,2                 
-!         DerCPot(:,:,:,1,1,it) = &
-!         & DeriveX(CPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt,1)
-!         DerCPot(:,:,:,1,2,it) = &
-!         & DeriveY(CPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt,1)
-!         DerCPot(:,:,:,1,3,it) = &
-!         & DeriveZ(CPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt,1)
-    
-!         DerCPot(:,:,:,2,1,it) = &
-!         & DeriveX(CPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt,2)
-!         DerCPot(:,:,:,2,2,it) = &
-!         & DeriveY(CPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt,2)
-!         DerCPot(:,:,:,2,3,it) = &
-!         & DeriveZ(CPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt,2)
-    
-!         DerCPot(:,:,:,3,1,it) = &
-!         & DeriveX(CPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt,1)
-!         DerCPot(:,:,:,3,2,it) = &
-!         & DeriveY(CPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt,1)
-!         DerCPot(:,:,:,3,3,it) = &
-!         & DeriveZ(CPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt,1)
-!     enddo
+    !Calculating the derivatives of the Dpotential
+    do it=1,2
+        
+        DerDPot(:,:,:,1,1,it) = &
+        & DeriveX(DPot(:,:,:,n,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
+        DerDPot(:,:,:,2,1,it) = &
+        & DeriveY(DPot(:,:,:,n,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
+        DerDPot(:,:,:,3,1,it) = &
+        & DeriveZ(DPot(:,:,:,n,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
+
+        DerDPot(:,:,:,1,2,it) = &
+        & DeriveX(DPot(:,:,:,n,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
+        DerDPot(:,:,:,2,2,it) = &
+        & DeriveY(DPot(:,:,:,n,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
+        DerDPot(:,:,:,3,2,it) = &
+        & DeriveZ(DPot(:,:,:,n,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
+
+        DerDPot(:,:,:,1,3,it) = &
+        & DeriveX(DPot(:,:,:,n,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
+        DerDPot(:,:,:,2,3,it) = &
+        & DeriveY(DPot(:,:,:,n,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
+        DerDPot(:,:,:,3,3,it) = &
+        & DeriveZ(DPot(:,:,:,n,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
+        
+    enddo
+    do it=1,2
+        DivDPot(:,:,:,it) = DerDpot(:,:,:,1,1,it) + DerDpot(:,:,:,2,2,it)    &
+        &                 + DerDpot(:,:,:,3,3,it)
+    enddo
   end subroutine DerivePotentials
   !=============================================================================
   ! Subroutines for calculating all the different potentials.
@@ -202,10 +196,6 @@ contains
           Bpot(:,:,:,it) = Bpot(:,:,:,it) + hbm(it)/2.0_dp
         endif
 
-        do i=1,3
-          NablaBPot(:,:,:,i,it) = B3 * Density%DerRho(:,:,:,i,at) +            &
-          &                       (B3+B4)*Density%DerRho(:,:,:,i,it)
-        enddo
     enddo
     return
   end subroutine CalcBPot
@@ -418,8 +408,8 @@ contains
        endif
        if(B16.ne.0.0_dp .or. B17.ne.0.0_dp) then  
          SPot(:,:,:,:,it) = SPot(:,:,:,:,it) & 
-         &          - 2.0_dp*((B16+B17)  *Density%VecF(:,:,:,:,it)             &
-         &          - B16                *Density%VecF(:,:,:,:,at))
+         &          - 2.0_dp* (B16+B17)  *Density%VecF(:,:,:,:,it)             &
+         &          - 2.0_dp*  B16       *Density%VecF(:,:,:,:,at)
        endif
        if(B18.ne.0.0_dp.or.B19.ne.0.0_dp.or.B20.ne.0.0_dp .or. B21.ne.0.0_dp)then
          SPot(:,:,:,:,it) = SPot(:,:,:,:,it) &           
@@ -443,8 +433,8 @@ contains
   !-----------------------------------------------------------------------------
       integer      :: it
       
-      DPot=0.0_dp
-      DivDPot=0.0_dp
+      DPot   =0.0_dp
+      DerDpot=0.0_dp
       if(B16.eq.0.0_dp .and. B17 .eq.0.0_dp) return
       
       !Calculating D itself
@@ -697,23 +687,69 @@ contains
   function ActionOfD(Psi)
     !---------------------------------------------------------------------------
     ! Function that computes the action of the D potential
-    !   ActionOfD = - (\nabla \cdot D_q) * (\sigma \cdot \nabla) \Psi
+    ! Original from Veerles paper:  
+    ! 
+    ! ActionOfD = - (\nabla \cdot D_q) * (\sigma \cdot \nabla) \Psi
+    !
+    ! But the corrected one is fully:
+    ! 
+    ! ActionOfD = -1/2 * [  Term_1 + Term_2 + 2*Term_3 ]
+    !
+    !
+    ! Where 
+    !
+    ! Term_1 = \nabla \cdot D \sigma \cdot \nabla \Psi 
+    ! Term_2 = \partial_\nu D_\mu \sigma_\nu \partial \mu \Psi  
+    !          (with sum on \mu and \nu)
+    ! Term_3 = D_\mu \sigma_\nu \partial_\mu \partial_\nu \Psi
+    ! 
     !---------------------------------------------------------------------------
-    integer                 :: m, it
-    type(Spwf) , intent(in) ::Psi
-    type(Spinor)            ::ActionOfD, Der(3)
+    integer                 :: m, it,n,P,S,TS
+    type(Spwf) , intent(in) :: Psi
+    type(Spinor)            :: ActionOfD, Der(3), Term1, Term2,Term3
+    type(Spinor)            :: DPsi(3,3)
+    real(KIND=dp)           :: DivD(nx,ny,nz,2)
 
     it = (Psi%GetIsospin() + 3)/2
 
     do m=1,3
         Der(m) = Psi%GetDer(m)
-        Der(m) = Pauli(Der(m),m)
     enddo
-    ActionOfD = Der(1)
-    ActionOfD = ActionOfD + Der(2)
-    ActionOfD = ActionOfD + Der(3)
 
-    ActionOfD = - DivDPot(:,:,:,it) * ActionOfD
+    Term1=NewSpinor()
+    do m=1,3
+        Term1 = Term1 + Pauli(Der(m),m)
+    enddo
+    Term1 = DivDpot(:,:,:,it) * Term1
+
+    Term2=NewSpinor()
+    do m=1,3
+        do n=1,3
+            Term2 = Term2 + DerDPot(:,:,:,n,m,it)*Pauli(Der(m),n)
+        enddo
+    enddo
+
+    Term3=NewSpinor()
+
+    DPsi(1:3,1) = DeriveSpinor(Der(1),-Psi%Parity,-Psi%Signature, Psi%TimeSimplex)
+    DPsi(1:3,2) = DeriveSpinor(Der(2),-Psi%Parity,-Psi%Signature,-Psi%TimeSimplex)
+    DPsi(1:3,3) = DeriveSpinor(Der(3),-Psi%Parity, Psi%Signature, Psi%TimeSimplex)
+
+    ! Slightly wasteful usage of CPU time here. We overwrite the previously 
+    ! calculated second derivate d_mu d_mu since it is pretty inaccurate
+    ! when not represente correctly. If CPU time is important, this can be commented
+    ! out.
+!     do m=1,3
+!         DPsi(m,m) = SecondDerivativeSpinor(Psi%Value,m,Psi%Parity,Psi%Signature,Psi%TimeSimplex)   
+!     enddo
+
+    do m=1,3
+        do n=1,3
+            Term3 = Term3 + Dpot(:,:,:,m,it) * Pauli( DPsi(m,n) ,n)
+        enddo
+    enddo
+
+    ActionOfD = -0.5_dp*(Term1 + Term2 + 2.0_dp*Term3)
   end function ActionOfD
 
   function ActionOfC(Psi)

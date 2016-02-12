@@ -114,16 +114,16 @@ contains
     real(KIND=dp) :: DivST(nx,ny,nz), VecST(nx,ny,nz,3)
     real(KIND=dp) :: VecFT(nx,ny,nz,3), ref
     
-    RhoT = sum(Den%Rho,4); TauT = sum(Den%Tau,4)
+    RhoT    = sum(Den%Rho,4)    ; TauT    = sum(Den%Tau,4)
     NablaJT = sum(Den%NablaJ,4) ; LapRhoT = sum(Den%LapRho,4)
     if(allocated(Den%JmuNu)) JMuNuT = sum(Den%JMuNu,6)
     
     if(.not.TRC) then
       VecJT=sum(Den%VecJ,5) ;  VecST=sum(Den%VecS,5) ; RotST=sum(Den%RotS,5) 
-      if(allocated(Den%LapS)) then
-        VecTT = sum(Den%VecT,5)
-        LapST = sum(Den%LapS,5) ;  DivST = sum(Den%DivS,4)
-      endif
+      if(allocated(Den%VecT))  VecTT = sum(Den%VecT,5)
+      if(allocated(Den%VecF))  VecFT = sum(Den%VecF,5) 
+      if(allocated(Den%LapS))  LapST = sum(Den%LapS,5)
+      if(allocated(Den%DivS))  DivST = sum(Den%DivS,4)
     endif
     B =0.0_dp
 
@@ -203,8 +203,9 @@ contains
     if(B14.ne. 0.0_dp) then
       B(14)=(sum(JMuNuT**2))
       if(.not.TRC) then
-        B(14) = B(14)  - sum(VecST(:,:,:,1)*VecTT(:,:,:,1)+                   &
-        & VecST(:,:,:,2)*VecTT(:,:,:,2)+VecST(:,:,:,3)*VecTT(:,:,:,3))
+        B(14) = B(14)  - sum(VecST(:,:,:,1)*VecTT(:,:,:,1) +                  &
+          &                  VecST(:,:,:,2)*VecTT(:,:,:,2) +                  &
+          &                  VecST(:,:,:,3)*VecTT(:,:,:,3))
       endif
       B(14) = B14*dv*B(14)
     endif
@@ -212,6 +213,7 @@ contains
     !B15 Terms
     if(B15.ne. 0.0_dp) then
       B(15)= sum(Den%JMuNu(:,:,:,:,:,:)**2)
+      ref = B15 * B(15) * dv
       if(.not.TRC) then
         B(15) = B(15) +(- sum(Den%VecS(:,:,:,1,:)*Den%VecT(:,:,:,1,:))    &
           &             - sum(Den%VecS(:,:,:,2,:)*Den%VecT(:,:,:,2,:))    &
@@ -224,11 +226,6 @@ contains
     if(B16.ne. 0.0_dp) then     
       !Sum_{mu}J_{mumu}^2 terms  
       B(16)= sum((JMuNuT(:,:,:,1,1)+JMuNuT(:,:,:,2,2)+JMuNuT(:,:,:,3,3))**2)
-
-      print *, 'Pseudoscalar'
-      print *, B(16) * B16 * dv
-      ref = B(16) * B16 * dv
-
       do l=1,3        
         do m=1,3
           ! Sum_{mu,nu} J_{mu,nu}J_{nu,mu}
@@ -240,23 +237,15 @@ contains
         B(16) = B(16)  - 2.0*(sum(sum(VecST*VecFT,4)))
       endif
       B(16) = B(16)*B16*dv
-
-      print *, 'Tensor'
-      print *, B(16) - ref
     endif
 
     !B17 Terms
     if(B17.ne.0.0_dp) then
       B(17)= 0.0_dp  
-      ref =  0.0_dp    
       do it=1,2  
         !Sum_{mu}J_{mumu}^2 terms       
         B(17) = B(17) + sum((Den%JMuNu(:,:,:,1,1,it)+Den%JMuNu(:,:,:,2,2,it)   &
         &             + Den%JMuNu(:,:,:,3,3,it))**2)
-
-        ref = ref +     sum((Den%JMuNu(:,:,:,1,1,it)+Den%JMuNu(:,:,:,2,2,it)   &
-        &             + Den%JMuNu(:,:,:,3,3,it))**2)
-
         do l=1,3
           do m=1,3
             ! Sum_{mu,nu} J_{mu,nu}J_{nu,mu}
@@ -270,12 +259,8 @@ contains
           &                sum(sum(Den%VecS(:,:,:,:,it)*Den%VecF(:,:,:,:,it),4))
         endif
       enddo
-      ref = B17*dv*ref
       B(17)= B17*dv*B(17)
-
-      print *, 'Pseudoscalar'
-      print *, ref
-    endif
+   endif
 
     !B18 Terms
     if(B18 .ne. 0.0_dp .and. .not.TRC) then

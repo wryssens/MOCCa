@@ -329,17 +329,17 @@ contains
     B16  =-(3.0_dp/8.0_dp) * (te + to)
     B17  = (3.0_dp/8.0_dp) * (te - to)
     
-    if(J2Terms .and. (.not. TRC)) then
-      B18 =-(1.0_dp/32.0_dp)* (3 * t1 * x1 - t2 *x2)
-      B19 = (1.0_dp/32.0_dp)* (3 * t1      + t2    )
-      !Tensor contribution
-      B18 = B18 + (1.0_dp/16.0_dp) * (3*te - to)
-      B19 = B19 - (1.0_dp/16.0_dp) * (3*te + to)
-    endif
-    if(.not.TRC) then
-      B20 = (3.0_dp/16.0_dp) * (3*te - to) 
-      B21 =-(3.0_dp/16.0_dp) * (3*te + to)
-    endif
+!     if(J2Terms .and. (.not. TRC)) then
+!       B18 =-(1.0_dp/32.0_dp)* (3 * t1 * x1 - t2 *x2)
+!       B19 = (1.0_dp/32.0_dp)* (3 * t1      + t2    )
+!       !Tensor contribution
+!       B18 = B18 + (1.0_dp/16.0_dp) * (3*te - to)
+!       B19 = B19 - (1.0_dp/16.0_dp) * (3*te + to)
+!     endif
+!     if(.not.TRC) then
+!       B20 = (3.0_dp/16.0_dp) * (3*te - to) 
+!       B21 =-(3.0_dp/16.0_dp) * (3*te + to)
+!     endif
 
     !---------------------------------------------------------------------------
     !Calculating the C-s

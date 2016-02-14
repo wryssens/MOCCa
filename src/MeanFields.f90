@@ -752,7 +752,7 @@ contains
 
     do m=1,3
         do n=1,3
-            Term3 = Term3 + Dpot(:,:,:,m,it) * Pauli( DPsi(m,n) ,n)
+            Term3 = Term3 + Dpot(:,:,:,m,it) * Pauli(DPsi(m,n) ,n)
         enddo
     enddo
 

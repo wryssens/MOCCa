@@ -868,6 +868,10 @@ contains
     write(Ochan,iostat=io) CanTransfo
 
     !---------------------------------------------------------------------------
+    !Cranking Variables
+    write(OChan,iostat=io) Omega, CrankValues
+
+    !---------------------------------------------------------------------------
     ! Multipole constraint variables
     ! Special treatment: got to loop over the multipole moments and only write
     ! the constrained ones.
@@ -882,9 +886,7 @@ contains
          exit
       endif
     enddo
-    !---------------------------------------------------------------------------
-    !Cranking Variables
-    write(OChan,iostat=io) Omega, CrankValues
+
     close (OChan)
 
 end subroutine WriteMOCCa_v1
@@ -1133,7 +1135,19 @@ subroutine ReadMOCCa_v1(Ichan)
         read(Ichan,iostat=ioerror)
         read(Ichan,iostat=ioerror)
         read(Ichan,iostat=ioerror)
+        read(Ichan,iostat=ioerror)
     end select
+    !---------------------------------------------------------------------------
+    ! 11) Cranking parameters: effective, true and intensity
+    if(ContinueCrank) then
+        ! Don't read other values, as we don't want to override them.
+
+        read(IChan,iostat=ioerror) Omega
+        print *, 'Read omega', Omega
+    else
+        read(Ichan,iostat=ioerror)
+    endif
+
     !---------------------------------------------------------------------------
     ! 10) Moment parameters
     if(ContinueMoment) then
@@ -1145,14 +1159,6 @@ subroutine ReadMOCCa_v1(Ichan)
           &        'ioerror = ', ioerror)
         endif
       enddo
-    endif
-    !---------------------------------------------------------------------------
-    ! 11) Cranking parameters: effective, true and intensity
-    if(ContinueCrank) then
-        ! Don't read other values, as we don't want to override them.
-        read(IChan,iostat=ioerror) Omega
-    else
-        read(Ichan,iostat=ioerror)
     endif
 
     close(Ichan)

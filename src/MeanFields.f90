@@ -5,6 +5,7 @@ module MeanFields
   !-----------------------------------------------------------------------------
   ! In terms of a parametrised Skyrme force the single particle Hamiltonian
   !  looks as follows
+  !
   ! h_q = - \nabla B_q(r) \nabla + U_q(r) + \vec{S}_q(r) \dot \sigma 
   !       - i/2 \sum_{mu,nu = x}^{z} [W_{q;mu,nu}(r)\nabla_{mu}\sigma_{nu} 
   !        + \nabla_{mu}\sigma_{nu} W_{q;mu,nu}(r)]
@@ -128,7 +129,7 @@ contains
   !-----------------------------------------------------------------------------
     use Derivatives
     
-    integer :: it,n
+    integer :: it
     
     do it=1,2
       !Gradient of B
@@ -144,31 +145,32 @@ contains
     do it=1,2
         
         DerDPot(:,:,:,1,1,it) = &
-        & DeriveX(DPot(:,:,:,n,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
+        & DeriveX(DPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
         DerDPot(:,:,:,2,1,it) = &
-        & DeriveY(DPot(:,:,:,n,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
+        & DeriveY(DPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
         DerDPot(:,:,:,3,1,it) = &
-        & DeriveZ(DPot(:,:,:,n,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
+        & DeriveZ(DPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
 
         DerDPot(:,:,:,1,2,it) = &
-        & DeriveX(DPot(:,:,:,n,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
+        & DeriveX(DPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
         DerDPot(:,:,:,2,2,it) = &
-        & DeriveY(DPot(:,:,:,n,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
+        & DeriveY(DPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
         DerDPot(:,:,:,3,2,it) = &
-        & DeriveZ(DPot(:,:,:,n,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
+        & DeriveZ(DPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
 
         DerDPot(:,:,:,1,3,it) = &
-        & DeriveX(DPot(:,:,:,n,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
+        & DeriveX(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
         DerDPot(:,:,:,2,3,it) = &
-        & DeriveY(DPot(:,:,:,n,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
+        & DeriveY(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
         DerDPot(:,:,:,3,3,it) = &
-        & DeriveZ(DPot(:,:,:,n,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
-        
+        & DeriveZ(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
+          
     enddo
     do it=1,2
         DivDPot(:,:,:,it) = DerDpot(:,:,:,1,1,it) + DerDpot(:,:,:,2,2,it)    &
         &                 + DerDpot(:,:,:,3,3,it)
     enddo
+
   end subroutine DerivePotentials
   !=============================================================================
   ! Subroutines for calculating all the different potentials.
@@ -435,16 +437,17 @@ contains
       
       DPot   =0.0_dp
       DerDpot=0.0_dp
+      
       if(B16.eq.0.0_dp .and. B17 .eq.0.0_dp) return
       
       !Calculating D itself
       do it=1,2
-          DPot(:,:,:,:,it)=DPot(:,:,:,:,it)-2*B16*sum(Density%VecS(:,:,:,:,:),5)
+          DPot(:,:,:,:,it)= -2 * B16 * sum(Density%VecS(:,:,:,:,:),5) & 
+          &                 -2 * B17 *     Density%VecS(:,:,:,:,it)
       enddo
 
-      do it=1,2
-          DPot(:,:,:,:,it)=DPot(:,:,:,:,it)-2*B17*Density%VecS(:,:,:,:,it)
-      enddo
+      if(any(Dpot.eq.Dpot+1)) call stp('WTF')
+
       return
   end subroutine CalcDPot
 
@@ -722,12 +725,16 @@ contains
     enddo
     Term1 = DivDpot(:,:,:,it) * Term1
 
+    if(any(DivDPot.eq.DivDpot+1)) call stp('WTF DIVPOT')
+
     Term2=NewSpinor()
     do m=1,3
         do n=1,3
             Term2 = Term2 + DerDPot(:,:,:,n,m,it)*Pauli(Der(m),n)
         enddo
     enddo
+
+    if(any(DerDPot.eq.DerDpot+1)) call stp('WTF DerDPOT')
 
     Term3=NewSpinor()
 
@@ -750,6 +757,9 @@ contains
     enddo
 
     ActionOfD = -0.5_dp*(Term1 + Term2 + 2.0_dp*Term3)
+
+    if(any(isnan(ActionOfD%Grid))) call stp('WTF is this')
+
   end function ActionOfD
 
   function ActionOfC(Psi)

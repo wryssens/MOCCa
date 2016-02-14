@@ -98,7 +98,7 @@ contains
       !
       ! Minor changes from the original version:
       !    - double precision instead of single precision
-      !     - changed from subroutine to function, for clarity and ease of use
+      !    - changed from subroutine to function, for clarity and ease of use
       !    - changed to pure function
       !*************************************************************************
       !

@@ -48,7 +48,7 @@ module InOutput
   ! Convergence information
   real*8 :: fileE, filedE
   ! Force name that was used on the file
-  character(len=200) :: fileforce
+  character(len=200) :: fileforce=''
   ! Pairing information from file
   integer:: fileptype
   real*8 :: filegn,filegp

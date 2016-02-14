@@ -197,9 +197,12 @@ module Moments
   !-----------------------------------------------------------------------------
   ! Numerical parameters for the Rutz-constraint update scheme
   real(KIND=dp) :: c0=0.2_dp, d0=0.01_dp, epsilon=7.0_dp
-
+  !-----------------------------------------------------------------------------
+  ! Experimental constraint
   logical :: RutzToQuadratic = .false.
-
+  !-----------------------------------------------------------------------------
+  ! Quantisation axis of the moments.
+  integer :: QuantisationAxis=3
 contains
 
   recursive function FindMoment(l,m,Impart, StartMoment) result(FoundMoment)
@@ -361,10 +364,26 @@ contains
           Z = Mesh(3,i,j,k)
           
           !Finding the corresponding spherical moments
-          r=sqrt(X**2+Y**2+Z**2)
-          sinTheta=sqrt(X**2+Y**2)/r
-          cosTheta=Z/r
-          phi=atan2(Y,X)
+          r        =sqrt(X**2+Y**2+Z**2)
+
+          select case(QuantisationAxis) 
+
+          case(1)
+                sinTheta =sqrt(Z**2+Y**2)/r
+                cosTheta =X/r
+                phi      =atan2(Y,Z)
+
+          case(2)
+                sinTheta =sqrt(X**2+Z**2)/r
+                cosTheta =Y/r
+                phi      =atan2(Z,X)
+
+          case(3)
+                sinTheta =sqrt(X**2+Y**2)/r
+                cosTheta =Z/r
+                phi      =atan2(Y,X)
+
+          end select
 
           !Calculating the values of the spherical harmonics
           do m=0,MaxMoment
@@ -1834,7 +1853,7 @@ contains
     
     NameList /MomentParam/ MaxMoment, radd, acut, MoreConstraints,Damping,     &
     &                      ReadjustSlowDown, CutoffType, ContinueMoment        &
-    &                     ,c0,d0, epsilon
+    &                     ,c0,d0, epsilon,QuantisationAxis
     
     NameList /MomentConstraint/ l,m,Impart, Isoswitch, Intensity,              &
     &                           ConstraintNeutrons,ConstraintProtons,          &
@@ -1848,6 +1867,10 @@ contains
   
     !Reading the parameters
     read(unit=*,NML=MomentParam )
+
+    if(QuantisationAxis.lt.0 .or. QuantisationAxis .gt. 3) then
+        call stp('Illegal value of quantisation axis!')
+    endif
     
     !Initialising the Linked List
     call IniMoments()

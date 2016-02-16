@@ -1123,22 +1123,6 @@ subroutine ReadMOCCa_v1(Ichan)
         endif
         
         read(ICHan,iostat=ioerror) InputU,InputV 
-!         print *, 'Sizes U', size(inputU,1), size(inputU,2), size(inputU,3), size(inputU,4)
-!         print *, 'Sizes V', size(inputV,1), size(inputV,2), size(inputV,3), size(inputV,4)
-        
-!         do it=1,2
-!             do P=1,2
-!             print *, 'InputU'
-!             do i=1,fileblocksizes(1,1)
-!                 print *, DBLE(InputU(i,1:2*fileblocksizes(1,1),1,1))
-!             enddo  
-
-!             print *, 'InputV'
-!             do i=1,fileblocksizes(1,1)
-!                 print *, DBLE(InputV(i,1:2*fileblocksizes(1,1),1,1))
-!             enddo  
-!             enddo
-!         enddo
         if(ioerror.ne.0) then
             call stp('Did not read U and V correctly','Iostat', ioerror)
         endif

@@ -3037,8 +3037,12 @@ subroutine InsertionSortQPEnergies
 
     if(.not. allocated(RhoHFB)) then
       allocate(RhoHFB(HFBSize,HFBSize,2,2))    ; RhoHFB = 0.0_dp
-      allocate(U(HFBSize,HFBSize,2,2))         ; U      = 0.0_dp
-      allocate(V(HFBSize,HFBSize,2,2))         ; V      = 0.0_dp
+    endif
+    if(.not. allocated(U)) then
+      allocate(U(HFBSize,2*HFBSize,2,2))         ; U      = 0.0_dp
+    endif
+    if(.not. allocated(V)) then
+      allocate(V(HFBSize,2*HFBSize,2,2))         ; V      = 0.0_dp
     endif
 
     if(.not.allocated(CanTransfo)) then

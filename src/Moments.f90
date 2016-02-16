@@ -490,6 +490,8 @@ contains
     !
     !--------------------------------------------------------------------
 
+    character(len=1) :: Ax='Z'
+
     1 format (21('-'), ' Multipole Moments', 21('-') )
     2 format ('Maximum l considered ' , i3 ) 
     3 format ('Constraints parameters: ')
@@ -499,9 +501,22 @@ contains
     7 format (/, 'Constraints obtained from file.')
     8 format (/, 'Constraints obtained from data.')
     9 format ('  Rutz Constraints Epsilon : ' f6.3)    
-     
+   10 format ('Quantisation Axis for the quadrupole moments: ', a1)
+
     print 1
     print 2 , MaxMoment
+
+    select case(QuantisationAxis)
+    case(1)
+      Ax = 'X'
+    case(2)
+      Ax = 'Y'
+    case(3)
+      Ax = 'Z'
+    end select
+
+    print 10, Ax
+
     print 3
     print 4, radd, acut
     print 5, Damping
@@ -789,7 +804,8 @@ contains
       type(Moment), pointer :: Current => null()
       integer               :: currentl
       real(KIND=dp)         :: ql(2)
-    
+      character(len=1)      :: AX=''
+
     100 format (20('-'),' Multipole Moments ', 21('-'))
     101 format (60('-'))
       1 format (60('_'))
@@ -797,9 +813,22 @@ contains
       7 format ('Beta_{', 2i2 , '}', 3(1x,f15.4) )
       8 format ('Q_{',i2,'}',5x, 3(1x,f15.4))
       9 format ('Constrained', 33x, f15.4)
+     10 format ('Quantisation Axis for l=2 moments: ', a1)
+
+      select case(QuantisationAxis)
+      case(1) 
+        Ax='X'
+      case(2) 
+        Ax='Y'
+      case(3) 
+        Ax='Z'
+      end select
+
       Current => Root
       currentl = Current%l
       print 100
+      print 10, Ax
+      print 1
       print 2
       print 1
       
@@ -1525,8 +1554,8 @@ contains
           Current%ConstraintType=2          
           allocate(Current%Constraint(1), Current%TrueConstraint(1))
           allocate(Current%Intensity(1)); Current%Intensity=0.0_dp
-          Current%Constraint=0.0_dp ; Current%TrueConstraint=0.0_dp
-          Current%Isoswitch=1       ; Current%Total=.false.
+          Current%Constraint=0.0_dp     ; Current%TrueConstraint=0.0_dp
+          Current%Isoswitch=1           ; Current%Total=.false.
       endif
       
       Current => FindMoment(1,1,.false.)
@@ -1627,6 +1656,7 @@ contains
     !Total moments
     QCartesian(:,:,3)=sum(QCartesian(:,:,1:2),3)
     
+    !------------------------
     ! Q & Gamma representation
     do i=1,3
       Q(i) = sqrt(2.0_dp/3.0_dp *                                              &
@@ -1666,10 +1696,27 @@ contains
     integer       :: i
 
     print 10
+    !---------------------------------------------------------------
     !Printing only the diagonal components
-    print 1, QCartesian(1,1,1), QCartesian(2,2,1), QCartesian(3,3,1)
-    print 2, QCartesian(1,1,2), QCartesian(2,2,2), QCartesian(3,3,2)
-    print 3, QCartesian(1,1,3), QCartesian(2,2,3), QCartesian(3,3,3)
+    ! Note that these depend on the quantization axis.
+    select case(QuantisationAxis)
+
+    case(1)
+      ! X is the quantisation axis
+      print 1, QCartesian(3,3,1), QCartesian(2,2,1), QCartesian(1,1,1)
+      print 2, QCartesian(3,3,2), QCartesian(2,2,2), QCartesian(1,1,2)
+      print 3, QCartesian(3,3,3), QCartesian(2,2,3), QCartesian(1,1,3)
+    case(2)
+      ! Y is the quantisation axis
+      print 1, QCartesian(1,1,1), QCartesian(3,3,1), QCartesian(2,2,1)
+      print 2, QCartesian(1,1,2), QCartesian(3,3,2), QCartesian(2,2,2)
+      print 3, QCartesian(1,1,3), QCartesian(3,3,3), QCartesian(2,2,3)
+    case(3)
+      ! Z is the quantisation axis
+      print 1, QCartesian(1,1,1), QCartesian(2,2,1), QCartesian(3,3,1)
+      print 2, QCartesian(1,1,2), QCartesian(2,2,2), QCartesian(3,3,2)
+      print 3, QCartesian(1,1,3), QCartesian(2,2,3), QCartesian(3,3,3)
+    end select
 
   !-----------------------------------------------------------------------------
   !    !Double checking the results (they are not printed)

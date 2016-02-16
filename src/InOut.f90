@@ -39,7 +39,7 @@ module InOutput
   complex(KIND=dp), allocatable :: InputKappa(:,:,:,:), InputRho(:,:,:,:)
   complex(KIND=dp), allocatable :: InputU(:,:,:,:), InputV(:,:,:,:)
   complex(KIND=dp), allocatable :: InputCanTransfo(:,:,:,:)
-  integer, allocatable          :: FileBlocksizes(:,:)
+  integer, allocatable          :: FileBlocksizes(:,:), FileHFBColumns(:,:,:)
   !-----------------------------------------------------------------------------
   ! Whether or not to write extra output files for various other codes.
   logical :: PromOutput = .false.
@@ -147,8 +147,9 @@ contains
     endif
     ! Special mention here for the HFB matrices.
     if(allocated(InputKappa)) then
-      !RhoHFB   = TransformRho(InputRho, inPC, inIC, FileBlocksizes)
-      KappaHFB = TransformKappa(InputKappa, inPC, inIC, FileBlocksizes)
+
+        call TransformHFBMatrices(inputU, inputV, inputRho, InputKappa,        &
+        &                               inPC,inIC,FileHFBColumns,FileBlocksizes)
     endif
   end subroutine Input
   
@@ -792,6 +793,7 @@ contains
     ! Pairing Cutoffs                                        (*)
     ! FileBlocksizes
     ! U, V
+    ! HFBColumns
     ! Rho, Kappa
     ! CanTransfo
     ! Omega, Crankvalues
@@ -864,6 +866,7 @@ contains
 
     write(OChan,iostat=io) blocksizes
     write(OChan,iostat=io) U,V
+    write(Ochan,iostat=io) HFBColumns
     write(Ochan,iostat=io) RhoHFB,KappaHFB
     write(Ochan,iostat=io) CanTransfo
 
@@ -924,6 +927,7 @@ subroutine ReadMOCCa_v1(Ichan)
     ! Pairing Cutoffs                                        (*)
     ! FileBlocksizes
     ! U, V
+    ! HFBColumns
     ! Rho, Kappa
     ! CanTransfo
     ! Omega, Crankvalues
@@ -1091,8 +1095,7 @@ subroutine ReadMOCCa_v1(Ichan)
              &   'Iostat', ioerror)
       endif
     !---------------------------------------------------------------------------
-    ! 9) Reading U,V,RhoHFB, KappaHFB and CanTransfo (only if needed)
-    !    and transform the matrices on input.
+    ! 9) Reading U,V, HFBColumns, RhoHFB, KappaHFB and CanTransfo (only if needed)
     select case(PairingType)
 
     case(2)
@@ -1104,23 +1107,47 @@ subroutine ReadMOCCa_v1(Ichan)
 
         M(1) = filenwt ; M(2) = filenwt
         if(InTRC) then
-            M(1) = 2 * M(1) ; M(2) = 2*M(2)
+            M(1) = 2 * M(1) ; M(2) = 2 * M(2)
         endif
 
         allocate(InputKappa     (M(1),M(2),M(3),M(4))) 
         allocate(InputRho       (M(1),M(2),M(3),M(4)))
-        allocate(InputU         (M(1),M(2),M(3),M(4))) 
-        allocate(InputV         (M(1),M(2),M(3),M(4)))
+        allocate(InputU         (M(1),2*M(2),M(3),M(4))) 
+        allocate(InputV         (M(1),2*M(2),M(3),M(4)))
         allocate(InputCanTransfo(M(1),M(2),M(3),M(4)))
+        allocate(FileHFBColumns (M(1),M(3),M(4)))
 
         read(IChan,iostat=ioerror) Fileblocksizes
         if(ioerror.ne.0) then
             call stp('Did not read HFB blocksizes correctly','Iostat', ioerror)
         endif
-        read(ICHan,iostat=ioerror) InputU,InputV     
+        
+        read(ICHan,iostat=ioerror) InputU,InputV 
+!         print *, 'Sizes U', size(inputU,1), size(inputU,2), size(inputU,3), size(inputU,4)
+!         print *, 'Sizes V', size(inputV,1), size(inputV,2), size(inputV,3), size(inputV,4)
+        
+!         do it=1,2
+!             do P=1,2
+!             print *, 'InputU'
+!             do i=1,fileblocksizes(1,1)
+!                 print *, DBLE(InputU(i,1:2*fileblocksizes(1,1),1,1))
+!             enddo  
+
+!             print *, 'InputV'
+!             do i=1,fileblocksizes(1,1)
+!                 print *, DBLE(InputV(i,1:2*fileblocksizes(1,1),1,1))
+!             enddo  
+!             enddo
+!         enddo
         if(ioerror.ne.0) then
             call stp('Did not read U and V correctly','Iostat', ioerror)
         endif
+
+        read(Ichan,iostat=ioerror) FileHFBColumns
+        if(ioerror.ne.0) then
+            call stp('Did not read HFBColumns correctly from file.')
+        endif
+
         read(ICHan,iostat=ioerror) InputRho,InputKappa     
         if(ioerror.ne.0) then
             call stp('Did not read Rho and Kappa correctly' ,'Iostat', ioerror)
@@ -1136,14 +1163,13 @@ subroutine ReadMOCCa_v1(Ichan)
         read(Ichan,iostat=ioerror)
         read(Ichan,iostat=ioerror)
         read(Ichan,iostat=ioerror)
+        read(Ichan,iostat=ioerror)
     end select
     !---------------------------------------------------------------------------
     ! 11) Cranking parameters: effective, true and intensity
     if(ContinueCrank) then
         ! Don't read other values, as we don't want to override them.
-
         read(IChan,iostat=ioerror) Omega
-        print *, 'Read omega', Omega
     else
         read(Ichan,iostat=ioerror)
     endif

@@ -184,9 +184,17 @@ contains
 
     if(.not.allocated(CanTransfo)) then
       allocate(CanTransfo(HFBSize,HFBSize,Pindex,Iindex)) ; CanTransfo     = 0.0_dp
+    endif
+    if(.not.allocated(Occupations)) then
       allocate(Occupations(HFbsize,Pindex,Iindex))        ; Occupations    = 0.0_dp
+    endif
+    if(.not.allocated(QuasiEnergies)) then
       allocate(QuasiEnergies(2*HFBSize,Pindex,Iindex))    ; QuasiEnergies  = 0.0_dp
+    endif
+    if(.not.allocated(QuasiSignatures)) then
       allocate(QuasiSignatures(2*HFBSize,Pindex,Iindex))  ; QuasiSignatures= 0.0_dp
+    endif
+    if(.not.allocated(HFBColumns)) then
       allocate(HFBColumns(HFBSize,Pindex,Iindex))         ; HFBColumns     = 0
     endif
 
@@ -1134,7 +1142,9 @@ contains
 
     !-----------------------------------------------------------------
     ! Get an initial guess for now, even though we can't guarantee it
-    if(all(abs(U).eq.0.0_dp)) call InitializeUandV(Delta,DeltaLN,Fermi,L2)
+    if(all(abs(U).eq.0.0_dp)) then
+      call InitializeUandV(Delta,DeltaLN,Fermi,L2)
+    endif
     !-----------------------------------------------------------------
     ! Get the starting point: U_0 and V_0
     ! Note that we need to know in which column they reside, but that 
@@ -1168,7 +1178,7 @@ contains
         call GradientUpdate(OldU,OldV,Grad,NewU,NewV,stepsize)
         !-----------------------------------------------------
         ! Orthonormalise the U and V eigenvectors
-        !call ortho(NewU,NewV)
+        call ortho(NewU,NewV)
         !-----------------------------------------------------
         ! Construct Rho &  Kappa 
         ! (Mostly needed for updates to Lambda and L2)
@@ -1214,7 +1224,7 @@ contains
         enddo
 
         Converged = .true.
-        if(any(abs(NormGrad) .gt. Prec)) Converged = .false.
+        if(any(sqrt(abs(NormGrad)) .gt. Prec)) Converged = .false.
         if(any(abs(Part - Particles) .gt. Prec )) Converged = .false. 
         if(Lipkin) then
             if (all(abs(L2Deviation) .gt. Prec)) Converged = .false.
@@ -1250,7 +1260,7 @@ subroutine ConstructRHOHFBLimited(Vlim)
     ! without referencing columns.
     !
     ! Rho = V^* V^T
-    !------------------------------------------------------------------
+    !---------------------------------------------------------grad---------
     real(KIND=dp), intent(in) :: Vlim(2*nwt,2*nwt,2,2)
     integer                   :: i,j,k,P,it,N
 
@@ -2617,6 +2627,7 @@ subroutine InsertionSortQPEnergies
             allocate(Temp(Nmax,Nmax))         ; Temp = 0.0_dp
             allocate(Eigenvalues(Nmax))       ; Eigenvalues = 0.0_dp
         endif
+
         do it=1,Iindex
           do P=1,Pindex          
               Temp          = 0.0_dp

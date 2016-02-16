@@ -501,26 +501,38 @@ subroutine PrintSummary_v2(Iteration)
 
   integer, intent(in)  :: Iteration
   type(Moment),pointer :: Current
-  real(KIND=dp):: Q20, Q22, dQ20, dQ22
+  real(KIND=dp):: Q20, Q22, dQ20, dQ22, Dispersion
+  integer      :: i
 
   1 format('----------- Iteration ', i6,'--------------')
   2 format("Summ.    E=" f10.3, "   dE=",e10.3)
   3 format("Summ.  Q20=" f10.3, "  Q22=",f10.3)
   4 format("Summ. dQ20=" e10.3, " dQ22=",e10.3)
   5 format('Summ.   Jz=',f10.3, '  OmZ=',f10.3)
-  
+  6 format('Summ.  dH2=',e10.3)
   ! Printing energy
   print 1, Iteration
   print 2, TotalEnergy,abs((TotalEnergy - OldEnergy(1))/TotalEnergy)
-  !
-  Current => FindMoment(2,0,.false.) ; Q20 = sum(Current%Value) ; dQ20 = Q20 - sum(Current%OldValue(:,1))
-  Current => FindMoment(2,2,.false.) ; Q22 = sum(Current%Value) ; dQ22 = Q22 - sum(Current%OldValue(:,1))
+  !------------------------------------------------------------------
+  ! Note that we can best look back two values due when there is a
+  ! Rutz constraint active.
+  Current => FindMoment(2,0,.false.) ; Q20 = sum(Current%Value) ; dQ20 = Q20 - sum(Current%OldValue(:,2))
+  Current => FindMoment(2,2,.false.) ; Q22 = sum(Current%Value) ; dQ22 = Q22 - sum(Current%OldValue(:,2))
   print 3, Q20,Q22
   print 4, dQ20, dQ22
 
   if(CrankType(3).ne.0) then
     print 5, TotalAngMom(3), Omega(3)
   endif
+
+  !------------------------------------------------------------------------------
+  ! Calculate sum of dispersions
+  dispersion = 0.0_dp
+  do i=1,nwt
+    dispersion = dispersion + HFBasis(i)%Occupation*HFBasis(i)%Dispersion
+  enddo
+
+  print 6, Dispersion
 
 end subroutine PrintSummary_v2
 
@@ -546,6 +558,7 @@ subroutine PrintSummary_v1(Iteration)
 	1 format ("Summ: dE=",  e10.3, ' ','dRho=',e10.3, ' ', a80 )
 	2 format (' ',a1, 'Q', 2i1,'=',e10.3, ' ')
 	3 format (' <',a2,'>=',e9.2, ' ')
+  4 format (' dH2=',f10.7)
 
 	integer, intent(in) :: Iteration
 	type(Moment), pointer :: Current
@@ -553,7 +566,7 @@ subroutine PrintSummary_v1(Iteration)
 	character(len=18)   :: Temp=''
 	character(len=1)    :: R
 	integer             :: i
-	real(KIND=dp)       :: MomentDiff
+	real(KIND=dp)       :: MomentDiff,Dispersion
 	character(len=2)    :: DirectionName(4) = (/ "Jx", "Jy", "Jz", "J2" /)
 
 	Current => Root
@@ -585,8 +598,17 @@ subroutine PrintSummary_v1(Iteration)
 	    CrankString = adjustl(trim(CrankString)//Temp)
 	  endif
 	enddo
+  !------------------------------------------------------------------------------
+  ! Calculate sum of dispersions
+  dispersion = 0.0_dp
+  do i=1,nwt
+    dispersion = dispersion + HFBasis(i)%Occupation*HFBasis(i)%Dispersion
+  enddo
+
 	print 1, abs((TotalEnergy - OldEnergy(1))/TotalEnergy), DensityChange,       &
 	&        adjustl(adjustr(MomString)//adjustl(CrankString))
+
+
 
 	nullify(Current)
 end subroutine PrintSummary_v1

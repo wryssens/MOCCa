@@ -21,11 +21,5 @@
 - MOCCa cannot properly continue from non-tensor interactions + HFB to tensor interactions
   from file.
   
-- There is something wrong with either the definition or the implementation of a 
-  total multipole moment as it is not independent of quantisation axis.
-  
-- The Cartesian moments X,Y and Z are not adapted to the quantization
-  axis yet. (As are iq1 and iq2)
-  
 - MOCCa with broken symmetries should at the moment not be able to take different
   quantizationaxis.

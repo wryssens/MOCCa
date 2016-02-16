@@ -725,16 +725,12 @@ contains
     enddo
     Term1 = DivDpot(:,:,:,it) * Term1
 
-    if(any(DivDPot.eq.DivDpot+1)) call stp('WTF DIVPOT')
-
     Term2=NewSpinor()
     do m=1,3
         do n=1,3
             Term2 = Term2 + DerDPot(:,:,:,n,m,it)*Pauli(Der(m),n)
         enddo
     enddo
-
-    if(any(DerDPot.eq.DerDpot+1)) call stp('WTF DerDPOT')
 
     Term3=NewSpinor()
 

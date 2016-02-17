@@ -8,7 +8,13 @@ module Force
     use GenInfo
 
     implicit none
-
+    !-----------------------------------------------------------------------------
+    ! Flag on how to calculate and print the energy of the Skyrme terms.
+    ! Possible options at the moment:
+    !  BTerms     => Calculate everything per coupling constant B
+    !  TermByTerm => Calculate everything terms by term (DEFAULT)
+    character(len=200), public   :: SkyrmeTreatment='TERMBYTERM'
+    !-----------------------------------------------------------------------------
     !Name of the force
     character(len=200), public   :: afor
     !-----------------------------------------------------------------------------
@@ -85,10 +91,14 @@ contains
         !---------------------------------------------------------------------------
         ! Subroutine governing the user input of parameters regarding this module.
         !---------------------------------------------------------------------------
-        NameList /Force/ afor
+        NameList /Force/ afor, SkyrmeTreatment
 
         !Read the correct name from input
         read(unit=*, NML=Force)
+
+        ! Make sure SkyrmeTreatment is aligned
+        call to_upper(SkyrmeTreatment,Skyrmetreatment)
+
         ! Assigning the correct variables to the Force coefficients.    
         call ReadForce
         !Calculating all EDF coefficients

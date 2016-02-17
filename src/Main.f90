@@ -202,7 +202,6 @@ subroutine Evolve(MaxIterations, iprint)
   !Printing observables
   call PrintIterationInfo(0)
 
-
   !Checking for the presence of Rutz-Type constraints
   RutzCheck = CheckForRutzMoments()
 

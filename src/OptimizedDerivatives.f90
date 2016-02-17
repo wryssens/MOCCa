@@ -305,6 +305,7 @@ contains
     real(KIND=dp), target, intent(in) :: Grid(:,:,:)
     real(KIND=dp),allocatable         :: Der(:,:,:)
     integer                           :: i,j,k, S
+    
     allocate(Der(nx,ny,nz)) ; Der = 0.0_dp
     call derz_ev4(Grid, der)
 
@@ -638,4 +639,4 @@ contains
         enddo
     end subroutine lapla_Z_ev4
 
-end module OptimizedDerivatives
+  end module OptimizedDerivatives

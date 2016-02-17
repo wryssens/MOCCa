@@ -197,7 +197,6 @@ contains
           !Don't include 1-body C.O.M. correction
           Bpot(:,:,:,it) = Bpot(:,:,:,it) + hbm(it)/2.0_dp
         endif
-
     enddo
     return
   end subroutine CalcBPot
@@ -714,7 +713,6 @@ contains
     real(KIND=dp)           :: DivD(nx,ny,nz,2)
 
     it = (Psi%GetIsospin() + 3)/2
-
     do m=1,3
         Der(m) = Psi%GetDer(m)
     enddo
@@ -742,10 +740,10 @@ contains
     ! calculated second derivate d_mu d_mu since it is pretty inaccurate
     ! when not represente correctly. If CPU time is important, this can be commented
     ! out.
-!     do m=1,3
-!         DPsi(m,m) = SecondDerivativeSpinor(Psi%Value,m,Psi%Parity,Psi%Signature,Psi%TimeSimplex)   
-!     enddo
-
+!     DPsi(1,1) = SecondDerivativeSpinor(Psi%Value,1,-Psi%Parity,-Psi%Signature, Psi%TimeSimplex)
+!     DPsi(2,2) = SecondDerivativeSpinor(Psi%Value,2,-Psi%Parity,-Psi%Signature,-Psi%TimeSimplex)
+!     DPsi(3,3) = SecondDerivativeSpinor(Psi%Value,3,-Psi%Parity, Psi%Signature, Psi%TimeSimplex) 
+    
     do m=1,3
         do n=1,3
             Term3 = Term3 + Dpot(:,:,:,m,it) * Pauli(DPsi(m,n) ,n)
@@ -753,8 +751,6 @@ contains
     enddo
 
     ActionOfD = -0.5_dp*(Term1 + Term2 + 2.0_dp*Term3)
-
-    if(any(isnan(ActionOfD%Grid))) call stp('WTF is this')
 
   end function ActionOfD
 

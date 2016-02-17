@@ -147,9 +147,13 @@ contains
     endif
     ! Special mention here for the HFB matrices.
     if(allocated(InputKappa)) then
-
-        call TransformHFBMatrices(inputU, inputV, inputRho, InputKappa,        &
-        &                               inPC,inIC,FileHFBColumns,FileBlocksizes)
+        if(LegacyInput) then
+          KappaHFB = InputKappa
+          if(InPC.neqv.PC) call stp("Don't break parity from legacy input.")
+        else
+          call TransformHFBMatrices(inputU, inputV, inputRho, InputKappa,        &
+          &                               inPC,inIC,FileHFBColumns,FileBlocksizes)
+        endif
     endif
   end subroutine Input
   

@@ -345,12 +345,17 @@ contains
           DiagonaliseHFBHamiltonian => DiagonaliseHFBHamiltonian_NoSignature
         endif
 
+        ! Decide on the Fermi solver. In addition, if a default choice for
+        ! HFBIter was taken, adapt it to the solver.
         if(trim(FermiSolver).eq.'BROYDEN') then
           FindFermiEnergy   => HFBFindFermiEnergyBroyden
+          if(HFBIter.eq.-1) HFBIter=50
         elseif(trim(FermiSolver).eq.'GRADIENT') then
           FindFermiEnergy   => HFBFermiGradient
+          if(HFBIter.eq.-1) HFBIter=50
         elseif(trim(FermiSolver).eq.'BISECTION') then
           FindFermiEnergy   => HFBFindFermiEnergyBisection
+          if(HFBIter.eq.-1) HFBIter=500
         else
           call stp('Unknown Fermi solver requested.')
         endif
@@ -424,8 +429,8 @@ contains
    12  format ('  Lipkin-Nogami prescription active.' )
    13  format ('  Cosine cutoff used. ')
    14  format ('  Symmetric Fermi cutoff used.')
-   15  format ('  Fermisolver iterations (external): ', i3)
-   16  format ('  Fermisolver iterations (internal): ', i3)
+   15  format ('  Fermisolver iterations (external): ', i5)
+   16  format ('  Fermisolver iterations (internal): ', i5)
    17  format ('  LNFraction on the HFB hamiltonian: ', f8.3)
    18  format ('  Gauge of the HFB hamiltonian:      ', f8.3)
    19  format ('  Fermisolver used: ', a9)

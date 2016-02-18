@@ -35,11 +35,14 @@ module SpwfStorage
   type (Spwf), public, pointer :: DensityBasis(:) 
   !-----------------------------------------------------------------------------
   !Total angular momentum <J_x >, <J_y>, <J_z>, <J^2>, and their values at 
-  !the previous 7 iterations.
-  !and the quadratic expectation value <J_x^2>, <J_y^2>, <J_z^2>
+  !the previous 7 iterations and the quadratic expectation value                
+  ! <J_x^2>, <J_y^2>, <J_z^2>.
+  !
+  ! AMIsoBlock separates the different contributions along as much blocks as
+  ! possible.
   !-----------------------------------------------------------------------------
   real(KIND=dp), public :: TotalAngMom(3)=0.0_dp, AngMomOld(3)=0.0_dp
-  real(KIND=dp), public :: J2(3) = 0.0_dp
+  real(KIND=dp), public :: J2(3) = 0.0_dp,        AMIsoBlock(2,2,2,3)=0.0_dp 
   !-----------------------------------------------------------------------------
   !Memory for the total dispersion of the occupied(!) spwfs
   !-----------------------------------------------------------------------------
@@ -437,7 +440,7 @@ contains
     ! This subroutine calculates the angular momentum in each direction for 
     ! every Spwf, and sums it.
     !---------------------------------------------------------------------------
-    integer :: wave, i
+    integer :: wave, i,P,S,it
     logical, intent(in) :: SaveOlderValues
     !Save the values of the previous iteration
     
@@ -446,7 +449,7 @@ contains
         OldJ2Total  = J2Total
     endif
  
-    TotalAngMom = 0.0_dp ; J2Total = 0.0_dp
+    TotalAngMom = 0.0_dp ; J2Total = 0.0_dp ; AMIsoblock = 0.0_dp
     
     do wave=1,nwt
       call HFBasis(wave)%CompAngMoment()
@@ -462,9 +465,16 @@ contains
       do wave=1,nwt
         do i=1,3
           TotalAngMom(i) = TotalAngMom(i) + &
-          &DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMoment(i)
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMoment(i)
           J2Total(i)     = J2Total(i) +     &
-          &DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMomentSquared(i)
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMomentSquared(i)
+
+          S = (DensityBasis(wave)%GetSignature() + 3)/2
+          P = (DensityBasis(wave)%GetParity()    + 3)/2
+          it= (DensityBasis(wave)%GetIsospin()   + 3)/2
+
+          AMIsoblock(S,P,it,i) = AMIsoblock(S,P,it,i) +                  &
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMoment(i)
         enddo   
       enddo
       ! Artificially set total J_x and J_y to zero when dictated by symmetries.

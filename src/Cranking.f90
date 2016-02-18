@@ -170,94 +170,145 @@ contains
     enddo 
     
   end subroutine ReadjustCranking
-  
+
   subroutine PrintCranking
-    !---------------------------------------------------------------------------
-    ! A subroutine that prints info on the cranking constraints.
-    ! Included in the output:
-    !   - Values for angular momentum
-    !   - Values for constraints (both readjusted & true)
-    !   - Energy of the constraints
-    !
-    !Also includes some more info on the constraints if this routine is called 
-    !for the first time.
-    !---------------------------------------------------------------------------
 
     1 format (18('-'), ' Angular Momentum (hbar) ',17('-') )
-    2 format (11x, 3x,'Jx',6x, 'Jy', 6x,'Jz')
-    3 format (3x,A8,3f8.3)  
-    4 format ('Constraints :')
-    5 format ('Energy (MeV):')
-    6 format ('Cons. Type  :')
-    7 format ('  L. or Q.? :', 3(3x, A2, 3x))
-    
-    9 format ('  Readjus.  :', 3x, f8.3)
-   10 format ('KermanOnishi:')
-   11 format ('  Omega x J :', 3x, f8.3)
-   12 format ('  (Di-Dj)*Lk:', 3x, f8.3) 
-   13 format ('Angle mu/J  :', 3x, f8.3)
-   14 format (' Rutz C0    :', 3x, f8.3)
-  100 format (60("-"))
+    2 format (15x, 'Total', 4x, 'Desired', 4x, 'Omega', 4x, 'Energy')
+    3 format (3x,' J_',a1,'  ','|', 4f10.3 )
 
-    integer          :: i
-    logical          :: FirstTime=.true.
-    real(KIND=dp)    :: Angle
+    5 format (3x,'P R_z ','|',6x,'++',8x,'-+',8x,'+-',8x,'--')
+    6 format (2x,' ___________________________________________________' )
+    7 format (3x,a1,'_',a1,3x,'|',4f10.3)
 
-    !No Cranking with time-reversal Symmetry
-    if(TRC) return
-    
-    print 1
-    print 2 
-    print 3,'        ', TotalAngMom
-    
-    !First check for the presence of constraints. If none are present,
-    ! don't print them.
-    if(all(CrankType.eq.0)) return
-
-    print 4
-    if(CrankReadj.ne.0.0_dp) then
-      print 3,' Des.:', CrankValues
-    endif
-    
-    print 3,' Omega :', Omega
-    print 5
+    integer :: i
 
     do i=1,3
       CrankEnergy(i) =  - Omega(i) * TotalAngMom(i)
     enddo
 
-    print 3,'        ', CrankEnergy
-
-    !Printing some extra parameters if this is the first time.
-    if(FirstTime) then
-        print 9, CrankReadj
-        print 14, CrankC0           
-        FirstTime=.false.      
+    print 1
+    print *
+    print 2
+    print 6
+    if(.not.SC) then
+      print 3, 'x',TotalAngMom(1), CrankValues(1), Omega(1), CrankEnergy(1)
     endif
-    !Checking the symmetries, if it is useful to calculate and print
-    ! the Kerman-Onishi conditions
-    !if(.not.SC .or. .not. TSC) then
-    !  call CalcKermanOnishi
-    !  
-    !  print 10
-    !  print 11, KermanOnishiRHS
-    !  print 12, KermanOnishilHS
-    !endif
-    
-    !Calculating the angle between desired and actual moment
-    !Angle = 0.0_dp
-    !do i=1,3
-    !  Angle = Angle + TrueCrank(i) * TotalAngMom(i)
-    !enddo
-    !Angle = Angle/(sqrt(sum(TrueCrank(1:3)**2) * sum(TotalAngMom(1:3)**2)))
-    !Angle = acos(Angle)
-    !
-    !print 13 , Angle/(2*pi) * 360.0_dp
-    !
-    !print 100
-    
-    return
+    if(.not.TSC) then
+      print 3, 'y',TotalAngMom(2), CrankValues(2), Omega(2), CrankEnergy(2)
+    endif
+    print 3, 'z',TotalAngMom(3), CrankValues(3), Omega(3), CrankEnergy(3)
+
+    print *
+    print *
+    print 5
+    if(.not. SC) then
+      print 6
+      print 7, 'N','x', AMIsoblock(:,:,1,1)
+      print 7, 'P','x', AMIsoblock(:,:,2,1)
+    endif
+    if(.not. TSC) then
+      print 6
+      print 7, 'N','y', AMIsoblock(:,:,1,2)
+      print 7, 'P','y', AMIsoblock(:,:,2,2)
+    endif
+
+
+    print 6
+    print 7, 'N','z', AMIsoblock(:,:,1,3)
+    print 7, 'P','z', AMIsoblock(:,:,2,3)
+
+    print *
+
   end subroutine PrintCranking
+  
+!   subroutine PrintCranking
+!     !---------------------------------------------------------------------------
+!     ! A subroutine that prints info on the cranking constraints.
+!     ! Included in the output:
+!     !   - Values for angular momentum
+!     !   - Values for constraints (both readjusted & true)
+!     !   - Energy of the constraints
+!     !
+!     !Also includes some more info on the constraints if this routine is called 
+!     !for the first time.
+!     !---------------------------------------------------------------------------
+
+!     1 format (18('-'), ' Angular Momentum (hbar) ',17('-') )
+!     2 format (11x, 3x,'Jx',6x, 'Jy', 6x,'Jz')
+!     3 format (3x,A8,3f8.3)  
+!     4 format ('Constraints :')
+!     5 format ('Energy (MeV):')
+!     6 format ('Cons. Type  :')
+!     7 format ('  L. or Q.? :', 3(3x, A2, 3x))
+    
+!     9 format ('  Readjus.  :', 3x, f8.3)
+!    10 format ('KermanOnishi:')
+!    11 format ('  Omega x J :', 3x, f8.3)
+!    12 format ('  (Di-Dj)*Lk:', 3x, f8.3) 
+!    13 format ('Angle mu/J  :', 3x, f8.3)
+!    14 format (' Rutz C0    :', 3x, f8.3)
+!   100 format (60("-"))
+
+!     integer          :: i
+!     logical          :: FirstTime=.true.
+!     real(KIND=dp)    :: Angle
+
+!     !No Cranking with time-reversal Symmetry
+!     if(TRC) return
+    
+!     print 1
+!     print 2 
+!     print 3,'        ', TotalAngMom
+    
+!     !First check for the presence of constraints. If none are present,
+!     ! don't print them.
+!     if(all(CrankType.eq.0)) return
+
+!     print 4
+!     if(CrankReadj.ne.0.0_dp) then
+!       print 3,' Des.:', CrankValues
+!     endif
+    
+!     print 3,' Omega :', Omega
+!     print 5
+
+!     do i=1,3
+!       CrankEnergy(i) =  - Omega(i) * TotalAngMom(i)
+!     enddo
+
+!     print 3,'        ', CrankEnergy
+
+!     !Printing some extra parameters if this is the first time.
+!     if(FirstTime) then
+!         print 9, CrankReadj
+!         print 14, CrankC0           
+!         FirstTime=.false.      
+!     endif
+!     !Checking the symmetries, if it is useful to calculate and print
+!     ! the Kerman-Onishi conditions
+!     !if(.not.SC .or. .not. TSC) then
+!     !  call CalcKermanOnishi
+!     !  
+!     !  print 10
+!     !  print 11, KermanOnishiRHS
+!     !  print 12, KermanOnishilHS
+!     !endif
+    
+!     !Calculating the angle between desired and actual moment
+!     !Angle = 0.0_dp
+!     !do i=1,3
+!     !  Angle = Angle + TrueCrank(i) * TotalAngMom(i)
+!     !enddo
+!     !Angle = Angle/(sqrt(sum(TrueCrank(1:3)**2) * sum(TotalAngMom(1:3)**2)))
+!     !Angle = acos(Angle)
+!     !
+!     !print 13 , Angle/(2*pi) * 360.0_dp
+!     !
+!     !print 100
+    
+!     return
+!   end subroutine PrintCranking
   
   pure logical function ConverCranking(Prec) result(Converged)
   !-----------------------------------------------------------------------------

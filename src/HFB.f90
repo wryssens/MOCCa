@@ -1260,8 +1260,8 @@ contains
           do i=1,N
             do j=1,N
               jj = HFBColumns(j,P,it)
-              V(i,jj,P,it) = NewV(i,j,P,it)
-              U(i,jj,P,it) = NewU(i,j,P,it)                
+              V(i,jj,P,it) = NewV(i,j,P,it) 
+              U(i,jj,P,it) = NewU(i,j,P,it)               
             enddo
           enddo
       enddo

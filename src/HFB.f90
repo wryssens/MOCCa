@@ -1154,6 +1154,7 @@ contains
     if(allocated(QPExcitations) .and. FirstTime.eq.1) then
         call BlockQuasiParticles
     endif
+
     FirstTime = 0
 
     !-----------------------------------------------------------------
@@ -1228,7 +1229,8 @@ contains
                 N = blocksizes(P,it)
                 do j=1,N
                     do i=1,N
-                        NormGrad(it) = NormGrad(it) + Grad(i,j,P,it) * Grad(j,i,P,it)
+                        NormGrad(it) = NormGrad(it) +        &
+                            Grad(i,j,P,it) * Grad(j,i,P,it)
                     enddo
                 enddo
             enddo
@@ -1241,7 +1243,6 @@ contains
             if (all(abs(L2Deviation) .gt. Prec))  Converged = .false.
         endif
         ! Stop if converged
-        !print *, Normgrad, Part-Particles
         if(Converged) then
           exit
         endif
@@ -1264,16 +1265,59 @@ contains
             enddo
           enddo
       enddo
-  enddo
-end subroutine HFBFermiGradient 
+    enddo
 
+    ! Calculate the QPenergies
+    call CalcQPEnergies(NewU,NewV,Fermi,L2,Delta)
+
+end subroutine HFBFermiGradient
+
+subroutine CalcQPEnergies(Ulim,Vlim,Fermi,L2,Delta)
+
+    real(KIND=dp), intent(in) :: Ulim(2*nwt,2*nwt,2,2), Vlim(2*nwt,2*nwt,2,2)
+    real(KIND=dp), intent(in) :: Fermi(2), L2(2)
+    complex(KIND=dp), allocatable, intent(in) :: Delta(:,:,:,:)
+    real(KIND=dp)             :: Vector(2*nwt,nwt), HV(2*nwt,nwt)
+
+    integer                   :: P ,it, N,jj,i,j,k
+
+    QuasiEnergies = 0.0_dp
+
+    ! Construct the HFBHamiltonian
+    call ConstructHFBHamiltonian(Fermi,Delta,L2,0.0_dp)    
+
+    do it=1,Iindex
+        do P=1,Pindex
+            N = blocksizes(P,it)
+            ! Construct the eigenvector.
+            Vector(  1:N  ,1:N) = Ulim(1:N,1:N,P,it)
+            Vector(N+1:2*N,1:N) = Vlim(1:N,1:N,P,it)
+            HV(1:2*N,1:N) = 0.0_dp
+            do j=1,N
+                ! Multiply every vector j with the HFB Hamiltonian
+                do i=1,2*N
+                    do k=1,2*N
+                        HV(i,j) = HV(i,j) + DBLE(HFBHamil(i,k,P,it)) *  Vector(k,j)
+                    enddo
+                enddo
+            enddo
+            do j=1,N
+                jj = HFBColumns(j,P,it)
+                QuasiEnergies(jj,P,it) = 0.0_dp
+                do i=1,2*N
+                    QuasiEnergies(jj,P,it) = QuasiEnergies(jj,P,it) + Vector(i,j) * HV(i,j)
+                enddo
+            enddo   
+        enddo
+    enddo
+end subroutine CalcQPEnergies
 subroutine ConstructRHOHFBLimited(Vlim)
     !------------------------------------------------------------------
     ! Construct RhoHFB from only half of the V matrix 
     ! without referencing columns.
     !
     ! Rho = V^* V^T
-    !---------------------------------------------------------grad---------
+    !------------------------------------------------------------------
     real(KIND=dp), intent(in) :: Vlim(2*nwt,2*nwt,2,2)
     integer                   :: i,j,k,P,it,N
 
@@ -1309,7 +1353,8 @@ subroutine ConstructKappaHFBLimited(Ulim,Vlim)
                 do i=1,N
                     KappaHFB(i,j,P,it) = 0.0_dp
                     do k=1,N
-                        KappaHFB(i,j,P,it) = KappaHFB(i,j,P,it) + Vlim(i,k,P,it) * Ulim(j,k,P,it)
+                        KappaHFB(i,j,P,it) = KappaHFB(i,j,P,it) +       &
+                        &                 Vlim(i,k,P,it) * Ulim(j,k,P,it)
                     enddo
                 enddo
             enddo
@@ -1428,6 +1473,7 @@ function ZGradient( Ulim, Vlim, Fermi, L2, Delta) result(Z)
     real(KIND=dp)                             :: DsV(2*nwt,2*nwt), DsU(2*nwt,2*nwt)
     real(KIND=dp)                             ::  hV(2*nwt,2*nwt),  hU(2*nwt,2*nwt)
     real(KIND=dp)                             :: H20(2*nwt,2*nwt), N20(2*nwt,2*nwt)
+    real(KIND=dp)                             :: temp
 
       do it=1,Iindex
         do P=1,Pindex
@@ -1442,19 +1488,20 @@ function ZGradient( Ulim, Vlim, Fermi, L2, Delta) result(Z)
                     iii = mod(ii-1,nwt)+1
 
                     ! Diagonal part of h
-                    hV(i,j) = (HFBasis(iii)%GetEnergy() - 2* L2(it)) * (Vlim(i,j,P,it))
-                    hU(i,j) = (HFBasis(iii)%GetEnergy() - 2* L2(it)) * (Ulim(i,j,P,it))
+                    hV(i,j) = (HFBasis(iii)%GetEnergy() - 2*(1- LNfraction)* L2(it)) * (Vlim(i,j,P,it))
+                    hU(i,j) = (HFBasis(iii)%GetEnergy() - 2*(1- LNfraction)* L2(it)) * (Ulim(i,j,P,it))
                     
                     !Non-diagonal part
                     do k=1,N 
-                        hV(i,j) = hV(i,j) + 4 * L2(it) * OldRhoHFB(i,k,P,it) * (Vlim(k,j,P,it))
-                        hU(i,j) = hU(i,j) + 4 * L2(it) * OldRhoHFB(i,k,P,it) * (Ulim(k,j,P,it))
+                        hV(i,j) = hV(i,j) + 4 * (1 - LnFraction) * L2(it) * OldRhoHFB(i,k,P,it) * (Vlim(k,j,P,it))
+                        hU(i,j) = hU(i,j) + 4 * (1 - LnFraction) * L2(it) * OldRhoHFB(i,k,P,it) * (Ulim(k,j,P,it))
                     enddo
 
                     DsV(i,j) = 0.0_dp ; DsU(i,j) = 0.0
                     do k=1,N
-                        DsV(i,j) = DsV(i,j) + Delta(i,k,P,it) * Vlim(k,j,P,it)
-                        DsU(i,j) = DsU(i,j) + Delta(i,k,P,it) * Ulim(k,j,P,it)
+                        temp = (Delta(i,k,P,it)- LNFraction*4*L2(it)*OldKappaHFB(i,k,P,it))
+                        DsV(i,j) = DsV(i,j) + temp * Vlim(k,j,P,it)
+                        DsU(i,j) = DsU(i,j) + temp * Ulim(k,j,P,it)
                     enddo
                 enddo
             enddo
@@ -1667,6 +1714,16 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
             HFBHamil(i+N,j+N,P,it) = HFBHamil(i+N,j+N,P,it) + Gauge*Conjg(OldRhoHFB(i,j,P,it))
         enddo
       enddo
+      !--------------------------------------------------------------------------
+      ! Make sure everything is symmetric. 
+      ! This might strictly be a waste of CPU cycles, but anyone carelessly using
+      ! the Hamiltonian will then not be confronted with nasty surprises.
+      do i=1,2*N
+        do j=i+1,2*N
+            HFBHamil(j,i,P,it) = conjg(HFBHamil(i,j,P,it))
+        enddo
+      enddo
+
     enddo
   enddo
 

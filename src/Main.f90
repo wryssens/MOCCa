@@ -189,7 +189,7 @@ subroutine Evolve(MaxIterations, iprint)
   !Derive the necessary potentials
   call DerivePotentials
 
- if(Pairingtype.eq.2) then
+  if(Pairingtype.eq.2) then
     do i=1,nwt
       CanEnergy = InproductSpinorReal(CanBasis(i)%GetValue(),hPsi(Canbasis(i)))
       call Canbasis(i)%SetEnergy(CanEnergy)

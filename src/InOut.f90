@@ -263,16 +263,17 @@ contains
   ! 10)NML = Coulomb     (module Coulomb)
   ! 11)NML = Cranking    (module Cranking)
   !-----------------------------------------------------------------------------
-    use Force, only       : ReadForceInfo
-    use Densities, only   : ReadDensitInfo, Iniden
-    use Moments, only     : ReadMomentData
-    use Cranking, only    : ReadCrankingInfo
-    use Coulomb, only     : ReadCoulombInfo
-    use SpwfStorage, only : ReadSpwfStorageInfo
-    use Mesh, only        : IniMesh
-    use Cranking, only    : ReadCrankingInfo
-    use Pairing, only     : ReadPairingInfo
-    use Derivatives,only  : ReadDerivativesInfo
+    use Force, only         : ReadForceInfo
+    use Densities, only     : ReadDensitInfo, Iniden
+    use Moments, only       : ReadMomentData, SpecialInput
+    use Cranking, only      : ReadCrankingInfo
+    use Coulomb, only       : ReadCoulombInfo
+    use SpwfStorage, only   : ReadSpwfStorageInfo
+    use Mesh, only          : IniMesh
+    use Cranking, only      : ReadCrankingInfo
+    use Pairing, only       : ReadPairingInfo
+    use Derivatives,only    : ReadDerivativesInfo
+    use SpecialMoments,only : ReadSpecialMoments
     
     implicit none
     
@@ -302,6 +303,8 @@ contains
     
     !Info on the Moments Module
     call ReadMomentData()
+    ! If signalled, read info on extra moments
+    if(SpecialInput) call readSpecialMoments
 
     !Reading the names for the in- and outputfiles.
     read (unit=*, nml=InAndOutput)

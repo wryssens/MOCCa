@@ -136,12 +136,19 @@ module Moments
       ! Deformation parameter Beta_lm associated with the moment.
       !-------------------------------------------------------------------------
       real(KIND=dp)         :: Beta(3)
+      !-------------------------------------------------------------------------
+      ! Procedure pointer to the routine used to calculate the moment.
+      procedure(Calculate_Multipole),   pointer, nopass :: Calculate 
+      !-------------------------------------------------------------------------
+      ! Procedure pointer to the routine used to print output of the moment.
+      procedure(PrintMoment_Multipole), pointer,nopass :: PrintMoment
+
     contains
       procedure, pass, public :: WriteMoment
-      generic :: Write=> WriteMoment
-      
+      generic                 :: Write=> WriteMoment
   end type Moment
   !-----------------------------------------------------------------------------
+
   !-----------------------------------------------------------------------------
   !Maximum degree of the multipole components that are considered. Default = 2
   integer, public :: MaxMoment=6
@@ -203,6 +210,12 @@ module Moments
   !-----------------------------------------------------------------------------
   ! Quantisation axis of the moments.
   integer :: QuantisationAxis=3
+  !-----------------------------------------------------------------------------
+  ! Signal the input/output routine to look for special multipole moments
+  ! after reading the info on normal multipole moments.
+  logical :: SpecialInput=.false.
+
+  
 contains
 
   recursive function FindMoment(l,m,Impart, StartMoment) result(FoundMoment)
@@ -283,6 +296,8 @@ contains
     Root%SpherHarm=1.0_dp/sqrt(4.0_dp*pi)
     Root%Impart=.false.
     Root%ConstraintType=0
+    Root%Calculate => Calculate_Multipole
+    Root%PrintMoment => PrintMoment_Multipole
     nullify(Root%Prev) ;  nullify(Root%Next)
 
     nullify(Current)   ;  allocate(Current)
@@ -296,6 +311,7 @@ contains
     do l=1, MaxMoment
       do m=0,l
         do ImPart=0,1                        
+          
           NextMoment => NewMoment(l,m,ImPart)
 
           !Placing the moment in the list
@@ -416,7 +432,7 @@ contains
     return
   end function SphericalHarmonics
   
-  pure function NewMoment(l,m,ImPart)
+  function NewMoment(l,m,ImPart)
     !---------------------------------------------------------------------------
     ! This subroutine allocates the necessary memory space for the multipole 
     ! moments. That is, if the symmetries of the problem allow such a moment to 
@@ -480,6 +496,11 @@ contains
     NewMoment%Isoswitch     = 1
     NewMoment%Squared       = 0.0_dp
     NewMoment%SquaredCut    = 0.0_dp 
+
+    nullify(NewMoment%Calculate)  
+
+    NewMoment%Calculate   => Calculate_Multipole
+    NewMoment%PrintMoment => PrintMoment_Multipole
     
     return
   end function NewMoment
@@ -719,7 +740,7 @@ contains
     
   end subroutine PrintConstraints
   
-  subroutine PrintMoment(ToPrint)
+  subroutine PrintMoment_Multipole(ToPrint)
     !---------------------------------------------------------------------------
     ! This subroutine provides the printing of all relevant info of a Moment.
     !---------------------------------------------------------------------------
@@ -728,7 +749,7 @@ contains
     ! - l =-2 moment => RMS radii
     !---------------------------------------------------------------------------
     
-    type(Moment),pointer,intent(in) :: ToPrint
+    class(Moment),       intent(in) :: ToPrint
     character(len=2)                :: ReIm
       1 format (A2, ' Q_{', 2i2, '}', 3(1x,f15.4) ) 
       2 format ('Constrained',  2(1x,f15.4))
@@ -794,7 +815,7 @@ contains
       !endif
     end select
     
-  end subroutine PrintMoment
+  end subroutine PrintMoment_Multipole
   
   subroutine PrintAllMoments()
       !-------------------------------------------------------------------------
@@ -834,7 +855,7 @@ contains
       
       !-------------------------------------------------------------------------
       ! Print all moments individually
-      call printMoment(Current)
+      call Current%printMoment(Current)
       do while(associated(Current%Next))
         Current => Current%Next
         !------------------------------------
@@ -842,7 +863,7 @@ contains
         if(currentl .ne. Current%l) print *
         currentl = Current%l
         
-        call PrintMoment(Current)    
+        call Current%PrintMoment(Current)    
       enddo
       print 1
       nullify(Current)
@@ -877,7 +898,7 @@ contains
         if(currentl .ne. Current%l) print *
         currentl = Current%l
        
-        if(Current%l.ne.1 .and. Current%l.ne.-2) then
+        if(Current%l.gt.1 ) then
             print 7, Current%l, Current%m,Current%Beta
         endif
       enddo
@@ -890,7 +911,7 @@ contains
       return
   end subroutine PrintAllMoments
   
-  subroutine Calculate(ToCalculate,SaveOld)
+  subroutine Calculate_Multipole(ToCalculate,SaveOld)
     !---------------------------------------------------------------------------
     ! This subroutine calculates the multipole moment, both with and without 
     ! cutoff by integrating over the mesh, using the SpherHarm variable.
@@ -902,7 +923,7 @@ contains
     !---------------------------------------------------------------------------
     use Densities, only : Density
 
-    type(Moment),pointer,intent(inout)  :: ToCalculate
+    class(Moment),        intent(inout) :: ToCalculate
     integer                             :: i,it
     integer                             :: SaveOld
 
@@ -935,13 +956,13 @@ contains
       
     !Do this anyway, since it does not cost any time at all
     !if(ToCalculate%ConstraintType.eq.2 .or. ToCalculate%Total) then    
-      do it=1,2
-        ToCalculate%Squared(it)    = ToCalculate%Squared(it)    + &
-        &       sum(ToCalculate%SpherHarm(:,:,:)**2*Density%Rho(:,:,:,it))
-        ToCalculate%SquaredCut(it) = ToCalculate%SquaredCut(it) + &
-        &       sum(ToCalculate%SpherHarm(:,:,:)**2*Density%Rho(:,:,:,it)      &
-        &       *CutOff(:,:,:,it))
-      enddo
+    do it=1,2
+      ToCalculate%Squared(it)    = ToCalculate%Squared(it)    + &
+      &       sum(ToCalculate%SpherHarm(:,:,:)**2*Density%Rho(:,:,:,it))
+      ToCalculate%SquaredCut(it) = ToCalculate%SquaredCut(it) + &
+      &       sum(ToCalculate%SpherHarm(:,:,:)**2*Density%Rho(:,:,:,it)      &
+      &       *CutOff(:,:,:,it))
+    enddo
     !endif
 
     if(any(ToCalculate%Value.eq.ToCalculate%Value+1)) then
@@ -957,7 +978,7 @@ contains
     call CalcBeta(ToCalculate)
     
     return
-  end subroutine Calculate
+  end subroutine Calculate_Multipole
   
   subroutine CalculateAllMoments(SaveOld)
     !---------------------------------------------------------------------------
@@ -974,10 +995,10 @@ contains
     
     !First, we need to calculate the cutoff function
     call CompCutoff
-    call Calculate(Current,SaveOld)
+    call Current%Calculate(Current,SaveOld)
     do while(associated(Current%Next))
         Current => Current%Next
-        call Calculate(Current,SaveOld)    
+        call Current%Calculate(Current,SaveOld)    
     enddo
 
     call CalcConstraintEnergy()
@@ -1102,6 +1123,7 @@ contains
         ! Rutz self-correcting constraints
         Value   = 1.0_dp
         Desired = 0.0_dp          
+        
         select case(Current%Isoswitch)
         case(1)
           Factor = Current%Intensity(1)
@@ -1900,7 +1922,7 @@ contains
     
     NameList /MomentParam/ MaxMoment, radd, acut, MoreConstraints,Damping,     &
     &                      ReadjustSlowDown, CutoffType, ContinueMoment        &
-    &                     ,c0,d0, epsilon,QuantisationAxis
+    &                     ,c0,d0, epsilon,QuantisationAxis,SpecialInput
     
     NameList /MomentConstraint/ l,m,Impart, Isoswitch, Intensity,              &
     &                           ConstraintNeutrons,ConstraintProtons,          &

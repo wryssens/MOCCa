@@ -29,6 +29,7 @@ module Pairing
   use PairingInteraction
   use LipkinNogami
   use HartreeFock
+  use GradientHFB
 
   implicit none
 

@@ -1002,7 +1002,7 @@ contains
         !Find Update directions
         FermiUpdate(it) = - invJ(1,1,it) * N(it)
         if(Lipkin) then
-          FermiUpdate(it) = FermiUpdate(it)        - invJ(1,2,it) * LN(it)
+          FermiUpdate(it) = FermiUpdate(it)          - invJ(1,2,it) * LN(it)
           if(flag(it).ne.1) then
             LNupdate(it)    = - invJ(2,1,it) * N(it) - invJ(2,2,it) * LN(it)
           else
@@ -1065,237 +1065,350 @@ contains
   enddo
   end subroutine HFBFindFermiEnergyBroyden
 
-  subroutine HFBFermiGradient(Fermi,L2,Delta,DeltaLN,Lipkin,Prec)
-    !--------------------------------------------------------------------------------------------------
-    ! This routine implements the gradient descent algorithm described in Ring & Schuck, described in
-    ! section 7.3.3 and later reiterated in
-    ! L.M. Robledo &nd G. Bertsch,  Phys. Rev. C 84, 014312
-    !
-    ! We parametrize the HFB 'landscape' around a starting point in the following way:
-    !
-    !  exp( sum Z_{k k'} \beta_k \beta_k' ) | \Phi_0 >
-    !
-    ! which has the major advantage that every reachable state |\Phi > is NOT ORTHOGONAL to | \Phi >.
-    ! This means that the vacuum we will end up in will NEVER have N-quasiparticle excitations
-    ! compared to our ground state.
-    !
-    ! So, starting from a reference state characterized by U_0 and V_0 we will do a very naïve
-    ! gradient descent to minimize the energy.
-    !
-    ! At any point on the 'HFB surface' the gradient of the erngy with respect to Z is
-    !
-    !
-    ! TO COMPLETE
-    !
-    !
-    !--------------------------------------------------------------------------------------------------
-    ! Some notes:
-    !
-    ! 1) For reasons as yet unknown the step size \eta can not be taken as large as reported in
-    !    Robledo et al. or Ring & Schuck. \eta=0.01 seems to be about the maximum step size that
-    !    remains stable in our case.
-    !
-    ! 2) The update for the Fermi energy as described in Ring & Schuck ( and I guess the one in Robledo
-    !    et al. reduces to this one) also seems pretty unstable. For this reason, I just added a
-    !    very simple quadratic constraint update on the Fermi energy, which seems to work in 99.99%
-    !    of the cases, though is rather slow.
-    !
-    ! 3) In order to speed things up, I've made everything real in this routine. I apologise to anyone
-    !    that wants generalise this routine to when TimeSimplex is not conserved.
-    !
-    !--------------------------------------------------------------------------------------------------
-    ! TODO
-    ! -> HFBCheck checks
-    ! -> Don't iterate isospin that is converged
-    !--------------------------------------------------------------------------------------------------
+!   subroutine HFBFermiGradient(Fermi,L2,Delta,DeltaLN,Lipkin,Prec)
+!     !--------------------------------------------------------------------------------------------------
+!     ! This routine implements the gradient descent algorithm described in Ring & Schuck, described in
+!     ! section 7.3.3 and later reiterated in
+!     ! L.M. Robledo &nd G. Bertsch,  Phys. Rev. C 84, 014312
+!     !
+!     ! We parametrize the HFB 'landscape' around a starting point in the following way:
+!     !
+!     !  exp( sum Z_{k k'} \beta_k \beta_k' ) | \Phi_0 >
+!     !
+!     ! which has the major advantage that every reachable state |\Phi > is NOT ORTHOGONAL to | \Phi >.
+!     ! This means that the vacuum we will end up in will NEVER have N-quasiparticle excitations
+!     ! compared to our ground state.
+!     !
+!     ! So, starting from a reference state characterized by U_0 and V_0 we will do a very naïve
+!     ! gradient descent to minimize the energy.
+!     !
+!     ! At any point on the 'HFB surface' the gradient of the erngy with respect to Z is
+!     !
+!     !
+!     ! TO COMPLETE
+!     !
+!     !
+!     !--------------------------------------------------------------------------------------------------
+!     ! Some notes:
+!     !
+!     ! 1) For reasons as yet unknown the step size \eta can not be taken as large as reported in
+!     !    Robledo et al. or Ring & Schuck. \eta=0.01 seems to be about the maximum step size that
+!     !    remains stable in our case.
+!     !
+!     ! 2) The update for the Fermi energy as described in Ring & Schuck ( and I guess the one in Robledo
+!     !    et al. reduces to this one) also seems pretty unstable. For this reason, I just added a
+!     !    very simple quadratic constraint update on the Fermi energy, which seems to work in 99.99%
+!     !    of the cases, though is rather slow.
+!     !
+!     ! 3) In order to speed things up, I've made everything real in this routine. I apologise to anyone
+!     !    that wants generalise this routine to when TimeSimplex is not conserved.
+!     !
+!     !--------------------------------------------------------------------------------------------------
+!     ! TODO
+!     ! -> HFBCheck checks
+!     ! -> Don't iterate isospin that is converged
+!     !--------------------------------------------------------------------------------------------------
 
-    1 format('Gradient method failed to find the Fermi energy',/, &
-        &    ' Gradient norm     ', 2e12.3, /,                     &
-        &    ' Particle deviation', 2e12.3)
-    2 format(' LN deviation      ', 2e12.3)
-    3 format(' - - - - - - - - - - - - - - - - - - - - - - - ')
+!     1 format('Gradient method failed to find the Fermi energy',/, &
+!         &    ' Gradient norm     ', 2e12.3, /,                     &
+!         &    ' Particle deviation', 2e12.3)
+!     2 format(' LN deviation      ', 2e12.3)
+!     3 format(' - - - - - - - - - - - - - - - - - - - - - - - ')
 
-    ! Fermi energy and Lambda_2 LN parameter
-    real(KIND=dp), intent(inout)              :: Fermi(2), L2(2)
-    ! Pairing matrix and LN pairing matrix
-    complex(KIND=dp), allocatable, intent(in) :: Delta(:,:,:,:)
-    complex(KIND=dp), allocatable, intent(in) :: DeltaLN(:,:,:,:)
-    ! Whether or not LN is active
-    logical, intent(in)                       :: Lipkin
-    ! Precision desired of the solution
-    real(KIND=dp), intent(in)                 :: Prec
-    ! Step size of the gradient descent solver.
-    real(KIND=dp),parameter                   :: stepsize=0.02
+!     ! Fermi energy and Lambda_2 LN parameter
+!     real(KIND=dp), intent(inout)              :: Fermi(2), L2(2)
+!     ! Pairing matrix and LN pairing matrix
+!     complex(KIND=dp), allocatable, intent(in) :: Delta(:,:,:,:)
+!     complex(KIND=dp), allocatable, intent(in) :: DeltaLN(:,:,:,:)
+!     ! Whether or not LN is active
+!     logical, intent(in)                       :: Lipkin
+!     ! Precision desired of the solution
+!     real(KIND=dp), intent(in)                 :: Prec
+!     ! Step size of the gradient descent solver.
+!     ! Max with preconditioning: 0.1
+!     ! Max without             : 0.02
+!     real(KIND=dp),parameter                   :: stepsize=0.02
+!     ! Checking if the routine is called or the first time
+!     integer                                   :: FirstTime=1
 
-    ! Checking if the routine is called or the first time
-    integer                                   :: FirstTime=1
+!     ! Matrices for the descent
+!     real(KIND=dp) :: Grad(2*nwt,2*nwt,2,2), OldGrad(2*nwt,2*nwt,2,2)
+!     real(KIND=dp) :: OldU(2*nwt,2*nwt,2,2), NewU(2*nwt,2*nwt,2,2)
+!     real(KIND=dp) :: OldV(2*nwt,2*nwt,2,2), NewV(2*nwt,2*nwt,2,2)
+!     real(KIND=dp) :: preconditioner(2*nwt,2*nwt,2,2)
+!     real(KIND=dp) :: overlap, E(2), Enew(2), norm, normold
 
-    ! Matrices for the descent
-    real(KIND=dp) :: Grad(2*nwt,2*nwt,2,2)
-    real(KIND=dp) :: OldU(2*nwt,2*nwt,2,2), NewU(2*nwt,2*nwt,2,2)
-    real(KIND=dp) :: OldV(2*nwt,2*nwt,2,2), NewV(2*nwt,2*nwt,2,2)
-    real(KIND=dp) :: overlap
+!     integer       :: iter, ind(2,2), succes(2)
+!     real(KIND=dp) :: Part(2), NormGrad(2), L2Deviation(2)
+!     logical       :: converged, incolumns
+!     integer       :: i,j,k,jj,jjj,ii,iii,it,P,N
 
-    integer       :: iter, ind(2,2), succes(2)
-    real(KIND=dp) :: Part(2), NormGrad(2), L2Deviation(2)
-    logical       :: converged
-    integer       :: i,j,k,jj,jjj,ii,iii,it,P,N
+!     !----------------------------------------------------------------
+!     ! Make sure we are looking for the correct number of particles
+!     Particles(1) = Neutrons ; Particles(2) = Protons
 
-    !----------------------------------------------------------------
-    ! Make sure we are looking for the correct number of particles
-    Particles(1) = Neutrons ; Particles(2) = Protons
+!     !-----------------------------------------------------------------
+!     ! Get an initial guess for now, even though we can't guarantee it
+!     if(all(abs(U).eq.0.0_dp)) then
+!       call InitializeUandV(Delta,DeltaLN,Fermi,L2)
+!     endif
 
-    !-----------------------------------------------------------------
-    ! Get an initial guess for now, even though we can't guarantee it
-    if(all(abs(U).eq.0.0_dp)) then
-      call InitializeUandV(Delta,DeltaLN,Fermi,L2)
-    endif
+!     if(allocated(QPExcitations) .and. FirstTime.eq.1) then
+!         print *, 'Blocked'
+!         call BlockQuasiParticles
+!     endif
 
-    if(allocated(QPExcitations) .and. FirstTime.eq.1) then
-        call BlockQuasiParticles
-    endif
+!     FirstTime = 0
 
-    FirstTime = 0
+!     do it=1,Iindex
+!         do P=1,Pindex
+!             N = blocksizes(P,it)
 
-    !-----------------------------------------------------------------
-    ! Get the starting point: U_0 and V_0
-    ! Note that we need to know in which column they reside, but that
-    ! the rest of the matrix otherwise does not concern us. This
-    ! routine will never change the HFBColumns array.
-     do it=1,Iindex
-        do P=1,Pindex
-            N = blocksizes(P,it)
-            do i=1,N
-                do j=1,N
-                    jj = HFBColumns(j,P,it)
-                    OldV(i,j,P,it) = DBLE(V(i,jj,P,it))
-                    OldU(i,j,P,it) = DBLE(U(i,jj,P,it))
-                enddo
-            enddo
-        enddo
-    enddo
+!             ind(P,it) = 1
+!             do j=1,2*N
+!                 ! This loop makes sure that we go through the
+!                 ! big matrix in order. Otherwise the signature
+!                 ! block might end up somewhere we don't expect
+!                 ! them.
+!                 incolumns = .false.
+!                 do k=1,N
+!                     if (j .eq. HFBColumns(k,P,it)) then
+!                         incolumns=.true.
+!                         exit
+!                     endif
+!                 enddo
+!                 if(incolumns) then
+!                     OldV(1:N,ind(P,it),P,it) = DBLE(V(1:N,j,P,it))
+!                     OldU(1:N,ind(P,it),P,it) = DBLE(U(1:N,j,P,it))
+!                     ind(P,it) = ind(P,it)+ 1
+!                 endif
+!             enddo
+!             if(ind(P,it).ne.N+1) call stp('errorcheckind')
+!         enddo
+!     enddo
+!     norm = 0.0d0
+!     !-----------------------------------------------------------------
+!     ! Gradient descent iterations
+!     do iter=1,HFBIter
+!         !-----------------------------------------------------
+!         ! Construct the gradient at this point on the surface.
+!         !
+!         ! This is
+!         !    Z = H^{20} - \lambda N^{20}
+!         !-----------------------------------------------------
 
-    !-----------------------------------------------------------------
-    ! Gradient descent iterations
-    do iter=1,HFBIter
-        !-----------------------------------------------------
-        ! Construct the gradient at this point on the surface.
-        !
-        ! This is
-        !    Z = H^{20} - \lambda N^{20}
-        !-----------------------------------------------------
-        Grad = ZGradient(OldU,OldV,Fermi,L2,Delta)
+!         if(SC) then
+!             Grad = ZGradient_Sig(OldU,OldV,Fermi,L2,Delta)
 
-        p = 2
-        IT = 2
+!             normold = norm
+!             norm    =0.0d0
+!             do it=1,Iindex
+!                 do P=1,Pindex
+!                     N = blocksizes(P,it)
+!                     do j=1,N
+!                         do i=1,N
+!                             norm = norm + Grad(i,j,P,it)*Grad(j,i,P,it)
+!                         enddo
+!                     enddo
+!                 enddo
+!             enddo
+!             if(normold.ne.0.0_dp) then
+!                 !print *, 'norm', norm, normold
+!                 !Grad = Grad + norm/normold * OldGrad
+!             endif
 
+!             call GradientUpdate_Sig(OldU,OldV,Grad,NewU,NewV,stepsize)
+!             OldGrad = Grad
+!         else
+!             Grad = ZGradient_NoSig(OldU,OldV,Fermi,L2,Delta)
+!             call GradientUpdate_NoSig(OldU,OldV,Grad,NewU,NewV,stepsize)
+!         endif
+
+! !         if(iter.eq.2) then
+! !             call Linesearch(Fermi,OldU,OldV,Grad,NewU,NewV,stepsize, Delta)
+! !             stop
+! !         endif
+!         !-----------------------------------------------------
+!         ! Construct Rho &  Kappa
+!         ! (Mostly needed for updates to Lambda and L2)
+!         call ConstructRhoHFBLimited(NewV)
+!         call ConstructKappaHFBLimited(NewU,NewV)
+
+!         !-----------------------------------------------------
+!         ! Count the number of particles
+!         Part = 0.0_dp
 !         do it=1,Iindex
 !             do P=1,Pindex
-                do i=1,blocksizes(P,it)
-                    print *, Grad(i,1:blocksizes(P,it),P,it)
-                enddo
-                print *
+!               N = blocksizes(P,it)
+!               do i=1,N
+!                   Part(it) = Part(it) + DBLE(RhoHFB(i,i,P,it))
+!               enddo
 !             enddo
 !         enddo
 
-        Grad = ZGradient_ALT(OldU,OldV,Fermi,L2,Delta)
+!         !-----------------------------------------------------
+!         ! Naïvely update the Fermi energy and LN parameter
+! !         Fermi = Fermi + 0.1_dp * (Particles - Part)
+! !         if(Lipkin) then
+! !             L2Deviation = Lncr8(Delta,DeltaLN, succes) - L2
+! !             L2 = L2     + 0.1_dp * L2Deviation
+! !         endif
 
+!         OldU = NewU
+!         OldV = NewV
+
+!         !-----------------------------------------------------
+!         ! Check for convergence on:
+!         ! a) Norm of the gradient
+!         ! b) Number of particles
+!         ! c) L2 parameter
+!         NormGrad = 0.0_dp
 !         do it=1,Iindex
 !             do P=1,Pindex
-                do i=1,blocksizes(P,it)
-                    print *, Grad(i,1:blocksizes(P,it),P,it)
-                enddo
-                print *
-
-!             enddo   
+!                 N = blocksizes(P,it)
+!                 do j=1,N
+!                     do i=1,N
+!                         NormGrad(it) = NormGrad(it) +        &
+!                             Grad(i,j,P,it) * Grad(j,i,P,it)
+!                     enddo
+!                 enddo
+!             enddo
 !         enddo
-        stop
-        !-----------------------------------------------------
-        ! Do a gradient descent step
-        call GradientUpdate(OldU,OldV,Grad,NewU,NewV,stepsize)
-        !-----------------------------------------------------
-        ! Orthonormalise the U and V eigenvectors
-        call ortho(NewU,NewV)
-        !-----------------------------------------------------
-        ! Construct Rho &  Kappa
-        ! (Mostly needed for updates to Lambda and L2)
-        call ConstructRhoHFBLimited(NewV)
-        call ConstructKappaHFBLimited(NewU,NewV)
-        !-----------------------------------------------------
-        ! Count the number of particles
-        Part = 0.0_dp
-        do it=1,Iindex
-            do P=1,Pindex
-              N = blocksizes(P,it)
-              do i=1,N
-                  Part(it) = Part(it) + DBLE(RhoHFB(i,i,P,it))
-              enddo
-            enddo
-        enddo
-        !-----------------------------------------------------
-        ! Naïvely update the Fermi energy and LN parameter
-        Fermi = Fermi + 0.1_dp * (Particles - Part)
-        if(Lipkin) then
-            L2Deviation = Lncr8(Delta,DeltaLN, succes) - L2
-            L2 = L2   + 0.1_dp * L2Deviation
-        endif
 
-        OldU = NewU
-        OldV = NewV
+!         Converged = .true.
+!         if(any((abs(NormGrad)) .gt. Prec))    Converged = .false.
+! !         if(any(abs(Part - Particles) .gt. Prec )) Converged = .false.
+! !         if(Lipkin) then
+! !             if (all(abs(L2Deviation) .gt. Prec))  Converged = .false.
+! !         endif
+!         ! Stop if converged
+!          print *, iter, norm, normold, NormGrad, Part - Particles
+!         if(Converged) then
+!             print *, 'Converged after ', iter
+!           exit
+!         endif
+!         if(.not. Converged .and. iter .eq. HFBIter) then
+!             print 1, NormGrad,abs(Particles - Part)
+!             if(Lipkin) print 2, abs(L2Deviation)
+!             print 3
+!         endif
+!     enddo
+!     !------------------------------------------
+!     ! Adapt the U & V matrices in the module
+!     do it=1,Iindex
+!       do P=1,Pindex
+!         N = blocksizes(P,it)
+!           do i=1,N
+!             do j=1,N
+!               HFBColumns(j,P,it) = j + N
+!               V(i,j+N,P,it) = NewV(i,j,P,it)
+!               U(i,j+N,P,it) = NewU(i,j,P,it)
+!             enddo
+!           enddo
+!       enddo
+!     enddo
+!     ! Calculate the QPenergies
+!     call CalcQPEnergies(NewU,NewV,Fermi,L2,Delta)
+!     !stop
+! end subroutine HFBFermiGradient
 
-        !-----------------------------------------------------
-        ! Check for convergence on:
-        ! a) Norm of the gradient
-        ! b) Number of particles
-        ! c) L2 parameter
-        NormGrad = 0.0_dp
-        do it=1,Iindex
-            do P=1,Pindex
-                N = blocksizes(P,it)
-                do j=1,N
-                    do i=1,N
-                        NormGrad(it) = NormGrad(it) +        &
-                            Grad(i,j,P,it) * Grad(j,i,P,it)
-                    enddo
-                enddo
-            enddo
-        enddo
 
-        Converged = .true.
-        if(any(sqrt(abs(NormGrad)) .gt. Prec))    Converged = .false.
-        if(any(abs(Part - Particles) .gt. Prec )) Converged = .false.
-        if(Lipkin) then
-            if (all(abs(L2Deviation) .gt. Prec))  Converged = .false.
-        endif
-        ! Stop if converged
-        if(Converged) then
-          exit
-        endif
-        if(.not. Converged .and. iter .eq. HFBIter) then
-            print 1, NormGrad,abs(Particles - Part)
-            if(Lipkin) print 2, abs(L2Deviation)
-            print 3
-        endif
-    enddo
+! subroutine Linesearch(Fermi,OldU,OldV,Grad,NewU,NewV,maxstep, Delta)
+!     !-----------------------------------------------------------
+!     !
+!     !
+!     !
+!     !-----------------------------------------------------------
+!     integer       :: i,it,P,ii,iii,j,N, iter
+!     real(KIND=dp) :: maxstep,Fermi(2), step
+!     real(KIND=dp) :: Part(2), E(2,3)
+!     real(KIND=dp) :: OldU(2*nwt,2*nwt,2,2), NewU(2*nwt,2*nwt,2,2)
+!     real(KIND=dp) :: Grad(2*nwt,2*nwt,2,2)
+!     real(KIND=dp) :: OldV(2*nwt,2*nwt,2,2), NewV(2*nwt,2*nwt,2,2)
+!     complex(KIND=dp), allocatable, intent(in) :: Delta(:,:,:,:)
 
-    ! Put the U and V matrices back into place
-    do it=1,Iindex
-      do P=1,Pindex
-        N = blocksizes(P,it)
-          do i=1,N
-            do j=1,N
-              jj = HFBColumns(j,P,it)
-              V(i,jj,P,it) = NewV(i,j,P,it)
-              U(i,jj,P,it) = NewU(i,j,P,it)
-            enddo
-          enddo
-      enddo
-    enddo
+!     ! Get Energy for the starting point
+!     call ConstructRhoHFBLimited(OldV)
+!     call ConstructKappaHFBLimited(OldU,OldV)
 
-    ! Calculate the QPenergies
-    call CalcQPEnergies(NewU,NewV,Fermi,L2,Delta)
+!     E(:,1) = 0.0d0
+!     Part = 0.0d0
+!     do it=1,Iindex
+!         do P=1,Pindex
+!             N  = blocksizes(P,it)
+!             do i=1,N
+!                 ii = blockindices(i,P,it)
+!                 iii = mod(ii-1,nwt)+1
+!                 Part(it) = Part(it) + DBLE(RhoHFB(i,i,P,it))
+!                 E(it,1)    = E(it,1) + (RhoHFB(i,i,P,it) * HFBasis(iii)%GetEnergy())
+!                 do j=1,N
+!                     E(it,1) = E(it,1) - 0.5 * Delta(i,j,P,it) * KappaHFB(j,i,P,it)
+!                 enddo
+!             enddo
 
-end subroutine HFBFermiGradient
+!         enddo
+!     enddo
+!     E(:,1) = E(:,1) - Fermi * Part
+
+!     ! Maximum step
+!     call GradientUpdate_Sig(OldU,OldV,Grad,NewU,NewV,maxstep)
+!     call ConstructRhoHFBLimited(NewV)
+!     call ConstructKappaHFBLimited(NewU,NewV)
+
+!     E(:,3) = 0.0d0
+!     Part = 0.0d0
+!     do it=1,Iindex
+!         do P=1,Pindex
+!             N  = blocksizes(P,it)
+!             do i=1,N
+!                 ii = blockindices(i,P,it)
+!                 iii = mod(ii-1,nwt)+1
+!                 Part(it) = Part(it) + DBLE(RhoHFB(i,i,P,it))
+!                 E(it,3)    = E(it,3) + (RhoHFB(i,i,P,it) * HFBasis(iii)%GetEnergy())
+!                 do j=1,N
+!                     E(it,3) = E(it,3) - 0.5 * Delta(i,j,P,it) * KappaHFB(j,i,P,it)
+!                 enddo
+!             enddo
+
+!         enddo
+!     enddo
+!     E(:,3) = E(:,3) - Fermi * Part
+
+!     !if( all(E(:,3) - E(:,1)).lt. 0.0d0 ) return
+!     step = maxstep
+!     do iter=1,25
+
+!         step = step * 0.9d0
+
+!         call GradientUpdate_Sig(OldU,OldV,Grad,NewU,NewV,step)
+!         call ConstructRhoHFBLimited(NewV)
+!         call ConstructKappaHFBLimited(NewU,NewV)
+
+!         E(:,2) = 0.0d0
+!         Part = 0.0d0
+!         do it=1,Iindex
+!             do P=1,Pindex
+!                 N  = blocksizes(P,it)
+!                 do i=1,N
+!                     ii = blockindices(i,P,it)
+!                     iii = mod(ii-1,nwt)+1
+!                     Part(it) = Part(it) + DBLE(RhoHFB(i,i,P,it))
+!                     E(it,2)    = E(it,2) + (RhoHFB(i,i,P,it) * HFBasis(iii)%GetEnergy())
+!                     do j=1,N
+!                         E(it,2) = E(it,2) - 0.5 * Delta(i,j,P,it) * KappaHFB(j,i,P,it)
+!                     enddo
+!                 enddo
+
+!             enddo
+!         enddo
+!         E(:,2) = E(:,2) - Fermi * Part
+
+!         print *, E(:,2)
+
+!     enddo
+!     stop
+
+! end subroutine Linesearch
 
 subroutine CalcQPEnergies(Ulim,Vlim,Fermi,L2,Delta)
 
@@ -1387,77 +1500,138 @@ subroutine ConstructKappaHFBLimited(Ulim,Vlim)
     enddo
 end subroutine ConstructKappaHFBLimited
 
-subroutine Ortho(Ulim,Vlim)
-    !----------------------------------------------------------------
-    ! Orthonormalize the U and V matrix with a simple Gramm-Schmidt.
-    !
-    !----------------------------------------------------------------
-    real(KIND=dp), intent(inout) :: Ulim(2*nwt,2*nwt,2,2),Vlim(2*nwt,2*nwt,2,2)
-    real(KIND=dp)                :: overlap
-    integer :: i,j,k,p,it,N
+! subroutine Ortho(Ulim,Vlim)
+!     !----------------------------------------------------------------
+!     ! Orthonormalize the U and V matrix with a simple Gramm-Schmidt.
+!     !
+!     !----------------------------------------------------------------
+!     real(KIND=dp), intent(inout) :: Ulim(2*nwt,2*nwt,2,2),Vlim(2*nwt,2*nwt,2,2)
+!     real(KIND=dp)                :: overlap
+!     integer :: i,j,k,p,it,N
 
-    do it=1,Iindex
-        do P=1,Pindex
-          N = blocksizes(P,it)
-          do j=1,N
-            !-------------------------------------------------------
-            ! Normalise vector ( U_j )
-            !                  ( V_j )
-            overlap = 0.0_dp
-            do i=1,N
-                Overlap = Overlap + Ulim(i,j,P,it)**2 + Vlim(i,j,P,it)**2
-            enddo
-            Overlap = 1.0_dp/sqrt(overlap)
-            Ulim(1:N,j,P,it) = Ulim(1:N,j,P,it)*overlap
-            Vlim(1:N,j,P,it) = Vlim(1:N,j,P,it)*overlap
-            !-------------------------------------------------------
-            ! Orthogonalise all the rest against vector j
-            do i=j+1,N
-                Overlap = 0.0_dp
-                do k=1,N
-                    Overlap = Overlap + Ulim(k,j,P,it) * Ulim(k,i,P,it)
-                    Overlap = Overlap + Vlim(k,j,P,it) * Vlim(k,i,P,it)
-                enddo
-                Ulim(1:N,i,P,it) = Ulim(1:N,i,P,it) - Overlap * Ulim(1:N,j,P,it)
-                Vlim(1:N,i,P,it) = Vlim(1:N,i,P,it) - Overlap * Vlim(1:N,j,P,it)
-            enddo
-          enddo
-        enddo
-    enddo
+!     do it=1,Iindex
+!         do P=1,Pindex
+!           N = blocksizes(P,it)
+!           do j=1,N
+!             !-------------------------------------------------------
+!             ! Normalise vector ( U_j )
+!             !                  ( V_j )
+!             overlap = 0.0_dp
+!             do i=1,N
+!                 Overlap = Overlap + Ulim(i,j,P,it)**2 + Vlim(i,j,P,it)**2
+!             enddo
+!             Overlap = 1.0_dp/sqrt(overlap)
+!             Ulim(1:N,j,P,it) = Ulim(1:N,j,P,it)*overlap
+!             Vlim(1:N,j,P,it) = Vlim(1:N,j,P,it)*overlap
+!             !-------------------------------------------------------
+!             ! Orthogonalise all the rest against vector j
+!             do i=j+1,N
+!                 Overlap = 0.0_dp
+!                 do k=1,N
+!                     Overlap = Overlap + Ulim(k,j,P,it) * Ulim(k,i,P,it)
+!                     Overlap = Overlap + Vlim(k,j,P,it) * Vlim(k,i,P,it)
+!                 enddo
+!                 Ulim(1:N,i,P,it) = Ulim(1:N,i,P,it) - Overlap * Ulim(1:N,j,P,it)
+!                 Vlim(1:N,i,P,it) = Vlim(1:N,i,P,it) - Overlap * Vlim(1:N,j,P,it)
+!             enddo
+!           enddo
+!         enddo
+!     enddo
 
-end subroutine Ortho
+! end subroutine Ortho
 
-subroutine GradientUpdate(U1,V1,Grad,U2,V2, step)
-    !----------------------------------------------------------------
-    ! Apply a gradient step to the old U1 and V1 to obtain U2 and V2.
-    !----------------------------------------------------------------
-    ! TODO: use matmul for these matrices?
-    !----------------------------------------------------------------
-    real(KIND=dp), intent(in) :: U1(2*nwt,2*nwt,2,2), V1(2*nwt,2*nwt,2,2)
-    real(KIND=dp), intent(out):: U2(2*nwt,2*nwt,2,2), V2(2*nwt,2*nwt,2,2)
-    real(KIND=dp), intent(in) :: Grad(2*nwt,2*nwt,2,2)
-    real(KIND=dp), intent(in) :: step
+! subroutine GradientUpdate_NoSig(U1,V1,Grad,U2,V2, step)
+!     !----------------------------------------------------------------
+!     ! Apply a gradient step to the old U1 and V1 to obtain U2 and V2.
+!     !----------------------------------------------------------------
+!     real(KIND=dp), intent(in) :: U1(2*nwt,2*nwt,2,2), V1(2*nwt,2*nwt,2,2)
+!     real(KIND=dp), intent(out):: U2(2*nwt,2*nwt,2,2), V2(2*nwt,2*nwt,2,2)
+!     real(KIND=dp), intent(in) :: Grad(2*nwt,2*nwt,2,2)
+!     real(KIND=dp), intent(in) :: step
 
-    integer                   :: i,j,P,it,N,k
+!     integer                   :: i,j,P,it,N,k
 
-    do it=1,Iindex
-        do P=1,Pindex
-            N = blocksizes(P,it)
-            do j=1,N
-                do i=1,N
-                    U2(i,j,P,it) = U1(i,j,P,it) ; V2(i,j,P,it) = V1(i,j,P,it)
-                    do k=1,N
-                        U2(i,j,P,it) = U2(i,j,P,it) - step * V1(i,k,P,it)*Grad(k,j,P,it)
-                        V2(i,j,P,it) = V2(i,j,P,it) - step * U1(i,k,P,it)*Grad(k,j,P,it)
-                    enddo
-                enddo
-            enddo
-        enddo
-    enddo
+!     do it=1,Iindex
+!         do P=1,Pindex
+!             N = blocksizes(P,it)
+!             do j=1,N
+!                 do i=1,N
+!                     U2(i,j,P,it) = U1(i,j,P,it) ; V2(i,j,P,it) = V1(i,j,P,it)
+!                     do k=1,N
+!                         U2(i,j,P,it) = U2(i,j,P,it) - step * V1(i,k,P,it)*Grad(k,j,P,it)
+!                         V2(i,j,P,it) = V2(i,j,P,it) - step * U1(i,k,P,it)*Grad(k,j,P,it)
+!                     enddo
+!                 enddo
+!             enddo
+!         enddo
+!     enddo
 
-end subroutine GradientUpdate
+!     call ortho(U2,V2)
 
-function ZGradient( Ulim, Vlim, Fermi, L2, Delta) result(Z)
+! end subroutine GradientUpdate_NoSig
+
+! subroutine GradientUpdate_Sig(U1,V1,Grad,U2,V2, step)
+!     !----------------------------------------------------------------
+!     ! Apply a gradient step to the old U1 and V1 to obtain U2 and V2.
+!     ! This subroutine is for when signature is conserved.
+!     !----------------------------------------------------------------
+!     real(KIND=dp), intent(in) :: U1(2*nwt,2*nwt,2,2), V1(2*nwt,2*nwt,2,2)
+!     real(KIND=dp), intent(out):: U2(2*nwt,2*nwt,2,2), V2(2*nwt,2*nwt,2,2)
+!     real(KIND=dp), intent(in) :: Grad(2*nwt,2*nwt,2,2)
+!     real(KIND=dp), intent(in) :: step
+
+!     integer                   :: i,j,P,it,N,k
+
+!     U2 = 0.0d0
+!     V2 = 0.0d0
+
+!     do it=1,Iindex
+!         do P=1,Pindex
+!             N = blocksizes(P,it)
+
+!             do j=1,N/2
+!               do i=N/2+1,N
+!                 V2(i,j,P,it) = V1(i,j,P,it)
+!                 do k=N/2+1,N
+!                   V2(i,j,P,it) = V2(i,j,P,it) - step * U1(i,k,P,it)*Grad(k,j,P,it)
+!                 enddo
+!               enddo
+!             enddo
+
+!             do j=N/2+1,N
+!               do i=1,N/2
+!                 V2(i,j,P,it) = V1(i,j,P,it)
+!                 do k=1,N/2
+!                   V2(i,j,P,it) = V2(i,j,P,it) - step * U1(i,k,P,it)*Grad(k,j,P,it)
+!                 enddo
+!               enddo
+!             enddo
+
+!             do j=1,N/2
+!               do i=1,N/2
+!                 U2(i,j,P,it) = U1(i,j,P,it)
+!                 do k=N/2+1,N
+!                   U2(i,j,P,it) = U2(i,j,P,it) - step * V1(i,k,P,it)*Grad(k,j,P,it)
+!                 enddo
+!               enddo
+!             enddo
+
+!             do j=N/2+1,N
+!               do i=N/2+1,N
+!                 U2(i,j,P,it) = U1(i,j,P,it)
+!                 do k=1,N/2
+!                   U2(i,j,P,it) = U2(i,j,P,it) - step * V1(i,k,P,it)*Grad(k,j,P,it)
+!                 enddo
+!               enddo
+!             enddo
+!         enddo
+!     enddo
+
+!     call ortho(U2,V2)
+
+! end subroutine GradientUpdate_Sig
+
+function ZGradient_NoSig( Ulim, Vlim, Fermi, L2, Delta) result(Z)
     !----------------------------------------------------------------------
     ! Construct the gradient at this point on the surface.
     !
@@ -1482,9 +1656,6 @@ function ZGradient( Ulim, Vlim, Fermi, L2, Delta) result(Z)
     !---------------------------------------------------------------------
     ! Ulim and Vlim are the limited versions of both U
     ! and V, meaning only half the dimension.
-    !---------------------------------------------------------------------
-    ! Todo:
-    !   2) Use antisymmetry
     !---------------------------------------------------------------------
 
     real(KIND=dp), intent(in)                 :: Fermi(2), L2(2)
@@ -1551,9 +1722,9 @@ function ZGradient( Ulim, Vlim, Fermi, L2, Delta) result(Z)
             enddo
         enddo
     enddo
-end function ZGradient
+end function ZGradient_NoSig
 
-function ZGradient_ALT( Ulim, Vlim, Fermi, L2, Delta) result(Z)
+function ZGradient_Sig( Ulim, Vlim, Fermi, L2, Delta) result(Z)
 
     real(KIND=dp), intent(in)                 :: Fermi(2), L2(2)
     complex(KIND=dp), allocatable, intent(in) :: Delta(:,:,:,:)
@@ -1568,125 +1739,106 @@ function ZGradient_ALT( Ulim, Vlim, Fermi, L2, Delta) result(Z)
     real(KIND=dp)    :: H20(2*nwt,2*nwt), N20(2*nwt,2*nwt)
     real(KIND=dp)    :: temp
 
-
     do it=1,Iindex
         do P=1,Pindex
             N = blocksizes(P,it)
 
             Z(1:N,1:N,P,it) = 0.0_dp
+            DsU(1:N,1:N) = 0.0_dp
+            hU(1:N,1:N) = 0.0_dp
 
-            ! Construct the auxiliary arrays
-            do j=1,N
-                do i=1,N
+            DsV(1:N,1:N) = 0.0_dp
+            hV(1:N,1:N) = 0.0_dp
+
+            do j=1,N/2
+                do i=1,N/2
+                    ii  = Blockindices(i,P,it)
+                    iii = mod(ii-1,nwt)+1
+
+                    ! Diagonal part of h
+                    hU(i,j) = (HFBasis(iii)%GetEnergy() - 2*(1- LNfraction)* L2(it)) * (Ulim(i,j,P,it))
+
+                    !Non-diagonal part
+                    do k=1,N/2
+                        hU(i,j) = hU(i,j) + 4 * (1 - LnFraction) * L2(it) * OldRhoHFB(i,k,P,it) * (Ulim(k,j,P,it))
+                    enddo
+
+                    DsV(i,j) = 0.0_dp !; DsU(i,j) = 0.0
+                    do k=1,N
+                        temp = (Delta(i,k,P,it)- LNFraction*4*L2(it)*OldKappaHFB(i,k,P,it))
+                        DsV(i,j) = DsV(i,j) + temp * Vlim(k,j,P,it)
+                    enddo
+                enddo
+            enddo
+
+            do j=1,N/2
+                do i=N/2+1,N
                     ii  = Blockindices(i,P,it)
                     iii = mod(ii-1,nwt)+1
 
                     ! Diagonal part of h
                     hV(i,j) = (HFBasis(iii)%GetEnergy() - 2*(1- LNfraction)* L2(it)) * (Vlim(i,j,P,it))
-                    hU(i,j) = (HFBasis(iii)%GetEnergy() - 2*(1- LNfraction)* L2(it)) * (Ulim(i,j,P,it))
 
                     !Non-diagonal part
                     do k=1,N
                         hV(i,j) = hV(i,j) + 4 * (1 - LnFraction) * L2(it) * OldRhoHFB(i,k,P,it) * (Vlim(k,j,P,it))
-                        hU(i,j) = hU(i,j) + 4 * (1 - LnFraction) * L2(it) * OldRhoHFB(i,k,P,it) * (Ulim(k,j,P,it))
                     enddo
 
-                    DsV(i,j) = 0.0_dp ; DsU(i,j) = 0.0
+                    DsU(i,j) = 0.0
                     do k=1,N
-                        temp = (Delta(i,k,P,it)- LNFraction*4*L2(it)*OldKappaHFB(i,k,P,it))
-                        DsV(i,j) = DsV(i,j) + temp * Vlim(k,j,P,it)
-                        DsU(i,j) = DsU(i,j) + temp * Ulim(k,j,P,it)
-                    enddo
-                enddo
-            enddo
-            if(it.eq.2) then
-                do i=1,N
-                    print *, dSV(i,1:N)
-                enddo
-
-                print *
-            endif
-
-!             hV = 0.0d0 ; DsV = 0.0d0 ; dsU = 0.0d0 ; hU = 0.0d0
-
-
-            hU = 0.0d0
-            hV = 0.0d0
-            dsu = 0.0d0
-            dsv = 0.0d0 ; H20 = 0.0_dp ; N20 = 0.0_dp
-            
-            !-----------------------------------------------------------------------------------------------------
-            ! Calculation of hU & DsV in blocks.
-            do j=1,N/2
-                do i=N/2+1,N
-                    ii  = Blockindices(i,P,it)
-                    iii = mod(ii-1,nwt)+1                    
-                    hU(i,j) = (HFBasis(iii)%GetEnergy() - 2*(1- LNfraction)* L2(it)) * (Ulim(i,j,P,it))
-                    DsV(i,j) = 0.0d0
-                    do k=1,N
-                        hU(i,j) = hU(i,j) + 4 * (1 - LnFraction) * L2(it) * OldRhoHFB(i,k,P,it) * (Ulim(k,j,P,it))
-                        temp = (Delta(i,k,P,it)- LNFraction*4*L2(it)*OldKappaHFB(i,k,P,it))
-                        DsV(i,j) = DsV(i,j) + temp * Vlim(k,j,P,it)
-                    enddo
-                enddo
-            enddo
-            do j=N/2+1,N
-                do i=1,N/2
-                    ii  = Blockindices(i,P,it)
-                    iii = mod(ii-1,nwt)+1   
-                    hU(i,j) = (HFBasis(iii)%GetEnergy() - 2*(1- LNfraction)* L2(it)) * (Ulim(i,j,P,it))
-                    DsV(i,j) = 0.0d0
-                    do k=1,N
-                        hU(i,j) = hU(i,j) + 4 * (1 - LnFraction) * L2(it) * OldRhoHFB(i,k,P,it) * (Ulim(k,j,P,it))
-                        temp = (Delta(i,k,P,it)- LNFraction*4*L2(it)*OldKappaHFB(i,k,P,it))
-                        DsV(i,j) = DsV(i,j) + temp * Vlim(k,j,P,it)
+                       temp = (Delta(i,k,P,it)- LNFraction*4*L2(it)*OldKappaHFB(i,k,P,it))
+                       DsU(i,j) = DsU(i,j) + temp * Ulim(k,j,P,it)
                     enddo
                 enddo
             enddo
 
-            !-----------------------------------------------------------------------------------------------------
-            ! Calculation of hV & DsU in blocks.
-            do j=1,N/2
-                do i=1,N/2
-                    ii  = Blockindices(i,P,it)
-                    iii = mod(ii-1,nwt)+1                    
-                    
-                    hV(i,j) = (HFBasis(iii)%GetEnergy() - 2*(1- LNfraction)* L2(it)) * (Vlim(i,j,P,it))
-                    DsU(i,j) = 0.0_dp 
-                    do k=1,N
-                        hV(i,j) = hV(i,j) + 4 * (1 - LnFraction) * L2(it) * OldRhoHFB(i,k,P,it) * (Vlim(k,j,P,it))
-                        temp = (Delta(i,k,P,it)- LNFraction*4*L2(it)*OldKappaHFB(i,k,P,it))
-                        DsU(i,j) = DsV(i,j) + temp * Ulim(k,j,P,it)
-                    enddo
-                enddo
-            enddo
             do j=N/2+1,N
                 do i=N/2+1,N
                     ii  = Blockindices(i,P,it)
                     iii = mod(ii-1,nwt)+1
 
-                    hV(i,j) = (HFBasis(iii)%GetEnergy() - 2*(1- LNfraction)* L2(it)) * (Vlim(i,j,P,it))
-                    DsU(i,j) = 0.0_dp ;
+                    ! Diagonal part of h
+                    hU(i,j) = (HFBasis(iii)%GetEnergy() - 2*(1- LNfraction)* L2(it)) * (Ulim(i,j,P,it))
+
+                    !Non-diagonal part
+                    do k=1,N/2
+                        hU(i,j) = hU(i,j) + 4 * (1 - LnFraction) * L2(it) * OldRhoHFB(i,k,P,it) * (Ulim(k,j,P,it))
+                    enddo
+
+                    DsV(i,j) = 0.0_dp
                     do k=1,N
-                        hV(i,j) = hV(i,j) + 4 * (1 - LnFraction) * L2(it) * OldRhoHFB(i,k,P,it) * (Vlim(k,j,P,it))
                         temp = (Delta(i,k,P,it)- LNFraction*4*L2(it)*OldKappaHFB(i,k,P,it))
-                        DsU(i,j) = DsU(i,j) + temp * Ulim(k,j,P,it)
-                    enddo 
+                        DsV(i,j) = DsV(i,j) + temp * Vlim(k,j,P,it)
+                    enddo
                 enddo
             enddo
-            if(it.eq.2) then
-                do i=1,N
-                    print *, dSV(i,1:N)
-                enddo
 
-                print *
-                stop
-            endif
+            do j=N/2+1,N
+                do i=1,N/2
+                    ii  = Blockindices(i,P,it)
+                    iii = mod(ii-1,nwt)+1
+
+                    ! Diagonal part of h
+                    hV(i,j) = (HFBasis(iii)%GetEnergy() - 2*(1- LNfraction)* L2(it)) * (Vlim(i,j,P,it))
+
+                    !Non-diagonal part
+                    do k=1,N
+                        hV(i,j) = hV(i,j) + 4 * (1 - LnFraction) * L2(it) * OldRhoHFB(i,k,P,it) * (Vlim(k,j,P,it))
+                    enddo
+
+                    DsU(i,j) = 0.0
+                    do k=1,N
+                        temp = (Delta(i,k,P,it)- LNFraction*4*L2(it)*OldKappaHFB(i,k,P,it))
+                        DsU(i,j) = DsU(i,j) + temp * Ulim(k,j,P,it)
+                    enddo
+                enddo
+            enddo
+
             !--------------------------------------------------------------------------------------------------
             ! Construct H20 and N20 and finally Z
             do j=1,N
                 ! Both N20 and H20 are antisymmetric
-                do i=j+1,N
+                do i=1,N
                     H20(i,j) = 0.0_dp ; N20(i,j) = 0.0_dp
                     do k=1,N
                         H20(i,j) = H20(i,j) + (Ulim(k,i,P,it)) * hV (k,j) &
@@ -1705,7 +1857,7 @@ function ZGradient_ALT( Ulim, Vlim, Fermi, L2, Delta) result(Z)
         enddo
     enddo
 
-end function ZGradient_ALT
+end function ZGradient_Sig
 
 subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
     !-------------------------------------------------------------------------------------

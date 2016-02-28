@@ -443,16 +443,16 @@ contains
     
     nullify(NewMoment)
 
+    if((mod(l,2).ne.0).and.PC) then
+      ! The multipole moments of odd order are constrained by parity.
+      ! This is independent of quantisation axis.
+      return
+    endif
+
     if((m.eq.0).and.(Impart.eq.1)) then
       !Do not create a new moment for an imaginary part of moments with m=0
       return
     endif            
-
-    if((mod(l,2).ne.0).and.PC) then
-      !The multipole moments of odd order are exactly zero 
-      !when Parity is conserved.
-      return
-    endif
 
     if((ImPart.eq.1.).and.TSC) then
       ! All Imaginary parts of the multipole moments are exactly zero when time 
@@ -1765,7 +1765,7 @@ contains
     do i=1,3
       Qi(i,1) = dv*sum(Density%Rho(:,:,:,1)*Mesh3D(i,:,:,:)**2)
       Qi(i,2) = dv*sum(Density%Rho(:,:,:,2)*Mesh3D(i,:,:,:)**2)
-      Qi(i,3) = Qi(i,1) + Qi(i,1)
+      Qi(i,3) = Qi(i,1) + Qi(i,2)
     enddo
 
     print 13

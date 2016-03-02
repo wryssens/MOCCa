@@ -2150,6 +2150,27 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
             endif
         enddo
     enddo
+    !
+    ! where (abs(U) .lt. 1d-8) U = 0.0d0
+    ! where (abs(V) .lt. 1d-8) V = 0.0d0
+
+  !   do it=1,2
+  !     do P=1,Pindex
+  !     do i=1,N
+  !       print *, DBLE(U(i , 1:2*N,P,it))
+  !     enddo
+  !
+  !     print *
+  !
+  !     do i=1,N
+  !       print *, DBLE(V(i,1:2*N,P,it))
+  !     enddo
+  !     print *
+  !   enddo
+  ! enddo
+  !
+  !
+  !   stop
 end subroutine DiagonaliseHFBHamiltonian_Signature
 
 subroutine DiagonaliseHFBHamiltonian_NoSignature
@@ -2502,7 +2523,7 @@ subroutine InsertionSortQPEnergies
     real(KIND=dp)       :: Prec = 1d-6
 
     if(any(Imag(U) .ne. 0.0_dp)) call stp('U imaginary')
-
+    print *, 'Check'
     Problem = .false.
     do it=1,Iindex
       do P=1,Pindex

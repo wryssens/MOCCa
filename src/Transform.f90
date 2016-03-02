@@ -1,14 +1,14 @@
 module Transform
   !-----------------------------------------------------------------------------
-  ! This module contains all the routines that transform wavefunctions in 
+  ! This module contains all the routines that transform wavefunctions in
   ! relevant ways. Breaking symmetries, translating wavefunctions etc...
   ! One single routine is also included that transforms densities. They are much
   ! easier to deal with.
   !-----------------------------------------------------------------------------
   ! Note that this module uses Coulombderivatives instead of ordinary ones,since
   ! they are more flexible. More precisely, the PointToLineExtension Routines in
-  ! the Derivatives module work with fixed nx,ny,nz for efficiency reasons and  
-  ! are thus not reliable in the routines in this module since we are dealing 
+  ! the Derivatives module work with fixed nx,ny,nz for efficiency reasons and
+  ! are thus not reliable in the routines in this module since we are dealing
   ! with modified nx/ny/nz. The Coulomb equivalents for PointToLineExtension
   ! work with implicit array sizes and thus are better suited.
   ! This is absolutely not a textbook example of programming, but it is slightly
@@ -20,14 +20,14 @@ module Transform
   use WaveFunctions
   use Spwfstorage
   use Spinors
-  
-  use CoulombDerivatives 
+
+  use CoulombDerivatives
 
   implicit none
 
   !-----------------------------------------------------------------------------
-  ! Interpolation coefficients for changing the mesh size, using the Lagrangian 
-  ! formulas representation. Note that the coefficients have 2 components: 
+  ! Interpolation coefficients for changing the mesh size, using the Lagrangian
+  ! formulas representation. Note that the coefficients have 2 components:
   ! one for coordinates present in the Mesh module and one
   ! for coordinates that are accessible through symmetries.
   !-----------------------------------------------------------------------------
@@ -110,7 +110,7 @@ contains
     HFBasis(wave) = HFBasisTransformed(wave)
     call HFBasis(wave)%SymmetryOperators()
   enddo
-  
+
   !-----------------------------------------------------------------------------
   ! Transforming the densities
   call TransformDensities(inSC, inTSC, inPC , filenx, fileny, filenz)
@@ -119,7 +119,7 @@ contains
 
   subroutine BreakParity(wf)
    !---------------------------------------------------------------------------
-   ! This subroutine takes as argument a single particle wavefunction and 
+   ! This subroutine takes as argument a single particle wavefunction and
    ! returns the parity-broken version of that spwf.
    ! Note that this subroutine doubles the parameter nz!
     !---------------------------------------------------------------------------
@@ -142,14 +142,14 @@ contains
         AngMom(i) = wf%GetAngMoment(i)
     enddo
 
-    Value = wf%GetValue()       
+    Value = wf%GetValue()
 
     !Checking input
     if(Parity.eq.0) call stp("Parity is already broken!")
 
-    !When breaking parity, we need to store the values for the entire z-axis, 
+    !When breaking parity, we need to store the values for the entire z-axis,
     !instead of only half.
-    !Note that the x and y dimensions need not be nx/ny when we are breaking 
+    !Note that the x and y dimensions need not be nx/ny when we are breaking
     !more than one symmetry.
     Temp = NewSizeSpinor(size(Value%Grid,1), size(Value%Grid,2), nz)
     ! Moving the old values to their correct place in the new spinor.
@@ -166,7 +166,7 @@ contains
         enddo
       enddo
     enddo
-    !Creating a new wavefunction, with the same quantum numbers, 
+    !Creating a new wavefunction, with the same quantum numbers,
     ! except for the Parity, which is now 0
     wf=NewWaveFunction(Temp,wf%GetIsoSpin(),TimeSimplex,0,Signature,TimeReversal)
 
@@ -177,9 +177,9 @@ contains
     call wf%SetAngMoment(AngMom)
   end subroutine BreakParity
 
-  subroutine BreakSignature(wf)       
+  subroutine BreakSignature(wf)
     !---------------------------------------------------------------------------
-    ! This subroutine takes as argument a single particle wavefunction and 
+    ! This subroutine takes as argument a single particle wavefunction and
     ! returns the signature-broken version of that spwf.
     !---------------------------------------------------------------------------
     use Spinors
@@ -202,12 +202,12 @@ contains
       AngMom(i) = wf%GetAngMoment(i)
     enddo
 
-    Value = wf%GetValue()                              
+    Value = wf%GetValue()
 
     !Checking input
     if(Signature.eq.0) call stp("Signature is already broken!")
 
-    ! When breaking parity, we need to store the values for the entire x-axis, 
+    ! When breaking parity, we need to store the values for the entire x-axis,
     ! instead of only half.
     Temp = NewSizeSpinor(nx,size(Value%Grid,2), size(Value%Grid,3))
 
@@ -219,7 +219,7 @@ contains
       s = CompSignExtension(1,Parity,Signature,TimeSimplex,l)
       do k=1,size(Value%Grid,3)
         do j=1,size(Value%Grid,2)
-          Temp%Grid(1:nx/2,j,k,l,1) = real(s, KIND=dp)* & 
+          Temp%Grid(1:nx/2,j,k,l,1) = real(s, KIND=dp)* &
           & Reverse(LineExtensionCoulombX(Value%Grid(:,:,:,l,1), &
           & nx/2,Parity,TimeSimplex,Signature,j,k))
         enddo
@@ -234,10 +234,10 @@ contains
     call wf%SetDispersion(Dispersion)
     call wf%SetAngMoment(AngMom)
   end subroutine BreakSignature
-        
-  subroutine BreakTimeSimplex(wf)       
+
+  subroutine BreakTimeSimplex(wf)
     !---------------------------------------------------------------------------
-    ! This subroutine takes as argument a single particle wavefunction and 
+    ! This subroutine takes as argument a single particle wavefunction and
     ! returns the timesimplex-broken version of that spwf.
     !---------------------------------------------------------------------------
     use Spinors
@@ -260,11 +260,11 @@ contains
       AngMom(i) = wf%GetAngMoment(i)
     enddo
 
-    Value = wf%GetValue()                              
+    Value = wf%GetValue()
 
     !Checking input
     if(TimeSimplex.eq.0) call stp("Signature is already broken!")
-          
+
     !When breaking parity, we need to store the values for the entire y-axis.
     Temp=NewSizeSpinor(size(Value%Grid,1),ny,size(Value%Grid,3))
 
@@ -285,7 +285,7 @@ contains
 
     Temp = Conj(Temp)
 
-    !Creating a new wavefunction, with the same quantum numbers, 
+    !Creating a new wavefunction, with the same quantum numbers,
     ! except for the Time Simplex, which is now0.
     wf = NewWaveFunction(Temp, wf%GetIsoSpin(),0,Parity,Signature,TimeReversal)
 
@@ -294,30 +294,30 @@ contains
     call wf%SetOcc(Occ)
     call wf%SetDispersion(Dispersion)
     call wf%SetAngMoment(AngMom)
-  end subroutine BreakTimeSimplex  
-  
+  end subroutine BreakTimeSimplex
+
   subroutine TransformDensities(inSC, inTSC, inPC, filenx,fileny,filenz)
   !-----------------------------------------------------------------------------
   ! Transform the densities as they were read on file to ones that are usable
   ! by the program.
-  ! 
+  !
   ! WR: This is BY FAR the most ugly and cumbersome routine I've ever written...
-  !-----------------------------------------------------------------------------         
+  !-----------------------------------------------------------------------------
     use Densities, only : DensityVector, NewDensityVector, Density, FillOct
     use Derivatives
-    
+
     type(DensityVector)       :: NewDen
     logical, intent(in)       :: inPC, inTSC, inSC
     integer, intent(in)       :: filenx,fileny,filenz
     integer                   :: startx,endx,starty,endy,startz,endz, i,j,k
     integer                   :: x,y,z, Oct
-    
+
     ! Do nothing
-    if((TSC.eqv.inTSC) .and. (PC.eqv.inPC) .and. (SC.eqv.TSC)) return 
-  
+    if((TSC.eqv.inTSC) .and. (PC.eqv.inPC) .and. (SC.eqv.TSC)) return
+
     !Create new densityvectortype with normal (nx,ny,nz) size
     NewDen = NewDensityVector()
-    
+
     !---------------------------------------------------------------------------
     ! We divide the transformation by Octants.
     ! For the signs, best to see
@@ -329,11 +329,11 @@ contains
     call FillOct(NewDen%Rho              , Density%Rho              , Oct,+1)
     call FillOct(NewDen%DerRho(:,:,:,1,:), Density%DerRho(:,:,:,1,:), Oct,+1)
     call FillOct(NewDen%DerRho(:,:,:,2,:), Density%DerRho(:,:,:,2,:), Oct,+1)
-    call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,+1)    
+    call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,+1)
     call FillOct(NewDen%LapRho           , Density%LapRho           , Oct,+1)
     call FillOct(NewDen%Tau              , Density%Tau              , Oct,+1)
     call FillOct(NewDen%NablaJ           , Density%NablaJ           , Oct,+1)
-    
+
     if(allocated(NewDen%JMuNu)) then
       call FillOct(NewDen%JMunu(:,:,:,1,1,:), Density%JMuNu(:,:,:,1,1,:),Oct,1)
       call FillOct(NewDen%JMunu(:,:,:,1,2,:), Density%JMuNu(:,:,:,1,2,:),Oct,1)
@@ -345,43 +345,43 @@ contains
       call FillOct(NewDen%JMunu(:,:,:,3,2,:), Density%JMuNu(:,:,:,3,2,:),Oct,1)
       call FillOct(NewDen%JMunu(:,:,:,3,3,:), Density%JMuNu(:,:,:,3,3,:),Oct,1)
     endif
-    
+
     if(.not.TRC) then
       call FillOct(NewDen%vecj(:,:,:,1,:), Density%vecj(:,:,:,1,:),Oct,1)
       call FillOct(NewDen%vecj(:,:,:,2,:), Density%vecj(:,:,:,2,:),Oct,1)
       call FillOct(NewDen%vecj(:,:,:,3,:), Density%vecj(:,:,:,3,:),Oct,1)
-      
+
       call FillOct(NewDen%vecs(:,:,:,1,:), Density%vecs(:,:,:,1,:),Oct,1)
       call FillOct(NewDen%vecs(:,:,:,2,:), Density%vecs(:,:,:,2,:),Oct,1)
       call FillOct(NewDen%vecs(:,:,:,3,:), Density%vecs(:,:,:,3,:),Oct,1)
-    
+
       call FillOct(NewDen%rots(:,:,:,1,:), Density%rots(:,:,:,1,:),Oct,1)
       call FillOct(NewDen%rots(:,:,:,2,:), Density%rots(:,:,:,2,:),Oct,1)
       call FillOct(NewDen%rots(:,:,:,3,:), Density%rots(:,:,:,3,:),Oct,1)
-    
+
       call FillOct(NewDen%rotvecj(:,:,:,1,:), Density%rotvecj(:,:,:,1,:),Oct,1)
       call FillOct(NewDen%rotvecj(:,:,:,2,:), Density%rotvecj(:,:,:,2,:),Oct,1)
       call FillOct(NewDen%rotvecj(:,:,:,3,:), Density%rotvecj(:,:,:,3,:),Oct,1)
-      
+
       call FillOct(NewDen%ders(:,:,:,1,1,:), Density%ders(:,:,:,1,1,:),Oct,1)
       call FillOct(NewDen%ders(:,:,:,1,2,:), Density%ders(:,:,:,1,2,:),Oct,1)
       call FillOct(NewDen%ders(:,:,:,1,3,:), Density%ders(:,:,:,1,3,:),Oct,1)
       call FillOct(NewDen%ders(:,:,:,2,1,:), Density%ders(:,:,:,2,1,:),Oct,1)
       call FillOct(NewDen%ders(:,:,:,2,2,:), Density%ders(:,:,:,2,2,:),Oct,1)
-      call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,1)    
+      call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,1)
       call FillOct(NewDen%ders(:,:,:,3,1,:), Density%ders(:,:,:,3,1,:),Oct,1)
       call FillOct(NewDen%ders(:,:,:,3,2,:), Density%ders(:,:,:,3,2,:),Oct,1)
-      call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,1)    
-      
+      call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,1)
+
       if(allocated(NewDen%LapS)) then
         call FillOct(NewDen%LapS(:,:,:,1,:), Density%LapS(:,:,:,1,:),Oct,1)
         call FillOct(NewDen%LapS(:,:,:,2,:), Density%LapS(:,:,:,2,:),Oct,1)
         call FillOct(NewDen%LapS(:,:,:,3,:), Density%LapS(:,:,:,3,:),Oct,1)
-        
+
         call FillOct(NewDen%graddivS(:,:,:,1,:),Density%gradDivS(:,:,:,1,:),Oct,1)
         call FillOct(NewDen%graddivS(:,:,:,2,:),Density%gradDivS(:,:,:,2,:),Oct,1)
         call FillOct(NewDen%graddivS(:,:,:,3,:),Density%graddivS(:,:,:,3,:),Oct,1)
-      
+
         call FillOct(NewDen%divs(:,:,:,:), Density%divs(:,:,:,:),Oct,1)
       endif
 
@@ -389,17 +389,17 @@ contains
         call FillOct(NewDen%vecF(:,:,:,1,:), Density%vecF(:,:,:,1,:),Oct,1)
         call FillOct(NewDen%vecF(:,:,:,2,:), Density%vecF(:,:,:,2,:),Oct,1)
         call FillOct(NewDen%vecF(:,:,:,3,:), Density%vecF(:,:,:,3,:),Oct,1)
-      endif    
-      
+      endif
+
       if(allocated(NewDen%vecT)) then
         call FillOct(NewDen%vecT(:,:,:,1,:), Density%vecT(:,:,:,1,:),Oct,1)
         call FillOct(NewDen%vecT(:,:,:,2,:), Density%vecT(:,:,:,2,:),Oct,1)
         call FillOct(NewDen%vecT(:,:,:,3,:), Density%vecT(:,:,:,3,:),Oct,1)
-      endif      
+      endif
     endif
     ! End of octant 1
     !---------------------------------------------------------------------------
-    
+
     !---------------------------------------------------------------------------
     ! Octant ( x < 0 , y > 0, z > 0)
     ! Necessary when Signature is not conserved
@@ -408,11 +408,11 @@ contains
       call FillOct(NewDen%Rho              , Density%Rho              , Oct,+1)
       call FillOct(NewDen%DerRho(:,:,:,1,:), Density%DerRho(:,:,:,1,:), Oct,-1)
       call FillOct(NewDen%DerRho(:,:,:,2,:), Density%DerRho(:,:,:,2,:), Oct,+1)
-      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,+1)    
+      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,+1)
       call FillOct(NewDen%LapRho           , Density%LapRho           , Oct,+1)
       call FillOct(NewDen%Tau              , Density%Tau              , Oct,+1)
       call FillOct(NewDen%NablaJ           , Density%NablaJ           , Oct,+1)
-    
+
       if(allocated(NewDen%JMuNu)) then
         call FillOct(NewDen%JMunu(:,:,:,1,1,:),Density%JMuNu(:,:,:,1,1,:),Oct,-1)
         call FillOct(NewDen%JMunu(:,:,:,1,2,:),Density%JMuNu(:,:,:,1,2,:),Oct,+1)
@@ -424,43 +424,43 @@ contains
         call FillOct(NewDen%JMunu(:,:,:,3,2,:),Density%JMuNu(:,:,:,3,2,:),Oct,-1)
         call FillOct(NewDen%JMunu(:,:,:,3,3,:),Density%JMuNu(:,:,:,3,3,:),Oct,-1)
       endif
-    
+
       if(.not.TRC) then
         call FillOct(NewDen%vecj(:,:,:,1,:),Density%vecj(:,:,:,1,:),Oct,+1)
         call FillOct(NewDen%vecj(:,:,:,2,:),Density%vecj(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%vecj(:,:,:,3,:),Density%vecj(:,:,:,3,:),Oct,-1)
-        
+
         call FillOct(NewDen%vecs(:,:,:,1,:), Density%vecs(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%vecs(:,:,:,2,:), Density%vecs(:,:,:,2,:),Oct,+1)
         call FillOct(NewDen%vecs(:,:,:,3,:), Density%vecs(:,:,:,3,:),Oct,+1)
-      
+
         call FillOct(NewDen%rots(:,:,:,1,:), Density%rots(:,:,:,1,:),Oct,+1)
         call FillOct(NewDen%rots(:,:,:,2,:), Density%rots(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%rots(:,:,:,3,:), Density%rots(:,:,:,3,:),Oct,-1)
-      
+
         call FillOct(NewDen%rotvecj(:,:,:,1,:), Density%rotvecj(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%rotvecj(:,:,:,2,:), Density%rotvecj(:,:,:,2,:),Oct,+1)
         call FillOct(NewDen%rotvecj(:,:,:,3,:), Density%rotvecj(:,:,:,3,:),Oct,+1)
-        
+
         call FillOct(NewDen%ders(:,:,:,1,1,:), Density%ders(:,:,:,1,1,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,1,2,:), Density%ders(:,:,:,1,2,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,1,3,:), Density%ders(:,:,:,1,3,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,2,1,:), Density%ders(:,:,:,2,1,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,2,2,:), Density%ders(:,:,:,2,2,:),Oct,+1)
-        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,+1)    
+        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,3,1,:), Density%ders(:,:,:,3,1,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,3,2,:), Density%ders(:,:,:,3,2,:),Oct,+1)
-        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,+1)    
-        
+        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,+1)
+
         if(allocated(NewDen%LapS)) then
           call FillOct(NewDen%LapS(:,:,:,1,:), Density%LapS(:,:,:,1,:),Oct,+1)
           call FillOct(NewDen%LapS(:,:,:,2,:), Density%LapS(:,:,:,2,:),Oct,+1)
           call FillOct(NewDen%LapS(:,:,:,3,:), Density%LapS(:,:,:,3,:),Oct,+1)
-          
+
           call FillOct(NewDen%graddivS(:,:,:,1,:),Density%gradDivS(:,:,:,1,:),Oct,-1)
           call FillOct(NewDen%graddivS(:,:,:,2,:),Density%gradDivS(:,:,:,2,:),Oct,+1)
           call FillOct(NewDen%graddivS(:,:,:,3,:),Density%graddivS(:,:,:,3,:),Oct,+1)
-        
+
           call FillOct(NewDen%divs(:,:,:,:), Density%divs(:,:,:,:),Oct,+1)
         endif
 
@@ -468,13 +468,13 @@ contains
           call FillOct(NewDen%vecF(:,:,:,1,:), Density%vecF(:,:,:,1,:),Oct,-1)
           call FillOct(NewDen%vecF(:,:,:,2,:), Density%vecF(:,:,:,2,:),Oct,+1)
           call FillOct(NewDen%vecF(:,:,:,3,:), Density%vecF(:,:,:,3,:),Oct,+1)
-        endif    
-        
+        endif
+
         if(allocated(NewDen%vecT)) then
           call FillOct(NewDen%vecT(:,:,:,1,:), Density%vecT(:,:,:,1,:),Oct,-1)
           call FillOct(NewDen%vecT(:,:,:,2,:), Density%vecT(:,:,:,2,:),Oct,+1)
           call FillOct(NewDen%vecT(:,:,:,3,:), Density%vecT(:,:,:,3,:),Oct,+1)
-        endif      
+        endif
       endif
     endif
     ! End of Octant 2
@@ -488,11 +488,11 @@ contains
       call FillOct(NewDen%Rho              , Density%Rho              , Oct,+1)
       call FillOct(NewDen%DerRho(:,:,:,1,:), Density%DerRho(:,:,:,1,:), Oct,+1)
       call FillOct(NewDen%DerRho(:,:,:,2,:), Density%DerRho(:,:,:,2,:), Oct,-1)
-      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,+1)    
+      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,+1)
       call FillOct(NewDen%LapRho           , Density%LapRho           , Oct,+1)
       call FillOct(NewDen%Tau              , Density%Tau              , Oct,+1)
       call FillOct(NewDen%NablaJ           , Density%NablaJ           , Oct,+1)
-    
+
       if(allocated(NewDen%JMuNu)) then
         call FillOct(NewDen%JMunu(:,:,:,1,1,:),Density%JMuNu(:,:,:,1,1,:),Oct,-1)
         call FillOct(NewDen%JMunu(:,:,:,1,2,:),Density%JMuNu(:,:,:,1,2,:),Oct,+1)
@@ -504,43 +504,43 @@ contains
         call FillOct(NewDen%JMunu(:,:,:,3,2,:),Density%JMuNu(:,:,:,3,2,:),Oct,-1)
         call FillOct(NewDen%JMunu(:,:,:,3,3,:),Density%JMuNu(:,:,:,3,3,:),Oct,-1)
       endif
-    
+
       if(.not.TRC) then
         call FillOct(NewDen%vecj(:,:,:,1,:),Density%vecj(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%vecj(:,:,:,2,:),Density%vecj(:,:,:,2,:),Oct,+1)
         call FillOct(NewDen%vecj(:,:,:,3,:),Density%vecj(:,:,:,3,:),Oct,-1)
-        
+
         call FillOct(NewDen%vecs(:,:,:,1,:), Density%vecs(:,:,:,1,:),Oct,+1)
         call FillOct(NewDen%vecs(:,:,:,2,:), Density%vecs(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%vecs(:,:,:,3,:), Density%vecs(:,:,:,3,:),Oct,+1)
-      
+
         call FillOct(NewDen%rots(:,:,:,1,:), Density%rots(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%rots(:,:,:,2,:), Density%rots(:,:,:,2,:),Oct,+1)
         call FillOct(NewDen%rots(:,:,:,3,:), Density%rots(:,:,:,3,:),Oct,-1)
-      
+
         call FillOct(NewDen%rotvecj(:,:,:,1,:), Density%rotvecj(:,:,:,1,:),Oct,+1)
         call FillOct(NewDen%rotvecj(:,:,:,2,:), Density%rotvecj(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%rotvecj(:,:,:,3,:), Density%rotvecj(:,:,:,3,:),Oct,+1)
-        
+
         call FillOct(NewDen%ders(:,:,:,1,1,:), Density%ders(:,:,:,1,1,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,1,2,:), Density%ders(:,:,:,1,2,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,1,3,:), Density%ders(:,:,:,1,3,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,2,1,:), Density%ders(:,:,:,2,1,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,2,2,:), Density%ders(:,:,:,2,2,:),Oct,+1)
-        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,-1)    
+        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,3,1,:), Density%ders(:,:,:,3,1,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,3,2,:), Density%ders(:,:,:,3,2,:),Oct,-1)
-        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,+1)    
-        
+        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,+1)
+
         if(allocated(NewDen%LapS)) then
           call FillOct(NewDen%LapS(:,:,:,1,:), Density%LapS(:,:,:,1,:),Oct,+1)
           call FillOct(NewDen%LapS(:,:,:,2,:), Density%LapS(:,:,:,2,:),Oct,-1)
           call FillOct(NewDen%LapS(:,:,:,3,:), Density%LapS(:,:,:,3,:),Oct,+1)
-          
+
           call FillOct(NewDen%graddivS(:,:,:,1,:),Density%gradDivS(:,:,:,1,:),Oct,+1)
           call FillOct(NewDen%graddivS(:,:,:,2,:),Density%gradDivS(:,:,:,2,:),Oct,-1)
           call FillOct(NewDen%graddivS(:,:,:,3,:),Density%graddivS(:,:,:,3,:),Oct,+1)
-        
+
           call FillOct(NewDen%divs(:,:,:,:), Density%divs(:,:,:,:),Oct,+1)
         endif
 
@@ -548,15 +548,15 @@ contains
           call FillOct(NewDen%vecF(:,:,:,1,:), Density%vecF(:,:,:,1,:),Oct,+1)
           call FillOct(NewDen%vecF(:,:,:,2,:), Density%vecF(:,:,:,2,:),Oct,-1)
           call FillOct(NewDen%vecF(:,:,:,3,:), Density%vecF(:,:,:,3,:),Oct,+1)
-        endif    
-        
+        endif
+
         if(allocated(NewDen%vecT)) then
           call FillOct(NewDen%vecT(:,:,:,1,:), Density%vecT(:,:,:,1,:),Oct,+1)
           call FillOct(NewDen%vecT(:,:,:,2,:), Density%vecT(:,:,:,2,:),Oct,-1)
           call FillOct(NewDen%vecT(:,:,:,3,:), Density%vecT(:,:,:,3,:),Oct,+1)
-        endif      
+        endif
       endif
-    endif  
+    endif
     ! End of Octant 3
     !---------------------------------------------------------------------------
 
@@ -568,7 +568,7 @@ contains
       call FillOct(NewDen%Rho              , Density%Rho              , Oct,+1)
       call FillOct(NewDen%DerRho(:,:,:,1,:), Density%DerRho(:,:,:,1,:), Oct,+1)
       call FillOct(NewDen%DerRho(:,:,:,2,:), Density%DerRho(:,:,:,2,:), Oct,+1)
-      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,-1)    
+      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,-1)
       call FillOct(NewDen%LapRho           , Density%LapRho           , Oct,+1)
       call FillOct(NewDen%Tau              , Density%Tau              , Oct,+1)
       call FillOct(NewDen%NablaJ           , Density%NablaJ           , Oct,+1)
@@ -607,10 +607,10 @@ contains
         call FillOct(NewDen%ders(:,:,:,1,3,:), Density%ders(:,:,:,1,3,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,2,1,:), Density%ders(:,:,:,2,1,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,2,2,:), Density%ders(:,:,:,2,2,:),Oct,-1)
-        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,+1)    
+        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,3,1,:), Density%ders(:,:,:,3,1,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,3,2,:), Density%ders(:,:,:,3,2,:),Oct,+1)
-        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,-1)    
+        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,-1)
 
         if(allocated(NewDen%LapS)) then
           call FillOct(NewDen%LapS(:,:,:,1,:), Density%LapS(:,:,:,1,:),Oct,-1)
@@ -628,7 +628,7 @@ contains
           call FillOct(NewDen%vecF(:,:,:,1,:), Density%vecF(:,:,:,1,:),Oct,-1)
           call FillOct(NewDen%vecF(:,:,:,2,:), Density%vecF(:,:,:,2,:),Oct,-1)
           call FillOct(NewDen%vecF(:,:,:,3,:), Density%vecF(:,:,:,3,:),Oct,+1)
-        endif    
+        endif
 
         if(allocated(NewDen%vecT)) then
           call FillOct(NewDen%vecT(:,:,:,1,:), Density%vecT(:,:,:,1,:),Oct,-1)
@@ -639,7 +639,7 @@ contains
     endif
     ! End of Octant 4
     !---------------------------------------------------------------------------
-    
+
     !---------------------------------------------------------------------------
     ! Octant ( x < 0 , y < 0 , z > 0)
     ! Necessary when signature and time simplex are conserved on file, but both
@@ -649,11 +649,11 @@ contains
       call FillOct(NewDen%Rho              , Density%Rho              , Oct,+1)
       call FillOct(NewDen%DerRho(:,:,:,1,:), Density%DerRho(:,:,:,1,:), Oct,-1)
       call FillOct(NewDen%DerRho(:,:,:,2,:), Density%DerRho(:,:,:,2,:), Oct,-1)
-      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,+1)    
+      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,+1)
       call FillOct(NewDen%LapRho           , Density%LapRho           , Oct,+1)
       call FillOct(NewDen%Tau              , Density%Tau              , Oct,+1)
       call FillOct(NewDen%NablaJ           , Density%NablaJ           , Oct,+1)
-      
+
       if(allocated(NewDen%JMuNu)) then
         call FillOct(NewDen%JMunu(:,:,:,1,1,:), Density%JMuNu(:,:,:,1,1,:),Oct,+1)
         call FillOct(NewDen%JMunu(:,:,:,1,2,:), Density%JMuNu(:,:,:,1,2,:),Oct,+1)
@@ -665,43 +665,43 @@ contains
         call FillOct(NewDen%JMunu(:,:,:,3,2,:), Density%JMuNu(:,:,:,3,2,:),Oct,-1)
         call FillOct(NewDen%JMunu(:,:,:,3,3,:), Density%JMuNu(:,:,:,3,3,:),Oct,+1)
       endif
-      
+
       if(.not.TRC) then
         call FillOct(NewDen%vecj(:,:,:,1,:), Density%vecj(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%vecj(:,:,:,2,:), Density%vecj(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%vecj(:,:,:,3,:), Density%vecj(:,:,:,3,:),Oct,+1)
-        
+
         call FillOct(NewDen%vecs(:,:,:,1,:), Density%vecs(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%vecs(:,:,:,2,:), Density%vecs(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%vecs(:,:,:,3,:), Density%vecs(:,:,:,3,:),Oct,+1)
-      
+
         call FillOct(NewDen%rots(:,:,:,1,:), Density%rots(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%rots(:,:,:,2,:), Density%rots(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%rots(:,:,:,3,:), Density%rots(:,:,:,3,:),Oct,+1)
-      
+
         call FillOct(NewDen%rotvecj(:,:,:,1,:), Density%rotvecj(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%rotvecj(:,:,:,2,:), Density%rotvecj(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%rotvecj(:,:,:,3,:), Density%rotvecj(:,:,:,3,:),Oct,+1)
-        
+
         call FillOct(NewDen%ders(:,:,:,1,1,:), Density%ders(:,:,:,1,1,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,1,2,:), Density%ders(:,:,:,1,2,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,1,3,:), Density%ders(:,:,:,1,3,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,2,1,:), Density%ders(:,:,:,2,1,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,2,2,:), Density%ders(:,:,:,2,2,:),Oct,+1)
-        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,-1)    
+        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,3,1,:), Density%ders(:,:,:,3,1,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,3,2,:), Density%ders(:,:,:,3,2,:),Oct,-1)
-        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,+1)    
-        
+        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,+1)
+
         if(allocated(NewDen%LapS)) then
           call FillOct(NewDen%LapS(:,:,:,1,:), Density%LapS(:,:,:,1,:),Oct,-1)
           call FillOct(NewDen%LapS(:,:,:,2,:), Density%LapS(:,:,:,2,:),Oct,-1)
           call FillOct(NewDen%LapS(:,:,:,3,:), Density%LapS(:,:,:,3,:),Oct,+1)
-          
+
           call FillOct(NewDen%graddivS(:,:,:,1,:),Density%gradDivS(:,:,:,1,:),Oct,-1)
           call FillOct(NewDen%graddivS(:,:,:,2,:),Density%gradDivS(:,:,:,2,:),Oct,-1)
           call FillOct(NewDen%graddivS(:,:,:,3,:),Density%graddivS(:,:,:,3,:),Oct,+1)
-        
+
           call FillOct(NewDen%divs(:,:,:,:), Density%divs(:,:,:,:),Oct,+1)
         endif
 
@@ -709,19 +709,19 @@ contains
           call FillOct(NewDen%vecF(:,:,:,1,:), Density%vecF(:,:,:,1,:),Oct,-1)
           call FillOct(NewDen%vecF(:,:,:,2,:), Density%vecF(:,:,:,2,:),Oct,-1)
           call FillOct(NewDen%vecF(:,:,:,3,:), Density%vecF(:,:,:,3,:),Oct,+1)
-        endif    
-        
+        endif
+
         if(allocated(NewDen%vecT)) then
           call FillOct(NewDen%vecT(:,:,:,1,:), Density%vecT(:,:,:,1,:),Oct,-1)
           call FillOct(NewDen%vecT(:,:,:,2,:), Density%vecT(:,:,:,2,:),Oct,-1)
           call FillOct(NewDen%vecT(:,:,:,3,:), Density%vecT(:,:,:,3,:),Oct,+1)
-        endif      
+        endif
       endif
     endif
     ! End of Octant 5
     !---------------------------------------------------------------------------
-    
-    !---------------------------------------------------------------------------    
+
+    !---------------------------------------------------------------------------
     ! Octant ( x < 0 , y > 0, z < 0)
     ! only necessary when signature and parity are conserved on file, but both
     ! are broken in the calculation
@@ -730,11 +730,11 @@ contains
       call FillOct(NewDen%Rho              , Density%Rho              , Oct,+1)
       call FillOct(NewDen%DerRho(:,:,:,1,:), Density%DerRho(:,:,:,1,:), Oct,-1)
       call FillOct(NewDen%DerRho(:,:,:,2,:), Density%DerRho(:,:,:,2,:), Oct,+1)
-      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,-1)    
+      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,-1)
       call FillOct(NewDen%LapRho           , Density%LapRho           , Oct,+1)
       call FillOct(NewDen%Tau              , Density%Tau              , Oct,+1)
       call FillOct(NewDen%NablaJ           , Density%NablaJ           , Oct,+1)
-      
+
       if(allocated(NewDen%JMuNu)) then
         call FillOct(NewDen%JMunu(:,:,:,1,1,:), Density%JMuNu(:,:,:,1,1,:),Oct,+1)
         call FillOct(NewDen%JMunu(:,:,:,1,2,:), Density%JMuNu(:,:,:,1,2,:),Oct,-1)
@@ -746,43 +746,43 @@ contains
         call FillOct(NewDen%JMunu(:,:,:,3,2,:), Density%JMuNu(:,:,:,3,2,:),Oct,-1)
         call FillOct(NewDen%JMunu(:,:,:,3,3,:), Density%JMuNu(:,:,:,3,3,:),Oct,+1)
       endif
-      
+
       if(.not.TRC) then
         call FillOct(NewDen%vecj(:,:,:,1,:), Density%vecj(:,:,:,1,:),Oct,+1)
         call FillOct(NewDen%vecj(:,:,:,2,:), Density%vecj(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%vecj(:,:,:,3,:), Density%vecj(:,:,:,3,:),Oct,+1)
-        
+
         call FillOct(NewDen%vecs(:,:,:,1,:), Density%vecs(:,:,:,1,:),Oct,+1)
         call FillOct(NewDen%vecs(:,:,:,2,:), Density%vecs(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%vecs(:,:,:,3,:), Density%vecs(:,:,:,3,:),Oct,+1)
-      
+
         call FillOct(NewDen%rots(:,:,:,1,:), Density%rots(:,:,:,1,:),Oct,+1)
         call FillOct(NewDen%rots(:,:,:,2,:), Density%rots(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%rots(:,:,:,3,:), Density%rots(:,:,:,3,:),Oct,+1)
-      
+
         call FillOct(NewDen%rotvecj(:,:,:,1,:), Density%rotvecj(:,:,:,1,:),Oct,+1)
         call FillOct(NewDen%rotvecj(:,:,:,2,:), Density%rotvecj(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%rotvecj(:,:,:,3,:), Density%rotvecj(:,:,:,3,:),Oct,+1)
-        
+
         call FillOct(NewDen%ders(:,:,:,1,1,:), Density%ders(:,:,:,1,1,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,1,2,:), Density%ders(:,:,:,1,2,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,1,3,:), Density%ders(:,:,:,1,3,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,2,1,:), Density%ders(:,:,:,2,1,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,2,2,:), Density%ders(:,:,:,2,2,:),Oct,-1)
-        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,+1)    
+        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,3,1,:), Density%ders(:,:,:,3,1,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,3,2,:), Density%ders(:,:,:,3,2,:),Oct,+1)
-        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,-1)    
-        
+        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,-1)
+
         if(allocated(NewDen%LapS)) then
           call FillOct(NewDen%LapS(:,:,:,1,:), Density%LapS(:,:,:,1,:),Oct,+1)
           call FillOct(NewDen%LapS(:,:,:,2,:), Density%LapS(:,:,:,2,:),Oct,-1)
           call FillOct(NewDen%LapS(:,:,:,3,:), Density%LapS(:,:,:,3,:),Oct,+1)
-          
+
           call FillOct(NewDen%graddivS(:,:,:,1,:),Density%gradDivS(:,:,:,1,:),Oct,+1)
           call FillOct(NewDen%graddivS(:,:,:,2,:),Density%gradDivS(:,:,:,2,:),Oct,-1)
           call FillOct(NewDen%graddivS(:,:,:,3,:),Density%graddivS(:,:,:,3,:),Oct,+1)
-        
+
           call FillOct(NewDen%divs(:,:,:,:), Density%divs(:,:,:,:),Oct,-1)
         endif
 
@@ -790,32 +790,32 @@ contains
           call FillOct(NewDen%vecF(:,:,:,1,:), Density%vecF(:,:,:,1,:),Oct,+1)
           call FillOct(NewDen%vecF(:,:,:,2,:), Density%vecF(:,:,:,2,:),Oct,-1)
           call FillOct(NewDen%vecF(:,:,:,3,:), Density%vecF(:,:,:,3,:),Oct,+1)
-        endif    
-        
+        endif
+
         if(allocated(NewDen%vecT)) then
           call FillOct(NewDen%vecT(:,:,:,1,:), Density%vecT(:,:,:,1,:),Oct,+1)
           call FillOct(NewDen%vecT(:,:,:,2,:), Density%vecT(:,:,:,2,:),Oct,-1)
           call FillOct(NewDen%vecT(:,:,:,3,:), Density%vecT(:,:,:,3,:),Oct,+1)
-        endif      
+        endif
       endif
     endif
     !End of Octant 6
     !---------------------------------------------------------------------------
-    
+
     !---------------------------------------------------------------------------
     ! Octant ( x > 0 , y < 0, z < 0)
-    ! only necessary when time simplex and parity are conserved on file, but 
+    ! only necessary when time simplex and parity are conserved on file, but
     ! both are broken in the calculation
     if((inPC.neqv.PC) .and. (inTSC.neqv.TSC)) then
       Oct = 7
      call FillOct(NewDen%Rho              , Density%Rho              , Oct,+1)
       call FillOct(NewDen%DerRho(:,:,:,1,:), Density%DerRho(:,:,:,1,:), Oct,+1)
       call FillOct(NewDen%DerRho(:,:,:,2,:), Density%DerRho(:,:,:,2,:), Oct,-1)
-      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,-1)    
+      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,-1)
       call FillOct(NewDen%LapRho           , Density%LapRho           , Oct,+1)
       call FillOct(NewDen%Tau              , Density%Tau              , Oct,+1)
       call FillOct(NewDen%NablaJ           , Density%NablaJ           , Oct,+1)
-      
+
       if(allocated(NewDen%JMuNu)) then
         call FillOct(NewDen%JMunu(:,:,:,1,1,:), Density%JMuNu(:,:,:,1,1,:),Oct,+1)
         call FillOct(NewDen%JMunu(:,:,:,1,2,:), Density%JMuNu(:,:,:,1,2,:),Oct,-1)
@@ -827,43 +827,43 @@ contains
         call FillOct(NewDen%JMunu(:,:,:,3,2,:), Density%JMuNu(:,:,:,3,2,:),Oct,+1)
         call FillOct(NewDen%JMunu(:,:,:,3,3,:), Density%JMuNu(:,:,:,3,3,:),Oct,-1)
       endif
-      
+
       if(.not.TRC) then
         call FillOct(NewDen%vecj(:,:,:,1,:), Density%vecj(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%vecj(:,:,:,2,:), Density%vecj(:,:,:,2,:),Oct,+1)
         call FillOct(NewDen%vecj(:,:,:,3,:), Density%vecj(:,:,:,3,:),Oct,+1)
-        
+
         call FillOct(NewDen%vecs(:,:,:,1,:), Density%vecs(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%vecs(:,:,:,2,:), Density%vecs(:,:,:,2,:),Oct,+1)
         call FillOct(NewDen%vecs(:,:,:,3,:), Density%vecs(:,:,:,3,:),Oct,+1)
-      
+
         call FillOct(NewDen%rots(:,:,:,1,:), Density%rots(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%rots(:,:,:,2,:), Density%rots(:,:,:,2,:),Oct,+1)
         call FillOct(NewDen%rots(:,:,:,3,:), Density%rots(:,:,:,3,:),Oct,+1)
-      
+
         call FillOct(NewDen%rotvecj(:,:,:,1,:), Density%rotvecj(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%rotvecj(:,:,:,2,:), Density%rotvecj(:,:,:,2,:),Oct,+1)
         call FillOct(NewDen%rotvecj(:,:,:,3,:), Density%rotvecj(:,:,:,3,:),Oct,+1)
-        
+
         call FillOct(NewDen%ders(:,:,:,1,1,:), Density%ders(:,:,:,1,1,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,1,2,:), Density%ders(:,:,:,1,2,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,1,3,:), Density%ders(:,:,:,1,3,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,2,1,:), Density%ders(:,:,:,2,1,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,2,2,:), Density%ders(:,:,:,2,2,:),Oct,-1)
-        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,-1)    
+        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,3,1,:), Density%ders(:,:,:,3,1,:),Oct,+1)
         call FillOct(NewDen%ders(:,:,:,3,2,:), Density%ders(:,:,:,3,2,:),Oct,-1)
-        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,-1)    
-        
+        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,-1)
+
         if(allocated(NewDen%LapS)) then
           call FillOct(NewDen%LapS(:,:,:,1,:), Density%LapS(:,:,:,1,:),Oct,-1)
           call FillOct(NewDen%LapS(:,:,:,2,:), Density%LapS(:,:,:,2,:),Oct,+1)
           call FillOct(NewDen%LapS(:,:,:,3,:), Density%LapS(:,:,:,3,:),Oct,+1)
-          
+
           call FillOct(NewDen%graddivS(:,:,:,1,:),Density%gradDivS(:,:,:,1,:),Oct,-1)
           call FillOct(NewDen%graddivS(:,:,:,2,:),Density%gradDivS(:,:,:,2,:),Oct,+1)
           call FillOct(NewDen%graddivS(:,:,:,3,:),Density%graddivS(:,:,:,3,:),Oct,+1)
-        
+
           call FillOct(NewDen%divs(:,:,:,:), Density%divs(:,:,:,:),Oct,-1)
         endif
 
@@ -871,32 +871,32 @@ contains
           call FillOct(NewDen%vecF(:,:,:,1,:), Density%vecF(:,:,:,1,:),Oct,-1)
           call FillOct(NewDen%vecF(:,:,:,2,:), Density%vecF(:,:,:,2,:),Oct,+1)
           call FillOct(NewDen%vecF(:,:,:,3,:), Density%vecF(:,:,:,3,:),Oct,+1)
-        endif    
-        
+        endif
+
         if(allocated(NewDen%vecT)) then
           call FillOct(NewDen%vecT(:,:,:,1,:), Density%vecT(:,:,:,1,:),Oct,-1)
           call FillOct(NewDen%vecT(:,:,:,2,:), Density%vecT(:,:,:,2,:),Oct,+1)
           call FillOct(NewDen%vecT(:,:,:,3,:), Density%vecT(:,:,:,3,:),Oct,+1)
-        endif      
+        endif
       endif
     endif
     ! End of octant 7
     !---------------------------------------------------------------------------
-    
+
     !---------------------------------------------------------------------------
     ! Octant ( x < 0 , y < 0, z < 0)
-    ! only necessary when all spatial symmetries are conserved on file, but all 
+    ! only necessary when all spatial symmetries are conserved on file, but all
     ! of them are broken in the calculation
     if((inPC.neqv.PC) .and. (inSC.neqv. SC)) then
       Oct = 8
       call FillOct(NewDen%Rho              , Density%Rho              , Oct,+1)
       call FillOct(NewDen%DerRho(:,:,:,1,:), Density%DerRho(:,:,:,1,:), Oct,-1)
       call FillOct(NewDen%DerRho(:,:,:,2,:), Density%DerRho(:,:,:,2,:), Oct,-1)
-      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,-1)    
+      call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,-1)
       call FillOct(NewDen%LapRho           , Density%LapRho           , Oct,+1)
       call FillOct(NewDen%Tau              , Density%Tau              , Oct,+1)
       call FillOct(NewDen%NablaJ           , Density%NablaJ           , Oct,+1)
-      
+
       if(allocated(NewDen%JMuNu)) then
         call FillOct(NewDen%JMunu(:,:,:,1,1,:), Density%JMuNu(:,:,:,1,1,:),Oct,-1)
         call FillOct(NewDen%JMunu(:,:,:,1,2,:), Density%JMuNu(:,:,:,1,2,:),Oct,-1)
@@ -908,43 +908,43 @@ contains
         call FillOct(NewDen%JMunu(:,:,:,3,2,:), Density%JMuNu(:,:,:,3,2,:),Oct,-1)
         call FillOct(NewDen%JMunu(:,:,:,3,3,:), Density%JMuNu(:,:,:,3,3,:),Oct,-1)
       endif
-      
+
       if(.not.TRC) then
         call FillOct(NewDen%vecj(:,:,:,1,:), Density%vecj(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%vecj(:,:,:,2,:), Density%vecj(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%vecj(:,:,:,3,:), Density%vecj(:,:,:,3,:),Oct,-1)
-        
+
         call FillOct(NewDen%vecs(:,:,:,1,:), Density%vecs(:,:,:,1,:),Oct,+1)
         call FillOct(NewDen%vecs(:,:,:,2,:), Density%vecs(:,:,:,2,:),Oct,+1)
         call FillOct(NewDen%vecs(:,:,:,3,:), Density%vecs(:,:,:,3,:),Oct,+1)
-      
+
         call FillOct(NewDen%rots(:,:,:,1,:), Density%rots(:,:,:,1,:),Oct,-1)
         call FillOct(NewDen%rots(:,:,:,2,:), Density%rots(:,:,:,2,:),Oct,-1)
         call FillOct(NewDen%rots(:,:,:,3,:), Density%rots(:,:,:,3,:),Oct,-1)
-      
+
         call FillOct(NewDen%rotvecj(:,:,:,1,:), Density%rotvecj(:,:,:,1,:),Oct,+1)
         call FillOct(NewDen%rotvecj(:,:,:,2,:), Density%rotvecj(:,:,:,2,:),Oct,+1)
         call FillOct(NewDen%rotvecj(:,:,:,3,:), Density%rotvecj(:,:,:,3,:),Oct,+1)
-        
+
         call FillOct(NewDen%ders(:,:,:,1,1,:), Density%ders(:,:,:,1,1,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,1,2,:), Density%ders(:,:,:,1,2,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,1,3,:), Density%ders(:,:,:,1,3,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,2,1,:), Density%ders(:,:,:,2,1,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,2,2,:), Density%ders(:,:,:,2,2,:),Oct,-1)
-        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,-1)    
+        call FillOct(NewDen%ders(:,:,:,2,3,:), Density%ders(:,:,:,2,3,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,3,1,:), Density%ders(:,:,:,3,1,:),Oct,-1)
         call FillOct(NewDen%ders(:,:,:,3,2,:), Density%ders(:,:,:,3,2,:),Oct,-1)
-        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,-1)    
-        
+        call FillOct(NewDen%ders(:,:,:,3,3,:), Density%ders(:,:,:,3,3,:),Oct,-1)
+
         if(allocated(NewDen%LapS)) then
           call FillOct(NewDen%LapS(:,:,:,1,:), Density%LapS(:,:,:,1,:),Oct,+1)
           call FillOct(NewDen%LapS(:,:,:,2,:), Density%LapS(:,:,:,2,:),Oct,+1)
           call FillOct(NewDen%LapS(:,:,:,3,:), Density%LapS(:,:,:,3,:),Oct,+1)
-          
+
           call FillOct(NewDen%graddivS(:,:,:,1,:),Density%gradDivS(:,:,:,1,:),Oct,+1)
           call FillOct(NewDen%graddivS(:,:,:,2,:),Density%gradDivS(:,:,:,2,:),Oct,+1)
           call FillOct(NewDen%graddivS(:,:,:,3,:),Density%graddivS(:,:,:,3,:),Oct,+1)
-        
+
           call FillOct(NewDen%divs(:,:,:,:), Density%divs(:,:,:,:),Oct,-1)
         endif
 
@@ -952,13 +952,13 @@ contains
           call FillOct(NewDen%vecF(:,:,:,1,:), Density%vecF(:,:,:,1,:),Oct,+1)
           call FillOct(NewDen%vecF(:,:,:,2,:), Density%vecF(:,:,:,2,:),Oct,+1)
           call FillOct(NewDen%vecF(:,:,:,3,:), Density%vecF(:,:,:,3,:),Oct,+1)
-        endif    
-        
+        endif
+
         if(allocated(NewDen%vecT)) then
           call FillOct(NewDen%vecT(:,:,:,1,:), Density%vecT(:,:,:,1,:),Oct,+1)
           call FillOct(NewDen%vecT(:,:,:,2,:), Density%vecT(:,:,:,2,:),Oct,+1)
           call FillOct(NewDen%vecT(:,:,:,3,:), Density%vecT(:,:,:,3,:),Oct,+1)
-        endif      
+        endif
       endif
     endif
     !---------------------------------------------------------------------------
@@ -967,13 +967,11 @@ contains
     Density =  NewDen
   end subroutine TransformDensities
 
-  subroutine TransformHFBMatrices(inU, inV, inRho, InKappa,inPC,inIC, InColumns, InputBlocksizes)
-    !-----------------------------------------------------------------
+  subroutine TransformHFBMatrices(inU, inV, inRho, InKappa,inPC,inIC,          &
+    &                                                InColumns, InputBlocksizes)
+    !---------------------------------------------------------------------------
     ! Subroutine to transform all HFB matrices.
-    !
-    !
-    !
-    !
+    !---------------------------------------------------------------------------
 
     use HFB
 
@@ -981,7 +979,7 @@ contains
     complex(KIND=dp),intent(in)   :: InU(:,:,:,:), InV(:,:,:,:)
     integer, intent(in)           :: InputBlockSizes(2,2), InColumns(:,:,:)
     logical, intent(in)           :: inPC, inIC
-    integer                       :: sizes(2),it,i
+    integer                       :: sizes(2),it,i,j, check
 
     if(.not. inIC) then
         call stp('No rules to transform the HFB matrices yet when breaking Isospin.')
@@ -995,35 +993,33 @@ contains
         V        = inV
         HFBColumns = inColumns
     else
-        call stp('Not correctly implemented transformation rules for parity yet.')
-
         !---------------------------------------------------------------------
         ! On file, we have for Kappa:
         !
         !          (  0    K^+ )            (  0    K^- )
         !          (           )    and     (           )
         !          ( -K^+  0   )            ( -K^-  0   )
-        ! 
+        !
         ! And for Rho:
-        !           
+        !
         !          (  R^+_+  0    )           (  R^-_+   0   )
         !          (              )   and     (              )
         !          (  0    R^+_-  )           (  0     R^-_- )
-        !           
+        !
         ! And for U
         !          ( U^+_+     0    )           (  U^-_+     0    )
-        !          (                )   and     (                 )  
+        !          (                )   and     (                 )
         !          ( 0        U^+_- )           (  0         U^-_+)
         !
         ! And for V
         !          ( 0        V^+_-   )         (  0       V^-_+  )
-        !          (                  )   and   (                 )  
-        !          ( V^+_+     0      )         (  V^-_+   U^-_+  )          
-        ! 
+        !          (                  )   and   (                 )
+        !          ( V^+_+     0      )         (  V^-_+   U^-_+  )
+        !
         !
         !---------------------------------------------------------------------
         !
-        ! The correct forms are 
+        ! The correct forms are
         ! (using the order of wavefunctions as generated by the NIL8 code)
         !
         !                ( 0    0    K^+ 0  )
@@ -1031,46 +1027,117 @@ contains
         !                ( -K^+ 0    0   0  )
         !                ( 0   -K^-  0   0  )
         !
-        !  Rho   =       ( R^+_+ 0      0     0    ) 
+        !  Rho   =       ( R^+_+ 0      0     0    )
         !                ( 0     R^-_+  0     0    )
         !                ( 0     0      R^+_- 0    )
-        !                ( 0     0      0     R^-_-)   
+        !                ( 0     0      0     R^-_-)
         !
         !----------------------------------------------------------------------
+        if(.not.allocated(HFBColumns)) then
+          allocate(HFBColumns(HFBSize,1,2)) ; HFBColumns = 0
+        endif
+
+        if(.not. SC) then
+          print *, 'WARNING: TRANSFORMATION RULES FOR U AND V MIGHT NOT BE '   &
+          &      //'CORRECT WHEN BREAKING PARITY FROM A SIGNATURE BROKEN '     &
+          &      //'CALCULATION.'
+        endif
 
         do it=1,2
             sizes = InputBlocksizes(:,it)
+            !-------------------------------------------------------------------
+            ! Anomalous density matrix
 
-!             ! Parity plus, meaning P=2 for inputKappa and input Rho
-!             KappaHFB(sum(sizes)/2+1:sum(sizes)/2+sizes(2)/2,1:sizes(2)/2,1,it)            &
-!             &                            = InKappa(sizes(2)/2+1:sizes(2),1:sizes(2)/2,2,it)
-!             ! Parity minus, meaning P=1 for inputKappa
-!             KappaHFB(sum(sizes)/2+sizes(2)/2+1:sum(sizes),sizes(2)/2+1:sum(sizes)/2,1,it )&
-!             &                            = InKappa(sizes(1)/2+1:sizes(1),1:sizes(1)/2,1,it)
+            ! Parity plus, meaning P=2 for inputKappa and input Rho
+            KappaHFB(sum(sizes)/2+1:sum(sizes)/2+sizes(2)/2,1:sizes(2)/2,1,it) &
+            &                 = InKappa(sizes(2)/2+1:sizes(2),1:sizes(2)/2,2,it)
+            ! Parity minus, meaning P=1 for inputKappa
+            KappaHFB(sum(sizes)/2+sizes(2)/2+1:sum(sizes),                     &
+            &                     sizes(2)/2+1:sum(sizes)/2,1,it )             &
+            &                 = InKappa(sizes(1)/2+1:sizes(1),1:sizes(1)/2,1,it)
 
-!             ! Antisymmetrize Kappa
-!             do i=1,HFBSize
-!               do j=i+1, HFBSize
-!                 OutKappa(i,j,1,it) = - OutKappa(j,i,1,it)
-!               enddo
-!             enddo
+            ! Antisymmetrize Kappa
+            do i=1,HFBSize
+              do j=i+1, HFBSize
+                KappaHFB(i,j,1,it) = - KappaHFB(j,i,1,it)
+              enddo
+            enddo
 
-!             ! Positive parity, positive signature
-!             RhoHFB(1:sizes(2)/2,1:sizes(2)/2,1,it)                                        &
-!             &                                       = InRho(1:sizes(2)/2,1:sizes(2)/2,2,it)
-!             ! Negative parity, positive signature
-!             RhoHFB(sizes(2)/2+1:sum(sizes)/2,sizes(2)/2+1:sum(sizes)/2,1,it)              &
-!             &                                       = InRho(1:sizes(1)/2,1:sizes(1)/2,1,it)
+            !-------------------------------------------------------------------
+            ! Density matrix
+            ! Positive parity, positive signature
+            RhoHFB(1:sizes(2)/2,1:sizes(2)/2,1,it)                             &
+            &                            = InRho(1:sizes(2)/2,1:sizes(2)/2,2,it)
+            ! Negative parity, positive signature
+            RhoHFB(sizes(2)/2+1:sum(sizes)/2,sizes(2)/2+1:sum(sizes)/2,1,it)   &
+            &                            = InRho(1:sizes(1)/2,1:sizes(1)/2,1,it)
 
-!             ! Positive parity, negative signature
-!             RhoHFB(sum(sizes)/2+1:sum(sizes)/2+sizes(1)/2,sum(sizes)/2+1:sum(sizes)/2+sizes(1)/2,1,it) &                                        &
-!             &                      = InRho(sizes(2)/2+1:sizes(2),sizes(2)/2+1:sizes(2),2,it)
-!             ! Negative parity, negative signature
-!             RhoHFB(sum(sizes)/2+sizes(1)/2+1:sum(sizes),sum(sizes)/2+sizes(1)/2+1:sum(sizes),1,it) &
-!             &                      = InRho(sizes(1)/2+1:sizes(1),sizes(1)/2+1:sizes(1),1,it)
+            ! Positive parity, negative signature
+            RhoHFB(sum(sizes)/2+1:sum(sizes)/2+sizes(1)/2,                     &
+            &      sum(sizes)/2+1:sum(sizes)/2+sizes(1)/2,1,it)                &
+            &          = InRho(sizes(2)/2+1:sizes(2),sizes(2)/2+1:sizes(2),2,it)
+            ! Negative parity, negative signature
+            RhoHFB(sum(sizes)/2+sizes(2)/2+1:sum(sizes),                       &
+            &      sum(sizes)/2+sizes(2)/2+1:sum(sizes),1,it)                  &
+            &          = InRho(sizes(1)/2+1:sizes(1),sizes(1)/2+1:sizes(1),1,it)
 
-            
-         enddo
+            !-------------------------------------------------------------------
+            ! U and V matrices
+            ! The order of these is not very important, as long as the
+            ! HFBColumns matrix is correctly initialized.
+            U(:,:,:,it) = 0.0d0 ; V(:,:,:,it) = 0.0d0
+
+            ! Positive parity, positive signature
+            U(1:sizes(2)/2, 1:sizes(2),1,it) =                                 &
+            &                               inU(1:sizes(2)/2, 1:sizes(2),2,it)
+
+            ! Negative parity, positive signature
+            U(sizes(2)/2+1:sum(sizes)/2, sizes(2)+1:sum(sizes),1,it) =         &
+            &                            inU( 1:sizes(1)/2,   1:sizes(1),1,it)
+
+            ! Positive parity, negative signature
+            U(sum(sizes)/2+1:sizes(2)+sizes(1)/2,                              &
+            & sum(sizes)+1:sum(sizes) + sizes(2),1,it) =                       &
+            &             inU(sizes(2)/2+1:sizes(2), sizes(2)+1:2*sizes(2),2,it)
+
+            ! Negative parity, negative signature
+            U(  sizes(2)+sizes(1)/2+1:  sum(sizes),                            &
+            & 2*sizes(2)+sizes(1)  +1:2*sum(sizes),1,it)=                      &
+            &             inU(sizes(1)/2+1:sizes(1), sizes(1)+1:2*sizes(1),1,it)
+            !
+
+            V(sum(sizes)/2 + 1:sum(sizes)/2 + sizes(2)/2, 1:sizes(2),1,it) =   &
+            &                        inV(sizes(2)/2+1:sizes(2), 1:sizes(2),2,it)
+
+            V(sizes(2)+sizes(1)/2+1:sum(sizes), sizes(2)+1:sum(sizes),1,it) =  &
+            &                        inV(sizes(1)/2+1:sizes(1), 1:sizes(1),1,it)
+
+            V(1:sizes(2)/2,                                                    &
+            & sum(sizes) +1: sum(sizes) + sizes(2),1,it) =                     &
+            &              inV(1:sizes(2),sizes(2)+1:2*sizes(2),2,it)
+
+            V(sizes(2)/2+1:sum(sizes)/2,                                       &
+            & sum(sizes) + sizes(2)+1: 2*sum(sizes),1,it) =                    &
+            &              inV(1:sizes(1),sizes(1)+1:2*sizes(1),1,it)
+            !
+
+            do i=1,sizes(2)
+              if(Incolumns(i,2,it) .gt. sizes(2)) then
+                HFBColumns(i,1,it) = Incolumns(i,2,it) + sizes(1)
+              else
+                HFBColumns(i,1,it) = Incolumns(i,2,it)
+              endif
+            enddo
+
+            do i=1,sizes(1)
+              if(Incolumns(i,1,it) .gt. sizes(1)) then
+                HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) + 2*sizes(2)
+              else
+                HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) + sizes(2)
+              endif
+            enddo
+
+        enddo
     endif
 end subroutine TransformHFBMatrices
 
@@ -1105,7 +1172,7 @@ end subroutine TransformHFBMatrices
 !         !          (  0    K^+ )           (  0    K^- )
 !         !          (           )   and     (           )
 !         !          ( -K^+  0   )           ( -K^-  0   )
-!         ! 
+!         !
 !         ! HOWEVER, taking as the following as NEW kappa is NOT ALLOWED!
 !         !
 !         !          (  0    K^+   0    0   )
@@ -1130,13 +1197,13 @@ end subroutine TransformHFBMatrices
 !         allocate(OutKappa(HFBSize,HFBSize,1,2)) ; OutKappa = 0.0_dp
 !         do it=1,2
 !             sizes = InputBlocksizes(:,it)
-            
+
 !             OutKappa(sum(sizes)/2+1:sum(sizes)/2+sizes(2)/2,1:sizes(2)/2,1,it)            &
 !             & = InKappa(sizes(2)/2+1:sizes(2),1:sizes(2)/2,2,it)
-            
+
 !             OutKappa(sum(sizes)/2+sizes(2)/2+1:sum(sizes),sizes(2)/2+1:sum(sizes)/2,1,it )&
 !             & = InKappa(sizes(1)/2+1:sizes(1),1:sizes(1)/2,1,it)
-            
+
 !             do i=1,HFBSize
 !               do j=i+1, HFBSize
 !                 OutKappa(i,j,1,it) = - OutKappa(j,i,1,it)
@@ -1158,7 +1225,7 @@ end subroutine TransformHFBMatrices
 
     N = size(A,1)
     allocate(Temp(N)) ; Temp = 0.0d0
-    if(index1 .gt. N .or. index2 .gt. N) stop 
+    if(index1 .gt. N .or. index2 .gt. N) stop
 
     !First switch rows
     Temp = A(index1,:)
@@ -1179,9 +1246,9 @@ end subroutine TransformHFBMatrices
     !---------------------------------------------------------------------------
     type(Spwf)          :: wf
     integer, intent(in) :: Direction, Coord
-    
+
     select case(Direction)
-    
+
     case(1)
       call DisplaceX(wf,coord)
     case(2)
@@ -1191,12 +1258,12 @@ end subroutine TransformHFBMatrices
     case DEFAULT
       call stp('Non-cartesian direction in Displace!')
     end select
-  
+
   end subroutine Displace
 
   subroutine DisplaceX(wf,coord)
     !---------------------------------------------------------------------------
-    ! Displace the wavefunction in the X-direction with 'coord' points. 
+    ! Displace the wavefunction in the X-direction with 'coord' points.
     !---------------------------------------------------------------------------
     use Spinors
 
@@ -1204,11 +1271,11 @@ end subroutine TransformHFBMatrices
     integer, intent(in) :: coord
     integer             :: startx,endx,i
     type(Spinor)        :: Displaced, Temp
-    
+
     if(Coord.eq.0) return
     !---------------------------------------------------------------------------
     ! Check for signature
-    if(SC) then 
+    if(SC) then
       call stp('DisplaceX should not be called when signature is conserved!')
     endif
     !---------------------------------------------------------------------------
@@ -1229,10 +1296,10 @@ end subroutine TransformHFBMatrices
     enddo
     call wf%SetGrid(Displaced)
   end subroutine DisplaceX
-  
+
   subroutine DisplaceY(wf,coord)
     !---------------------------------------------------------------------------
-    ! Displace the wavefunction in the y-direction with 'coord' points. 
+    ! Displace the wavefunction in the y-direction with 'coord' points.
     !---------------------------------------------------------------------------
     use Spinors
 
@@ -1240,11 +1307,11 @@ end subroutine TransformHFBMatrices
     integer, intent(in) :: coord
     integer             :: starty,endy,j
     type(Spinor)        :: Displaced, Temp
-    
+
     if(Coord.eq.0) return
     !---------------------------------------------------------------------------
     ! Check for TimeSimplex
-    if(TSC) then 
+    if(TSC) then
       call stp('DisplaceY should not be called when TimeSimplex is conserved!')
     endif
     !---------------------------------------------------------------------------
@@ -1265,21 +1332,21 @@ end subroutine TransformHFBMatrices
     enddo
     call wf%SetGrid(Displaced)
   end subroutine DisplaceY
-  
+
   subroutine DisplaceZ(wf,coord)
     !---------------------------------------------------------------------------
-    ! Displace the wavefunction in the z-direction with 'coord' points. 
+    ! Displace the wavefunction in the z-direction with 'coord' points.
     !---------------------------------------------------------------------------
     use SPinors
     type(Spwf)          :: wf
     integer, intent(in) :: coord
     integer             :: startz,endz,k
     type(Spinor)        :: Displaced, Temp
-    
+
     if(Coord.eq.0) return
     !---------------------------------------------------------------------------
     ! Check for TimeSimplex
-    if(PC) then 
+    if(PC) then
       call stp('DisplaceZ should not be called when Parity is conserved!')
     endif
     !---------------------------------------------------------------------------
@@ -1289,7 +1356,7 @@ end subroutine TransformHFBMatrices
       endz   = nz
     else
       startz = 1
-      endz   = nz - Coord 
+      endz   = nz - Coord
     endif
     Temp = wf%GetValue()
     !---------------------------------------------------------------------------
@@ -1306,33 +1373,33 @@ end subroutine TransformHFBMatrices
     ! Wrapper subroutine for symmetrically displacing the input wavefunction.
     !
     ! The output is are the wavefunctions
-    ! 
+    !
     ! sqrt(2) * outwf1 = [T_(x/y/z) (a) + T_(x/y/z) (-a)] inwf
     ! sqrt(2) * outwf2 = [T_(x/y/z) (a) - T_(x/y/z) (-a)] inwf
     !
-    ! Note that outwf1 will in general share quantum numbers with inwf, 
+    ! Note that outwf1 will in general share quantum numbers with inwf,
     ! but outwf2 will not!
     !---------------------------------------------------------------------------
     type(Spwf), intent(in) :: inwf
     type(Spwf), intent(out):: outwf1, outwf2
     integer, intent(in)    :: Coord, Direction
-    
+
     select case(Direction)
     case(1)
       call SymDisplaceX(inwf,outwf1,outwf2,Coord)
     case(2)
       call SymDisplaceY(inwf,outwf1,outwf2,Coord)
     case(3)
-      call SymDisplaceZ(inwf,outwf1,outwf2,Coord)            
+      call SymDisplaceZ(inwf,outwf1,outwf2,Coord)
     end select
-    
+
   end subroutine SymDisplace
-  
+
   subroutine SymDisplaceX(inwf,outwf1,outwf2, Coord)
     !---------------------------------------------------------------------------
     ! Symmetrically displace inwf over Coord to outwf1 & outwf2.
-    ! The output is 
-    ! 
+    ! The output is
+    !
     ! sqrt(2) * outwf1 = [T_(x) (a) + T_(x) (-a)] inwf
     ! sqrt(2) * outwf2 = [T_(x) (a) - T_(x) (-a)] inwf
     !
@@ -1343,14 +1410,14 @@ end subroutine TransformHFBMatrices
     ! operator.
     !---------------------------------------------------------------------------
     use Spinors
-    
+
     type(Spwf), intent(in) :: inwf
     type(Spwf), intent(out):: outwf1, outwf2
     type(Spwf)             :: workwf
     integer, intent(in)    :: Coord
     integer                :: startx(2),endx(2), q, i,j,k
     type(Spinor)           :: Displaced(2), Symmetric(2), Temp, Final(2)
-    
+
     if(Coord.eq.0) call stp("Don't displace by zero!")
     !---------------------------------------------------------------------------
     ! Make an initial copy
@@ -1399,9 +1466,9 @@ end subroutine TransformHFBMatrices
       enddo
     endif
     !---------------------------------------------------------------------------
-    ! Setting the result to the output wavefunctions, and change parity and 
+    ! Setting the result to the output wavefunctions, and change parity and
     ! signature of the second wavefunction.
-    call outwf1%SetGrid(Final(1)) 
+    call outwf1%SetGrid(Final(1))
     if(TSC) then
       call outwf2%SetGrid(TimeReverse(Final(2)))
     else
@@ -1410,12 +1477,12 @@ end subroutine TransformHFBMatrices
     endif
     call outwf2%SetParity(- inwf%GetParity())
   end subroutine SymDisplaceX
-  
+
   subroutine SymDisplaceY(inwf,outwf1,outwf2, Coord)
     !---------------------------------------------------------------------------
     ! Symmetrically displace inwf over Coord to outwf1 & outwf2.
-    ! The output is 
-    ! 
+    ! The output is
+    !
     ! sqrt(2) * outwf1 = [T_(y) (a) + T_(y) (-a)] inwf
     ! sqrt(2) * outwf2 = [T_(y) (a) - T_(y) (-a)] inwf
     !
@@ -1432,7 +1499,7 @@ end subroutine TransformHFBMatrices
     integer, intent(in)    :: Coord
     integer                :: starty(2),endy(2), q, i,j,k
     type(Spinor)           :: Displaced(2), Symmetric(2), Temp, Final(2)
-    
+
     if(Coord.eq.0) call stp("Don't displace by zero!")
     !---------------------------------------------------------------------------
     ! Make an initial copy
@@ -1481,26 +1548,26 @@ end subroutine TransformHFBMatrices
       enddo
     endif
     !---------------------------------------------------------------------------
-    ! Setting the result to the output wavefunctions, and change parity, 
+    ! Setting the result to the output wavefunctions, and change parity,
     ! signature and time simplex of the second wavefunction.
-    call outwf1%SetGrid(Final(1)) 
+    call outwf1%SetGrid(Final(1))
     if(TSC) then
       Final(2) = TimeReverse(Final(2))
     else
       call outwf2%SetSignature(-inwf%GetSignature())
     endif
     call outwf2%SetParity(- inwf%GetParity())
-    if(TSC) then 
+    if(TSC) then
       Final(2) = - Final(2)
     endif
     call outwf2%SetGrid(Final(2))
   end subroutine SymDisplaceY
-  
+
   subroutine SymDisplaceZ(inwf,outwf1,outwf2, Coord)
     !---------------------------------------------------------------------------
     ! Symmetrically displace inwf over Coord to outwf1 & outwf2.
-    ! The output is 
-    ! 
+    ! The output is
+    !
     ! sqrt(2) * outwf1 = [T_(z) (a) + T_(z) (-a)] inwf
     ! sqrt(2) * outwf2 = [T_(z) (a) - T_(z) (-a)] inwf
     !
@@ -1513,7 +1580,7 @@ end subroutine TransformHFBMatrices
     integer, intent(in)    :: Coord
     integer                :: startz(2),endz(2), q, i,j,k
     type(Spinor)           :: Displaced(2), Symmetric(2), Temp, Final(2)
-    
+
     if(Coord.eq.0) call stp("Don't displace by zero!")
     !---------------------------------------------------------------------------
     ! Make an initial copy
@@ -1562,25 +1629,25 @@ end subroutine TransformHFBMatrices
       enddo
     endif
     !---------------------------------------------------------------------------
-    ! Setting the result to the output wavefunctions, and change parity of the 
+    ! Setting the result to the output wavefunctions, and change parity of the
     ! second wavefunction.
     call outwf2%SetParity(- inwf%GetParity())
     call outwf2%SetGrid(Final(2))
-    call outwf1%SetGrid(Final(1))  
+    call outwf1%SetGrid(Final(1))
   end subroutine SymDisplaceZ
- 
+
   subroutine BreakTimeReversal(wf, NewWfOne,NewWfTwo)
   !-----------------------------------------------------------------------------
-  ! This subroutine takes as input a wavefunction wf with conserved time 
-  ! reversal symmetry. Two new wavefunctions NewWfOne and newWFTwo get created 
+  ! This subroutine takes as input a wavefunction wf with conserved time
+  ! reversal symmetry. Two new wavefunctions NewWfOne and newWFTwo get created
   ! with opposite signatures.
   !-----------------------------------------------------------------------------
 
     use Spinors
-    
+
     type(Spwf), intent(in) :: wf
     type(Spwf), intent(out):: NewWFOne, NewWFTwo
-    type(Spinor)           :: Temp 
+    type(Spinor)           :: Temp
 
     !Checking input
     if(wf%GetTimeReversal().eq.0) call stp("Time Reversal is already broken!")

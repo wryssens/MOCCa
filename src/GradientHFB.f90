@@ -10,11 +10,11 @@ module GradientHFB
 
   !----------------------------------------------------------------
   ! Store single-particle hamiltonian and delta in block-form
-  real(KIND=dp), allocatable :: hblock(:,:,:,:), dblock(:,:,:,:)
+  real(KIND=dp), allocatable :: hblock(:,:,:,:)   ,dblock(:,:,:,:)
 
-  real(KIND=dp),allocatable  :: Gradient(:,:,:,:),OldGrad(:,:,:,:)
+  real(KIND=dp),allocatable  :: Gradient(:,:,:,:) ,OldGrad(:,:,:,:)
   real(KIND=dp),allocatable  :: aN20(:,:,:,:)
-  real(KIND=dp),allocatable  :: oldgradU(:,:,:,:),oldgradV(:,:,:,:)
+  real(KIND=dp),allocatable  :: oldgradU(:,:,:,:) ,oldgradV(:,:,:,:)
   real(KIND=dp),allocatable  :: Direction(:,:,:,:), OldDir(:,:,:,:)
 
   procedure(H20_sig), pointer            :: H20
@@ -84,9 +84,6 @@ contains
                   ind(P,it) = ind(P,it)+ 1
                 endif
             enddo
-            if(ind(P,it).ne.N+1) then
-              call stp('errorcheckind', 'N', n, 'ind', ind(P,it))
-            endif
         enddo
     enddo
 
@@ -149,6 +146,10 @@ contains
 
   subroutine HFBFermiGradient(Fermi,L2,Delta,DeltaLN,Lipkin,Prec)
 
+    1 format (' WARNING: Gradient HFBsolver did not converge.')
+    2 format (' Particles: ' , 2f10.7)
+    3 format (' Norm of gradient:', f10.7)
+
     implicit none
 
     real(KIND=dp), intent(inout)              :: Fermi(2), L2(2)
@@ -206,8 +207,6 @@ contains
           n20norm(it) = 0.0d0
           do P=1,Pindex
               N = blocksizes(P,it)
-
-              if(any(GradU(:,:,P,it) .eq. GradU(:,:,P,it) + 1 ))call stp('inigrad')
 
               Oldgrad(1:N,1:N,p,it)  = Gradient(1:N,1:N,P,it)
               Gradient(1:N,1:N,P,it) = H20(GradU(1:N,1:N,P,it),                &
@@ -295,59 +294,33 @@ contains
               oldnorm(P,it)         = gradientnorm(P,it)
           enddo
       enddo
-      print *, iter, gradientnorm
-      if(all(converged)) then
-        print *, 'Converged', iter
-        exit
+
+      if(any(.not. converged) .and. iter.eq.HFBIter) then
+        print 1
+        print 2, Par
+        print 3, sum(abs(GradientNorm))
       endif
    enddo
    call OutHFBModule
  end subroutine HFBFermiGradient
 
-  subroutine Linesearch(OldU, OldV, Grad, Direction, maxstep, Ulim, Vlim, hlim, Dlim, Fermi)
-    !-------------------------------------------------
-    ! This does not really speed up our algorithm...
-    !
-    !
-    !-------------------------------------------------
+  subroutine Linesearch(OldU, OldV, Grad, Direction, maxstep, Ulim, Vlim, hlim,&
+    &                   Dlim, Fermi)
+    !---------------------------------------------------------------------------
+    ! This linesearch algorithm is deprecated: it failed to do better than a
+    ! fixed step algorithm.
+    ! So, if anyone wants to try again, feel free, the API is there.
+    !---------------------------------------------------------------------------
+    ! What does not work:
+    !   *) backtracking line-search with Wolfe Conditions on the energy
+    !---------------------------------------------------------------------------
     real(KIND=dp), intent(in) :: OldU(:,:), OldV(:,:), hlim(:,:), Dlim(:,:)
     real(KIND=dp), intent(in) :: Grad(:,:), Fermi
     real(KIND=dp), intent(out):: Ulim(:,:), Vlim(:,:)
     real(KIND=dp), intent(inout) :: maxstep,Direction(:,:)
 
-    real(KIND=dp), allocatable :: rho(:,:), kappa(:,:), E, step, Estart, slope
-    integer :: i,j,k,N, iter, reset
-
-    if(.not.allocated(rho)) then
-      N = maxval(blocksizes)
-      allocate(Rho(N,N))  ; Rho = 0.0d0
-      allocate(Kappa(N,N)); Kappa=0.0d0
-    endif
-
-    N = size(OldU,1)
-
     call GradUpdate(maxstep, oldU,oldV,Direction,Ulim,Vlim)
-    !
-    ! !call stp('Search direction is not a descent direction.', 'slope', slope)
-    !
-    ! rho(1:N,1:N)  = ConstructRho(OldV)
-    ! kappa(1:N,1:N)= ConstructKappa(OldU,OldV)
-    !
-    ! Estart = Energy(hlim,Dlim,rho,kappa, Fermi)
-    !
-    ! maxstep = maxstep * 100
-    ! do iter=1,10
-    !
-    !   call GradUpdate(maxstep, oldU,oldV,Direction,Ulim,Vlim)
-    !   rho(1:N,1:N)  = ConstructRho(Vlim)
-    !   kappa(1:N,1:N)= ConstructKappa(Ulim,Vlim)
-    !
-    !   E = Energy(hlim,Dlim,rho,kappa, Fermi)
-    !   print *, maxstep, E
-    !   maxstep = maxstep * 0.8
-    ! enddo
-    ! print *, maxstep
-    ! stop
+
   end subroutine Linesearch
 
   function ConstructRho_nosig(Vlim) result(Rho)

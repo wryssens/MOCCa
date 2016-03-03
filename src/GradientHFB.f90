@@ -310,7 +310,11 @@ contains
           ! This is why we don't include the Fermi contribution directly in the
           ! HFBHamiltonian. In this way, we get more control over the conjugate
           ! descent in the Fermi direction and (hopefully) faster convergence.
-          Fermi(it) = Fermi(it) + (Particles(it) - par(it))/N20norm(it)
+          if(abs(N20Norm(it)).gt.1d-10) then
+            Fermi(it) = Fermi(it) + (Particles(it) - par(it))/N20norm(it)
+          else
+            Fermi(it) = Fermi(it) + 0.1*(Particles(it) - par(it))
+          endif
           ! We don't take this luxury for the L2 variable, as it is kind of a
           ! nonsense to add it anyway.
           if(Lipkin) then

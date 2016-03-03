@@ -8,10 +8,10 @@ module InOutput
   use Transform
   use SpwfFactory
   use Interfaces
-  
+
   implicit none
   public
-  
+
   save
   !-----------------------------------------------------------------------------
   ! MOCCa variables
@@ -26,7 +26,7 @@ module InOutput
   integer :: filenx,fileny,filenz, filenwt
   real*8  :: filedx
   !-----------------------------------------------------------------------------
-  !Determining if MOCCa needs to write extra information to the output file, 
+  !Determining if MOCCa needs to write extra information to the output file,
   !for debugging purposes. Not active at the moment.
   logical :: ExtraOutput=.false.
   !-----------------------------------------------------------------------------
@@ -79,7 +79,7 @@ contains
 
     print 1
     print 2, trim(InputFilename)
-    print 3 
+    print 3
     print 4, filenx,fileny,filenz
     print 5, filedx
     print 6, filenwt
@@ -111,28 +111,28 @@ contains
   ! If allowed and necessary, MOCCa will transform the data to allow for
   ! calculations with different symmetry combinations.
   !-----------------------------------------------------------------------------
-    
+
     1 format (' *********************************************************'  ,/,&
-    &         ' * ATTENTION                                             *'  ,/,& 
+    &         ' * ATTENTION                                             *'  ,/,&
     &         ' * Wavefunction file did not correspond to symmetries    *'  ,/,&
-    &         ' * on input. MOCCa made the following changes :          *'  ,/,& 
-    &         ' *                FILE      INPUT                        *'  ,/,& 
-    &         ' * Parity          ',L1, '         ',L1,27(' '),        '*'  ,/,& 
-    &         ' * Signature       ',L1, '         ',L1,27(' '),        '*'  ,/,& 
+    &         ' * on input. MOCCa made the following changes :          *'  ,/,&
+    &         ' *                FILE      INPUT                        *'  ,/,&
+    &         ' * Parity          ',L1, '         ',L1,27(' '),        '*'  ,/,&
+    &         ' * Signature       ',L1, '         ',L1,27(' '),        '*'  ,/,&
     &         ' * Time Simplex    ',L1, '         ',L1,27(' '),        '*'  ,/,&
-    &         ' * Time Reversal   ',L1, '         ',L1,27(' '),        '*'  ,/,&                                                                
+    &         ' * Time Reversal   ',L1, '         ',L1,27(' '),        '*'  ,/,&
     &         ' * Isospin         ',L1, '         ',L1,27(' '),        '*'  ,/,&
     &         ' *                                                       *'  ,/,&
     &         ' * nx             ',i3,'       ',i3,26(' '),            '*'  ,/,&
     &         ' * ny             ',i3,'       ',i3,26(' '),            '*'  ,/,&
     &         ' * nz             ',i3,'       ',i3,26(' '),            '*'  ,/,&
     &         ' * nwt            ',i3,'       ',i3,26(' '),            '*'  ,/,&
-    &         ' *********************************************************')        
+    &         ' *********************************************************')
     !---------------------------------------------------------------------------
     !Reading the input from data; and allocate all necessary arrays.
     call ReadRunInfo()
     !---------------------------------------------------------------------------
-    !MOCCa reads the wavefunction file supplied, after determining what type 
+    !MOCCa reads the wavefunction file supplied, after determining what type
     !of file it exactly is.
     call WFInput()
     !---------------------------------------------------------------------------
@@ -156,28 +156,28 @@ contains
         endif
     endif
   end subroutine Input
-  
+
   subroutine Output
   !-----------------------------------------------------------------------------
   ! Subroutine that governs the output of a wavefunction file.
   !-----------------------------------------------------------------------------
     integer           :: OutputChannel
-    
+
     !Getting an open channel for output
     call get_unit(OutputChannel)
-    
+
     !Writing to the output channel
     call writeMOCCa_v1(OutputChannel)
 
     ! Writing extra files if asked for
     if(PromOutput) call writePromesse(trim(OutputFileName)//'.prom')
-    
+
   end subroutine Output
-  
+
   subroutine WFInput()
-  !----------------------------------------------------------------------------- 
+  !-----------------------------------------------------------------------------
   ! Subroutine that identifies the .wf file that MOCCa gets as input.
-  ! Identification is based on filename, the first letters of the filename 
+  ! Identification is based on filename, the first letters of the filename
   ! should match the code that was used to write the file.
   !
   ! EV8 or NIL8 => ReadNil8
@@ -186,11 +186,11 @@ contains
   ! MOCCa       => MOCCa
   !-----------------------------------------------------------------------------
     integer             :: InputChannel
-       
+
     !Getting an open channel for input
     call get_unit(InputChannel)
-    
-    !MOCCa will try to recognise the wavefunction input it gets and call the 
+
+    !MOCCa will try to recognise the wavefunction input it gets and call the
     ! corresponding input subroutine
     if( &
     &     (InputFileName(1:3).eq."ev8")  &
@@ -232,7 +232,7 @@ contains
           call ReadMOCCa_v1(InputChannel)
         endif
     else
-      ! The input file is not clearly named; MOCCa defaults to its own 
+      ! The input file is not clearly named; MOCCa defaults to its own
       ! subroutine.
        if(LegacyInput) then
           call ReadMOCCa_v0(InputChannel)
@@ -245,15 +245,15 @@ contains
   subroutine ReadRunInfo
   !-----------------------------------------------------------------------------
   ! This subroutine reads the relevant data from the user provided file.
-  ! Most, if not all, of the initialisation is overseen by this routine, as 
+  ! Most, if not all, of the initialisation is overseen by this routine, as
   ! every array needs to be allocated etc...
   !-----------------------------------------------------------------------------
   ! Order of the namelists:
-  ! 
+  !
   ! 1) NML = GenInfo     (module Geninfo)
   ! 2) NML = Spwfstorage (module Spwfstorage)
   ! 3) NML = Densit      (module Densities)
-  ! 4) NML = Pairing     (module Pairing) 
+  ! 4) NML = Pairing     (module Pairing)
   ! 5) NML = Derivatives (module Derivatives)
   ! 6) NML = MomentParam (module Moments)
   ! If necessary:
@@ -274,33 +274,33 @@ contains
     use Pairing, only       : ReadPairingInfo
     use Derivatives,only    : ReadDerivativesInfo
     use SpecialMoments,only : ReadSpecialMoments
-    
+
     implicit none
-    
+
     NameList /InAndOutput/ InputFileName,OutputFileName,ExtraOutput,Pictures, &
     &                      PromOutput,LegacyInput
 
-    !--------------- Reading Input---------------------------------------   
+    !--------------- Reading Input---------------------------------------
     !Info for the GenInfo Module
-    call ReadGenInfo()  
-    
+    call ReadGenInfo()
+
     !Info for the SpwfstorageModule
     call ReadSpwfStorageInfo()
-    
+
     call ReadDensitInfo()
-    
+
     !Allocating the densities and setting them to zero
     call Iniden
-    
+
     !Allocating and initialising the Mesh variables
     call IniMesh
-    
+
     !Info for the Pairing module
     call ReadPairingInfo()
 
     ! Info on the Derivatives Module
     call ReadDerivativesInfo()
-    
+
     !Info on the Moments Module
     call ReadMomentData()
     ! If signalled, read info on extra moments
@@ -308,10 +308,10 @@ contains
 
     !Reading the names for the in- and outputfiles.
     read (unit=*, nml=InAndOutput)
-        
+
     ! Force namelist
     call ReadForceInfo()
-    
+
     !Coulomb namelist
     call ReadCoulombInfo()
 
@@ -319,10 +319,10 @@ contains
     call ReadCrankingInfo()
     return
   end subroutine ReadRunInfo
-  
+
   subroutine PrintInput
   !-----------------------------------------------------------------------------
-  ! This subroutine prints all relevant information of the input, both user 
+  ! This subroutine prints all relevant information of the input, both user
   ! input and wavefunction file.
   !-----------------------------------------------------------------------------
     use SpwfStorage, only: nwt, BroydenOrder
@@ -332,12 +332,12 @@ contains
     character(len=9) :: Con='Conserved', Broken='Broken   '
 
     1 format ( 20('-'), 'General Information ', 20('-'))
-    2 format ( 'Mesh parameters' ) 
+    2 format ( 'Mesh parameters' )
     3 format ( '   nx = ', i5 , ' ny = ' , i5 , ' nz = ' , i5)
     4 format ( '   dx = ', f20.10,' (fm  ) ')
     5 format ( '   dv = ', f5.2,' (fm^3) ')
     6 format ( 'Nucleus')
-    7 format ( '    N = ', f10.5  ,'  Z = ', f10.5) 
+    7 format ( '    N = ', f10.5  ,'  Z = ', f10.5)
     8 format ( 'Wavefunctions')
     9 format ( '  nwt = ', i5)
     10 format ( 'Iterative process')
@@ -347,15 +347,15 @@ contains
    122 format ( '  Nesterov optimal gradient')
     13 format ( '  Mixing Process : ' , A7, ' mixing')
    131 format ( '    Memory       : ' , i3)
-   132 format ( '    Damping      : ' , f5.2) 
-   133 format ( '    MixingScheme : ' , i2) 
-    
+   132 format ( '    Damping      : ' , f5.2)
+   133 format ( '    MixingScheme : ' , i2)
+
     14 format ( 'Convergence Levels')
     15 format ( '  dE  =', e8.1)
     16 format ( '  dQ  =', e8.1)
     17 format ( 'Symmetries')
-    18 format ( "  Parity      : ", a9) 
-    19 format ( "  Signature   : ", a9) 
+    18 format ( "  Parity      : ", a9)
+    19 format ( "  Signature   : ", a9)
     20 format ( '  TimeReversal: ', a9)
     21 format ( '  TimeSimplex : ', a9)
     22 format ( '  Isospin     : ', a9)
@@ -363,8 +363,8 @@ contains
     24 format ( '  1st Order   : ', i1)
     25 format ( '  2nd Order   : ', i1)
     26 format ( '  Lagrange      ')
-      
-    99 format(" Force used on input file: ") 
+
+    99 format(" Force used on input file: ")
    100 format("Name of the Force:  ", a57)
    101 format("t0 =", f12.3 , " x0  =", f12.3 , /,                             &
     &              't1 =', f12.3,  " x1  =", f12.3 , /,                        &
@@ -377,17 +377,17 @@ contains
     &              '  nmass   = ', i2,/                                        &
     &              '  COM1Body= ', i2,/                                        &
     &              '  COM2Body= ', i2)
-    
-    print 1 
+
+    print 1
     print 2
-    print 3 , nx, ny, nz 
+    print 3 , nx, ny, nz
     print 4 , dx
     print 5 , dv
     print 6
     print 7 , neutrons, protons
-    print 8 
+    print 8
     print 9 , nwt
-    print 10 
+    print 10
     print 11, dt
     print 12, MaxIter
 
@@ -403,16 +403,16 @@ contains
       print 13, 'DIIS   '
       print 131, PulayOrder
     else
-      print 13, 'Linear '  
+      print 13, 'Linear '
       print 132, DampingParam
     endif
     print 133, MixingScheme
-    
+
     print 14
     print 15, EnergyPrec
     print 16, MomentPrec
     print 17
-    
+
     !Printing the conservation or breaking of symmetries
     if (PC)       print 18, Con
     if (.not. PC) print 18, Broken
@@ -424,21 +424,21 @@ contains
     if(.not.TSC)  print 21, Broken
     if (IC)       print 22, Con
     if(.not.IC)   print 22, Broken
-    
+
     print 23
     if( MaxFDOrder.ne. -1) then
       print 24, MaxFDOrder
       print 25, MaxFDLapOrder
     else
       print 26
-    endif         
+    endif
   end subroutine PrintInput
-  
+
   subroutine ReadMOCCa_v0(Ichan)
   !-----------------------------------------------------------------------------
   ! Read info from an input file in the MOCCa format.
   !-----------------------------------------------------------------------------
-    
+
     use geninfo
     use SpwfStorage, only : nwt, HFBasis, ChangeNumberWaveFunctions,CanBasis
     use Derivatives, only : MaxFDOrder, MaxFDLapOrder, CoulombLapOrder
@@ -446,39 +446,39 @@ contains
     use Force
     use Cranking,    only : Omega,CrankValues,ContinueCrank
     use Moments,     only : ReadMoment, ContinueMoment
-    use Densities 
-    
+    use Densities
+
     integer, intent(in)  :: IChan
-    
+
     logical :: exists
     integer :: ioerror, N, Pin,Iin
-    
+
     !File parameters to compare against
     integer       :: fileneutrons,fileprotons,i, version
     real(KIND=dp) :: filedx, fileintensity(4)
-        
+
     !---------------------------------------------------------------------------
     ! Checking for a valid input file
     inquire(file=inputfilename, exist=exists)
     if(.not.exists) call stp('Input file specified does not exist!')
     open (IChan,form='unformatted',file=InputFileName)
     !---------------------------------------------------------------------------
-    ! Reading the essential variables. 
+    ! Reading the essential variables.
     ! 1) Mesh size: nx,ny,nz,dx,dt
     ! 2) Symmetries: TRC,PC,SC,TSC,IC
     ! 3) Particles: nwt,neutrons, protons
     read(IChan, iostat=ioerror) filenx,fileny,filenz, filedx
     if(ioerror.ne.0) call stp('Input error for the mesh parameters.',          &
     &                         'ioerror = ', ioerror)
-    
+
     read(IChan, iostat=ioerror) inTRC,inPC,inSC,inTSC,inIC
     if(ioerror.ne.0) call stp('Input error for the symmetries.',               &
     &                         'ioerror = ', ioerror)
-    
+
     read(IChan,iostat=ioerror) filenwt,fileneutrons,fileprotons
     if(ioerror.ne.0) call stp('Input error for the wavefunction variables.',   &
     &                         'ioerror = ', ioerror)
-    
+
     !---------------------------------------------------------------------------
     ! Checking the essential variables:
     ! a) Symmetries must not be unbroken.
@@ -535,16 +535,16 @@ contains
         &        'on file: ', filenz                                           &
         &      , 'in data: ', nz     )
     endif
-    if( nwt.gt.filenwt .and. nwt.ne.2*filenwt) then 
+    if( nwt.gt.filenwt .and. nwt.ne.2*filenwt) then
       call stp('Nwt is not compatible between file and data.',                 &
       &        'In data: ', nwt, 'On file :', filenwt )
     endif
     !---------------------------------------------------------------------------
     N = nwt
-    if(TRC) N = 2*N    
+    if(TRC) N = 2*N
     if( protons.gt.N) call stp('Not enough spwfs to accomodate all protons!' )
     if(neutrons.gt.N) call stp('Not enough spwfs to accomodate all neutrons!')
-    
+
     !---------------------------------------------------------------------------
     !    ! 4) WaveFunctions
     call ChangeNumberWaveFunctions(filenwt)
@@ -563,7 +563,7 @@ contains
     !---------------------------------------------------------------------------
     ! Reading the  Non-Essential Variables
     ! 6 ) Specifics of the finite difference scheme
-    ! 7 )  Force  : 
+    ! 7 )  Force  :
     !      a) t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,wso,wsoq
     !      b) afor,hbar,hbm,xm,njmunu,nmass,COM1Body,COM2Body
     !      c) Functional Coefficients
@@ -576,29 +576,29 @@ contains
     ! 14)  Get Momentparameters
     !---------------------------------------------------------------------------
     ! Maybe do some checks on these later?
-    read(IChan, iostat=ioerror)    
+    read(IChan, iostat=ioerror)
     !Straight force parameters
     read(IChan,iostat=ioerror)
     !Extra parameters
-    read(IChan,iostat=ioerror) 
+    read(IChan,iostat=ioerror)
     !Functional coefficients, not used at the moment.
     read(IChan,iostat=ioerror)
     !Pairing parameters
     read(IChan,iostat=ioerror)
-    
+
     !Cranking Variables
     if(ContinueCrank) then
-      ! Only read omega from file, not the crankvalues. 
+      ! Only read omega from file, not the crankvalues.
       ! Otherwise they will get overwritten
       read(IChan,iostat=ioerror) Omega !, CrankValues
       if(ioerror.ne.0) then
         call stp('Did not read CrankValues correctly' , &
              &   'Iostat', ioerror)
-      endif      
+      endif
     else
       read(IChan,iostat=ioerror)
     endif
-    
+
     if(PairingType.eq.2) then
       ! Read Kappa & Fermi energy only if needed
       ! But first decide on the appropriate sizes for InputKappaHFB
@@ -611,7 +611,7 @@ contains
         allocate(InputKappa(filenwt,filenwt,Pin,IIn))
       endif
 
-      read(ICHan,iostat=ioerror) InputKappa     
+      read(ICHan,iostat=ioerror) InputKappa
       if(ioerror.ne.0) then
         call stp('Did not read InputKappa correctly' , &
              &   'Iostat', ioerror)
@@ -628,17 +628,17 @@ contains
         call stp('Did not read Fermi and LNLambda correctly' , &
              &   'Iostat', ioerror)
       endif
-    
+
     elseif(PairingType.eq.1) then
         !Read only Fermi in the BCS case
         read(IChan,iostat=ioerror)
         read(IChan,iostat=ioerror)  Fermi
-        read(Ichan,iostat=ioerror) 
+        read(Ichan,iostat=ioerror)
     else
         read(IChan,iostat=ioerror)
         read(IChan,iostat=ioerror)
         read(IChan,iostat=ioerror)
-    endif    
+    endif
     !Reading Moments
     if(ContinueMoment) then
       do while (.true.)
@@ -652,14 +652,14 @@ contains
     endif
     close (IChan)
   end subroutine ReadMOCCa_v0
-  
+
   subroutine WriteMOCCa_v0(OChan)
   !-----------------------------------------------------------------------------
   ! Subroutine that writes the output to a MOCCa file.
   ! Note that the output of this file is not compatible with older MF codes.
   !
   !-----------------------------------------------------------------------------
-  ! Essential variables are all the variables that are required to make a 
+  ! Essential variables are all the variables that are required to make a
   ! calculation. The non-essential variables are all 'extra luxuries'.
   ! I hope, by making this distinction that wavefunction files will always
   ! be 'minimally functional', independent of changes to the MOCCa
@@ -674,7 +674,7 @@ contains
   !
   !..... Non-Essential Variables ...............................................
   ! 6 ) Specifics of the finite difference scheme
-  ! 7 )  Force  : 
+  ! 7 )  Force  :
   !      a) t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,wso,wsoq
   !      b) afor,hbar,hbm,xm,njmunu,nmass,COM1Body,COM2Body
   !      c) Functional Coefficients
@@ -683,11 +683,11 @@ contains
   ! 10)  A guess for the kappa matrix for starting HFB calculations.
   ! 11)  The block sizes of the KappaHFB matrix
   ! 12)  Fermi energies
-  ! 13)  Lipkin-Nogami parameter  
+  ! 13)  Lipkin-Nogami parameter
   ! 14)  Constraint Values and other parameters
   !
   !..... Testing Variables .....................................................
-  !  (None at the moment) 
+  !  (None at the moment)
   !
   !..... Things to maybe include ...............................................
   !  *) Canonical basis?
@@ -702,22 +702,22 @@ contains
     use Derivatives, only : MaxFDOrder, MaxFDLapOrder, CoulombLapOrder
     use Pairing,     only : PairingType, PairingStrength, alpha, PairingCut
     use Densities
-    
+
     integer, intent(in)   :: Ochan
     integer               :: i, io
     type(Moment), pointer :: Current
-    
+
     open (OChan,form='unformatted',file=OutputFileName)
-    
+
     !---------------------------------------------------------------------------
     ! Essential variables
-    !---------------------------------------------------------------------------     
+    !---------------------------------------------------------------------------
     !Parameters of the mesh
     write(OChan,iostat=io) nx,ny,nz, dx
     !Conservation of symmetries
     write(OChan,iostat=io) TRC,PC,SC,TSC,IC
-    !Number of proton, neutron and total states. 
-    write(OChan,iostat=io) nwt,neutrons,protons   
+    !Number of proton, neutron and total states.
+    write(OChan,iostat=io) nwt,neutrons,protons
     !Wavefunctions
     do i=1,nwt
       call HFBasis(i)%Write(OChan)
@@ -753,11 +753,11 @@ contains
     ! Multipole constraint variables
     ! Special treatment: got to loop over the multipole moments and only write
     ! the constrained ones.
-    Current => Root    
+    Current => Root
     do while(.true.)
       if(Current%ConstraintType.ne.0) then
         call Current%Write(Ochan)
-      endif        
+      endif
       if(associated(Current%Next)) then
         Current => Current%Next
       else
@@ -765,7 +765,7 @@ contains
       endif
     enddo
     close (OChan)
-    
+
   end subroutine WriteMOCCa_v0
 
   subroutine WriteMOCCa_v1(OChan)
@@ -773,8 +773,8 @@ contains
     ! Write info to an output file in the MOCCa format.
     !
     ! Current version of this routine :
-    !   1 
-    ! 
+    !   1
+    !
     ! Previous routine versions:
     !  Version            Difference
     ! ---------------------------------------------------------------------------
@@ -833,8 +833,8 @@ contains
     write(OChan,iostat=io) nx,ny,nz, dx
     !Conservation of symmetries
     write(OChan,iostat=io) TRC,PC,SC,TSC,IC
-    !Number of proton, neutron and total states. 
-    write(OChan,iostat=io) nwt,neutrons,protons   
+    !Number of proton, neutron and total states.
+    write(OChan,iostat=io) nwt,neutrons,protons
     !Wavefunctions
     do i=1,nwt
       call HFBasis(i)%Write(OChan)
@@ -858,12 +858,12 @@ contains
     !Pairing Variables
     write(OChan,iostat=io) PairingType, PairingStrength, alpha, PairingCut
     if(allocated(Pcutoffs)) then
-      write(Ochan,iostat=io) Pcutoffs 
+      write(Ochan,iostat=io) Pcutoffs
     else
       write(Ochan,iostat=io)
     endif
     write(OChan,iostat=io) Fermi, LNLambda
-    ! No need to guess for the HFB matrices and variables if 
+    ! No need to guess for the HFB matrices and variables if
     ! PairingType = 'HFB' already.
     if(PairingType.ne.2) then
         ! Take a guess for Kappa, allocate the fileblocksizes and put
@@ -885,11 +885,11 @@ contains
     ! Multipole constraint variables
     ! Special treatment: got to loop over the multipole moments and only write
     ! the constrained ones.
-    Current => Root    
+    Current => Root
     do while(.true.)
       if(Current%ConstraintType.ne.0) then
         call Current%Write(Ochan)
-      endif        
+      endif
       if(associated(Current%Next)) then
         Current => Current%Next
       else
@@ -906,7 +906,7 @@ subroutine ReadMOCCa_v1(Ichan)
     ! Read info from an input file in the MOCCa format.
     !
     ! Current version of this routine :
-    !   1 
+    !   1
     !
     ! Previous routine versions:
     !  Version            Difference
@@ -919,7 +919,7 @@ subroutine ReadMOCCa_v1(Ichan)
     ! File format version 1
     ! ----------------------
     ! Version
-    ! Convergence information: E, dE                         
+    ! Convergence information: E, dE
     ! nx,ny,nz,dx,dt
     ! TRC,PC,SC,TSC,IC
     ! nwt,neutrons,protons
@@ -960,7 +960,7 @@ subroutine ReadMOCCa_v1(Ichan)
     !File parameters to compare against
     integer       :: fileneutrons,fileprotons,i, version
     real(KIND=dp) :: fileintensity(4)
-    
+
     !---------------------------------------------------------------------------
     ! Checking for a valid input file
     inquire(file=inputfilename, exist=exists)
@@ -979,15 +979,15 @@ subroutine ReadMOCCa_v1(Ichan)
     read(IChan, iostat=ioerror) filenx,fileny,filenz, filedx
     if(ioerror.ne.0) call stp('Input error for the mesh parameters.',          &
     &                         'ioerror = ', ioerror)
-    
+
     read(IChan, iostat=ioerror) inTRC,inPC,inSC,inTSC,inIC
     if(ioerror.ne.0) call stp('Input error for the symmetries.',               &
     &                         'ioerror = ', ioerror)
-    
+
     read(IChan,iostat=ioerror) filenwt,fileneutrons,fileprotons
     if(ioerror.ne.0) call stp('Input error for the wavefunction variables.',   &
     &                         'ioerror = ', ioerror)
-  
+
     !---------------------------------------------------------------------------
     ! Checking the essential variables:
     ! a) Symmetries must not be unbroken.
@@ -1043,18 +1043,18 @@ subroutine ReadMOCCa_v1(Ichan)
         &        'on file: ', filenz                                           &
         &      , 'in data: ', nz     )
     endif
-    if( nwt.gt.filenwt .and. TRC) then 
+    if( nwt.gt.filenwt .and. TRC) then
       call stp('Nwt is not compatible between file and data.',                 &
       &        'In data: ', nwt, 'On file :', filenwt )
     endif
-    if( nwt.ne.2*filenwt .and. .not.TRC .and. inTRC) then 
+    if( nwt.ne.2*filenwt .and. .not.TRC .and. inTRC) then
       call stp('Nwt should be doubled when breaking TimeReversal.',            &
       &        'In data: ', nwt, 'On file :', filenwt )
     endif
     !---------------------------------------------------------------------------
     ! c) There should be enough space for neutrons & protons
     N = nwt
-    if(TRC) N = 2*N    
+    if(TRC) N = 2*N
     if( protons.gt.N) call stp('Not enough spwfs to accomodate all protons!' )
     if(neutrons.gt.N) call stp('Not enough spwfs to accomodate all neutrons!')
     !---------------------------------------------------------------------------
@@ -1077,7 +1077,7 @@ subroutine ReadMOCCa_v1(Ichan)
     !     Currently there is nothing of interest there.
     read(IChan, iostat=ioerror)
     !---------------------------------------------------------------------------
-    ! 7 )  Force  : 
+    ! 7 )  Force  :
     !      a) t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,wso,wsoq
     !      b) afor,hbar,hbm,xm,njmunu,nmass,COM1Body,COM2Body
     !      c) Functional Coefficients
@@ -1087,7 +1087,7 @@ subroutine ReadMOCCa_v1(Ichan)
     !Straight force parameters
     read(IChan,iostat=ioerror)
     !Extra parameters
-    read(IChan,iostat=ioerror) 
+    read(IChan,iostat=ioerror)
     !Functional coefficients, not used at the moment.
     read(IChan,iostat=ioerror)
     !---------------------------------------------------------------------------
@@ -1109,7 +1109,7 @@ subroutine ReadMOCCa_v1(Ichan)
         ! First decide on the appropriate sizes for U,V, Rho, Kappa and CanTransfo
         M(3) = 1 ; if(inPC) M(3) = 2
         M(4) = 1 ; if(InIc) M(4) = 2
-        
+
         allocate(FileBlocksizes(M(3), M(4))) ; FileBlocksizes = 0
 
         M(1) = filenwt ; M(2) = filenwt
@@ -1117,10 +1117,10 @@ subroutine ReadMOCCa_v1(Ichan)
             M(1) = 2 * M(1) ; M(2) = 2 * M(2)
         endif
 
-        allocate(InputKappa     (M(1),M(2),M(3),M(4))) 
-        allocate(InputRho       (M(1),M(2),M(3),M(4)))
-        allocate(InputU         (M(1),2*M(2),M(3),M(4))) 
-        allocate(InputV         (M(1),2*M(2),M(3),M(4)))
+        allocate(InputKappa     (M(1),M(2),2,2))
+        allocate(InputRho       (M(1),M(2),2,2))
+        allocate(InputU         (M(1),2*M(2),2,2))
+        allocate(InputV         (M(1),2*M(2),2,2))
         allocate(InputCanTransfo(M(1),M(2),M(3),M(4)))
         allocate(FileHFBColumns (M(1),M(3),M(4)))
 
@@ -1128,8 +1128,8 @@ subroutine ReadMOCCa_v1(Ichan)
         if(ioerror.ne.0) then
             call stp('Did not read HFB blocksizes correctly','Iostat', ioerror)
         endif
-        
-        read(ICHan,iostat=ioerror) InputU,InputV 
+
+        read(ICHan,iostat=ioerror) InputU,InputV
         if(ioerror.ne.0) then
             call stp('Did not read U and V correctly','Iostat', ioerror)
         endif
@@ -1139,13 +1139,13 @@ subroutine ReadMOCCa_v1(Ichan)
             call stp('Did not read HFBColumns correctly from file.')
         endif
 
-        read(ICHan,iostat=ioerror) InputRho,InputKappa     
+        read(ICHan,iostat=ioerror) InputRho,InputKappa
         if(ioerror.ne.0) then
             call stp('Did not read Rho and Kappa correctly' ,'Iostat', ioerror)
         endif
         read(ICHan,iostat=ioerror) InputCanTransfo
         if(ioerror.ne.0) then
-            call stp('Did not read Rho and Kappa correctly' ,'Iostat', ioerror)
+            call stp('Did not read CanTransfo correctly' ,'Iostat', ioerror)
         endif
     case DEFAULT
         !--------------------------------------
@@ -1184,7 +1184,7 @@ end subroutine ReadMOCCa_v1
   subroutine PlotDensity()
     !---------------------------------------------------------------------
     ! Writes densities to file in formatted output, for plotting purposes.
-    ! 
+    !
     !
     !---------------------------------------------------------------------
     use Densities

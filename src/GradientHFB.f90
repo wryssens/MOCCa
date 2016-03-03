@@ -296,7 +296,8 @@ contains
       !-------------------------------------------------------------------------
       ! Readjust Fermi and L2
       succes = 0
-      if(Lipkin .and. mod(iter,10).eq.0) LN = Lncr8(Delta,DeltaLN,succes)
+      if(Lipkin .and. mod(iter,10).eq.1) LN = Lncr8(Delta,DeltaLN,succes)
+      if(any(succes.ne.0)) call stp("lncr8 failed")
       do it=1,Iindex
           par(it) = 0.0
           do P=1,Pindex

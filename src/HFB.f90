@@ -678,7 +678,6 @@ contains
     if(allocated(qpexcitations)) then
       call BlockQuasiParticles
     endif
-
     call constructRhoHFB(HFBColumns)
 
     do it=1,2

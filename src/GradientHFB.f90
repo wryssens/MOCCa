@@ -34,6 +34,10 @@ module GradientHFB
   !-----------------------------------------------------------------------------
   ! Store single-particle hamiltonian and delta in block-form
   real(KIND=dp), allocatable :: hblock(:,:,:,:)   ,dblock(:,:,:,:)
+  !-----------------------------------------------------------------------------
+  ! Number of positive signature states in every isospin/parity block
+  ! The number of negative states then is blocksizes - sigblocks
+  integer :: SigBlocks(2,2) = 0
 
   !-----------------------------------------------------------------------------
   ! Matrices that I don't want to reallocate everytime.
@@ -42,33 +46,37 @@ module GradientHFB
   real(KIND=dp),allocatable  :: oldgradU(:,:,:,:) ,oldgradV(:,:,:,:)
   real(KIND=dp),allocatable  :: Direction(:,:,:,:), OldDir(:,:,:,:)
 
+  real(KIND=dp) :: over
+
   procedure(H20_sig), pointer            :: H20
   procedure(constructrho_sig), pointer   :: constructrho
   procedure(constructkappa_sig), pointer :: constructkappa
   procedure(gradupdate_sig), pointer     :: gradupdate
   procedure(ortho_sig), pointer          :: ortho
-  ! procedure(LN20_sig), pointer           :: LN20
+
 contains
 
   subroutine GetUandV
-    !----------------------------------------
+    !---------------------------------------------------------------------------
     ! Get U and V values from the HFB module.
+    ! Also ery important: counts the number of of (U,V) vectors in every block.
     !
-    !----------------------------------------
+    !
+    !---------------------------------------------------------------------------
 
     integer :: it,P,i,j,N, ind(2,2), Rzindex,k, S
     logical :: incolumns
 
-    !------------------------
+    !----------------------------------------
     ! Initialize the matrices.
-    !-------------------------
+    !----------------------------------------
     N = maxval(blocksizes)
 
     allocate(GradU(N,N,Pindex,Iindex)) ; GradU = 0.0_dp
     allocate(GradV(N,N,Pindex,Iindex)) ; GradV = 0.0_dp
 
     if(all(HFBColumns.eq.0)) then
-
+      ! Safeguard for when we read legacyinput
       if(SC) then
           do it=1,Iindex
               do P=1,Pindex
@@ -85,7 +93,26 @@ contains
         call stp('No legacy for signature broken.')
       endif
     endif
+    ! print *, HFBColumns(1:blocksizes(1,2),1,2)
+    ! print *, HFBColumns(1:blocksizes(2,2),2,2)
 
+    if(allocated(qpexcitations)) then
+      call BlockQuasiParticles
+    endif
+    ! print *, HFBColumns(1:blocksizes(1,2),1,2)
+    ! print *, HFBColumns(1:blocksizes(2,2),2,2)
+    !
+    ! do i=1,blocksizes(2,2)
+    !   print *, DBLE(U(i,1:2*blocksizes(2,2),2,2))
+    ! enddo
+    ! print *
+    !
+    ! do i=1,blocksizes(2,2)
+    !   print *, DBLE(V(i,1:2*blocksizes(2,2),2,2))
+    ! enddo
+    ! print *
+
+    ! stop
     do it=1,Iindex
         do P=1,Pindex
             N = blocksizes(P,it)
@@ -107,6 +134,10 @@ contains
                 if(incolumns) then
                   GradV(1:N,ind(P,it),P,it) = DBLE(V(1:N,j,P,it))
                   GradU(1:N,ind(P,it),P,it) = DBLE(U(1:N,j,P,it))
+
+                  if(any(abs(GradU(1:N/2,ind(P,it),P,it)).gt.0.0d0) .or. .not. SC) then
+                    sigblocks(P,it) = sigblocks(P,it) +1
+                  endif
                   ind(P,it) = ind(P,it)+ 1
                 endif
             enddo
@@ -132,14 +163,20 @@ contains
                       HFBColumns(j,P,it) = j + N
                       V(i,j+N,P,it) = GradV(i,j,P,it)
                       U(i,j+N,P,it) = GradU(i,j,P,it)
+                      ! The conjugate states
+                      ! U(i,j,P,it)   = GradV(i,j,P,it)
+                      ! V(i,j+N,P,it) = GradU(i,j,P,it)
                   enddo
               enddo
-              RhoHFB(1:N,1:N,P,it)   = ConstructRho(GradV(1:N,1:N,P,it))
+              RhoHFB(1:N,1:N,P,it)   = ConstructRho(GradV(1:N,1:N,P,it),       &
+              &                                     sigblocks(P,it))
+
               KappaHFB(1:N,1:N,P,it) = ConstructKappa(GradU(1:N,1:N,P,it),     &
-              &                                       GradV(1:N,1:N,P,it))
+              &                                       GradV(1:N,1:N,P,it),     &
+              &                                       sigblocks(P,it))
           enddo
       enddo
-
+      ! stop
   end subroutine OutHFBModule
 
   subroutine BlockHFBHamil(Delta, Fermi, L2)
@@ -250,7 +287,6 @@ contains
     !---------------------------------------------------------------------------
     ! Start of the iterative solver
     do iter=1,HFBIter
-
       !-------------------------------------------------------------------------
       ! Construct the density and anomalous density matrix.
       ! Only necessary when LN is active, since they then contribute to the
@@ -258,22 +294,22 @@ contains
       do it=1,Iindex
         do P=1,Pindex
           N = blocksizes(P,it)
-          RhoHFB(1:N,1:N,P,it)  = ConstructRho(  GradV(1:N,1:N,P,it))
+          RhoHFB(1:N,1:N,P,it)  = ConstructRho(  GradV(1:N,1:N,P,it),          &
+          &                                      sigblocks(P,it))
           KappaHFB(1:N,1:N,P,it)= ConstructKappa(GradU(1:N,1:N,P,it),          &
-          &                                      GradV(1:N,1:N,P,it))
+          &                                      GradV(1:N,1:N,P,it),          &
+          &                                      sigblocks(P,it))
         enddo
       enddo
       !-------------------------------------------------------------------------
       ! Construct the matrices in block form.
       call BlockHFBHamil(Delta, z, L2)
-
       !-------------------------------------------------------------------------
       ! Calculate the gradients H20, N20 and LN20
       do it=1,Iindex
         if(converged(it)) cycle ! Don't wast CPU cycles
 
         n20norm(it) = 0.0d0
-        !l20norm(it) = 0.0d0
         do P=1,Pindex
             N = blocksizes(P,it)
             ! Save the old gradient
@@ -282,10 +318,11 @@ contains
             Gradient(1:N,1:N,P,it) = H20(GradU(1:N,1:N,P,it),                  &
             &                            GradV(1:N,1:N,P,it),                  &
             &                            hblock(1:N,1:N,P,it),                 &
-            &                            Dblock(1:N,1:N,P,it))
+            &                            Dblock(1:N,1:N,P,it),                 &
+            &                            sigblocks(P,it))
 
-            aN20(1:N,1:N,P,it) = N20(GradU(1:N,1:N,P,it),GradV(1:N,1:N,P,it))
-
+            aN20(1:N,1:N,P,it) = N20(GradU(1:N,1:N,P,it),GradV(1:N,1:N,P,it),  &
+            &                                           sigblocks(P,it))
             do j=1,N
               do i=1,N
                 N20norm(it) = N20norm(it) + aN20(i,j,P,it) * aN20(i,j,P,it)
@@ -325,11 +362,11 @@ contains
       !-------------------------------------------------------------------------
       ! Construct the total gradient
       do it=1,Iindex
+          if(converged(it)) cycle
           do P=1,Pindex
               N = blocksizes(P,it)
               Gradient(1:N,1:N,P,it) = Gradient(1:N,1:N,P,it)                  &
               &                                 - Fermi(it) * aN20(1:N,1:N,P,it)
-
               ! Calculate the norm of the new gradient to
               ! 1) check for convergence and
               ! 2) calculate the conjugate direction
@@ -369,9 +406,7 @@ contains
           if(converged(it)) cycle
           do P=1,Pindex
               N = blocksizes(P,it)
-
               Direction(1:N,1:N,P,it) = Gradient(1:N,1:N,P,it)
-
               if(oldnorm(P,it).ne.0.0d0) then
                 !---------------------------------------------------------------
                 ! Polak-Ribière formula for the conjugate gradient. This
@@ -386,7 +421,6 @@ contains
                 Direction(1:N,1:N,P,it) = Direction(1:N,1:N,P,it)  +           &
                 &                             gamma(P,it) * OldDir(1:N,1:N,P,it)
               endif
-
               !-----------------------------------------------------------------
               ! Check if this direction is indeed a descent direction.
               ! In a linear problem, this is guaranteed, but I'm not too sure
@@ -414,7 +448,8 @@ contains
               call Linesearch(oldgradU(1:N,1:N,P,it), oldgradV(1:N,1:N,P,it),  &
               &               Gradient(1:N,1:N,P,it), Direction(1:N,1:N,P,it), &
               &               step,   gradU(1:N,1:N,P,it), gradV(1:N,1:N,P,it),&
-              &             hblock(1:N,1:N,P,it),Dblock(1:N,1:N,P,it),Fermi(it))
+              &             hblock(1:N,1:N,P,it),Dblock(1:N,1:N,P,it),Fermi(it)&
+              &            ,Sigblocks(P,it))
 
               OldDir(1:N,1:N,P,it)  = Direction(1:N,1:N,P,it)
               oldnorm(P,it)         = gradientnorm(P,it)
@@ -436,7 +471,7 @@ contains
  end subroutine HFBFermiGradient
 
   subroutine Linesearch(OldU, OldV, Grad, Direction, maxstep, Ulim, Vlim, hlim,&
-    &                   Dlim, Fermi)
+    &                   Dlim, Fermi,S)
     !---------------------------------------------------------------------------
     ! This linesearch algorithm is deprecated: it failed to do better than a
     ! fixed step algorithm.
@@ -449,16 +484,18 @@ contains
     real(KIND=dp), intent(in) :: Grad(:,:), Fermi
     real(KIND=dp), intent(out):: Ulim(:,:), Vlim(:,:)
     real(KIND=dp), intent(inout) :: maxstep,Direction(:,:)
+    integer, intent(in)       :: S
 
-    call GradUpdate(maxstep, oldU,oldV,Direction,Ulim,Vlim)
+    call GradUpdate(maxstep, oldU,oldV,Direction,Ulim,Vlim,S)
 
   end subroutine Linesearch
 
-  function ConstructRho_nosig(Vlim) result(Rho)
+  function ConstructRho_nosig(Vlim,S) result(Rho)
     !---------------------------------------------------------------------------
     ! Construct the part of the density matrix when signature is not conserved.
     !---------------------------------------------------------------------------
     real(KIND=dp), intent(in) ::Vlim(:,:)
+    integer, intent(in)       :: S
     real(KIND=dp)             :: Rho(size(Vlim,1),size(Vlim,1))
 
     integer :: N,i,j,k
@@ -476,36 +513,45 @@ contains
 
   end function ConstructRho_nosig
 
-  function ConstructRho_sig(Vlim) result(Rho)
+  function ConstructRho_sig(Vlim,S) result(Rho)
     !---------------------------------------------------------------------------
     ! Construct the part of the density matrix when signature is conserved.
     !---------------------------------------------------------------------------
     real(KIND=dp), intent(in) :: Vlim(:,:)
     real(KIND=dp)             :: Rho(size(Vlim,1),size(Vlim,1))
-
+    integer, intent(in)       :: S
     integer :: N,i,j,k
 
     N = size(Vlim,1)
+
     rho = 0.0d0
     do j=1,N/2
       do i=j,N/2
-        do k=1,N/2
-          Rho(i,j)         = Rho(i,j)         + Vlim(i,k+N/2) * Vlim(j,k+N/2)
-          Rho(i+N/2,j+N/2) = Rho(i+N/2,j+N/2) + Vlim(i+N/2,k) * Vlim(j+N/2,k)
+        do k=S+1,N
+          Rho(i,j)  = Rho(i,j)+ Vlim(i,k) * Vlim(j,k)
         enddo
         Rho(j,i)         = Rho(i,j)
-        Rho(j+N/2,i+N/2) = Rho(i+N/2,j+N/2)
+      enddo
+    enddo
+
+    do j=N/2+1,N
+      do i=j,N
+        do k=1,S
+          Rho(i,j)  = Rho(i,j)+ Vlim(i,k) * Vlim(j,k)
+        enddo
+        Rho(j,i)         = Rho(i,j)
       enddo
     enddo
 
   end function ConstructRho_sig
 
-  function ConstructKappa_nosig(Ulim,Vlim) result(Kappa)
+  function ConstructKappa_nosig(Ulim,Vlim,S) result(Kappa)
     !---------------------------------------------------------------------------
     ! Construct the part of kappa when signature is broken.
     !---------------------------------------------------------------------------
     real(KIND=dp), intent(in) :: Ulim(:,:), Vlim(:,:)
     real(KIND=dp),allocatable :: Kappa(:,:)
+    integer, intent(in)       :: S
 
     integer :: N,i,j,k
     if(.not.allocated(Kappa)) then
@@ -526,12 +572,13 @@ contains
 
   end function ConstructKappa_nosig
 
-  function ConstructKappa_sig(Ulim,Vlim) result(Kappa)
+  function ConstructKappa_sig(Ulim,Vlim,S) result(Kappa)
     !---------------------------------------------------------------------------
     ! Construct the part of kappa when signature is conserved.
     !---------------------------------------------------------------------------
     real(KIND=dp), intent(in) :: Ulim(:,:), Vlim(:,:)
     real(KIND=dp),allocatable :: Kappa(:,:)
+    integer, intent(in)       :: S
 
     integer :: N,i,j,k
     if(.not.allocated(Kappa)) then
@@ -543,7 +590,7 @@ contains
     Kappa = 0.0d0
     do j=1,N/2
       do i=N/2+1,N
-        do k=1,N/2
+        do k=1,S
           Kappa(i,j)         = Kappa(i,j) + Vlim(i,k) * Ulim(j,k)
         enddo
         Kappa(j,i) = - Kappa(i,j)
@@ -552,36 +599,13 @@ contains
 
   end function ConstructKappa_sig
 
-  ! function Energy(hlim,Dlim,rho,kappa, Fermi)
-  !   !--------------------------------------------------
-  !   ! Compute the HFB energy associated with U and V.
-  !   !
-  !   ! E = Tr( h \rho ) - 0.5 * Tr(Delta \kappa) - \lambda <N>
-  !   !
-  !   !--------------------------------------------------
-  !
-  !   real(KIND=dp), intent(in) :: hlim(:,:), Dlim(:,:),rho(:,:), kappa(:,:)
-  !   real(KIND=dp), intent(in) :: Fermi
-  !   real(KIND=dp)             :: Energy
-  !
-  !   integer                   :: N, i,j
-  !
-  !   N = size(hlim,1)
-  !   Energy = 0.0_dp
-  !   do i=1,N
-  !     do j=1,N
-  !       Energy = Energy + hlim(i,j) * Rho(j,i) - 0.5*kappa(i,j)*Dlim(j,i)
-  !     enddo
-  !   Energy = Energy   - Fermi     * Rho(i,i)
-  !   enddo
-  ! end function Energy
-
-  subroutine GradUpdate_nosig(step, U1,V1,Grad,U2,V2)
+  subroutine GradUpdate_nosig(step, U1,V1,Grad,U2,V2, S)
     !---------------------------------------------------------------------------
     ! Update U and V with a gradient step of size 'step'.
     !---------------------------------------------------------------------------
     real(KIND=dp), intent(in) :: U1(:,:), V1(:,:), step
     real(KIND=dp), intent(in) :: Grad(:,:)
+    integer, intent(in)       :: S
     real(KIND=dp),intent(out):: U2(:,:), V2(:,:)
     integer                   :: i,j,P,it,N,k
 
@@ -597,36 +621,37 @@ contains
         enddo
     enddo
     !Don't forget to orthonormalise
-    call ortho(U2,V2)
+    call ortho(U2,V2,S)
 
   end subroutine GradUpdate_nosig
 
-  subroutine GradUpdate_sig(step, U1,V1,Grad,U2,V2)
+  subroutine GradUpdate_sig(step, U1,V1,Grad,U2,V2, S)
     !---------------------------------------------------------------------------
     ! Update U and V with a gradient step of size 'step'.
     !---------------------------------------------------------------------------
     real(KIND=dp), intent(in) :: U1(:,:), V1(:,:), step
     real(KIND=dp), intent(in) :: Grad(:,:)
     real(KIND=dp),intent(out) :: U2(:,:), V2(:,:)
+    integer, intent(in)       :: S
     integer                   :: i,j,P,it,N,k
 
     N = size(U1,1)
 
-    U2(1:N/2  ,1:N/2)   = U1(1:N/2,1:N/2) - step *                             &
-    &                     matmul(V1(1:N/2, N/2+1:N), Grad(N/2+1:N,1:N/2))
-    U2(1+N/2:N,N/2+1:N) = U1(1+N/2:N,1+N/2:N) - step *                         &
-    &                     matmul(V1(N/2+1:N, 1:N/2), Grad(1:N/2,N/2+1:N))
-    V2(1:N/2  ,N/2+1:N)   = V1(1:N/2  ,N/2+1:N) - step *                       &
-    &                      matmul(U1(1:N/2, 1:N/2), Grad(1:N/2,N/2+1:N))
-    V2(N/2+1:N  ,1:N/2)   = V1(N/2+1:N  ,1:N/2) - step *                       &
-    &                      matmul(U1(N/2+1:N, N/2+1:N), Grad(N/2+1:N,1:N/2))
+    U2(1:N/2  ,1:S)   = U1(1:N/2  ,1:S) - step *                               &
+    &                     matmul(V1(1:N/2, S+1:N), Grad(S+1:N,1:S))
+    U2(1+N/2:N,S+1:N) = U1(1+N/2:N,S+1:N) - step *                             &
+    &                     matmul(V1(N/2+1:N, 1:S), Grad(1:S,S+1:N))
+    V2(1:N/2  ,S+1:N) = V1(1:N/2  ,S+1:N) - step *                             &
+    &                      matmul(U1(1:N/2, 1:S), Grad(1:S,S+1:N))
+    V2(N/2+1:N ,1:S)  = V1(N/2+1:N ,1:S) - step *                              &
+    &                      matmul(U1(N/2+1:N, S+1:N), Grad(S+1:N,1:S))
 
     !Don't forget to orthonormalise
-    call ortho(U2,V2)
+    call ortho(U2,V2,S)
 
   end subroutine GradUpdate_sig
 
-function H20_nosig(Ulim,Vlim,hlim,Dlim) result(H20)
+function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
     !-----------------------------------------------------------
     ! Get the gradient of the HFBHamiltonian H20.
     !
@@ -639,6 +664,7 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim) result(H20)
     !-----------------------------------------------------------
     real(KIND=dp), intent(in)  :: Ulim(:,:), Vlim(:,:), dlim(:,:), hlim(:,:)
     real(KIND=dp)              :: H20(size(Ulim,1),size(Ulim,1))
+    integer, intent(in)        :: S
 
     !-----------------------------------------------------
     ! Auxiliary arrays
@@ -689,7 +715,7 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim) result(H20)
      enddo
   end function H20_nosig
 
-  function H20_sig(Ulim,Vlim,hlim,Dlim) result(H20)
+  function H20_sig(Ulim,Vlim,hlim,Dlim,S) result(H20)
     !-----------------------------------------------------------
     ! Get the gradient of the HFBHamiltonian H20.
     !
@@ -700,9 +726,9 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim) result(H20)
     !       U_1^{dagger} h_+ V_2 + U_1^{\dagger} \Delta U2
     !     - V_1^{dagger} h_+ U_2 - V_1^{\dagger} \Delta V2
     !-----------------------------------------------------------
+    integer, intent(in)        :: S
     real(KIND=dp), intent(in)  :: Ulim(:,:), Vlim(:,:), dlim(:,:), hlim(:,:)
     real(KIND=dp)              :: H20(size(Ulim,1),size(Ulim,1))
-    real(KIND=dp)              :: time(3)
     !-----------------------------------------------------
     ! Auxiliary arrays
     real(KIND=dp):: DsV(size(Ulim,1),size(Ulim,1))
@@ -719,46 +745,40 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim) result(H20)
     ! Construct auxiliary arrays
     !
     ! Note to the reader:
-    ! The commented out array calculations CAN NOT BE OBTAINED FROM THEIR
-    ! symmetric counterparts. HOWEVER, H20 itself is antisymmetric and it is
+    ! The arrays are only calculated half and the other half CAN NOT BE OBTAINED
+    ! BY SYMMETRY.  HOWEVER, H20 itself is antisymmetric and it is
     ! this symmetry that allows us to only calculate half of each matrix.
-    hU(1:N/2,1:N/2)      = matmul(hlim(1:N/2,1:N/2), Ulim(1:N/2,1:N/2))
-    !hU(N/2+1:N,N/2+1:N)  = matmul(hlim(N/2+1:N,N/2+1:N), Ulim(N/2+1:N,N/2+1:N))
-
-    !hV(1:N/2, N/2+1:N)   = matmul(hlim(1:N/2,1:N/2), Vlim(1:N/2, N/2+1:N))
-    hV(N/2+1:N,1:N/2)    = matmul(hlim(N/2+1:N,N/2+1:N), Vlim(N/2+1:N,1:N/2))
-    !
-    DsV(1:N/2,1:N/2)     = matmul(Dlim(1:N/2,N/2+1:N), Vlim(N/2+1:N,1:N/2))
-    !DsV(N/2+1:N,N/2+1:N) = matmul(Dlim(N/2+1:N,1:N/2), Vlim(1:N/2,N/2+1:N))
-    !
-    !DsU(1:N/2,N/2+1:N)   = matmul(Dlim(1:N/2,N/2+1:N), Ulim(N/2+1:N,N/2+1:N))
-    DsU(N/2+1:N,1:N/2)   = matmul(Dlim(N/2+1:N,1:N/2), Ulim(1:N/2,1:N/2))
+    hU(1:N/2,1:S)      = matmul(hlim(1:N/2,1:N/2), Ulim(1:N/2,1:S))
+    hV(N/2+1:N,1:S)    = matmul(hlim(N/2+1:N,N/2+1:N), Vlim(N/2+1:N,1:S))
+    DsV(1:N/2,1:S)     = matmul(Dlim(1:N/2,N/2+1:N), Vlim(N/2+1:N,1:S))
+    DsU(N/2+1:N,1:S)   = matmul(Dlim(N/2+1:N,1:N/2), Ulim(1:N/2,1:S))
 
     !---------------------------------------------------------------------------
     ! Construct H20
-    H20(N/2+1:N, 1:N/2) =                                                      &
-    &                matmul(transpose(Ulim(N/2+1:N,N/2+1:N)),hV(N/2+1:N, 1:N/2))
-    H20(N/2+1:N, 1:N/2) = H20(N/2+1:N, 1:N/2) -                                &
-    &                matmul(transpose(Vlim(1:N/2,N/2+1:N)),  DsV(1:N/2,1:N/2))
-    H20(N/2+1:N, 1:N/2) = H20(N/2+1:N, 1:N/2) +                                &
-    &               matmul(transpose(Ulim(N/2+1:N,N/2+1:N)),DsU(N/2+1:N, 1:N/2))
-    H20(N/2+1:N, 1:N/2) = H20(N/2+1:N, 1:N/2) -                                &
-    &                   matmul(transpose(Vlim(1:N/2,N/2+1:N)), hU(1:N/2, 1:N/2))
-    do j=1,N/2
-      do i=N/2+1,N
+    H20(S+1:N, 1:S) =                                                          &
+    &                    matmul(transpose(Ulim(N/2+1:N,S+1:N)),hV(N/2+1:N, 1:S))
+    H20(S+1:N, 1:S) = H20(S+1:N, 1:S) -                                        &
+    &                    matmul(transpose(Vlim(1:N/2,S+1:N)),  DsV(1:N/2,1:S))
+    H20(S+1:N, 1:S) = H20(S+1:N, 1:S) +                                        &
+    &                   matmul(transpose(Ulim(N/2+1:N,S+1:N)),DsU(N/2+1:N, 1:S))
+    H20(S+1:N, 1:S) = H20(S+1:N, 1:S) -                                        &
+    &                       matmul(transpose(Vlim(1:N/2,S+1:N)), hU(1:N/2, 1:S))
+    do j=1,S
+      do i=S+1,N
         H20(j,i) = - H20(i,j)
       enddo
     enddo
     !---------------------------------------------------------------------------
   end function H20_sig
 
-  function N20(Ulim,Vlim)
+  function N20(Ulim,Vlim,S)
     !---------------------------------------------------------------------------
     ! Construct the gradient of the energy with respect to Lambda, N_20.
     !---------------------------------------------------------------------------
     real(KIND=dp), intent(in)  :: Ulim(:,:), Vlim(:,:)
     real(KIND=dp),allocatable  :: N20(:,:)
-    integer :: i,j,N,k
+    integer                    :: i,j,N,k
+    integer, intent(in)        :: S
 
     if(.not.allocated(N20)) then
       N = size(Ulim,1)
@@ -768,16 +788,17 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim) result(H20)
     N20 = 0.0d0
     if(SC) then
 
-      N20(1:N/2, N/2+1:N) =                                                    &
-      &            matmul(transpose(Ulim(1:N/2, 1:N/2)),Vlim(1:N/2,N/2+1:N))   &
-      &          - matmul(transpose(Vlim(N/2+1:N,1:N/2)),Ulim(N/2+1:N,N/2+1:N))
+      N20(1:S, S+1:N) =                                                        &
+      &            matmul(transpose(Ulim(1:N/2, 1:S)),Vlim(1:N/2,S+1:N))       &
+      &          - matmul(transpose(Vlim(N/2+1:N,1:S)),Ulim(N/2+1:N,S+1:N))
 
-      do j=N/2+1,N
-        do i=1,N/2
+      do j=S+1,N
+        do i=1,S
           N20(j,i) = - N20(i,j)
         enddo
       enddo
     else
+      print *, 'N20 nosig'
       do j=1,N
         do i=j+1,N
           N20(i,j) = 0.0d0
@@ -791,37 +812,14 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim) result(H20)
 
   end function N20
 
-  ! function LN20_sig(Ulim,Vlim, Rho, Kappa) result(LN20)
-  !   real(KIND=dp), intent(in)  :: Ulim(:,:), Vlim(:,:), Rho(:,:), Kappa(:,:)
-  !   real(KIND=dp)              :: LN20(size(Ulim,1),size(Ulim,1))
-  !
-  !   integer :: i,j,k,N
-  !
-  !   !---------------------------------------------------------------------------
-  !   ! Auxiliary arrays
-  !   real(KIND=dp):: kappaV(size(Ulim,1),size(Ulim,1))
-  !   real(KIND=dp):: kappaU(size(Ulim,1),size(Ulim,1))
-  !   real(KIND=dp):: rhoV(size(Ulim,1) ,size(Ulim,1))
-  !   real(KIND=dp):: rhoU(size(Ulim,1) ,size(Ulim,1))
-  !
-  !   N = size(Ulim,1)
-  !
-  !   rhoV(1:N,1:N) = matmul(rho, Vlim)
-  !   rhoU(1:N,1:N) = matmul(rho, Ulim)
-  !
-  !   LN20 = -4.0d0 * matmul(transpose(Ulim), rhoV)                              &
-  !   &    +  4.0d0 * matmul(transpose(Vlim), rhoU)
-  !
-  !   if(all(LN20.eq.0.0))print *, 'LN20 zero'
-  ! end function LN20_sig
-
-  subroutine ortho_nosig(U,V)
+  subroutine ortho_nosig(U,V, S)
         !-----------------------------------------------------------------------
         ! Orthogonalises U and V vectors when signature is broken.
         ! Uses a simple Gramm-Schmidt routine.
         !-----------------------------------------------------------------------
         real(KIND=dp), intent(inout) :: U(:,:), V(:,:)
         real(KIND=dp)                :: overlap
+        integer, intent(in)          :: S
 
         integer :: i,j,k, N
 
@@ -852,18 +850,21 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim) result(H20)
 
   end subroutine ortho_nosig
 
-  subroutine ortho_sig(U,V)
+  subroutine ortho_sig(U,V,S)
     !-----------------------------------------------------------------------
     ! Orthogonalises U and V vectors when signature is conserved.
     ! Uses a simple Gramm-Schmidt routine.
     !-----------------------------------------------------------------------
+    ! S is the number of positive signature eigenvectors (U, V)
+    !-----------------------------------------------------------------------
       real(KIND=dp), intent(inout) :: U(:,:), V(:,:)
+      integer, intent(in)          :: S
       real(KIND=dp)                :: overlap
 
       integer :: i,j,k, N
 
       N = size(U,1)
-      do j=1,N/2
+      do j=1,S
         !-------------------------------------------------------
         ! Normalise vector ( U_j )
         !                  ( V_j )
@@ -893,7 +894,7 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim) result(H20)
         enddo
       enddo
 
-      do j=N/2+ 1 ,N
+      do j=S+1,N
         !-------------------------------------------------------
         ! Normalise vector ( U_j )
         !                  ( V_j )

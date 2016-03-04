@@ -148,12 +148,12 @@ contains
     ! Special mention here for the HFB matrices.
     if(allocated(InputKappa)) then
         if(LegacyInput) then
-          ! Make sure we don't accidentally
+          ! Make sure we don't accidentally change the size of KappaHFB
           KappaHFB(1:size(InputKappa,1),1:size(InputKappa,2),:,:) = InputKappa
           if(InPC.neqv.PC) call stp("Don't break parity from legacy input.")
         else
-          call TransformHFBMatrices(inputU, inputV, inputRho, InputKappa,        &
-          &                               inPC,inIC,FileHFBColumns,FileBlocksizes)
+          call TransformHFBMatrices(inputU, inputV, inputRho, InputKappa,      &
+          &                             inPC,inIC,FileHFBColumns,FileBlocksizes)
         endif
     endif
   end subroutine Input

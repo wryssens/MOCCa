@@ -1409,45 +1409,45 @@ contains
 
 ! end subroutine Linesearch
 
-subroutine CalcQPEnergies(Ulim,Vlim,Fermi,L2,Delta)
-
-    real(KIND=dp), intent(in) :: Ulim(2*nwt,2*nwt,2,2), Vlim(2*nwt,2*nwt,2,2)
-    real(KIND=dp), intent(in) :: Fermi(2), L2(2)
-    complex(KIND=dp), allocatable, intent(in) :: Delta(:,:,:,:)
-    real(KIND=dp)             :: Vector(2*nwt,nwt), HV(2*nwt,nwt)
-
-    integer                   :: P ,it, N,jj,i,j,k
-
-    QuasiEnergies = 0.0_dp
-
-    ! Construct the HFBHamiltonian
-    call ConstructHFBHamiltonian(Fermi,Delta,L2,0.0_dp)
-
-    do it=1,Iindex
-        do P=1,Pindex
-            N = blocksizes(P,it)
-            ! Construct the eigenvector.
-            Vector(  1:N  ,1:N) = Ulim(1:N,1:N,P,it)
-            Vector(N+1:2*N,1:N) = Vlim(1:N,1:N,P,it)
-            HV(1:2*N,1:N) = 0.0_dp
-            do j=1,N
-                ! Multiply every vector j with the HFB Hamiltonian
-                do i=1,2*N
-                    do k=1,2*N
-                        HV(i,j) = HV(i,j) + DBLE(HFBHamil(i,k,P,it)) *  Vector(k,j)
-                    enddo
-                enddo
-            enddo
-            do j=1,N
-                jj = HFBColumns(j,P,it)
-                QuasiEnergies(jj,P,it) = 0.0_dp
-                do i=1,2*N
-                    QuasiEnergies(jj,P,it) = QuasiEnergies(jj,P,it) + Vector(i,j) * HV(i,j)
-                enddo
-            enddo
-        enddo
-    enddo
-end subroutine CalcQPEnergies
+! subroutine CalcQPEnergies(Ulim,Vlim,Fermi,L2,Delta)
+!
+!     real(KIND=dp), intent(in) :: Ulim(2*nwt,2*nwt,2,2), Vlim(2*nwt,2*nwt,2,2)
+!     real(KIND=dp), intent(in) :: Fermi(2), L2(2)
+!     complex(KIND=dp), allocatable, intent(in) :: Delta(:,:,:,:)
+!     real(KIND=dp)             :: Vector(2*nwt,nwt), HV(2*nwt,nwt)
+!
+!     integer                   :: P ,it, N,jj,i,j,k
+!
+!     QuasiEnergies = 0.0_dp
+!
+!     ! Construct the HFBHamiltonian
+!     call ConstructHFBHamiltonian(Fermi,Delta,L2,0.0_dp)
+!
+!     do it=1,Iindex
+!         do P=1,Pindex
+!             N = blocksizes(P,it)
+!             ! Construct the eigenvector.
+!             Vector(  1:N  ,1:N) = Ulim(1:N,1:N,P,it)
+!             Vector(N+1:2*N,1:N) = Vlim(1:N,1:N,P,it)
+!             HV(1:2*N,1:N) = 0.0_dp
+!             do j=1,N
+!                 ! Multiply every vector j with the HFB Hamiltonian
+!                 do i=1,2*N
+!                     do k=1,2*N
+!                         HV(i,j) = HV(i,j) + DBLE(HFBHamil(i,k,P,it)) *  Vector(k,j)
+!                     enddo
+!                 enddo
+!             enddo
+!             do j=1,N
+!                 jj = HFBColumns(j,P,it)
+!                 QuasiEnergies(jj,P,it) = 0.0_dp
+!                 do i=1,2*N
+!                     QuasiEnergies(jj,P,it) = QuasiEnergies(jj,P,it) + Vector(i,j) * HV(i,j)
+!                 enddo
+!             enddo
+!         enddo
+!     enddo
+! end subroutine CalcQPEnergies
 subroutine ConstructRHOHFBLimited(Vlim)
     !------------------------------------------------------------------
     ! Construct RhoHFB from only half of the V matrix

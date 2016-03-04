@@ -13,11 +13,11 @@ module Pairing
 ! 2) This module uses separate modules to actually solve the pairing problem.
 !    In this sense, this module is only used to drive the other modules.
 ! 3) This contains the basic HF solver too, for simplicity.
-! 4) Same remarks regarding precision of conversion with complex numbers as in 
+! 4) Same remarks regarding precision of conversion with complex numbers as in
 !    the HFB module.s
 ! 5) The BCS and HFB module both have several routines that take arguments
 !    that are not strictly needed. They are only needed in order to be able
-!    to abstract the pairing solver and be able to point some procedure 
+!    to abstract the pairing solver and be able to point some procedure
 !    pointers.
 !-------------------------------------------------------------------------------
 
@@ -35,7 +35,7 @@ module Pairing
 
   !-----------------------------------------------------------------------------
   ! Integer determines the type of pairing that is active
-  !  0  =>  HF 
+  !  0  =>  HF
   !  1  =>  BCS
   !  2  =>  HFB
   integer :: PairingType=0
@@ -63,9 +63,9 @@ module Pairing
   ! Fermi levels and their history
   real(KIND=dp) :: Fermi(2)=-10.0_dp, FermiHistory(2,7)=0.0_dp
   ! Freeze the occupation or not.
-  logical       :: FreezeOccupation=.false.  
+  logical       :: FreezeOccupation=.false.
   !-----------------------------------------------------------------------------
-  ! Pairing gaps for the different pairing models. 
+  ! Pairing gaps for the different pairing models.
   !-----------------------------------------------------------------------------
   ! Indices for this quantity are:
   ! 1) wavefunction index
@@ -76,10 +76,10 @@ module Pairing
   !-----------------------------------------------------------------------------
   ! Pairing fields, used to calculate the gaps.
   ! Defined as a position-dependent Delta.
-  ! Delta(x,y,z) = 
+  ! Delta(x,y,z) =
   !    Sum_{i,j}     2*fi*fj*kappa_{ij} * s * <r,s;r,-s|V|ij>
   ! which is general for HFB and reduces to the following for BCS:
-  ! Delta(x,y,z) = 
+  ! Delta(x,y,z) =
   !    Sum_{i,ibar}  2*fi*fibar*u_i*v_i * s * <r,s;r,-s|V|ij>
   !-----------------------------------------------------------------------------
   complex(KIND=dp), allocatable  :: PairingField(:,:,:,:)
@@ -105,7 +105,7 @@ module Pairing
   logical                     :: Lipkin =.false.
   real(KIND=dp)               :: LNLambda(2)=0.0_dp
   !-----------------------------------------------------------------------------
-  ! Logical that determines whether a reinitialisation of KappaHFB is done 
+  ! Logical that determines whether a reinitialisation of KappaHFB is done
   ! for HFB calculations.
   logical                     :: GuessKappa=.false.
   !-----------------------------------------------------------------------------
@@ -116,7 +116,7 @@ module Pairing
   ! Integer that tells MOCCa what number of blocked qps to look for.
   integer                     :: Block=0
   !------------------------------------------------------
-  ! Temporary array for the pairing density rho~, until a 
+  ! Temporary array for the pairing density rho~, until a
   ! more general implementation is available.
   complex(KIND=dp),allocatable :: PairDensity(:,:,:,:)
   ! Response pairing density
@@ -125,7 +125,7 @@ module Pairing
   real(KIND=dp),allocatable    :: chistar(:,:,:,:)
 
 contains
- 
+
   subroutine ReadPairingInfo
     !---------------------------------------------------------------------------
     ! Subroutine that reads info on the pairing interaction from the namelist
@@ -153,15 +153,15 @@ contains
      &                  FermiSolver, HFBIter,HFBgauge,HFConfig
 
      read(unit=*, NML=Pairing)
-  
-     PairingStrength(1) = PairingNeutron;  PairingStrength(2) = PairingProton   
+
+     PairingStrength(1) = PairingNeutron;  PairingStrength(2) = PairingProton
      PairingCut(1)      = CutNeutron    ;  PairingCut(2)      = CutProton
      Alpha(1)           = AlphaNeutron  ;  Alpha(2)           = AlphaProton
      Gaps(1)            = NeutronGap    ;  Gaps(2)            = ProtonGap
-    
+
      call to_upper(Type, Type)
      select case (Type)
-     case ('HF ')     
+     case ('HF ')
       PairingType = 0
      case ('BCS')
       PairingType = 1
@@ -171,41 +171,41 @@ contains
       PairingType = 0 !Default to HF
      end select
      call to_upper(FermiSolver,FermiSolver)
-     
+
      !-----------------------------------------------------------------------------
      !Checking input
-     if(PairingStrength(2).eq.-100.0_dp) then 
+     if(PairingStrength(2).eq.-100.0_dp) then
       if(PairingStrength(1).ne.-100.0_dp) then
         PairingStrength(2) = PairingStrength(1)
       else
         PairingStrength=0.0_dp
       endif
      endif
-     if(PairingStrength(1).eq.-100.0_dp) then 
+     if(PairingStrength(1).eq.-100.0_dp) then
       if(PairingStrength(2).ne.-100.0_dp) then
         PairingStrength(1) = PairingStrength(2)
       endif
      endif
-     if(PairingCut(2).eq.-100.0_dp) then 
+     if(PairingCut(2).eq.-100.0_dp) then
       if(PairingCut(1).ne.-100.0_dp) then
         PairingCut(2) = PairingCut(1)
       else
         PairingCut = 5.0_dp
       endif
      endif
-     if(PairingCut(1).eq.-100.0_dp) then 
+     if(PairingCut(1).eq.-100.0_dp) then
       if(PairingCut(2).ne.-100.0_dp) then
         PairingCut(1) = PairingCut(2)
       endif
      endif
-      if(Alpha(2).eq.-100.0_dp) then 
+      if(Alpha(2).eq.-100.0_dp) then
       if(Alpha(1).ne.-100.0_dp) then
         Alpha(2) = Alpha(1)
       else
         Alpha = 0.0_dp
       endif
      endif
-     if(Alpha(1).eq.-100.0_dp) then 
+     if(Alpha(1).eq.-100.0_dp) then
       if(Alpha(2).ne.-100.0_dp) then
         Alpha(1) = Alpha(2)
       endif
@@ -261,8 +261,8 @@ contains
      !-----------------------------------------------------------------------------
      !--------------------------------------------------------------------------
      ! Determine the cutoff type.
-     select case(Cuttype)    
-     case(1) 
+     select case(Cuttype)
+     case(1)
        PairingCutoff => SymmetricFermi
      case(2)
        PairingCutoff => CosineCut
@@ -282,9 +282,9 @@ contains
      endif
      !--------------------------------------------------------------------------
      !Assigning the correct subroutine to SolvePairing
-     nullify(CompPairingEnergy); nullify(GetOccupations) ; nullify(GetGaps) 
+     nullify(CompPairingEnergy); nullify(GetOccupations) ; nullify(GetGaps)
      nullify(GetPairingFields) ; nullify(FindFermiEnergy)
-     select case (PairingType) 
+     select case (PairingType)
       case(0)
         !-----------------------------------------------------------------------
         ! Hartree-Fock
@@ -314,7 +314,7 @@ contains
         FindFermiEnergy   => BCSFindFermiEnergy
         !-----------------------------------------------------------------------
         allocate(Delta(nwt,1,1,1)) ; allocate(PairingField(nx,ny,nz,2))
-        Delta =0.0_dp ; PairingField = 0.0_dp        
+        Delta =0.0_dp ; PairingField = 0.0_dp
         !Put the default value to 50 for BCS calculations
         if(PairingIter.eq.1) then
             PairingIter=50
@@ -332,13 +332,13 @@ contains
           BCSinHFB(2) = .false.
         else
           BCSinHFB = .false.
-        endif      
+        endif
         !Make sure the density basis points to the correct spot.
         DensityBasis      => CanBasis
         GetPairingFields  => HFBPairingField
         GetOccupations    => HFBOccupations
         GetGaps           => HFBGaps
-        
+
         !Decide on the diagonalization routine
         if(SC) then
           DiagonaliseHFBHamiltonian => DiagonaliseHFBHamiltonian_Signature
@@ -353,10 +353,10 @@ contains
           if(HFBIter.eq.-1) HFBIter=50
         elseif(trim(FermiSolver).eq.'GRADIENT') then
           FindFermiEnergy   => HFBFermiGradient
-          if(HFBIter.eq.-1) HFBIter=50
+          if(HFBIter.eq.-1) HFBIter=500
         elseif(trim(FermiSolver).eq.'BISECTION') then
           FindFermiEnergy   => HFBFindFermiEnergyBisection
-          if(HFBIter.eq.-1) HFBIter=500
+          if(HFBIter.eq.-1) HFBIter=50
         else
           call stp('Unknown Fermi solver requested.')
         endif
@@ -369,7 +369,7 @@ contains
         allocate(RhoHFB(HFBSize,HFBSize,2,2))       ;  RhoHFB       = 0.0_dp
         allocate(KappaHFB(HFBSize,HFBSize,2,2))     ;  KappaHFB     = 0.0_dp
         allocate(OldRhoHFB(HFBSize,HFBSize,2,2))    ;  OldRhoHFB       = 0.0_dp
-        allocate(OldKappaHFB(HFBSize,HFBSize,2,2))  ;  OldKappaHFB     = 0.0_dp     
+        allocate(OldKappaHFB(HFBSize,HFBSize,2,2))  ;  OldKappaHFB     = 0.0_dp
         !-----------------------------------------------------------------------
         ! When Lipkin-Nogami is present, make space for the modified pairing
         ! gaps.
@@ -378,21 +378,21 @@ contains
           allocate(PairingFieldLN(nx,ny,nz,2))     ; PairingFieldLN = 0.0_dp
           allocate(PairDensity(nx,ny,nz,2), Chi(nx,ny,nz,2), ChiStar(nx,ny,nz,2))
         endif
-        !Note that we will store the complete U & V matrices     
+        !Note that we will store the complete U & V matrices
         allocate(U(HFBSize,2*HFBSize,2,2)) ; allocate(V(HFBSize,2*HFBSize,2,2))
         U = 0.0_dp ; V = 0.0_dp
         allocate(HFBHamil(2*HFBSize,2*HFBSize,2,2)) ; HFBHamil=0.0_dp
         !-----------------------------------------------------------------------
-        ! By default, consider even-even nuclei. 
+        ! By default, consider even-even nuclei.
         ! The routine readblocking will change the numberparity if necessary.
-        HFBNumberParity=1        
+        HFBNumberParity=1
         !-----------------------------------------------------------------------
         !Reset the canonical wavefunctions
         allocate(CanBasis(nwt))
         do i=1,nwt
             call CanBasis(i)%Resetwf()
-        enddo     
-        !-----------------------------------------------------------------------       
+        enddo
+        !-----------------------------------------------------------------------
         !Setting numerical default parameters
         if(PairingIter.eq.1) then
           PairingIter=1
@@ -404,7 +404,7 @@ contains
         ! Calling the readBlocking routine when the user wants to do blocking
         if(Block.ne.0) call ReadBlockingInfo(Block)
      end select
-  
+
   end subroutine ReadPairingInfo
 
   subroutine PrintPairingInfo
@@ -413,8 +413,8 @@ contains
     !---------------------------------------------------------------------------
 
     1  format (22('-'), 'Pairing Parameters', 21('-'))
-    2  format (A26) 
-    3  format (33x, ' N ',7x, ' P ') 
+    2  format (A26)
+    3  format (33x, ' N ',7x, ' P ')
     4  format ('  Pairing Strength (MeV fm^3)', 2x,f8.3,2x,f8.3)
     5  format ('  Pairing Cutoff   (Mev)     ', 2x,f8.3,2x,f8.3)
     6  format ('  Pairing Cut width(MeV)     ', 2x,f8.3,2x,f8.3)
@@ -423,7 +423,7 @@ contains
     9  format ('  HFBMixing                  ', 2x, f8.3)
    10  format ('  BCS-like: only Delta_{i,ibar} not zero.' )
    100 format ('  BCS-like Protons : only Delta_{i,ibar} not zero.' )
-   101 format ('  BCS-like Neutrons: only Delta_{i,ibar} not zero.' ) 
+   101 format ('  BCS-like Neutrons: only Delta_{i,ibar} not zero.' )
    11  format ('  Constant Gap activated. ', /,                                 &
    &          '   Neutron Gap: ' , f8.3   , /,                                  &
    &          '   Proton  Gap: ' , f8.3   )
@@ -435,12 +435,12 @@ contains
    17  format ('  LNFraction on the HFB hamiltonian: ', f8.3)
    18  format ('  Gauge of the HFB hamiltonian:      ', f8.3)
    19  format ('  Fermisolver used: ', a9)
-   
+
     print 1
     select case(PairingType)
       case(0)
         print 2, 'Hartree-Fock; No pairing. '
-        if(FreezeOccupation) print 8 
+        if(FreezeOccupation) print 8
         return !Done printing when dealing with hartree-fock.
       case(1)
         print 2, 'BCS with zero-range force.'
@@ -455,32 +455,32 @@ contains
           print 100
         endif
     end select
-    
+
     select case(CutType)
-    case(1) 
+    case(1)
       print 14
-    case(2) 
+    case(2)
       print 13
     end select
-    
+
     print 3
     print 4, PairingStrength
     print 5, PairingCut
     print 6, PairingMu
     print 7, Alpha
-    
+
     if(PairingType.eq.2) print 9, HFBMix
     if(Lipkin)           print 12
-    
+
     print *
     if(PairingType .eq. 2) print 19, FermiSolver
     print 15 , PairingIter
     if(PairingType .eq. 2) print 16, HFBIter
     if(Lipkin)             print 17, LNFraction
     if(PairingType .eq. 2) print 18, HFBGauge
-    
-    
-    print * 
+
+
+    print *
 
     if(allocated(QPExcitations)) call PrintBlocking
 
@@ -491,11 +491,11 @@ contains
     ! Subroutine that prints intermediate info on the pairing.
     !
     !---------------------------------------------------------------------------
-  
+
     use Densities, only : Density
-  
+
     1 format (27('-'), 'Pairing', 26('-'))
-    2 format (25x, ' N ',7x, ' P ') 
+    2 format (25x, ' N ',7x, ' P ')
     3 format (' Fermi Level (MeV) ',2x,f10.5,2x,f10.5)
     4 format (' Particles         ',2x,f10.5,2x,f10.5)
     5 format (' Dispersion        ',2x,f10.5,2x,f10.5)
@@ -505,11 +505,11 @@ contains
 
     print 1
 
-    select case(PairingType)   
-      case (0) 
+    select case(PairingType)
+      case (0)
         !Print Configuration counting
         call PrintHFConfiguration
-        return 
+        return
       case (1,2)
         print 2
         print 3, Fermi
@@ -586,11 +586,11 @@ contains
     &        ' Pairing iterations:  ', i4,/,                       &
     &        ' Old Fermi Energy:    ', 2f10.6,/,                   &
     &        ' New Fermi Energy:    ', 2f10.6)
-    
+
     real(KIND=dp)    :: OldFermi(2), Particles(2)
     integer          :: outeriter
- 
-    if(PairingType.eq.0) then     
+
+    if(PairingType.eq.0) then
       if(FreezeOccupation) return
      call HFFill(HFConfiguration)
      return
@@ -603,7 +603,7 @@ contains
     endif
     !---------------------------------------------------------------------------
     ! Reinitialise Kappa when asked for
-    if(GuessKappa .and. PairingType.eq.2) then 
+    if(GuessKappa .and. PairingType.eq.2) then
       call GuessHFBMatrices(PairingType)
       GuessKappa = .false.
     endif
@@ -616,7 +616,7 @@ contains
       endif
     endif
     if(PairingType.eq.2) DensityBasis => CanBasis
-    
+
     if(PairingType.eq.1 .and. maxval(abs(Delta)).lt.1d-5) Delta = 1.0_dp
     if(Lipkin)  where(LNLambda  .eq.0.0_dp) LNLambda= 0.1_dp
     if(.not.Lipkin) LNLambda= 0.0_dp
@@ -625,30 +625,30 @@ contains
     !---------------------------------------------------------------------------
     ! Outer iterations: iterating gaps and pairingfield.
     do outerIter=1,PairingIter
-            
+
         call ComputePairingCutoffs(Fermi)
         if(.not.ConstantGap) then
           !Don't get new pairingfields if the gaps are constant
           call GetPairingFields(PairingField,PairingFieldLN,Delta)
         endif
         call GetGaps(Delta,DeltaLN,PairingField,PairingFieldLN,Gaps,ConstantGap)
-           
-        OldFermi = Fermi           
+
+        OldFermi = Fermi
         !-----------------------------------------------------------------------
-        ! Get the correct Fermi energy and LN parameter          
+        ! Get the correct Fermi energy and LN parameter
         call FindFermiEnergy(Fermi,LNLambda,Delta,DeltaLN,Lipkin,FermiPrec)
         call ComputePairingCutoffs(Fermi)
         !-----------------------------------------------------------------------
         ! Get the occupations in the appropriate basis and as a side effect
         ! calculate the dispersion in the particle number.
-        call GetOccupations(Fermi,Delta,LNLambda,PairingDisp)  
-                
+        call GetOccupations(Fermi,Delta,LNLambda,PairingDisp)
+
         if(all(abs(Fermi - OldFermi).lt.FermiPrec)) then
             exit
         elseif(outerIter.eq.PairingIter .and. .not. PairingIter.eq.1) then
             print 1, PairingIter, OldFermi, Fermi
-        endif        
-    enddo 
+        endif
+    enddo
     !---------------------------------------------------------------------------
     call SetDeltas
     ! Compute pairingdensity for the calculation of the next Lipkin parameter
@@ -657,25 +657,25 @@ contains
       !LNLambda = CalcLambda2()
     endif
   end subroutine SolvePairing
- 
+
   subroutine SetDeltas
   !-----------------------------------------------------------------------------
   ! Routine that assigns all the deltas to the wavefunctions for printing
   ! purposes.
   !-----------------------------------------------------------------------------
   use HFB, only : blockindices, blocksizes
-  
+
   integer :: i, partner(1), P, it,jj,jjj, check(1), ii, iii
-  
+
   select case (PairingType)
     case(0)
         !HF calculation, no Deltas
-    case(1) 
+    case(1)
         !BCS calculation
         do i=1,nwt
             call HFBasis(i)%SetDelta(Delta(i,1,1,1))
-        enddo        
-    case(2) 
+        enddo
+    case(2)
         !HFB calculation
         do it=1,Iindex
           do P=1,Pindex
@@ -683,7 +683,7 @@ contains
               ii   = blockindices(i,P,it)
               iii  = mod(ii-1,nwt)+1
 
-              partner = maxloc(abs(DBLE(Delta(:,i,P,it))))            
+              partner = maxloc(abs(DBLE(Delta(:,i,P,it))))
               jj  = blockindices(Partner(1),P,it)
               jjj = mod(jj-1,nwt)+1
               call HFBasis(iii)%SetDelta(Delta(partner(1),i,P,it))
@@ -692,13 +692,13 @@ contains
           enddo
         enddo
   end select
-  
+
   end subroutine SetDeltas
 
   pure logical function ConverFermi(Prec) result(Converged)
   !-----------------------------------------------------------------------------
-  ! Subroutine that checks the Fermi level for convergence across mean-field 
-  ! iterations. 
+  ! Subroutine that checks the Fermi level for convergence across mean-field
+  ! iterations.
   ! It checks whether
   !  abs(Fermi(:,Iteration) - Fermi(:,Iteration-n))< FermiPrec
   ! for n =1,7
@@ -714,7 +714,7 @@ contains
       endif
     enddo
   enddo
-  
+
   end function ConverFermi
 
 end module Pairing

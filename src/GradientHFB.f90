@@ -211,7 +211,8 @@ contains
 
   end subroutine BlockHFBHamil
 
-  subroutine HFBFermiGradient(Fermi,L2,Delta,DeltaLN,Lipkin,Prec)
+  subroutine HFBFermiGradient(Fermi,L2,Delta,DeltaLN,Lipkin,DN2,               &
+    &                                                  ConstrainDispersion,Prec)
     !---------------------------------------------------------------------------
     ! Solves the HFB problem using (conjugate) gradient technique.
     ! The idea is to vary the HFB state | Phi \rangle in the space spanned by
@@ -233,8 +234,8 @@ contains
     real(KIND=dp), intent(inout)              :: Fermi(2), L2(2)
     complex(KIND=dp), allocatable, intent(in) :: Delta(:,:,:,:)
     complex(KIND=dp), allocatable, intent(in) :: DeltaLN(:,:,:,:)
-    logical, intent(in)                       :: Lipkin
-    real(KIND=dp), intent(in)                 :: Prec
+    logical, intent(in)                       :: Lipkin, ConstrainDispersion
+    real(KIND=dp), intent(in)                 :: Prec, DN2(2)
 
     !---------------------------------------------------------------------------
     real(KIND=dp) :: gamma(2,2), maxstep, step, L20Norm(2), LN(2)
@@ -333,7 +334,9 @@ contains
       !-------------------------------------------------------------------------
       ! Readjust Fermi and L2
       succes = 0
-      if(Lipkin .and. mod(iter,10).eq.1) LN = Lncr8(Delta,DeltaLN,succes)
+      if(Lipkin .and. mod(iter,10).eq.1) then
+         LN = Lncr8(Delta,DeltaLN,succes)
+      endif
       if(any(succes.ne.0)) call stp("lncr8 failed")
       do it=1,Iindex
           par(it) = 0.0
@@ -390,7 +393,7 @@ contains
           ! 2) the number of particles is close enough to the desired value
           ! 3) the Lambda_2 value is close enough to the calculated one
           !    (if Lipkin is active)
-          if(all((abs(GradientNorm(:,it))).lt.prec) .and.                      &
+          if(all(sqrt(abs(GradientNorm(:,it))).lt.prec) .and.                      &
           &     abs(Par(it) - Particles(it)).lt.Prec  ) then
            converged(it)=.true.
            if(Lipkin) then
@@ -799,7 +802,6 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
         enddo
       enddo
     else
-      print *, 'N20 nosig'
       do j=1,N
         do i=j+1,N
           N20(i,j) = 0.0d0

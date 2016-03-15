@@ -1,7 +1,7 @@
 module Energy
 !-------------------------------------------------------------------------------
-! This module contains all the variables to compute the value of the energy 
-! functional: basically everything related to the energy. 
+! This module contains all the variables to compute the value of the energy
+! functional: basically everything related to the energy.
 !
 !Subroutines included in this module:
 !
@@ -33,20 +33,20 @@ module Energy
 
   ! Two different ways of calculating and treating Skyrme terms
   real(KIND=dp) :: Skyrmeterms(32),BTerm(21)
-  
+
   procedure(PrintEnergy_Bterms),pointer :: PrintEnergy
 contains
-    
+
   subroutine CompEnergy
     !---------------------------------------------------------------------------
-    ! Subroutine that computes all the different energies of the main program 
+    ! Subroutine that computes all the different energies of the main program
     ! state.
     !---------------------------------------------------------------------------
     ! Note that the TotalEnergy would give a slightly different result, due to
     ! the different computation of the kinetic energy
     !---------------------------------------------------------------------------
     use Coulomb, only : CompCoulombEnergy,CompCoulombExchange
-    use Pairing, only : CompPairingEnergy, Fermi, Delta,LNLambda,PairingDisp
+    use Pairing, only : CompPairingEnergy, Fermi, Delta,LNLambda,PairingDisp,Lipkin
     use Cranking, only: CrankEnergy
     use Moments, only : ConstraintEnergy
     integer :: i
@@ -59,20 +59,20 @@ contains
             PrintEnergy => PrintEnergy_termbyterm
         endif
     endif
-    
+
     !Initialise the contributions to the energy
     CoulombEnergy=0.0_dp
     CoMCorrection=0.0_dp
     BTerm=0.0_dp
     Kinetic=0.0_dp
-  
-    !Shift the entries in OldEnergy by one place and put in 
+
+    !Shift the entries in OldEnergy by one place and put in
     !the previous value of the Energy.
     do i=0,5
         OldEnergy(7-i) = OldEnergy(6-i)
     enddo
     OldEnergy(1)=TotalEnergy
-    
+
     !Calculate the Kinetic Energy
     call CompKinetic
 
@@ -85,12 +85,14 @@ contains
         SkyrmeTerms = compSkyrme(Density)
         TotalEnergy = sum(SkyrmeTerms)
     endif
-       
 
-    !Pairing Energy  
+
+    !Pairing Energy
     PairingEnergy = CompPairingEnergy(Delta)
     !Lipkin-Nogami Energy
-    LNEnergy      = - LNLambda * PairingDisp 
+    if(Lipkin) then
+      LNEnergy      = - LNLambda * PairingDisp
+    endif
 
     !Calculating the CoulombEnergy
     CoulombEnergy   = CompCoulombEnergy(Density)
@@ -98,25 +100,25 @@ contains
 
     !COM Correction
     call CompCOMCorrection
-  
+
     !Sum of all energies (Note that the Skyrme sum already was included)
     TotalEnergy = TotalEnergy + sum(Kinetic)  + CoulombEnergy  +               &
     &             sum(CoMCorrection) + CoulombExchange + sum(PairingEnergy) +  &
     &             sum(LNEnergy)
-    
-    !Calculate the Routhian too 
+
+    !Calculate the Routhian too
     Routhian = TotalEnergy                                                     &
     !                         Contribution of multipole moment constraints
     &                      +    sum(ConstraintEnergy*Density%Rho)*dv           &
     !                         Contribution of the cranking constraints (Omega*J)
     &                      +    sum(CrankEnergy)
-    
+
     !Energy due to the single particle states.
     SpEnergy = SpwfEnergy()
-    
-    return 
+
+    return
   end subroutine CompEnergy
-  
+
   function compSkyrmeTerms(Den) result(B)
     !---------------------------------------------------------------------------
     ! Calculates all the different Skyrme contributions.
@@ -126,23 +128,23 @@ contains
     type(DensityVector), intent(in) :: Den
     real(KIND=dp)                   :: B(21)
     integer                         :: it, l, m
-  
-    !Temporary storage for the total densities, as these figure quite often in 
+
+    !Temporary storage for the total densities, as these figure quite often in
     !the expressions.
     real(KIND=dp) :: RhoT(nx,ny,nz), NablaJT(nx,ny,nz), TauT(nx,ny,nz)
     real(KIND=dp) :: vecJT(nx,ny,nz,3), LapRhoT(nx,ny,nz), RotST(nx,ny,nz,3)
     real(KIND=dp) :: JMuNuT(nx,ny,nz,3,3), VecTT(nx,ny,nz,3), LapST(nx,ny,nz,3)
     real(KIND=dp) :: DivST(nx,ny,nz), VecST(nx,ny,nz,3)
     real(KIND=dp) :: VecFT(nx,ny,nz,3), ref
-    
+
     RhoT    = sum(Den%Rho,4)    ; TauT    = sum(Den%Tau,4)
     NablaJT = sum(Den%NablaJ,4) ; LapRhoT = sum(Den%LapRho,4)
     if(allocated(Den%JmuNu)) JMuNuT = sum(Den%JMuNu,6)
-    
+
     if(.not.TRC) then
-      VecJT=sum(Den%VecJ,5) ;  VecST=sum(Den%VecS,5) ; RotST=sum(Den%RotS,5) 
+      VecJT=sum(Den%VecJ,5) ;  VecST=sum(Den%VecS,5) ; RotST=sum(Den%RotS,5)
       if(allocated(Den%VecT))  VecTT = sum(Den%VecT,5)
-      if(allocated(Den%VecF))  VecFT = sum(Den%VecF,5) 
+      if(allocated(Den%VecF))  VecFT = sum(Den%VecF,5)
       if(allocated(Den%LapS))  LapST = sum(Den%LapS,5)
       if(allocated(Den%DivS))  DivST = sum(Den%DivS,4)
     endif
@@ -150,7 +152,7 @@ contains
 
     !B1 Terms
     B(1) = B1*sum(RhoT**2)*dv
-    
+
     !B2 Term
     do it=1,2
       B(2) = B(2) + sum(Den%Rho(:,:,:,it)**2)
@@ -194,7 +196,7 @@ contains
     if(.not.TRC) then
       B(9) = B(9) + sum(sum(vecJT*RotST,4))
     endif
-    B(9) = B(9) * B9      
+    B(9) = B(9) * B9
     do it=1,2
       B(9) = B(9) + B9q*(sum(Den%Rho(:,:,:,it)*Den%NablaJ(:,:,:,it)))
       if(.not.TRC) then
@@ -202,7 +204,7 @@ contains
       endif
     enddo
     B(9) = B(9) * dv
-    
+
     if(.not.TRC) then
       B(10)= B10*sum(VecST**2)*dv
       do it=1,2
@@ -219,7 +221,7 @@ contains
       enddo
       B(13) = B13a*dv*B(13)
     endif
-    
+
     !B14 Terms
     if(B14.ne. 0.0_dp) then
       B(14)=(sum(JMuNuT**2))
@@ -238,21 +240,21 @@ contains
       if(.not.TRC) then
         B(15) = B(15) +(- sum(Den%VecS(:,:,:,1,:)*Den%VecT(:,:,:,1,:))    &
           &             - sum(Den%VecS(:,:,:,2,:)*Den%VecT(:,:,:,2,:))    &
-          &             - sum(Den%VecS(:,:,:,3,:)*Den%VecT(:,:,:,3,:)) ) 
+          &             - sum(Den%VecS(:,:,:,3,:)*Den%VecT(:,:,:,3,:)) )
       endif
       B(15) = B15*dv*B(15)
     endif
-   
-    !B16 Terms  
-    if(B16.ne. 0.0_dp) then     
-      !Sum_{mu}J_{mumu}^2 terms  
+
+    !B16 Terms
+    if(B16.ne. 0.0_dp) then
+      !Sum_{mu}J_{mumu}^2 terms
       B(16)= sum((JMuNuT(:,:,:,1,1)+JMuNuT(:,:,:,2,2)+JMuNuT(:,:,:,3,3))**2)
-      do l=1,3        
+      do l=1,3
         do m=1,3
           ! Sum_{mu,nu} J_{mu,nu}J_{nu,mu}
           B(16) = B(16) + sum(JMuNuT(:,:,:,l,m)*JMuNuT(:,:,:,m,l))
         enddo
-      enddo 
+      enddo
       ! 2*s*F
       if(.not.TRC) then
         B(16) = B(16)  - 2.0*(sum(sum(VecST*VecFT,4)))
@@ -262,9 +264,9 @@ contains
 
     !B17 Terms
     if(B17.ne.0.0_dp) then
-      B(17)= 0.0_dp  
-      do it=1,2  
-        !Sum_{mu}J_{mumu}^2 terms       
+      B(17)= 0.0_dp
+      do it=1,2
+        !Sum_{mu}J_{mumu}^2 terms
         B(17) = B(17) + sum((Den%JMuNu(:,:,:,1,1,it)+Den%JMuNu(:,:,:,2,2,it)   &
         &             + Den%JMuNu(:,:,:,3,3,it))**2)
         do l=1,3
@@ -272,7 +274,7 @@ contains
             ! Sum_{mu,nu} J_{mu,nu}J_{nu,mu}
             B(17) = B(17) + sum(Den%JMuNu(:,:,:,l,m,it)*Den%JMuNu(:,:,:,m,l,it))
           enddo
-        enddo   
+        enddo
 
         ! 2*s*F
         if(.not.TRC) then
@@ -305,8 +307,8 @@ contains
       !B21 Terms
       B(21)= B21*dv*sum(Den%DivS(:,:,:,1)**2 + Den%DivS(:,:,:,2)**2)
     endif
-    
-    return   
+
+    return
   end function compSkyrmeTerms
 
   function compSkyrme(Den) result(terms)
@@ -314,9 +316,9 @@ contains
     type(DensityVector), intent(in) :: Den
     real(KIND=dp)                   :: terms(32)
     integer                         :: it, l, m
-  
+
     !--------------------------------------------------------------------------
-    !Temporary storage for the total densities, as these figure quite often in 
+    !Temporary storage for the total densities, as these figure quite often in
     !the expressions.
     real(KIND=dp) :: RhoT(nx,ny,nz), NablaJT(nx,ny,nz), TauT(nx,ny,nz)
     real(KIND=dp) :: vecJT(nx,ny,nz,3), LapRhoT(nx,ny,nz), RotST(nx,ny,nz,3)
@@ -327,11 +329,11 @@ contains
     RhoT    = sum(Den%Rho,4)    ; TauT    = sum(Den%Tau,4)
     NablaJT = sum(Den%NablaJ,4) ; LapRhoT = sum(Den%LapRho,4)
     if(allocated(Den%JmuNu)) JMuNuT = sum(Den%JMuNu,6)
-    
+
     if(.not.TRC) then
-      VecJT=sum(Den%VecJ,5) ;  VecST=sum(Den%VecS,5) ; RotST=sum(Den%RotS,5) 
+      VecJT=sum(Den%VecJ,5) ;  VecST=sum(Den%VecS,5) ; RotST=sum(Den%RotS,5)
       if(allocated(Den%VecT))  VecTT = sum(Den%VecT,5)
-      if(allocated(Den%VecF))  VecFT = sum(Den%VecF,5) 
+      if(allocated(Den%VecF))  VecFT = sum(Den%VecF,5)
       if(allocated(Den%LapS))  LapST = sum(Den%LapS,5)
       if(allocated(Den%DivS))  DivST = sum(Den%DivS,4)
     endif
@@ -339,18 +341,18 @@ contains
     Terms = 0
 
     ! B1 * \rho^2_{t}
-    Terms(1) = B1*sum(RhoT**2) 
+    Terms(1) = B1*sum(RhoT**2)
     ! B2 * \rho^2_{q}
     do it=1,2
       Terms(2) = Terms(2) + sum(Den%Rho(:,:,:,it)**2)
     enddo
     Terms(2) = B2*Terms(2)
 
-    ! B3 * \rho_t \tau_t 
+    ! B3 * \rho_t \tau_t
     Terms(3) = B3*(sum(RhoT*TauT))
-    
-      
-    !B4 * \rho_t \tau_t 
+
+
+    !B4 * \rho_t \tau_t
     do it=1,2
       Terms(4) = Terms(4) + B4* sum(Den%Rho(:,:,:,it)*Den%Tau(:,:,:,it))
     enddo
@@ -383,11 +385,11 @@ contains
     !B9 * \rho_t \Nabla J_t
     Terms(11) = B9 * sum(RhoT*NablaJT)
 
-    !B9q * \rho_q \Nabla J_q   
+    !B9q * \rho_q \Nabla J_q
     do it=1,2
       Terms(12) = Terms(12) + B9q*(sum(Den%Rho(:,:,:,it)*Den%NablaJ(:,:,:,it)))
     enddo
-    
+
     !B9 * \vecJ_t * \Nabla \xtimes S_t
     if(.not.TRC) Terms(13) = B9*sum(sum(vecJT*RotST,4))
 
@@ -425,20 +427,20 @@ contains
     !B14 \J_{mu mu}
     if(B14.ne. 0.0_dp) then
       Terms(19)= B14 * (sum(JMuNuT**2))
-    endif 
+    endif
 
     ! B15 \sum J_{\mu \mu}_q
     if(B15.ne. 0.0_dp) then
       Terms(20)= B15 * sum(Den%JMuNu**2)
     endif
-    
+
     ! - B14 \vecS * \vecT
     if(B14.ne. 0.0_dp) then
         if(.not. TRC) then
             Terms(21) = - B14 * sum(VecST*VecTT)
         endif
     endif
- 
+
     ! B15 \vecs_q * \vecT_q
     if(B15.ne.0.0_dp .and. .not. TRC) then
         Terms(22) = - B15 * sum(Den%VecS*Den%VecT)
@@ -451,7 +453,7 @@ contains
 
      ! B17 ( \sum J_{mu mu}_q ^2
     if(B17.ne. 0.0_dp) then
-        do it=1,2 
+        do it=1,2
             Terms(24) = Terms(24) + B17 * sum((Den%JMuNu(:,:,:,1,1,it)+ Den%JMuNu(:,:,:,2,2,it)    &
             &                                                         + Den%JMuNu(:,:,:,3,3,it))**2)
         enddo
@@ -459,12 +461,12 @@ contains
 
     ! B16 \sum J_{\mu \nu}_q J_{\nu \mu}_q
     if(B16.ne.0.0_dp) then
-        do l=1,3        
+        do l=1,3
             do m=1,3
                 ! Sum_{mu,nu} J_{mu,nu}J_{nu,mu}
                 Terms(25) = Terms(25) + B16 * sum(JMuNuT(:,:,:,l,m)*JMuNuT(:,:,:,m,l))
             enddo
-        enddo 
+        enddo
     endif
 
      ! B17 Sum_{mu,nu} J_{mu,nu}J_{nu,mu}
@@ -509,7 +511,7 @@ contains
       Terms(31)= B20*sum(DivST**2)
     endif
 
-    ! B21 \nabla \cdot s_q  
+    ! B21 \nabla \cdot s_q
     if(B21 .ne. 0.0_dp .and. .not.TRC) then
       Terms(32)= B21*sum(Den%DivS(:,:,:,1)**2 + Den%DivS(:,:,:,2)**2)
     endif
@@ -519,22 +521,22 @@ contains
     Terms = Terms * dv
 
   end function compSkyrme
-  
+
   subroutine PrintEnergy_Bterms(Lagrange)
     !---------------------------------------------------------------------------
-    ! This subroutine prints all relevant info that is contained in this 
+    ! This subroutine prints all relevant info that is contained in this
     ! module plus some extra diagnostics.
     !---------------------------------------------------------------------------
     ! Optional Argument Lagrange determines whether or not the energies have
     ! been calculated with the lagrange derivatives at the end.
     !---------------------------------------------------------------------------
-  
+
     use Pairing, only : PairingType, Lipkin
 
     logical, intent(in), optional :: Lagrange
 
       1 format (22('-'),  ' Energies (MeV) ', 22('-'))
-     11 format (18('-'),  ' Lagrange Energies (MeV) ', 18('-')) 
+     11 format (18('-'),  ' Lagrange Energies (MeV) ', 18('-'))
       2 format (60('_'))
       3 format (60('-'))
     102 format (1x, 3('B', i2,2x,  f12.5, 2x))
@@ -543,7 +545,7 @@ contains
     104 format (' Pairing Energy ',/,                                          &
         &    2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5)
     105 format (' Lipkin-Nogami Energy ',/,                                    &
-        &    2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5) 
+        &    2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5)
     106 format (' Coulomb ',/,3x,'Direct', f12.5, ' Exch.  ', f12.5)
     107 format (' Total Energy ',/,                                            &
         & 3x,'from functional: ', f15.6, /,                                    &
@@ -553,7 +555,7 @@ contains
         & 3x,'Relative:        ', 4x,es15.6,/                                  &
         & 3x,'Abs. func vs sp  ', f15.6,/                                      &
         & 3x,'Rel. func vs sp  ', 4x,es15.6,/                                  &
-        & 3x,'Density changed  ', 4x,es15.6      )                                    
+        & 3x,'Density changed  ', 4x,es15.6      )
     109 format (' Total Energy ',/,                                            &
         & 3x,'Lagrange:        ', f15.6,/,                                     &
         & 3x,'Non-Lagrange:    ', f15.6,/,                                     &
@@ -563,14 +565,14 @@ contains
     111 format(' 2-body COM Correction')
     112 format(2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5)
     113 format(' Routhian:', 10x, f15.6)
-    
+
     !Header
-    if(present(Lagrange)) then      
+    if(present(Lagrange)) then
       print 11
     else
       print 1
     endif
-    
+
     print 102,  1, BTerm(1),   2, Bterm(2),   3, BTerm(3)
     print 102,  4, BTerm(4),   5, Bterm(5),   6, BTerm(6)
     print 102,  7, BTerm(7),   8, BTerm(8),   9, Bterm(9)
@@ -586,7 +588,7 @@ contains
       endif
     endif
     print 106, CoulombEnergy, CoulombExchange
-    
+
     if(any(ComCorrection(1,:).ne.0.0_dp)) then
       print 110
       print 112, COMCorrection(1,:), sum(COMCorrection(1,:))
@@ -597,10 +599,10 @@ contains
     endif
 
     print 2
-    
+
     !Don't print the energy differences when dealing with Lagrange reanalysis
     if(.not.present(Lagrange)) then
-      
+
       print 107, TotalEnergy, SPEnergy
       print 113, Routhian
       if(OldEnergy(1).ne.0.0_dp) then
@@ -609,9 +611,9 @@ contains
         &          abs(TotalEnergy - SpEnergy),                                &
         &          abs((TotalEnergy - SpEnergy)/TotalEnergy),                  &
         &          DensityChange
-      endif      
+      endif
     else
-      !Note that oldenergy(1) now contains the last total energy that was 
+      !Note that oldenergy(1) now contains the last total energy that was
       !calculated with non-lagrange derivatives.
       print 109, TotalEnergy, OldEnergy(1), TotalEnergy - OldEnergy(1),        &
       &          abs((TotalEnergy - OldEnergy(1))/TotalEnergy)
@@ -623,23 +625,23 @@ contains
 
   subroutine PrintEnergy_TermByTerm(Lagrange)
     !---------------------------------------------------------------------------
-    ! This subroutine prints all relevant info that is contained in this 
+    ! This subroutine prints all relevant info that is contained in this
     ! module plus some extra diagnostics.
     !---------------------------------------------------------------------------
     ! Optional Argument Lagrange determines whether or not the energies have
     ! been calculated with the lagrange derivatives at the end.
     !---------------------------------------------------------------------------
-  
+
     use Pairing, only : PairingType, Lipkin
 
     logical, intent(in), optional :: Lagrange
     real*8                        :: SKTodd
 
       1 format (22('-'),  ' Energies (MeV) ', 22('-'))
-     11 format (18('-'),  ' Lagrange Energies (MeV) ', 18('-')) 
+     11 format (18('-'),  ' Lagrange Energies (MeV) ', 18('-'))
       2 format (60('_'))
       3 format (60('-'))
-   
+
     100 format ('Skyrme Terms')
      12 format (2x,' rho^2_t     =', f12.5, 5x , ' rho^2_q     = ', f12.5 )
      13 format (2x,' rho*tau_t   =', f12.5, 5x , ' rho*tau_q   = ', f12.5 )
@@ -666,7 +668,7 @@ contains
     104 format (' Pairing Energy ',/,                                          &
         &    2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5)
     105 format (' Lipkin-Nogami Energy ',/,                                    &
-        &    2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5) 
+        &    2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5)
     106 format (' Coulomb ',/,3x,'Direct', f12.5, ' Exch.  ', f12.5)
     107 format (' Total Energy ',/,                                            &
         & 3x,'from functional: ', f15.6, /,                                    &
@@ -676,7 +678,7 @@ contains
         & 3x,'Relative:        ', 4x,es15.6,/                                  &
         & 3x,'Abs. func vs sp  ', f15.6,/                                      &
         & 3x,'Rel. func vs sp  ', 4x,es15.6,/                                  &
-        & 3x,'Density changed  ', 4x,es15.6      )                                    
+        & 3x,'Density changed  ', 4x,es15.6      )
     109 format (' Total Energy ',/,                                            &
         & 3x,'Lagrange:        ', f15.6,/,                                     &
         & 3x,'Non-Lagrange:    ', f15.6,/,                                     &
@@ -686,9 +688,9 @@ contains
     111 format(' 2-body COM Correction')
     112 format(2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5)
     113 format(' Routhian:', 10x, f15.6)
-    
+
     !Header
-    if(present(Lagrange)) then      
+    if(present(Lagrange)) then
       print 11
     else
       print 1
@@ -710,18 +712,18 @@ contains
     print 24, SkyrmeTerms(25), SkyrmeTerms(26)
     print 25, SkyrmeTerms(27), SkyrmeTerms(28)
     print 26, SkyrmeTerms(29), SkyrmeTerms(30)
-    print 27, SkyrmeTerms(31), SkyrmeTerms(32)   
+    print 27, SkyrmeTerms(31), SkyrmeTerms(32)
     print *
     ! Time-even and odd parts
     SkTodd =  SkyrmeTerms(5)   + SkyrmeTerms(6) + SkyrmeTerms(13) + SkyrmeTerms(14)  &
     &       + SkyrmeTerms(15)  + SkyrmeTerms(16) + SkyrmeTerms(17) + SkyrmeTerms(18) + SkyrmeTerms(21) &
     &       + SkyrmeTerms(22)  + SkyrmeTerms(27) + SkyrmeTerms(28) + SkyrmeTerms(29) + SkyrmeTerms(30) &
-    &       + SkyrmeTerms(31)  + SkyrmeTerms(32) 
+    &       + SkyrmeTerms(31)  + SkyrmeTerms(32)
 
-    print 28, sum(SkyrmeTerms)-SkTodd, SkTodd 
+    print 28, sum(SkyrmeTerms)-SkTodd, SkTodd
     print 29, sum(SkyrmeTerms)
 
-    print * 
+    print *
 
     print 103, Kinetic(1), Kinetic(2), sum(Kinetic)
     if(PairingType.ne.0) then
@@ -731,7 +733,7 @@ contains
       endif
     endif
     print 106, CoulombEnergy, CoulombExchange
-    
+
     if(any(ComCorrection(1,:).ne.0.0_dp)) then
       print 110
       print 112, COMCorrection(1,:), sum(COMCorrection(1,:))
@@ -742,10 +744,10 @@ contains
     endif
 
     print 2
-    
+
     !Don't print the energy differences when dealing with Lagrange reanalysis
     if(.not.present(Lagrange)) then
-      
+
       print 107, TotalEnergy, SPEnergy
       print 113, Routhian
       if(OldEnergy(1).ne.0.0_dp) then
@@ -754,9 +756,9 @@ contains
         &          abs(TotalEnergy - SpEnergy),                                &
         &          abs((TotalEnergy - SpEnergy)/TotalEnergy),                  &
         &          DensityChange
-      endif      
+      endif
     else
-      !Note that oldenergy(1) now contains the last total energy that was 
+      !Note that oldenergy(1) now contains the last total energy that was
       !calculated with non-lagrange derivatives.
       print 109, TotalEnergy, OldEnergy(1), TotalEnergy - OldEnergy(1),        &
       &          abs((TotalEnergy - OldEnergy(1))/TotalEnergy)
@@ -765,10 +767,10 @@ contains
     print 3
 
   end subroutine PrintEnergy_termbyterm
-  
+
   subroutine CompKinetic()
     !---------------------------------------------------------------------------
-    ! This subroutine computes the total kinetic energy, 
+    ! This subroutine computes the total kinetic energy,
     ! according to the following formula:
     !    E_k = -\hbar/2m \int d^3x \sum_{k} v_{k} \Psi_k^* \Delta \Psi_k
     !---------------------------------------------------------------------------
@@ -777,7 +779,7 @@ contains
     !---------------------------------------------------------------------------
     integer          :: l, Isospin, it
     real(KIND=dp)    :: Occupation, Inproduct
-    type(Spinor)     :: Value, Lap   
+    type(Spinor)     :: Value, Lap
 
     ! Kinetic Energy
     Kinetic = 0.0_dp
@@ -785,20 +787,20 @@ contains
         Isospin    = DensityBasis(l)%GetIsospin()
         Occupation = DensityBasis(l)%GetOcc()
 
-        
+
         it = (IsoSpin + 3)/2
 
         Value = DensityBasis(l)%GetValue()
         Lap   = DensityBasis(l)%GetLap()
         Inproduct = InproductSpinorReal(Value,Lap)
-        
+
         Kinetic(it)= Kinetic(it) + Occupation*Inproduct
     enddo
 
     Kinetic=-Kinetic/2.0_dp * hbm
     return
   end subroutine CompKinetic
-  
+
   function ConverEnergy(EnergyPrec) result(Converged)
     !---------------------------------------------------------------------------
     ! Function that checks if the energy has converged.
@@ -806,14 +808,14 @@ contains
     !
     ! |OldEnergy(i) - TotalEnergy|/|TotalEnergy| < EnergyPrec
     !  for the previous 7 iterations.
-    ! 
-    !---------------------------------------------------------------------------  
+    !
+    !---------------------------------------------------------------------------
     logical                   :: Converged
     integer                   :: i
     real(Kind=dp), intent(in) :: EnergyPrec
-    
+
     Converged = .true.
-    
+
     i = 1
     do while(Converged .and. i.le.7)
             Converged = Converged .and.                                        &
@@ -821,29 +823,29 @@ contains
             i = i + 1
     enddo
 
-    return 
+    return
   end function ConverEnergy
-  
+
   real(KIND=dp) function SpwfEnergy()
     !---------------------------------------------------------------------------
-    ! Computes the energy as a function of the energies of the single particle 
-    ! states. Note the formula:     
-    !  E = 1/2 sum_i v2 epsilon_ii + 1/2 E_kin + E_pair 
+    ! Computes the energy as a function of the energies of the single particle
+    ! states. Note the formula:
+    !  E = 1/2 sum_i v2 epsilon_ii + 1/2 E_kin + E_pair
     !      + E_LN - E_constraint - E_rearr
     ! where
-    !       - epsilon_i are the Spwf energies                       
+    !       - epsilon_i are the Spwf energies
     !       - v2 are the occupations
     !       - E_kin is the kinetic energy
     !       - E_pair is a contribution of the pairing.
     !       - E_LN is due to Lipkin-Nogami
-    !       - E_constraint is the energy due to constraints.   
+    !       - E_constraint is the energy due to constraints.
     !---------------------------------------------------------------------------
 
     use Moments, only : ConstraintEnergy
     use Cranking,only : Omega, CrankEnergy
     use Spwfstorage, only: TotalAngMom
     integer           :: i
-    
+
     !Summing the energies of the single particle states.
     SpwfEnergy = 0.0_dp
     do i=1,nwt
@@ -875,15 +877,15 @@ contains
     endif
     return
   end function SpwfEnergy
-  
+
   subroutine CompCOMCorrection()
     !---------------------------------------------------------------------------
-    ! Subroutine that calculates the COMcorrection diagnostically, meaning 
+    ! Subroutine that calculates the COMcorrection diagnostically, meaning
     ! NOT INCLUDED in the single-particle Hamiltonian.
     !---------------------------------------------------------------------------
-    ! For the equations and some more discussion, see pg 455 and following in 
+    ! For the equations and some more discussion, see pg 455 and following in
     ! Ring & Schuck.
-    ! A more clear explanation (and some relevant physics) can be found in 
+    ! A more clear explanation (and some relevant physics) can be found in
     ! M. Bender et al., Eur. Phys. J. A 7, 467-478 (2000)
     !
     !---------------------------------------------------------------------------
@@ -897,9 +899,9 @@ contains
       COMCorrection(1,:) = - Kinetic(:) * nucleonmass/ &
       &                 (neutrons * nucleonmass(1) + protons * nucleonmass(2))
     endif
-    
+
     if(COM2Body .gt. 0) then
-      ! We sum carelessly over all single-particle wavefunctions, since the 
+      ! We sum carelessly over all single-particle wavefunctions, since the
       ! ones forbidden by symmetry are calculated as zero in the Spwfstorage
       ! module.
       do i=1,size(NablaMElements,1)

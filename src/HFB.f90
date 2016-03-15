@@ -62,7 +62,8 @@ module HFB
   ! DO NOT immediately correspond to U and V in most texts. In fact the U and V
   ! in texts are one half of these matrices.
   ! Third and fourth index are for parity & isospin blocks.
-  complex(KIND=dp), allocatable :: U(:,:,:,:), V(:,:,:,:), OldU(:,:,:,:), OldV(:,:,:,:)
+  complex(KIND=dp), allocatable :: U(:,:,:,:), V(:,:,:,:)
+  complex(KIND=dp), allocatable :: OldU(:,:,:,:), OldV(:,:,:,:)
   !-----------------------------------------------------------------------------
   ! HFB Hamiltonian
   ! Matrix of the form
@@ -153,6 +154,7 @@ module HFB
   ! Procedure pointer for the diagonalisation of the HFBhamiltonian.
   ! Either with or without signature conservation.
   procedure(DiagonaliseHFBHamiltonian_Signature), pointer :: DiagonaliseHFBHamiltonian
+  procedure(LNCR8_nosig), pointer                         :: LNCr8
 
 contains
   subroutine PrepareHFBModule
@@ -706,7 +708,8 @@ contains
 
   end function HFBNumberofParticles
 
-  subroutine HFBFindFermiEnergyBisection(Fermi,L2,Delta,DeltaLN,Lipkin,Prec)
+  subroutine HFBFindFermiEnergyBisection(Fermi,L2,Delta,DeltaLN,Lipkin,DN2,    &
+    &                                                  ConstrainDispersion,Prec)
   !-------------------------------------------------------------------------------
   ! The idea is simple. Note:
   !
@@ -762,8 +765,8 @@ contains
   real(KIND=dp), intent(inout)              :: Fermi(2), L2(2)
   complex(KIND=dp), allocatable, intent(in) :: Delta(:,:,:,:)
   complex(KIND=dp), allocatable, intent(in) :: DeltaLN(:,:,:,:)
-  logical, intent(in)                       :: Lipkin
-  real(KIND=dp), intent(in)                 :: Prec
+  logical, intent(in)                       :: Lipkin,COnstrainDispersion
+  real(KIND=dp), intent(in)                 :: Prec, DN2(2)
 
   real(KIND=dp) :: InitialBracket(2,2), FA(2), FB(2)
   real(KIND=dp) :: L2Old(2)
@@ -856,7 +859,8 @@ contains
 
   end subroutine HFBFindFermiEnergyBisection
 
-  subroutine HFBFindFermiEnergyBroyden(Fermi,LnLambda,Delta,DeltaLN,Lipkin,Prec)
+  subroutine HFBFindFermiEnergyBroyden                                         &
+    &         (Fermi,LnLambda,Delta,DeltaLN,Lipkin,DN2,ConstrainDispersion,Prec)
   !---------------------------------------------------------------------------
   ! This routine varies the Fermi energy and LNLambda parameter to get the
   ! number of particles right, and the Lipkin-Nogami parameter equal to its
@@ -920,9 +924,11 @@ contains
   real(KIND=dp), intent(inout)              :: Fermi(2), LnLambda(2)
   complex(KIND=dp), allocatable, intent(in) :: Delta(:,:,:,:)
   complex(KIND=dp), allocatable, intent(in) :: DeltaLN(:,:,:,:)
-  logical, intent(in)                       :: Lipkin
-  real(KIND=dp), intent(in)                 :: Prec
+  logical, intent(in)                       :: Lipkin, ConstrainDispersion
+  real(KIND=dp), intent(in)                 :: Prec, DN2(2)
+
   integer                                   :: it, iter, flag(2)
+
   ! Previous values of the Fermi energy and LNLambda parameter
   real(KIND=dp), save                   :: FermiHistory(2)=100.0_dp
   real(KIND=dp), save                   :: LNhistory(2)   =100.0_dp
@@ -953,6 +959,8 @@ contains
   N = HFBNumberofParticles(Fermi, Delta, LnLambda ) - Particles
   if(Lipkin) then
     LN   = LNLambda - LNCR8(Delta,DeltaLN, flag)
+  else if(ConstrainDispersion) then
+    LN   = Dispersion() - DN2
   else
     ! Make sure the algorithm is converged in LN when LN is not active.
     ! This is only to make sure no contamination occurs and convergence
@@ -962,14 +970,23 @@ contains
 
   ! Evaluating f and g for finite differences.
   NX = HFBNumberOfParticles(FermiHistory, Delta,LNLambda )-Particles
-  if(Lipkin) LNX  = LNLambda - LNCR8(Delta,DeltaLN, flag)
-
-  if(Lipkin) NY   = HFBNumberOfParticles(Fermi, Delta,LNHistory )-Particles
-  if(Lipkin) LNY  = LNHistory - LNCR8(Delta,DeltaLN, flag)
+  if(Lipkin) then
+    LNX  = LNLambda - LNCR8(Delta,DeltaLN, flag)
+  else if(ConstrainDispersion)  then
+    LNX  = Dispersion() - DN2
+  endif
+  if(Lipkin .or. ConstrainDispersion) then
+    NY   = HFBNumberOfParticles(Fermi, Delta,LNHistory )-Particles
+  endif
+  if(Lipkin) then
+    LNY  = LNHistory - LNCR8(Delta,DeltaLN, flag)
+  else if(ConstrainDispersion) then
+    LNY  = Dispersion() - DN2
+  endif
 
   ! Construct a finite difference approximation of the Jacobian
   Jacobian(1,1,:)   = (N   -  NX )/(Fermi    - FermiHistory)
-  if(Lipkin) then
+  if(Lipkin .or. ConstrainDispersion) then
     Jacobian(1,2,:) = (N   -  NY )/(LNLambda - LNHistory)
     Jacobian(2,1,:) = (LN  -  LNX)/(Fermi    - FermiHistory)
     Jacobian(2,2,:) = (LN  -  LNY)/(LNLambda - LNHistory)
@@ -978,14 +995,14 @@ contains
   do iter=1,HFBIter
 
      !Invert the Jacobian
-      if (Lipkin) then
+      if (Lipkin .or. ConstrainDispersion) then
         det = Jacobian(1,1,:)*Jacobian(2,2,:) - Jacobian(1,2,:)*Jacobian(2,1,:)
       else
         det = Jacobian(1,1,:)
       endif
 
       !Invert the jacobian
-      if(Lipkin) then
+      if(Lipkin .or. ConstrainDispersion) then
        invJ(1,1,:) =   Jacobian(2,2,:)/det
        invJ(1,2,:) = - Jacobian(1,2,:)/det
        invJ(2,1,:) = - Jacobian(2,1,:)/det
@@ -1000,13 +1017,13 @@ contains
         if(Converged(it)) cycle
         !Find Update directions
         FermiUpdate(it) = - invJ(1,1,it) * N(it)
-        if(Lipkin) then
+        if(Lipkin .or. ConstrainDispersion) then
           FermiUpdate(it) = FermiUpdate(it)          - invJ(1,2,it) * LN(it)
           if(flag(it).ne.1) then
             LNupdate(it)    = - invJ(2,1,it) * N(it) - invJ(2,2,it) * LN(it)
           else
             ! Don't update LN if the calculation of Lambda_2 got into trouble
-            print *, 'Discarded step at iteration ', iter, ' for isospin ', it
+            !print *, 'Discarded step at iteration ', iter, ' for isospin ', it
             LNUpdate(it)    = 0.0_dp
           endif
           norm(it)        = FermiUpdate(it)**2 + LNUpdate(it)**2
@@ -1018,12 +1035,19 @@ contains
       FermiUpdate = step * FermiUpdate
       LNUpdate    = step * LNUpdate
 
+      ! if(ConstrainDispersion) then
+      !   do it=1,2
+      !     if(abs(LNUpdate(it)).gt.0.5) then
+      !       LNUpdate(it) = 0.1*LNUpdate(it)/abs(LNUpdate(it))
+      !     endif
+      !   enddo
+      ! endif
       !Replace the history and update
       do it=1,2
         ! Replace the history
         FermiHistory(it) = Fermi(it)
         Fermi(it)        = Fermi(it)    + FermiUpdate(it)
-        if(Lipkin) then
+        if(Lipkin .or. ConstrainDispersion) then
           LNHistory(it) = LNLambda(it)
           LNLambda(it)  = LNLambda(it) + LNUpdate(it)
         endif
@@ -1032,9 +1056,11 @@ contains
       !Recalculate
       flag = 0
       N    = HFBNumberOfParticles(Fermi,Delta,LNLambda )  - Particles
-      if(Lipkin) LN   = LNLambda - LNCR8(Delta,DeltaLN, flag)
-
-      !print *, iter, N, LN
+      if(Lipkin) then
+        LN   = LNLambda - LNCR8(Delta,DeltaLN, flag)
+      else if(ConstrainDispersion) then
+        LN   = Dispersion() - DN2
+      endif
 
       !Convergence check
       do it=1,2
@@ -1048,7 +1074,7 @@ contains
         do it=1,2
           if(Converged(it)) cycle
           Jacobian(1,1,it) = Jacobian(1,1,it)  + N(it)*FermiUpdate(it)/norm(it)
-          if(Lipkin) then
+          if(Lipkin .or. ConstrainDispersion) then
             Jacobian(1,2,it) = Jacobian(1,2,it)+ N(it)*LNUpdate(it)   /norm(it)
             Jacobian(2,1,it) = Jacobian(2,1,it)+LN(it)*FermiUpdate(it)/norm(it)
             Jacobian(2,2,it) = Jacobian(2,2,it)+LN(it)*LNUpdate(it)   /norm(it)
@@ -3264,7 +3290,7 @@ subroutine InsertionSortQPEnergies
     end select
   end subroutine GuessHFBMatrices
 
-  function LNCr8(Delta, DeltaLN, flag) result(LNLambda)
+  function LNCr8_nosig(Delta, DeltaLN, flag) result(LNLambda)
   !-----------------------------------------------------------------------------
   ! Function that calculates Lambda2 as in CR8, which is to mean in a way that
   ! is completely incomprehensible.
@@ -3275,7 +3301,6 @@ subroutine InsertionSortQPEnergies
   !
   ! NOTE:
   ! - Don't use this routine when S^T_y is broken
-  ! - Don't use this routine when R_z is broken
   !-----------------------------------------------------------------------------
     integer, intent(inout) :: flag(2)
     real(KIND=dp) :: LNLambda(2)
@@ -3305,7 +3330,6 @@ subroutine InsertionSortQPEnergies
       enddo
     enddo
     c2 = 2*c2
-
     do it=1,Iindex
       do P=1,Pindex
         do j=1,blocksizes(P,it)
@@ -3358,6 +3382,8 @@ subroutine InsertionSortQPEnergies
       enddo
     enddo
 
+    !print *, ex , txd, trx, erx, gkr, gkx, gky
+
     ! Note that gkr,gkx & gky are double that what they are in CR8. This is because we
     ! sum over all contributions, while they only sum over one signature.
     c3 = 2*c2 - 8  * trx
@@ -3378,7 +3404,131 @@ subroutine InsertionSortQPEnergies
         print *, 'c2,c3,c4', c2(it),c3(it),c4(it)
       endif
     enddo
-  end function LNCr8
+  end function LNCr8_nosig
+
+  function LNCR8_sig(Delta, DeltaLN, flag) result(LNLambda)
+  !-----------------------------------------------------------------------------
+  ! API parameters
+  complex(KIND=dp), intent(in), allocatable :: Delta(:,:,:,:)
+  complex(KIND=dp), intent(in), allocatable :: DeltaLN(:,:,:,:)
+  integer, intent(inout)                    :: flag(2)
+  real(KIND=dp)                             :: LNLambda(2)
+
+  integer       :: i,j,it, ii, k, P, iii,N
+  real(KIND=dp) :: c2(2),c3(2),c4(2), trx(2), txd(2), ex(2), gkr(2), erx(2)
+  real(KIND=dp) :: gkx(2),gky(2)
+  real(KIND=dp) :: E
+  real(KIND=dp)    :: hl1(2) , hl2(2), deno(2), xnum(2)
+  complex(KIND=dp) :: x1, x2, x3,x4,x5
+  complex(KIND=dp) :: Chi(HFBSize,HFBSize,2,2), Chika(HFBSize,HFBSize,2,2)
+  complex(KIND=dp) :: Gamka(HFBSize,HFBSize,2,2)
+
+  c2 = 0.0_dp ; c3 =0.0_dp ; c4 = 0.0_dp
+  trx= 0.0_dp ; txd=0.0_dp ; ex = 0.0_dp ; gkr = 0.0_dp ; erx = 0.0_dp
+  gkx = 0.0_dp ; gky = 0.0_dp ; Chi = 0.0_dp ; chika = 0.0_dp ; Gamka = 0.0_dp
+
+  !-----------------------------------------------------------------------------
+  ! Chi = Rho - Rho^2
+  ! c2 = 2*Tr [ \rho ( 1 - \rho) ]
+  do it=1,Iindex
+    do P=1,Pindex
+      N = blocksizes(P,it)
+      Chi(1:N/2,1:N/2,P,it)     = RhoHFB(1:N/2,1:N/2,P,it)
+      Chi(N/2+1:N,N/2+1:N,P,it) = RhoHFB(N/2+1:N,N/2+1:N,P,it)
+
+      Chi(1:N/2,1:N/2,P,it) = Chi(1:N/2,1:N/2,P,it)         -                  &
+      &                matmul(RhoHFB(1:N/2,1:N/2,P,it),RhoHFB(1:N/2,1:N/2,P,it))
+      Chi(N/2+1:N,N/2+1:N,P,it) = Chi(N/2+1:N,N/2+1:N,P,it) -                  &
+      &        matmul(RhoHFB(N/2+1:N,N/2+1:N,P,it),RhoHFB(N/2+1:N,N/2+1:N,P,it))
+
+      do i=1,N
+        c2(it) = c2(it) + 2*Chi(i,i,P,it)
+      enddo
+    enddo
+  enddo
+  !-----------------------------------------------------------------------------
+  ! Chika = ( 1 - 8 * chi) kappa
+  do it=1,Iindex
+    do P=1,Pindex
+      N = blocksizes(P,it)
+      ChiKa(1:N/2,N/2+1:N,P,it) =                                              &
+      &        matmul(Chi(1:N/2,1:N/2,P,it), DBLE(KappaHFB(1:N/2,N/2+1:N,P,it)))
+      ChiKa(N/2+1:N,1:N/2,P,it) =                                              &
+      &    matmul(Chi(N/2+1:N,N/2+1:N,P,it), DBLE(KappaHFB(N/2+1:N,1:N/2,P,it)))
+
+      ChiKa(1:N/2,N/2+1:N,P,it) =                                              &
+      &             KappaHFB(1:N/2,N/2+1:N,P,it) - 8 * ChiKa(1:N/2,N/2+1:N,P,it)
+      ChiKa(N/2+1:N,1:N/2,P,it) =                                              &
+      &             KappaHFB(N/2+1:N,1:N/2,P,it) - 8 * ChiKa(N/2+1:N,1:N/2,P,it)
+    enddo
+  enddo
+  !-----------------------------------------------------------------------------
+  ! GamKa =  (1 - 2 Rho)Kappa
+  do it=1,Iindex
+    do P=1,Pindex
+      N = blocksizes(P,it)
+      GamKa(1:N/2,N/2+1:N,P,it) =                                              &
+      &     matmul(RhoHFB(1:N/2,1:N/2,P,it), DBLE(KappaHFB(1:N/2,N/2+1:N,P,it)))
+      GamKa(N/2+1:N,1:N/2,P,it) =                                              &
+      & matmul(RhoHFB(N/2+1:N,N/2+1:N,P,it), DBLE(KappaHFB(N/2+1:N,1:N/2,P,it)))
+
+      GamKa(1:N/2,N/2+1:N,P,it) =                                              &
+      &             KappaHFB(1:N/2,N/2+1:N,P,it) - 2 * GamKa(1:N/2,N/2+1:N,P,it)
+      GamKa(N/2+1:N,1:N/2,P,it) =                                              &
+      &             KappaHFB(N/2+1:N,1:N/2,P,it) - 2 * GamKa(N/2+1:N,1:N/2,P,it)
+    enddo
+  enddo
+  do it=1,Iindex
+    do P=1,Pindex
+      N = blocksizes(P,it)
+      do i=1,N
+        x1 = 0.0_dp ; x2 = 0.0_dp ; x3 = 0.0_dp ; x4 = 0.0_dp ; x5 = 0.0_dp
+        do j=1,N
+          x1 = x1 + DBLE(Chi(i,j,P,it)) * DBLE(Chi(j,i,P,it))
+          x2 = x2 + DBLE(RhoHFB(i,j,P,it)) * DBLE(Chi(j,i,P,it))
+        enddo
+        ii  = Blockindices(i,P,it)
+        iii = mod(ii-1,nwt)+1
+        E = HFBasis(iii)%GetEnergy()
+        ex(it) = ex(it)  + dble(E*Chi(i,i,P,it))
+        txd(it)= txd(it) + dble(x1)
+        trx(it)= trx(it) + dble(x2)
+        erx(it)= erx(it) + dble(E*x2)
+
+        x3 = 0.0_dp ;  x4 = 0.0_dp ; x5 = 0.0_dp
+        do j=1,Blocksizes(P,it)
+          x3 = x3 + DeltaLN(i,j,P,it) * KappaHFB(i,j,P,it)
+          x4 = x4 + Delta  (i,j,P,it) * Chika(i,j,P,it)
+          x5 = x5 + DeltaLN(i,j,P,it) * Gamka(i,j,P,it)
+        enddo
+        gkr(it) = gkr(it) + dble(x3)
+        gkx(it) = gkx(it) + dble(x4)
+        gky(it) = gky(it) + dble(x5)
+      enddo
+    enddo
+  enddo
+  ! Note that gkr,gkx & gky are double that what they are in CR8. This is because we
+  ! sum over all contributions, while they only sum over one signature.
+  c3 = 2*c2 - 8  * trx
+  c4 = 4*c2 - 48 * txd
+
+  hl1= 2*(ex + gkr/2)
+  hl2= 4*(ex - 2*erx) + 2*(gkx/2 + gky/2)
+  deno= c4*c2+2*c2**3 -c3*c3
+  xnum=hl2*c2-hl1*c3
+
+  LNLambda = 0.0_dp
+  do it=1,Iindex
+    if(abs(deno(it)).gt.1d-8) then
+      LNLambda(it) = xnum(it)/deno(it)
+    else
+      ! Signalling problem
+      flag(it) = 1
+      print *, 'c2,c3,c4', c2(it),c3(it),c4(it)
+    endif
+  enddo
+
+  end function LNCR8_sig
 
   subroutine ReadBlockingInfo(Block)
     !---------------------------------------------------------------------------
@@ -3767,6 +3917,34 @@ subroutine PrintBlocking
     endif
 
   end subroutine PrintNumberParities
+
+  function Dispersion()
+    !---------------------------------------------------------------------------
+    ! Calculates 2*Tr(Rho * (1 - Rho))
+    real(KIND=dp) :: Dispersion(2)
+    real(KIND=dp) :: Chi(HFBSize, HFBSize,2,2)
+    integer       :: i,j,k,P,it,N
+
+    Dispersion = 0.0_dp
+    do it=1,Iindex
+      do P=1,PIndex
+        N = blocksizes(P,it)
+        do j=1,N
+          do i=1,N
+            Chi(i,j,P,it) = - RhoHFB(i,j,P,it)
+          enddo
+          Chi(j,j,P,it) = Chi(j,j,P,it) + 1
+        enddo
+
+        do j=1,N
+          do i = 1,N
+            Dispersion(it)  = Dispersion(it) + RhoHFB(i,j,P,it) * Chi(j,i,P,it)
+          enddo
+        enddo
+      enddo
+    enddo
+    Dispersion = 2*Dispersion
+  end function Dispersion
 
   subroutine diagoncr8 (a,ndim,n,v,d,wd, callrout,ifail)
   !..............................................................................

@@ -102,8 +102,11 @@ module Pairing
   logical                     :: ConstantGap=.false.
   !-----------------------------------------------------------------------------
   ! Lipkin-Nogami switch and Lipkin-nogami multiplier Lambda_2.
+  ! LNFix determines whether or not LNLambda is held fixed.
   logical                     :: Lipkin =.false.
-  real(KIND=dp)               :: LNLambda(2)=0.0_dp
+  real(KIND=dp)               :: LNLambda(2)=0.0_dp, LNFix(2)=0.0_dp
+  real(KIND=dp)               :: DN2(2) = 0.0_dp
+  logical                     :: ConstrainDispersion=.false.
   !-----------------------------------------------------------------------------
   ! Logical that determines whether a reinitialisation of KappaHFB is done
   ! for HFB calculations.
@@ -137,6 +140,9 @@ contains
      real(KIND=dp) :: CutProton     =-100.0_dp, CutNeutron   =-100.0_dp
      real(KIND=dp) :: AlphaProton   =-100.0_dp, AlphaNeutron =-100.0_dp
      real(KIND=dp) :: Protongap     =   0.0_dp, NeutronGap   =   0.0_dp
+     real(KIND=dp) :: LNFixN        =   0.0_dp, LNFixP       =   0.0_dp
+     real(KIND=dp) :: DN2P          =   0.0_dp, DN2N         =   0.0_dp
+
      integer       :: i
      logical       :: SemiBCS=.false., SemiBCSNeutron=.false.
      logical       :: SemiBCSProton=.false.
@@ -150,7 +156,8 @@ contains
      &                  Lipkin, LNFraction, GuessKappa, PairingMu, CutType,    &
      &                  MaxLambdaIter, SemiBCS, SemiBCSNeutron, SemiBCSProton, &
      &                  QPinHFBasis, SolvePairingStart,QPPrintWindow, Block,   &
-     &                  FermiSolver, HFBIter,HFBgauge,HFConfig
+     &                  FermiSolver, HFBIter,HFBgauge,HFConfig, LNFixN, LNFixP,&
+     &                  DN2P, DN2N, ConstrainDispersion
 
      read(unit=*, NML=Pairing)
 
@@ -158,6 +165,8 @@ contains
      PairingCut(1)      = CutNeutron    ;  PairingCut(2)      = CutProton
      Alpha(1)           = AlphaNeutron  ;  Alpha(2)           = AlphaProton
      Gaps(1)            = NeutronGap    ;  Gaps(2)            = ProtonGap
+     LNFIx(1)           = LNFIXN        ;  LNFIX(2)           = LNFIXP
+     DN2(1)             = DN2N          ;  DN2(2)             = DN2P
 
      call to_upper(Type, Type)
      select case (Type)
@@ -342,8 +351,10 @@ contains
         !Decide on the diagonalization routine
         if(SC) then
           DiagonaliseHFBHamiltonian => DiagonaliseHFBHamiltonian_Signature
+          LNCr8                     => LNCr8_sig
         else
           DiagonaliseHFBHamiltonian => DiagonaliseHFBHamiltonian_NoSignature
+          lncr8                     => LNCr8_nosig
         endif
 
         ! Decide on the Fermi solver. In addition, if a default choice for
@@ -499,7 +510,7 @@ contains
     3 format (' Fermi Level (MeV) ',2x,f10.5,2x,f10.5)
     4 format (' Particles         ',2x,f10.5,2x,f10.5)
     5 format (' Dispersion        ',2x,f10.5,2x,f10.5)
-    6 format (' Lipkin-N. Lambda_2',2x,f10.5,2x,f10.5)
+    6 format (' Lambda_2          ',2x,f10.5,2x,f10.5)
     7 format (60('-'))
 
 
@@ -515,7 +526,9 @@ contains
         print 3, Fermi
         print 4, sum(Density%Rho(:,:,:,1))*dv, sum(Density%Rho(:,:,:,2))*dv
         print 5, PairingDisp
-        if(Lipkin) print 6, LNLambda
+        if(Lipkin .or. any(LNFIX.ne.0.0_dp) .or. ConstrainDispersion) then
+          print 6, LNLambda
+        endif
     end select
 
     ! Print the number parity of the HFB vacuum
@@ -619,8 +632,13 @@ contains
 
     if(PairingType.eq.1 .and. maxval(abs(Delta)).lt.1d-5) Delta = 1.0_dp
     if(Lipkin)  where(LNLambda  .eq.0.0_dp) LNLambda= 0.1_dp
-    if(.not.Lipkin) LNLambda= 0.0_dp
-
+    if(.not.Lipkin) then
+      if(any(LNFix.ne.0.0_dp)) then
+        LNLambda = LNFix
+      else if(.not. ConstrainDispersion) then
+        LNLambda= 0.0_dp
+      endif
+    endif
     call CompDensityFactor
     !---------------------------------------------------------------------------
     ! Outer iterations: iterating gaps and pairingfield.
@@ -636,7 +654,8 @@ contains
         OldFermi = Fermi
         !-----------------------------------------------------------------------
         ! Get the correct Fermi energy and LN parameter
-        call FindFermiEnergy(Fermi,LNLambda,Delta,DeltaLN,Lipkin,FermiPrec)
+        call FindFermiEnergy(Fermi,LNLambda,Delta,DeltaLN,Lipkin,DN2,          &
+        &                                         ConstrainDispersion,FermiPrec)
         call ComputePairingCutoffs(Fermi)
         !-----------------------------------------------------------------------
         ! Get the occupations in the appropriate basis and as a side effect

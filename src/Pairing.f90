@@ -267,6 +267,10 @@ contains
         call stp('Number of blocked quasiparticles should not be smaller than' &
           &    //' zero.')
      endif
+     if(any(DN2.lt.0.0_dp)) then
+       call stp('Dispersion needs to be larger than 0.')
+     endif
+
      !-----------------------------------------------------------------------------
      !--------------------------------------------------------------------------
      ! Determine the cutoff type.
@@ -365,6 +369,10 @@ contains
         elseif(trim(FermiSolver).eq.'GRADIENT') then
           FindFermiEnergy   => HFBFermiGradient
           if(HFBIter.eq.-1) HFBIter=500
+          if(ConstrainDispersion) then
+            call stp('MOCCa can not yet constrain the dispersion'// &
+            &        ' in combination with gradient solver.')
+          endif
         elseif(trim(FermiSolver).eq.'BISECTION') then
           FindFermiEnergy   => HFBFindFermiEnergyBisection
           if(HFBIter.eq.-1) HFBIter=50
@@ -439,6 +447,8 @@ contains
    &          '   Neutron Gap: ' , f8.3   , /,                                  &
    &          '   Proton  Gap: ' , f8.3   )
    12  format ('  Lipkin-Nogami prescription active.' )
+   121 format ('  Constant \lambda_2         ', 2x,f8.3,2x,f8.3)
+   122 format ('  Dispersion constrained     ', 2x,f8.3,2x,f8.3)
    13  format ('  Cosine cutoff used. ')
    14  format ('  Symmetric Fermi cutoff used.')
    15  format ('  Fermisolver iterations (external): ', i5)
@@ -482,7 +492,8 @@ contains
 
     if(PairingType.eq.2) print 9, HFBMix
     if(Lipkin)           print 12
-
+    if(any(LNFIX.ne.0.0)) print 121, LNFIX
+    if(ConstrainDispersion) print 122, DN2
     print *
     if(PairingType .eq. 2) print 19, FermiSolver
     print 15 , PairingIter
@@ -509,10 +520,11 @@ contains
     2 format (25x, ' N ',7x, ' P ')
     3 format (' Fermi Level (MeV) ',2x,f10.5,2x,f10.5)
     4 format (' Particles         ',2x,f10.5,2x,f10.5)
+   51 format (' Constrained ')
     5 format (' Dispersion        ',2x,f10.5,2x,f10.5)
     6 format (' Lambda_2          ',2x,f10.5,2x,f10.5)
+   61 format (' Lambda_2 (Constr.)',2x,f10.5,2x,f10.5 )
     7 format (60('-'))
-
 
     print 1
 
@@ -525,9 +537,15 @@ contains
         print 2
         print 3, Fermi
         print 4, sum(Density%Rho(:,:,:,1))*dv, sum(Density%Rho(:,:,:,2))*dv
+
+        if(ConstrainDispersion) then
+          print 51
+        endif
         print 5, PairingDisp
-        if(Lipkin .or. any(LNFIX.ne.0.0_dp) .or. ConstrainDispersion) then
+        if(Lipkin) then
           print 6, LNLambda
+        else if(any(LNFIX.ne.0.0_dp)) then
+          print 61, LNLambda
         endif
     end select
 

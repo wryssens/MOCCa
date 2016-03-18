@@ -1472,7 +1472,7 @@ contains
     Q20 = 0.5_dp *sqrt(5.0_dp/(16.0_dp * pi)) * ( 2 * iq1 + iq2 )
 
     ! Q22 = 3/2*q2 * sqrt(5/(4*pi)) * 1/(2 * sqrt(6))
-    Q22 = 1.5_dp * iq2 * sqrt(5.0_dp/(16.0_dp * pi)) /(2 * sqrt(6.0_dp))
+    Q22 = 1.5_dp * iq2 * sqrt(5.0_dp/(4.0_dp * pi)) /(2 * sqrt(6.0_dp))
 
     Constraints(1) = Q20
     Constraints(2) = Q22

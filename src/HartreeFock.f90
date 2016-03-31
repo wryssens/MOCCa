@@ -14,7 +14,7 @@ implicit none
 
 !----------------------------------------------------------
 ! Integers that describe the demanded HF-configuration.
-! First index 
+! First index
 ! P (1,2) = (-,+)
 ! Second index
 ! Rz(1,2) = (-,+)
@@ -53,13 +53,15 @@ contains
             it= (HFBasis(order(i))%GetIsospin()   + 3)/2
             S = (HFBasis(order(i))%GetSignature() + 3)/2
 
-            if(ConfCopy(P,S,it) .gt. 0 ) then 
+            if(ConfCopy(P,S,it) .gt. 0 ) then
                 call HFBasis(order(i))%SetOcc(1.0_dp)
                 ConfCopy(P,S,it) = ConfCopy(P,S,it) - 1
             endif
         enddo
         !Sanity check
-        if(.not. all(ConfCopy .eq. 0)) call stp('PickHFConfig did not find enough orbitals.')
+        if(.not. all(ConfCopy .eq. 0)) then
+          call stp('PickHFConfig did not find enough orbitals.')
+        endif
 
         !---------------------------------------------------------------------------
         !Double all occupation Numbers in the case of Time Reversal Symmetry
@@ -70,10 +72,10 @@ contains
         endif
         !---------------------------------------------------------------------------
         !Putting the FermiEnergy equal to the energy of the highest occupied state
-        do i=nwt,1,-1      
-          j = order(i)               
+        do i=nwt,1,-1
+          j = order(i)
           FermiEnergy = HFBasis(j)%GetEnergy()
-          
+
           if(HfBasis(j)%GetOcc().ne.0.0_dp) exit
         enddo
 
@@ -126,29 +128,29 @@ contains
     !---------------------------------------------------------------------------
     ! Returns the pairing energy of a HF calculation, namely 0.
     !---------------------------------------------------------------------------
-    real(KIND=dp) :: E(2) 
+    real(KIND=dp) :: E(2)
     complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
-  
+
     E = 0.0_dp
-  
-    return  
+
+    return
   end function HFEnergy
-  
+
   subroutine NaiveFill(Configuration)
     !---------------------------------------------------------------------------
-    ! This subroutine finds the orbitals with the lowest single particle 
+    ! This subroutine finds the orbitals with the lowest single particle
     ! energy and fills them, after sorting all the levels.
     ! Of course, nothing happens if the user has asked to freeze the occupation.
     !---------------------------------------------------------------------------
     integer :: i, n,p, ProtonUpperBound, NeutronUpperBound, order(nwt),j
-    integer, intent(in) :: Configuration(2,2,2)    
+    integer, intent(in) :: Configuration(2,2,2)
 
 
     n=0; p=0
     !---------------------------------------------------------------------------
     !Setting all occupation numbers to Zero
     do i=1,nwt
-            call HFBasis(i)%SetOcc(0.0_dp)                     
+            call HFBasis(i)%SetOcc(0.0_dp)
     enddo
     !---------------------------------------------------------------------------
     ! We can distribute the neutrons and protons in pairs in the case of
@@ -164,7 +166,7 @@ contains
     !Finding the order of the spwfs, in terms of energy
     order = OrderSpwfs(.false.)
     !---------------------------------------------------------------------------
-    !Filling in the lowest Proton orbitals. This is easy, since we know 
+    !Filling in the lowest Proton orbitals. This is easy, since we know
     !the order of Spwfs.
     i=1
     do while(p.lt.ProtonUpperBound .and. i.le.nwt)
@@ -174,8 +176,8 @@ contains
       !We've found an unoccupied Proton orbital
           call HFBasis(j)%SetOcc(1.0_dp)
           p = p + 1
-      endif       
-      i = i + 1     
+      endif
+      i = i + 1
     enddo
     !---------------------------------------------------------------------------
     !Filling in the lowest Neutron orbitals. This is easy,since we know the
@@ -187,8 +189,8 @@ contains
         !We've found an unoccupied Neutron orbital
         call HFBasis(j)%SetOcc(1.0_dp)
         n = n + 1
-      endif       
-      i = i + 1     
+      endif
+      i = i + 1
     enddo
     !---------------------------------------------------------------------------
     !Double all occupation Numbers in the case of Time Reversal Symmetry
@@ -199,10 +201,10 @@ contains
     endif
     !---------------------------------------------------------------------------
     !Putting the FermiEnergy equal to the energy of the highest occupied state
-    do i=nwt,1,-1      
-      j = order(i)               
+    do i=nwt,1,-1
+      j = order(i)
       FermiEnergy = HFBasis(j)%GetEnergy()
-      
+
       if(HfBasis(j)%GetOcc().ne.0.0_dp) exit
     enddo
     return
@@ -210,12 +212,12 @@ contains
 
 !   subroutine HFFermi
 !   !-----------------------------------------------------------------------------
-!   ! Find the fermi energy of a HF calculation. Trivial, since it is just the 
+!   ! Find the fermi energy of a HF calculation. Trivial, since it is just the
 !   ! energy of the highest occupied level.
 !   !-----------------------------------------------------------------------------
 !     integer       :: i, it
 !     real(KIND=dp) :: E
-  
+
 !     Fermi = -1000000.0_dp
 !     do i=1,nwt
 !         it = (HFBasis(i)%GetIsospin() + 3)/2
@@ -224,7 +226,7 @@ contains
 !             Fermi(it) = E
 !         endif
 !     enddo
-  
+
 !   end subroutine HFFermi
 
 

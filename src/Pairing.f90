@@ -118,6 +118,9 @@ module Pairing
   !-----------------------------------------------------------------------------
   ! Integer that tells MOCCa what number of blocked qps to look for.
   integer                     :: Block=0
+  !-----------------------------------------------------------------------------
+  ! If MOCCa should look for a particular HF configuration
+  logical       :: HFConfig=.false.
   !------------------------------------------------------
   ! Temporary array for the pairing density rho~, until a
   ! more general implementation is available.
@@ -146,7 +149,6 @@ contains
      integer       :: i
      logical       :: SemiBCS=.false., SemiBCSNeutron=.false.
      logical       :: SemiBCSProton=.false.
-     logical       :: HFConfig=.false.
      character(len=3) :: UpperType
 
      NameList /Pairing/ PairingNeutron, PairingProton, CutProton , RhoSat,     &
@@ -622,8 +624,9 @@ contains
     integer          :: outeriter
 
     if(PairingType.eq.0) then
-      if(FreezeOccupation) return
+     if(FreezeOccupation) return
      call HFFill(HFConfiguration)
+     if(HFConfig) FreezeOccupation=.true.
      return
     endif
 

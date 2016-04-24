@@ -1,5 +1,5 @@
 module GenInfo
-    
+
     use CompilationInfo
 
     implicit none
@@ -13,7 +13,7 @@ module GenInfo
     !Number of protons and neutrons in the nucleus
     real(KIND=dp), public :: Neutrons, Protons
     !---------------------------------------------------------------------------
-    ! The Symmetries conserved in the code. 
+    ! The Symmetries conserved in the code.
     ! TRC = Time Reversal Conservation
     ! TSC = Time Simplex Conservation
     ! PC = Parity Conservation
@@ -22,7 +22,7 @@ module GenInfo
     !---------------------------------------------------------------------------
     logical, public :: TRC,TSC,PC,SC,IC
     !---------------------------------------------------------------------------
-    ! Integer codes for conservations of these symmetries. Pretty handy for 
+    ! Integer codes for conservations of these symmetries. Pretty handy for
     ! calling derivative routines.
     integer, public :: SignatureInt, ParityInt, TimeSimplexInt
     !---------------------------------------------------------------------------
@@ -43,13 +43,13 @@ module GenInfo
     real(KIND=dp), parameter, public  :: pi=4.0_dp*atan2(1.0_dp,1.0_dp)
     !---------------------------------------------------------------------------
     ! Determines if MOCCa runs in Testmodus. Default = 0
-    integer, public :: TestRun=0 
+    integer, public :: TestRun=0
     !---------------------------------------------------------------------------
-    !Maximum number of iterations and number of iterations to skip printing of 
+    !Maximum number of iterations and number of iterations to skip printing of
     ! the code in the evolve Subroutine
     integer, public :: MaxIter=0, PrintIter=0
     !---------------------------------------------------------------------------
-    !Convergence parameters. 
+    !Convergence parameters.
     real(KIND=dp),public  :: MomentPrec=1d-4, EnergyPrec=0.01E-08
     real(KIND=dp),public  :: PairingPrec=1d-4, CrankPrec=1d-4
     !---------------------------------------------------------------------------
@@ -88,14 +88,14 @@ module GenInfo
         module procedure StpInteger
         module procedure StpIntegerReal
     end interface Stp
-    
+
 contains
   subroutine StpReal (Message, NameReal,PrintReal, NameReal2, PrintReal2)
     !---------------------------------------------------------------------------
     ! This subroutine can stop the program, writing a (hopefully) useful message
-    ! to the output. The subroutine is also capable of printing the value of a 
-    ! real, so that the reason for program exit becomes somewhat clearer. 
-    ! (If the values are explained in 
+    ! to the output. The subroutine is also capable of printing the value of a
+    ! real, so that the reason for program exit becomes somewhat clearer.
+    ! (If the values are explained in
     ! the string "message", that is!)
     !
     ! It is overloaded with StpInteger to "Stp".
@@ -103,13 +103,13 @@ contains
     character (len = *), intent(in)          :: Message
     character (len = *), intent(in),optional :: NameReal,NameReal2
     real(KIND=dp), intent(in), optional      :: PrintReal, PrintReal2
-    
+
     write (ErrorChannel,*) ,' '
     write (ErrorChannel,*) ' =====  S T O P  ===== '
     write (ErrorChannel,*) ' '
     write (ErrorChannel,*) ' ',message
     write (ErrorChannel,*) ' '
-    
+
     if(present(NameReal)) then
       write (ErrorChannel,*) , NameReal, PrintReal
       write (ErrorChannel,*) , ""
@@ -123,10 +123,10 @@ contains
 
     stop
   end subroutine StpReal
-        
+
   subroutine StpInteger(Message,NameInt1,PrintInt1,NameInt2,PrintInt2)
     !---------------------------------------------------------------------------
-    ! This subroutine is the same as StpReal. The only difference is that this 
+    ! This subroutine is the same as StpReal. The only difference is that this
     ! one prints up to two integer values, instead of a real.
     ! It is overloaded with StpReal to "Stp".
     !---------------------------------------------------------------------------
@@ -146,15 +146,15 @@ contains
       write (ErrorChannel,*), NameInt2, PrintInt2
       write (ErrorChannel,*), ""
     endif
-    
+
     close (ErrorChannel)
 
     stop
   end subroutine StpInteger
-  
+
   subroutine StpIntegerReal(Message,NameInt,PrintInt,NameReal,PrintReal)
     !---------------------------------------------------------------------------
-    ! This subroutine is the same as StpReal. The only difference is that this 
+    ! This subroutine is the same as StpReal. The only difference is that this
     ! one prints up to two integer values, instead of a real.
     ! It is overloaded with StpReal to "Stp".
     !---------------------------------------------------------------------------
@@ -172,33 +172,33 @@ contains
 
     write (ErrorChannel,*), NameReal, PrintReal
     write (ErrorChannel,*), ""
-    
+
     close (ErrorChannel)
 
     stop
   end subroutine StpIntegerReal
-      
+
   pure integer function LeviCivita(i,j,k)
     !---------------------------------------------------------------------------
-    ! This function is a quick & dirty implementation of the LeviCivita symbol 
+    ! This function is a quick & dirty implementation of the LeviCivita symbol
     ! epsilon_{ijk}
     !---------------------------------------------------------------------------
     integer, intent(in) :: i,j,k
-                        
+
     if((i.eq.j).or.(j.eq.k).or.(k.eq.i)) then
-        LeviCivita=0   
-          
+        LeviCivita=0
+
     elseif(((i.eq.1).and.(j.eq.2).and.(k.eq.3)) &
-     & .or.((i.eq.3).and.(j.eq.1).and.(k.eq.2)) & 
-     & .or.((i.eq.2).and.(j.eq.3).and.(k.eq.1))) then        
+     & .or.((i.eq.3).and.(j.eq.1).and.(k.eq.2)) &
+     & .or.((i.eq.2).and.(j.eq.3).and.(k.eq.1))) then
         LeviCivita=1
     else
         LeviCivita=-1
     endif
-    
+
     return
   end function LeviCivita
-        
+
   subroutine SetSymmetryInteger
     !---------------------------------------------------------------------------
     ! Subroutine that sets ParityInt, SignatureInt and TimeSimplexInt.
@@ -219,7 +219,7 @@ contains
             TimeSimplexInt = 0
     endif
   end subroutine SetSymmetryInteger
-        
+
   subroutine AssignSymmetries(TimeReversal,Parity,Signature,TimeSimplex,Isospin)
     !---------------------------------------------------------------------------
     ! Subroutine that assigns the correct values to the following logicals:
@@ -232,10 +232,10 @@ contains
     !---------------------------------------------------------------------------
     ! At the moment, the program also stops when T=0 pairing is indicated.
     !---------------------------------------------------------------------------
-            
+
     integer,intent(in) :: TimeReversal,Parity,Signature,TimeSimplex,Isospin
     integer            :: NumSpatSym = 0
-   
+
     ! Converting input to logicals, and stopping if input isn't clear
     if(TimeReversal.eq.1) then
         TRC = .true.
@@ -244,8 +244,8 @@ contains
     else
       call stp(&
       & "MOCCa doesn't know if TimeReversal should be conserved.",             &
-      "TimeReversal",TimeReversal)        
-    endif 
+      "TimeReversal",TimeReversal)
+    endif
 
     if(Parity.eq.1) then
             PC = .true.
@@ -254,8 +254,8 @@ contains
             PC = .false.
     else
             call stp("MOCCa doesn't know if Parity should be conserved.",      &
-            &        "Parity", Parity)        
-    endif 
+            &        "Parity", Parity)
+    endif
 
     if(Signature.eq.1) then
             SC = .true.
@@ -264,9 +264,9 @@ contains
             SC = .false.
     else
             call stp("MOCCa doesn't know if Signature should be conserved.",   &
-            &        "Signature", Signature)        
-    endif 
-    
+            &        "Signature", Signature)
+    endif
+
     if(TimeSimplex.eq.1) then
             TSC = .true.
              NumSpatSym = NumSpatSym + 1
@@ -274,9 +274,9 @@ contains
             TSC = .false.
     else
             call stp("MOCCa doesn't know if Time Simplex should be conserved.",&
-            &        "Time Simplex", TimeSimplex)        
-    endif 
-    
+            &        "Time Simplex", TimeSimplex)
+    endif
+
     if(Isospin.eq.1) then
             IC = .true.
     elseif(Isospin.eq.0) then
@@ -285,35 +285,35 @@ contains
             & "Isospin.", Isospin)
     else
             call stp("MOCCa doesn't know if Isospin should be conserved.",     &
-            & "Isospin", Isospin)        
-    endif 
-    
+            & "Isospin", Isospin)
+    endif
+
     !Multiply dv by the appropriate power of 2
     dv = dv* TwoR**(NumSpatSym)
-    
-    return   
+
+    return
   end subroutine AssignSymmetries
-        
+
   subroutine ReadGenInfo
     !---------------------------------------------------------------------------
-    ! Subroutine that reads the user input for the variables in the GenInfo 
+    ! Subroutine that reads the user input for the variables in the GenInfo
     ! module.
     !---------------------------------------------------------------------------
-    integer :: Parity=1, Isospin=1, Signature=1, TimeSimplex=1,TimeReversal=1 
+    integer :: Parity=1, Isospin=1, Signature=1, TimeSimplex=1,TimeReversal=1
 
     NameList /GenInfo/  TimeReversal, Parity, Signature, TimeSimplex, Isospin, &
                      & MaxIter, dt, TestRun,                                   &
                      &  Neutrons, Protons, ErrorFileName, nx, ny,nz, dx,       &
                      &  PrintIter, MomentPrec, EnergyPrec, TaylorOrder,        &
-                     &  InverseKineticDamping, E0, CG, Momentum,               &
-                     &  PairingPrec, CrankPrec, IterType
-                     
+                     &  InverseKineticDamping, E0, PairingPrec, CrankPrec,     &
+                     &  IterType
+
     !Reading the symmetries that are conserved or broken.
     read (unit=*, nml=GenInfo)
-    
+
     !Assigning the correct value to dv
     dv=dx**3
-    
+
     !Reserve a channel for the output of errors.
     call get_unit(ErrorChannel)
     open(ErrorChannel,form="formatted", file=ErrorFileName)
@@ -325,7 +325,7 @@ contains
     & call stp('Number of points on the mesh is not valid.', 'ny', ny)
     if(nz.le.0) &
     & call stp('Number of points on the mesh is not valid.', 'nz', nz)
-    
+
     !Checking the mesh distance
     if(dx.le.ZeroR) &
     & call stp('Mesh distance should not be zero or negative.', 'dx', dx)
@@ -335,7 +335,7 @@ contains
     & call stp('Number of neutrons is not valid.', 'Neutrons', Neutrons)
     if(Protons .le.0) &
     & call stp('Number of protons is not valid.', 'Protons', Protons)
-    
+
     !Checking the Symmetry parameters
     if(TimeReversal.lt.0 .or. TimeReversal.gt.1) &
     & call stp('Wrong value for TimeReversal', 'Time Reversal', TimeReversal)
@@ -347,30 +347,30 @@ contains
     & call stp('Wrong value for TimeSimplex', 'TimeSimplex', TimeSimplex)
     if(Isospin.ne.1) &
     call stp('Wrong value for Isospin', 'Isospin', Isospin)
-                          
+
     !The number of iterations should be positive
     if(MaxIter.lt.0) &
     & call stp('Number of Iterations should not be negative',                  &
     &          'Iterations', MaxIter)
-    
-    ! There is an approximate relation between dt and dx. 
-    ! See the discussion in 
-    ! P. Bonche et al, Solution of the Skyrme HF + BCS equation on a 3D mesh , 
+
+    ! There is an approximate relation between dt and dx.
+    ! See the discussion in
+    ! P. Bonche et al, Solution of the Skyrme HF + BCS equation on a 3D mesh ,
     ! Computer Physics Communications 171 (2005) 49–62
-   
+
     ! Assigning the symmetries used.
-    call AssignSymmetries(TimeReversal,Parity,Signature,TimeSimplex,Isospin)    
+    call AssignSymmetries(TimeReversal,Parity,Signature,TimeSimplex,Isospin)
     call SetSymmetryInteger
-    
+
     !If printiter is not set, set it to MaxIter/10
     if(Printiter.eq.0) PrintIter = MaxIter/10
-    PrintIter = max(PrintIter, 1) 
+    PrintIter = max(PrintIter, 1)
 
     ! Make Itertype uppercase for comparison purposes.
     call to_upper(IterType, IterType)
-    
+
   end subroutine ReadGenInfo
-        
+
   subroutine get_unit ( iunit )
     !***************************************************************************
     !
@@ -385,7 +385,7 @@ contains
     !    If IUNIT = 0, then no free FORTRAN unit could be found, although
     !    all 99 units were checked (except for units 5, 6 and 9, which
     !    are commonly reserved for console I/O).
-    !	
+    !
     !    Otherwise, IUNIT is an integer between 1 and 99, representing a
     !    free FORTRAN unit.  Note that GET_UNIT assumes that units 5 and 6
     !    are special, and will never return those values.
@@ -430,16 +430,16 @@ contains
 
     return
   end subroutine get_unit
-      
+
   function Reverse(Line)
     !---------------------------------------------------------------------------
     ! A small function that reverses the values on a line.
     !---------------------------------------------------------------------------
-    
+
     real(Kind=dp), intent(in) :: Line(:)
     real(KIND=dp)             :: Reverse(size(Line))
     integer                   :: i,n
-    
+
     n= size(Line)
     do i=1, n
             Reverse(i) = Line(n - i  + 1)

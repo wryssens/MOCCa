@@ -224,8 +224,8 @@ contains
     !---------------------------------------------------------------------------
     1 format ('----------------------------------------------')
     2 format (' WARNING: Gradient HFBsolver did not converge.')
-    3 format (' Particles: ' , 2f10.5)
-    4 format (' Norm of gradient:', f10.7)
+    3 format (' Particles: '      , 2f15.5)
+    4 format (' Norm of gradient:', e15.7)
 
     implicit none
 

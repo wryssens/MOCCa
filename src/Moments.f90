@@ -50,6 +50,27 @@ module Moments
 !    R.Y. Cusson et al., J.Phys.A 320, 475-482
 !
 !  The Rutz constraints are recommended and default.
+!-------------------------------------------------------------------------------
+! The choice of parameterization of multipole moments can be determined by the
+! ordering of the axes. There are six possibilities
+! (x,y,z), (x,z,y), (y,x,z), (y,z,x), (z,x,y), (z,y,x)
+! corresponding to different parameterizations of the spherical coordinates in
+! terms of (x,y,z).
+!
+!
+! The distinction is made by two parameters:
+!     QuantisationAxis = X/Y/Z (1,2,3)
+! which determines which of the Cartesian coordinates determines the Theta angle
+! by
+!     x_i = r cos(theta).
+! The second parameter
+!     SecondaryAxis = 1/2
+! simply determines the reference for the angle \phi. It determines the order of
+! the two other (non-quantization) axes. 1 corresponds to lexographical order
+! (x,y) while 2 corresponds to non-lexicographical order (y,x).
+! Thus the angle phi is determined by
+!     \phi = atan2(x_2, x_1)
+!
 !
 !-------------------------------------------------------------------------------
 !    Symmetries that forbid certain multipole moments:
@@ -209,7 +230,7 @@ module Moments
   logical :: RutzToQuadratic = .false.
   !-----------------------------------------------------------------------------
   ! Quantisation axis of the moments.
-  integer :: QuantisationAxis=3
+  integer :: QuantisationAxis=3, SecondaryAxis=1
   !-----------------------------------------------------------------------------
   ! Signal the input/output routine to look for special multipole moments
   ! after reading the info on normal multipole moments.
@@ -387,18 +408,33 @@ contains
           case(1)
                 sinTheta =sqrt(Z**2+Y**2)/r
                 cosTheta =X/r
-                phi      =atan2(Y,Z)
 
+                select case(SecondaryAxis)
+                case(1)
+                  phi      =atan2(Z,Y)
+                case(2)
+                  phi      =atan2(Y,Z)
+                end select
           case(2)
                 sinTheta =sqrt(X**2+Z**2)/r
                 cosTheta =Y/r
-                phi      =atan2(Z,X)
 
+                select case(SecondaryAxis)
+                case(1)
+                  phi      =atan2(Z,X)
+                case(2)
+                  phi      =atan2(X,Z)
+                end select
           case(3)
                 sinTheta =sqrt(X**2+Y**2)/r
                 cosTheta =Z/r
-                phi      =atan2(Y,X)
 
+                select case(SecondaryAxis)
+                case(1)
+                  phi      =atan2(Y,X)
+                case(2)
+                  phi      =atan2(X,Y)
+                end select
           end select
 
           !Calculating the values of the spherical harmonics
@@ -511,7 +547,7 @@ contains
     !
     !--------------------------------------------------------------------
 
-    character(len=1) :: Ax='Z'
+    character(len=1) :: Ax='Z', secAx1='X', secAx2='Y'
 
     1 format (21('-'), ' Multipole Moments', 21('-') )
     2 format ('Maximum l considered ' , i3 )
@@ -522,7 +558,8 @@ contains
     7 format (/, 'Constraints obtained from file.')
     8 format (/, 'Constraints obtained from data.')
     9 format ('  Rutz Constraints Epsilon : ' f6.3)
-   10 format ('Quantisation Axis for the quadrupole moments: ', a1)
+   10 format ('Quantisation Axis for the multipole moments: ', a1)
+   11 format ('  With secondary axis ordering             : ', a1, ',', a1)
 
     print 1
     print 2 , MaxMoment
@@ -530,13 +567,38 @@ contains
     select case(QuantisationAxis)
     case(1)
       Ax = 'X'
+      select case(SecondaryAxis)
+      case(1)
+        secAx1='Y'
+        secAx2='Z'
+      case(2)
+        secAx1='Z'
+        secAx2='Y'
+      end select
     case(2)
       Ax = 'Y'
+      select case(SecondaryAxis)
+      case(1)
+        secAx1='X'
+        secAx2='Z'
+      case(2)
+        secAx1='Z'
+        secAx2='X'
+      end select
     case(3)
       Ax = 'Z'
+      select case(SecondaryAxis)
+      case(1)
+        secAx1='X'
+        secAx2='Y'
+      case(2)
+        secAx1='Y'
+        secAx2='X'
+      end select
     end select
 
     print 10, Ax
+    print 11, SecAx1, SecAx2
 
     print 3
     print 4, radd, acut
@@ -825,7 +887,7 @@ contains
       type(Moment), pointer :: Current => null()
       integer               :: currentl
       real(KIND=dp)         :: ql(2)
-      character(len=1)      :: AX=''
+      character(len=1)      :: AX='Z',secAx1='Y', secAx2='Z'
 
     100 format (20('-'),' Multipole Moments ', 21('-'))
     101 format (60('-'))
@@ -834,21 +896,47 @@ contains
       7 format ('Beta_{', 2i2 , '}', 3(1x,f15.4) )
       8 format ('Q_{',i2,'}',5x, 3(1x,f15.4))
       9 format ('Constrained', 33x, f15.4)
-     10 format ('Quantisation Axis for l=2 moments: ', a1)
+     10 format ('Quantisation Axis             : ', a1)
+     11 format ('  With secondary axis ordering: ', a1, ',', a1)
 
-      select case(QuantisationAxis)
-      case(1)
-        Ax='X'
-      case(2)
-        Ax='Y'
-      case(3)
-        Ax='Z'
-      end select
+     select case(QuantisationAxis)
+     case(1)
+       Ax = 'X'
+       select case(SecondaryAxis)
+       case(1)
+         secAx1='Y'
+         secAx2='Z'
+       case(2)
+         secAx1='Z'
+         secAx2='Y'
+       end select
+     case(2)
+       Ax = 'Y'
+       select case(SecondaryAxis)
+       case(1)
+         secAx1='X'
+         secAx2='Z'
+       case(2)
+         secAx1='Z'
+         secAx2='X'
+       end select
+     case(3)
+       Ax = 'Z'
+       select case(SecondaryAxis)
+       case(1)
+         secAx1='X'
+         secAx2='Y'
+       case(2)
+         secAx1='Y'
+         secAx2='X'
+       end select
+     end select
 
       Current => Root
       currentl = Current%l
       print 100
       print 10, Ax
+      print 11, SecAx1, SecAx2
       print 1
       print 2
       print 1
@@ -1720,24 +1808,43 @@ contains
     print 10
     !---------------------------------------------------------------
     !Printing only the diagonal components
-    ! Note that these depend on the quantization axis.
+    ! Note that these depend on the quantization axis and secondary axis.
     select case(QuantisationAxis)
-
     case(1)
-      ! X is the quantisation axis
-      print 1, QCartesian(3,3,1), QCartesian(2,2,1), QCartesian(1,1,1)
-      print 2, QCartesian(3,3,2), QCartesian(2,2,2), QCartesian(1,1,2)
-      print 3, QCartesian(3,3,3), QCartesian(2,2,3), QCartesian(1,1,3)
+      select case(SecondaryAxis)
+      case(1)
+        print 1, QCartesian(3,3,1), QCartesian(1,1,1), QCartesian(2,2,1)
+        print 2, QCartesian(3,3,2), QCartesian(1,1,2), QCartesian(2,2,2)
+        print 3, QCartesian(3,3,3), QCartesian(1,1,3), QCartesian(2,2,3)
+      case(2)
+        print 1, QCartesian(3,3,1), QCartesian(2,2,1), QCartesian(1,1,1)
+        print 2, QCartesian(3,3,2), QCartesian(2,2,2), QCartesian(1,1,2)
+        print 3, QCartesian(3,3,3), QCartesian(2,2,3), QCartesian(1,1,3)
+      end select
+
     case(2)
-      ! Y is the quantisation axis
-      print 1, QCartesian(1,1,1), QCartesian(3,3,1), QCartesian(2,2,1)
-      print 2, QCartesian(1,1,2), QCartesian(3,3,2), QCartesian(2,2,2)
-      print 3, QCartesian(1,1,3), QCartesian(3,3,3), QCartesian(2,2,3)
+      select case(SecondaryAxis)
+      case(1)
+        print 1, QCartesian(1,1,1), QCartesian(3,3,1), QCartesian(2,2,1)
+        print 2, QCartesian(1,1,2), QCartesian(3,3,2), QCartesian(2,2,2)
+        print 3, QCartesian(1,1,3), QCartesian(3,3,3), QCartesian(2,2,3)
+      case(2)
+        print 1, QCartesian(2,2,1), QCartesian(3,3,1), QCartesian(1,1,1)
+        print 2, QCartesian(2,2,2), QCartesian(3,3,2), QCartesian(1,1,2)
+        print 3, QCartesian(2,2,3), QCartesian(3,3,3), QCartesian(1,1,3)
+      end select
+
     case(3)
-      ! Z is the quantisation axis
-      print 1, QCartesian(1,1,1), QCartesian(2,2,1), QCartesian(3,3,1)
-      print 2, QCartesian(1,1,2), QCartesian(2,2,2), QCartesian(3,3,2)
-      print 3, QCartesian(1,1,3), QCartesian(2,2,3), QCartesian(3,3,3)
+      select case(SecondaryAxis)
+      case(1)
+        print 1, QCartesian(1,1,1), QCartesian(2,2,1), QCartesian(3,3,1)
+        print 2, QCartesian(1,1,2), QCartesian(2,2,2), QCartesian(3,3,2)
+        print 3, QCartesian(1,1,3), QCartesian(2,2,3), QCartesian(3,3,3)
+      case(2)
+        print 1, QCartesian(2,2,1), QCartesian(1,1,1), QCartesian(3,3,1)
+        print 2, QCartesian(2,2,2), QCartesian(1,1,2), QCartesian(3,3,2)
+        print 3, QCartesian(2,2,3), QCartesian(1,1,3), QCartesian(3,3,3)
+      end select
     end select
 
   !-----------------------------------------------------------------------------
@@ -1922,7 +2029,8 @@ contains
 
     NameList /MomentParam/ MaxMoment, radd, acut, MoreConstraints,Damping,     &
     &                      ReadjustSlowDown, CutoffType, ContinueMoment        &
-    &                     ,c0,d0, epsilon,QuantisationAxis,SpecialInput
+    &                     ,c0,d0, epsilon,QuantisationAxis,SpecialInput,       &
+    &                      SecondaryAxis
 
     NameList /MomentConstraint/ l,m,Impart, Isoswitch, Intensity,              &
     &                           ConstraintNeutrons,ConstraintProtons,          &
@@ -1937,10 +2045,13 @@ contains
     !Reading the parameters
     read(unit=*,NML=MomentParam )
 
-    if(QuantisationAxis.lt.0 .or. QuantisationAxis .gt. 3) then
+    if(QuantisationAxis.le.0 .or. QuantisationAxis .gt. 3) then
         call stp('Illegal value of quantisation axis!')
     endif
 
+    if(SecondaryAxis .le. 0 .or. SecondaryAxis .gt. 2) then
+      call stp('Illegal value of secondary axis!')
+    endif
     !Initialising the Linked List
     call IniMoments()
 

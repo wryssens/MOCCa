@@ -449,18 +449,11 @@ contains
           potez = potez + CEZ
   endif
 
-  print *, 'mz', mz
-  print *, 'potmz', potmz
-  print *, 'sz,ez', sz, ez
-  print *, 'potsz, potez', potsz, potez
-
   !-----------------------------------------------------------------------------
   !Computing the necessary precision. Note that this cannot be a
   !parameter, since it depends on the symmetries.
   !-----------------------------------------------------------------------------
-  Prec = 1.d-5/(dx**3 * potmx * potmy * potmz)
-
-  print *, Prec
+  Prec = 1.d-9/(dx**3 * potmx * potmy * potmz)
 
   if(allocated(CoulombPotential)) then
     ! If the variables are already allocated and this

@@ -502,7 +502,7 @@ contains
     !B19 s_q * \Delta s_q
     if(B19.ne. 0.0_dp .and..not.TRC) then
       do it=1,2
-        Terms(30)= B19 * sum(Den%VecS(:,:,:,:,it)*Den%LapS(:,:,:,:,it))
+        Terms(30)= Terms(30)+B19*sum(Den%VecS(:,:,:,:,it)*Den%LapS(:,:,:,:,it))
       enddo
     endif
 
@@ -580,6 +580,7 @@ contains
     print 102, 13, BTerm(13), 14, BTerm(14), 15, BTerm(15)
     print 102, 16, Bterm(16), 17, BTerm(17), 18, BTerm(18)
     print 102, 19, Bterm(19), 20, BTerm(20), 21, BTerm(21)
+
     print 103, Kinetic(1), Kinetic(2), sum(Kinetic)
     if(PairingType.ne.0) then
       print 104, PairingEnergy, sum(PairingEnergy)

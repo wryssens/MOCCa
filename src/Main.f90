@@ -7,7 +7,7 @@ program MOCCa
     !        ,-|`-...-'|                                                       |
     !       ((_|       |                                                       |
     !        `-\       /                                                       |
-    !           `.___.'                                                        | 
+    !           `.___.'                                                        |
     ! Creation: 8th of April, 2013.                                            |
     ! Update  : 7th of November 2014                                           |
     ! Wouter Ryssens                                                           |
@@ -18,9 +18,9 @@ program MOCCa
     use SpwfStorage, only : PrintSpwf, DensityBasis, HFBasis
     use Pairing, only     : PairingType
     use Testing
-    
+
     implicit none
-           
+
  200 format (/,' ___________________________________________________________', &
      &       /,'|                                                          |', &
      &       /,'|  MOCCa                                                   |', &
@@ -30,18 +30,18 @@ program MOCCa
      &       /,'|                ) ;( (                                    |', &
      &       /,'|               ( (  ) ;                                   |', &
      &       /,'|                ,-"""-.                                   |', &
-     &       /,"|             ,-|`-...-'|                                  |", & 
-     &       /,'|            ((_|       |                                  |', &   
+     &       /,"|             ,-|`-...-'|                                  |", &
+     &       /,'|            ((_|       |                                  |', &
      &       /,'|             `-\       /                                  |', &
      &       /,"|                `.___.'                                   |", &
      &       /,'|                                                          |', &
      &       /,'|__________________________________________________________|')
-     
+
      print 200
-    
+
      !--------------------------------------------------------------------------
      ! Reading the user input and the wavefunction input.
-     call Input()    !Override is disabled    
+     call Input()    !Override is disabled
      !--------------------------------------------------------------------------
      !Canbasis needs to be properly initialised in order to start if doing HFB
      DensityBasis => HFBasis
@@ -49,14 +49,14 @@ program MOCCa
      !--------------------------------------------------------------------------
      ! In testing mode.
      if(TestRun.eq.1) then
-        print*, "MOCCa is entering test mode!"  
+        print*, "MOCCa is entering test mode!"
         !call TestPairingFields()
         call TestDelta
         call stp('End of TestRun')
-     endif   
+     endif
      !--------------------------------------------------------------------------
      ! Solve the mean-field equations.
-     call Evolve(MaxIter, .true.)     
+     call Evolve(MaxIter, .true.)
      !--------------------------------------------------------------------------
      ! Write wavefunctions to file!
      call Output
@@ -74,7 +74,7 @@ subroutine Evolve(MaxIterations, iprint)
   use GenInfo
   use WaveFunctions
   use Derivatives,only  : MaxFDOrder
-  use MeanFields, only  : ConstructPotentials,DerivePotentials 
+  use MeanFields, only  : ConstructPotentials,DerivePotentials
   use ImaginaryTime
   use SpwfStorage
   use Densities, only   : UpdateDensities, DampingParam, Density, Recalc
@@ -93,17 +93,17 @@ subroutine Evolve(MaxIterations, iprint)
   !---------------------------------------------------------------------------
   ! Interface for the Summaryprinting routines, since FORTRAN is rather
   ! peculiar about routines in the same program...
-  interface 
+  interface
     subroutine PrintSummary_v1(Iteration)
       integer, intent(in) :: iteration
     end subroutine PrintSummary_v1
     subroutine PrintSummary_v2(Iteration)
       integer, intent(in) :: iteration
-    end subroutine PrintSummary_v2        
+    end subroutine PrintSummary_v2
   end interface
 
   procedure(PrintSummary_v1), pointer :: PrintSummary
-      
+
   1 format ( 20x, "Iteration ", i4, 20x,/)
   2 format ( "Total Time Elapsed:", f8.3 )
   3 format (A11 , f8.3 , " or ", f8.3 , " %")
@@ -120,7 +120,7 @@ subroutine Evolve(MaxIterations, iprint)
   integer, intent(in) :: MaxIterations
   integer             :: Iteration
   logical             :: Convergence
-  logical, external   :: ConvergenceCheck 
+  logical, external   :: ConvergenceCheck
   integer             :: i,wave
   logical             :: RutzCheck
   real(KIND=dp)       :: Canenergy
@@ -128,7 +128,7 @@ subroutine Evolve(MaxIterations, iprint)
   !--------------------------------------------------------------------------
   ! Decide which summary to print
   PrintSummary => PrintSummary_v2
- 
+
   ! Assign correct evolution operator for the iterations
   select case(IterType)
   case('IMTS')
@@ -152,7 +152,7 @@ subroutine Evolve(MaxIterations, iprint)
       call stp('Need to calculate Canonical basis at the start')
     endif
   endif
-  
+
   !Computing the initial densities
   call DeriveAll()
 
@@ -168,8 +168,8 @@ subroutine Evolve(MaxIterations, iprint)
   !    not be read from file.
   ! 3) if the input file was an EV8 file, some derivatives of densities could not
   !    be read.
-  if(Recalc) then
-    call UpdateDensities(0)   
+  if(.true.) then
+    call UpdateDensities(0)
   endif
 
   ! Printing the parameters of this run.
@@ -177,7 +177,7 @@ subroutine Evolve(MaxIterations, iprint)
   !Loop over the iterations
   Iteration = 0
   Convergence = .false.
-  
+
   call CalculateAllMoments(1)
   !Readjust all moments, both Rutz and nonRutz
   call ReadjustAllMoments(1)
@@ -185,7 +185,7 @@ subroutine Evolve(MaxIterations, iprint)
 
   !Construct the mean-field potentials
   call ConstructPotentials
- 
+
   !Derive the necessary potentials
   call DerivePotentials
 
@@ -195,7 +195,7 @@ subroutine Evolve(MaxIterations, iprint)
       call Canbasis(i)%SetEnergy(CanEnergy)
     enddo
   endif
-  
+
   !Calculating  The Energy
   call CompEnergy
 
@@ -207,37 +207,37 @@ subroutine Evolve(MaxIterations, iprint)
 
   !call OddTPot
   print 100
-  
+
   !-----------------------------------------------------------------------------
   !Start of the Mean-field iterations
   do while((Iteration.lt.MaxIterations))
     !Incrementing the iteration number
     Iteration = Iteration + 1
 
-    ! Calculate all the different potentials to construct the single particle 
+    ! Calculate all the different potentials to construct the single particle
     ! hamiltonian h and then substitute every spwf |\Psi> by 1 - dt/hbar*h|\Psi>
     ! or more complicated algorithms in general.
     ! Note that the orthogonalisation is managed by this routine too.
     call EvolveSpwf(Iteration)
-    
+
     !Pairing.
     call SolvePairing
     !---------------------------------------------------------------------------
-    ! When moments or angular moments are constrained according to K.Rutz' 
-    ! prescription, there needs to be a correction step, dependent on the 
+    ! When moments or angular moments are constrained according to K.Rutz'
+    ! prescription, there needs to be a correction step, dependent on the
     ! density or angular moment obtained in  the meantime.
 
     if(RutzCheck) then
-      call UpdateDensities(0,.true.)    
+      call UpdateDensities(0,.true.)
       call CalculateAllMoments(1) ! Save old values to history
       call ReadjustAllMoments(0)  ! Only readjust Rutz-style moments
     endif
     if(RutzCrank) then
         !Deriving all Spwf
-        call DeriveAll()    
-        call updateAm(.true.) 
+        call DeriveAll()
+        call updateAm(.true.)
         call ReadjustCranking(.true.)
-    endif   
+    endif
     !Checking for the presence of Rutz-Type constraints
     RutzCheck = CheckForRutzMoments()
 
@@ -247,11 +247,11 @@ subroutine Evolve(MaxIterations, iprint)
         call SolvePairing
     endif
 
-    !---------------------------------------------------------------------------   
+    !---------------------------------------------------------------------------
     !Deriving all Spwf
     call DeriveAll()
-    
-    !Calculate the expectation values of the symmetry operators and the spwf 
+
+    !Calculate the expectation values of the symmetry operators and the spwf
     !energies of the canonical basis
     do i=1,nwt
       call HFBasis(i)%SymmetryOperators()
@@ -267,19 +267,19 @@ subroutine Evolve(MaxIterations, iprint)
     if( any(CrankType.ne.0)  .or.  mod(Iteration, PrintIter).eq.0 ) then
       call UpdateAM(.false.)
     endif
-      
+
     !Print a summary
-    if(mod(Iteration, PrintIter).ne.0) call PrintSummary(Iteration) 
-   
+    if(mod(Iteration, PrintIter).ne.0) call PrintSummary(Iteration)
+
     !Computing the densities, without smoothing.
     call UpdateDensities(0)
-    
+
     !Smooth the densities!
     call MixDensities(Iteration)
 
     !Calculating the expected values of all relevant Moments
     call CalculateAllMoments(0)
-    
+
     !Readjust the constraints
     call ReadjustAllMoments(1)
     call ReadjustCranking(.false.)
@@ -289,22 +289,22 @@ subroutine Evolve(MaxIterations, iprint)
 
     !Derive the necessary potentials
     call DerivePotentials
-  
+
     !Calculating the Energy
     call CompEnergy
-    
+
     !Checking for convergence
     Convergence = ConvergenceCheck()
   	if(Convergence) exit
-  
-    if(mod(Iteration, PrintIter).eq.0 .or. Iteration.eq.MaxIterations) then 
-      !Print info after selected amount of iterations.           
+
+    if(mod(Iteration, PrintIter).eq.0 .or. Iteration.eq.MaxIterations) then
+      !Print info after selected amount of iterations.
       call PrintIterationInfo(Iteration)
     endif
   enddo
   !End of the mean-field iterations
   !-----------------------------------------------------------------------------
-  
+
   if (Convergence .and. mod(Iteration, PrintIter).ne.0) then
     ! If convergence happens during iterations, it is possible
     ! that a printout has been skipped
@@ -313,7 +313,7 @@ subroutine Evolve(MaxIterations, iprint)
 
   !Reanalysis of the result with Lagrange derivatives.
   call FinalIteration()
-  
+
   if(Convergence) then
      print 5
      print 6, MomentPrec
@@ -326,11 +326,11 @@ end subroutine Evolve
 
 logical function ConvergenceCheck() result(Converged)
   !-----------------------------------------------------------------------------
-  ! Aggregate function that combines the result from several modules 
+  ! Aggregate function that combines the result from several modules
   ! regarding convergence.
   ! What should be converged:
   !       1) Multipole moments
-  !       2) Angular Momentum(in the case of Time Reversal Breaking) 
+  !       2) Angular Momentum(in the case of Time Reversal Breaking)
   !          (Not implemented yet!)
   !       3) Energies
   !       4) D2H of the spwf (not implemented yet)
@@ -341,9 +341,9 @@ logical function ConvergenceCheck() result(Converged)
   use Energy, only  : ConverEnergy, TotalEnergy, PrintENergy
   use Pairing, only : ConverFermi
   use Cranking, only: ConverCranking
-  
+
   implicit none
-  
+
   Converged = .true.
   !Checking convergence of the multipole Degrees of freedom
   Converged = Converged .and. ConverMultipoleAll(MomentPrec)
@@ -353,7 +353,7 @@ logical function ConvergenceCheck() result(Converged)
   Converged = Converged .and. ConverFermi(PairingPrec)
     !Checking convergence of the angular momentum for cranked calculations
   Converged = Converged .and. ConverCranking(CrankPrec)
-  
+
   if(TotalEnergy.ge.0.0_dp) then
     call PrintEnergy
     call stp('Positive total energy!', 'Total Energy', TotalEnergy)
@@ -363,22 +363,22 @@ end function ConvergenceCheck
 
 subroutine PrintStartInfo()
     !---------------------------------------------------------------------------
-    ! A subroutine that prints all the relevant info that is available at 
+    ! A subroutine that prints all the relevant info that is available at
     ! the start of MOCCa.
     !---------------------------------------------------------------------------
     use InOutput, only : PrintInput,PrintFileInfo
     use Coulomb, only  : PrintCoulombInfo
     use Force,   only  : PrintForce
     use Moments, only  : PrintConstraints, PrintMomentInfo
-    use Cranking,only  : PrintCranking 
+    use Cranking,only  : PrintCranking
     use Pairing, only  : PrintPairingInfo
     use Spwfstorage, only: UpdateAM, DeriveAll
-    use geninfo 
-    
+    use geninfo
+
     implicit none
-       
-    1 format(60('-'))   
-       
+
+    1 format(60('-'))
+
     !Printing compilation and runtime input.
     call PrintInput
     ! Print info on the force that is used.
@@ -388,17 +388,17 @@ subroutine PrintStartInfo()
     !Print info on the Coulomb Parameters
     call PrintCoulombInfo
     !Print info on the Moment parameters
-    call printMomentInfo  
+    call printMomentInfo
     !Print info on the cranking
-    call DeriveAll() 
+    call DeriveAll()
     ! Print info from the file
     call PrintFileInfo
-    
+
     call UpdateAm(.true.)
     if(.not.TRC) then
       call PrintCranking
     endif
-        
+
 end subroutine PrintStartInfo
 
 subroutine PrintIterationInfo(Iteration)
@@ -410,8 +410,9 @@ subroutine PrintIterationInfo(Iteration)
   use Moments,     only : PrintAllMoments
   use Cranking,    only : PrintCranking
   use Pairing,     only : PrintPairing, PairingType, Fermi
-  use Energy,      only : PrintEnergy
+  use Energy !,      only : PrintEnergy
   use HFB, only         : PrintQP
+  use Force
 
   implicit none
 
@@ -419,23 +420,23 @@ subroutine PrintIterationInfo(Iteration)
 
   1 format (/,94('='))
   2 format (' Iteration ', i5)
-  
+
   print 1
   print 2, Iteration
 
-  call printSpwf(PairingType, Fermi)  
+  call printSpwf(PairingType, Fermi)
   if(PairingType.eq.2) call PrintQp()
   call PrintAllMoments
   call PrintCranking
   call PrintPairing
   call PrintEnergy
-
+  
 end subroutine PrintIterationInfo
 
 subroutine FinalIteration()
   !-----------------------------------------------------------------------------
   ! Subroutine that does some final manipulations, though not a real iteration!
-  ! 1) Recalculate densities with Lagrange derivatives. 
+  ! 1) Recalculate densities with Lagrange derivatives.
   ! 2) Recalculate Energies with Lagrange derivatives.
   !-----------------------------------------------------------------------------
   use Derivatives
@@ -444,13 +445,13 @@ subroutine FinalIteration()
   use Energy,      only : CompEnergy, PrintEnergy
   use Pairing,     only : SolvePairing
   use InOutput,    only : Pictures, PlotDensity
-  
+
   implicit none
-  
+
   integer               :: i
-  
-  ! Telling the derivatives module to use Lagrangian derivatives (but not 
-  ! changing the Coulomb derivations...) 
+
+  ! Telling the derivatives module to use Lagrangian derivatives (but not
+  ! changing the Coulomb derivations...)
   call AssignFDCoefs(-1, -1, CoulombLapOrder)
 
   !Deriving wavefunctions, either canonical or HF basis
@@ -551,7 +552,7 @@ subroutine PrintSummary_v1(Iteration)
 	use Cranking
 	use Moments
 	use GenInfo
-	
+
 	implicit none
 
 	1 format ("Summ: dE=",  e10.3, ' ','dRho=',e10.3, ' ', a80 )
@@ -577,16 +578,16 @@ subroutine PrintSummary_v1(Iteration)
 		if(Current%ConstraintType .ne. 0) then
 			MomentDiff=abs(sum(Current%Value) - sum(Current%OldValue(:,1)))
 			if(sum(Current%Value) .gt. 1d-3) then
-			  MomentDiff = MomentDiff/abs(sum(Current%Value)) 
+			  MomentDiff = MomentDiff/abs(sum(Current%Value))
 		  endif
 			R='R'
 			if(Current%Impart) R='I'
-			
+
 			write(Temp, 2),R, Current%l, Current%m, MomentDiff
 			MomString = adjustl(trim(MomString)//Temp)
 		endif
-	enddo	
-	
+	enddo
+
 	!-----------------------------------------------------------------------------
 	!Find cranked directions
 	Temp=''

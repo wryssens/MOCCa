@@ -5,18 +5,18 @@ module DensityMixing
 ! and some strategies need the Energy module.
 !-------------------------------------------------------------------------------
 ! General note concerning most (if not all) of these mixing strategies.
-! The element 1 in the array DensityHistory is NEVER used to mix in advanced 
+! The element 1 in the array DensityHistory is NEVER used to mix in advanced
 ! strategies. This is because it represents the Rho_in to the Rho_out currently
-! in the Density densityvector. Since we should only mix Rho_out's, these 
+! in the Density densityvector. Since we should only mix Rho_out's, these
 ! never get included. This is always visible in the iteration indices.
 !-------------------------------------------------------------------------------
 
   use CompilationInfo
   use Geninfo
   use Densities
-  
+
   implicit none
-  
+
 contains
 
   subroutine MixDensities(Iteration)
@@ -29,15 +29,15 @@ contains
     ! 3) => CEDIIS (only dim=2 for the moment).
     !---------------------------------------------------------------------------
     integer, intent(in) :: Iteration
-    
-    select case(MixingScheme)   
+
+    select case(MixingScheme)
       case(0)
-        ! Do linear damping 
+        ! Do linear damping
         DensityChange =                                                        &
-        &             sum(Density%Rho-DensityHistory(1)%Rho)*dv/(1-DampingParam)        
+        &             sum(Density%Rho-DensityHistory(1)%Rho)*dv/(1-DampingParam)
         Density = (1-DampingParam) * Density + DampingParam*DensityHistory(1)
       case(1)
-        call DIIS(Iteration)
+        call DIIS(mod(Iteration,100))
       case(2)
         call stp('CDIIS not properly implemented yet.')
       case(3)
@@ -47,9 +47,9 @@ contains
       case DEFAULT
         call stp('Mixing scheme not supported!')
     end select
-    
+
   end subroutine MixDensities
-  
+
   subroutine DIIS(Iteration)
     !---------------------------------------------------------------------------
     ! Simple implementation of the DIIS density mixing scheme.
@@ -61,9 +61,9 @@ contains
     integer, intent(in)                    :: Iteration
     integer, allocatable                   :: PivotInfo(:)
     type(DensityVector)                    :: TMP
-    
+
     if(.not.allocated(Difference)) then
-      allocate(Difference(PulayOrder))     
+      allocate(Difference(PulayOrder))
       do i=1,PulayOrder
         Difference(i) = NewDensityVector()
       enddo
@@ -77,16 +77,16 @@ contains
 
     if(Iteration.le.1) then
       !Return linear damping when not enough info is present
-      Density = (1-DampingParam)*Density+DampingParam*DensityHistory(1)  
+      Density = (1-DampingParam)*Density+DampingParam*DensityHistory(1)
       return
     endif
-    
+
     !N is the number of mixed iterations
     N = min(Iteration, PulayOrder)
     allocate(Matrix(N+1,N+1), RHS(N+1),PivotInfo(N+1))
     !Computing the matrix and RHS
     Matrix = 0.0_dp
-    
+
     !DIIS matrix elements are constructed from the density differences.
     do i=1,N
       do j=1,i
@@ -113,14 +113,14 @@ contains
     where(Density%Rho.lt.0.0_dp)   Density%Rho = 0.0_dp
 
     return
-  end subroutine DIIS 
+  end subroutine DIIS
 
   subroutine CDIIS
     !---------------------------------------------------------------------------
     ! Naïve implementation of CDIIS.
     !
     !---------------------------------------------------------------------------
-  
+
   end subroutine CDIIS
 
   subroutine CEDIIS
@@ -132,7 +132,7 @@ contains
     ! for a good step-by-step explanation.
     !---------------------------------------------------------------------------
     !use Energy, only : EstimateEnergy
-      
+
     integer                   :: i
     !Location of the N-dimensional minimum
     real(KIND=dp),allocatable :: MinSimplex(:)
@@ -141,30 +141,30 @@ contains
 
 !  subroutine NaiveCEDIIS(Iteration)
 !    !---------------------------------------------------------------------------
-!    ! Very naïve implementation of 2D CEDIIS. 
-!    ! The strategy is to search for the minimum of the energy for different 
-!    ! mixing parameters. This is a quadratic programming problem, and thus 
+!    ! Very naïve implementation of 2D CEDIIS.
+!    ! The strategy is to search for the minimum of the energy for different
+!    ! mixing parameters. This is a quadratic programming problem, and thus
 !    ! conceptually very hard to implement for D>2.
 !    !---------------------------------------------------------------------------
 !    use Energy, only : EstimateEnergy
-!    
+!
 !    integer             :: i, location(1)
 !    integer, intent(in) :: Iteration
 !    real(KIND=dp)       :: Samples(100)=0.0_dp, Values(100)
 !    type(DensityVector) :: Mix
 
 !    if(PulayOrder.gt.1) call stp("Can't do CEDIIS for bigger dimensions yet!")
-!  
+!
 !    !Initialise the Discretisation
 !    if(Samples(1).eq.0.0_dp) then
 !      do i=1,size(Samples)
 !        Samples(i) = -1.0_dp/(2.0_dp * size(Samples)) + i*1.0_dp/(size(Samples))
 !      enddo
 !    endif
-!    
+!
 !    if(Iteration.le.1) then
 !      !Return linear damping when not enough info is present
-!      Density = 0.5_dp*Density+0.5_dp*DensityHistory(1)  
+!      Density = 0.5_dp*Density+0.5_dp*DensityHistory(1)
 !      return
 !    endif
 
@@ -178,7 +178,7 @@ contains
 !    !Temporary
 !    print *, 'Found minimum estimated energy at ',                             &
 !    &       Samples(location), 1 - Samples(Location), Values(Location)
-!    
+!
 !    !Mix in the optimal way!
 !    Density=  Samples(Location(1))*Density +                                   &
 !    &        (1.0_dp-Samples(Location(1)))*DensityHistory(1)

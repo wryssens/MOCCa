@@ -2060,14 +2060,15 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
       do i=1,N
         ! The 1 of the 1-Rho^*
         k = blockindices(i,P,it)
+        HFBHamil(i+N,i+N,P,it) = HFBHamil(i+N,i+N,P,it) + Gauge
         do j=1,N
             ! Rho
-            HFBHamil(i,j,P,it)     = HFBHamil(i,j,P,it)     - Gauge*OldRhoHFB(i,j,P,it)
+            HFBHamil(i,j,P,it)     = HFBHamil(i,j,P,it)     + Gauge*OldRhoHFB(i,j,P,it)
             ! Kappa
-            HFBHamil(i,j+N,P,it)   = HFBHamil(i,j+N,P,it)   - Gauge*OldKappaHFB(i,j,P,it)
-            HFBHamil(i+N,j,P,it)   = HFBHamil(i+N,j,P,it)   + Gauge*OldKappaHFB(i,j,P,it)
+            HFBHamil(i,j+N,P,it)   = HFBHamil(i,j+N,P,it)   + Gauge*OldKappaHFB(i,j,P,it)
+            HFBHamil(i+N,j,P,it)   = HFBHamil(i+N,j,P,it)   - Gauge*OldKappaHFB(i,j,P,it)
             ! - Rho
-            HFBHamil(i+N,j+N,P,it) = HFBHamil(i+N,j+N,P,it) + Gauge*Conjg(OldRhoHFB(i,j,P,it))
+            HFBHamil(i+N,j+N,P,it) = HFBHamil(i+N,j+N,P,it) - Gauge*Conjg(OldRhoHFB(i,j,P,it))
         enddo
       enddo
       !--------------------------------------------------------------------------
@@ -2079,7 +2080,6 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
             HFBHamil(j,i,P,it) = conjg(HFBHamil(i,j,P,it))
         enddo
       enddo
-
     enddo
   enddo
 

@@ -502,7 +502,7 @@ contains
     !B19 s_q * \Delta s_q
     if(B19.ne. 0.0_dp .and..not.TRC) then
       do it=1,2
-        Terms(30)= B19 * sum(Den%VecS(:,:,:,:,it)*Den%LapS(:,:,:,:,it))
+        Terms(30)= Terms(30)+B19*sum(Den%VecS(:,:,:,:,it)*Den%LapS(:,:,:,:,it))
       enddo
     endif
 
@@ -580,6 +580,7 @@ contains
     print 102, 13, BTerm(13), 14, BTerm(14), 15, BTerm(15)
     print 102, 16, Bterm(16), 17, BTerm(17), 18, BTerm(18)
     print 102, 19, Bterm(19), 20, BTerm(20), 21, BTerm(21)
+
     print 103, Kinetic(1), Kinetic(2), sum(Kinetic)
     if(PairingType.ne.0) then
       print 104, PairingEnergy, sum(PairingEnergy)
@@ -671,19 +672,19 @@ contains
         &    2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5)
     106 format (' Coulomb ',/,3x,'Direct', f12.5, ' Exch.  ', f12.5)
     107 format (' Total Energy ',/,                                            &
-        & 3x,'from functional: ', f15.6, /,                                    &
-        & 3x,'from Spwfs:      ', f15.6)
+        & 3x,'from functional: ', f20.11, /,                                    &
+        & 3x,'from Spwfs:      ', f20.11)
     108 format (' Differences:',/,                                             &
-        & 3x,'Absolute:        ', f15.6,/                                      &
-        & 3x,'Relative:        ', 4x,es15.6,/                                  &
-        & 3x,'Abs. func vs sp  ', f15.6,/                                      &
-        & 3x,'Rel. func vs sp  ', 4x,es15.6,/                                  &
-        & 3x,'Density changed  ', 4x,es15.6      )
+        & 3x,'Absolute:        ', f20.11,/                                      &
+        & 3x,'Relative:        ', 4x,es20.11,/                                  &
+        & 3x,'Abs. func vs sp  ', f20.11,/                                      &
+        & 3x,'Rel. func vs sp  ', 4x,es20.11,/                                  &
+        & 3x,'Density changed  ', 4x,es20.11      )
     109 format (' Total Energy ',/,                                            &
-        & 3x,'Lagrange:        ', f15.6,/,                                     &
-        & 3x,'Non-Lagrange:    ', f15.6,/,                                     &
-        & 3x,'Abs. Difference: ', f15.6,/,                                     &
-        & 3x,'Rel. Difference: ', 4x,es15.6)
+        & 3x,'Lagrange:        ', f20.11,/,                                     &
+        & 3x,'Non-Lagrange:    ', f20.11,/,                                     &
+        & 3x,'Abs. Difference: ', f20.11,/,                                     &
+        & 3x,'Rel. Difference: ', 4x,es20.11)
     110 format(' 1-body COM Correction')
     111 format(' 2-body COM Correction')
     112 format(2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5)

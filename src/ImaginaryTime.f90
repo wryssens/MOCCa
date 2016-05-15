@@ -1,12 +1,12 @@
 module ImaginaryTime
-  
+
   use CompilationInfo
   use Geninfo
   use MeanFields
   use Spwfstorage
 
   implicit none
-  
+
   !-----------------------------------------------------------------------------
   !Procedure that determines the evolution of a Spwf under imaginary time.
   procedure(GradDesc),pointer :: EvolveSpwf
@@ -20,13 +20,13 @@ contains
     use WaveFunctions
     use Force, only : B14, B15, B16, B17
     use Cranking
-    
+
     type(Spwf)  , intent(in) :: Psi
     type(Spinor)             :: hPsi, U, B, S, A, W, C, D, Crank
     integer                  :: i
-    
-    B = ActionOfB(Psi)                         
-    U = ActionOfU(Psi) 
+
+    B = ActionOfB(Psi)
+    U = ActionOfU(Psi)
     W = ActionOfW(Psi)
 
     hPsi = NewSpinor()
@@ -38,7 +38,7 @@ contains
 
         hPsi = hPsi + S
         hPsi = hPsi + A
-            
+
         if(B14.ne.0.0_dp .or. B15 .ne. 0.0_dp) then
             C = ActionOfC(Psi)
             hPsi = hPsi + C
@@ -48,19 +48,19 @@ contains
             D = ActionOfD(Psi)
             hPsi = hPsi + D
         endif
-    endif 
+    endif
   end function hPsi
 
   subroutine RutzCorrectionStep
     !---------------------------------------------------------------------------
-    ! Subroutine that takes an extra corrective step to accelerate the 
+    ! Subroutine that takes an extra corrective step to accelerate the
     ! convergence of constrained calculations.
     !---------------------------------------------------------------------------
     use Wavefunctions
     use Moments
     use Spwfstorage
     use Cranking
-    
+
     real(KIND=dp) :: Correction(nx,ny,nz,2), O2(2), Update(nx,ny,nz,2)
     real(KIND=dp) :: CrankFactor(3), Value(2), Desired(2)
     integer       :: it, i,j, power
@@ -74,7 +74,7 @@ contains
     ! constrained.
     do while(associated(Current%Next))
       Current => Current%Next
-      if(Current%ConstraintType.ne.2) cycle         
+      if(Current%ConstraintType.ne.2) cycle
 
       !Ordinary constraints
       select case(Current%Isoswitch)
@@ -90,7 +90,7 @@ contains
           power = 1
           O2    = sum(Current%Squared)
           Value = sum(Current%Value)
-        endif   
+        endif
       case(2)
         !---------------------------------------------------------------------
         !Constrain proton & neutron contributions to different values
@@ -105,7 +105,7 @@ contains
           power = 1
           O2    = Current%Squared
           Value = Current%Value
-        endif          
+        endif
       case(3)
         !---------------------------------------------------------------------
         ! Constrain the difference between proton and neutron
@@ -125,9 +125,9 @@ contains
           O2    = sum(Current%Squared)
           Value(1) =   Current%Value(1) - Current%Value(2)
           Value(2) = - Value(1)
-        endif          
+        endif
       end select
-      
+
       !Calculate the update
       do it=1,2
         Update(:,:,:,it) = c0*(Value(it)  - Desired(it))/(O2(it) + d0)*       &
@@ -150,15 +150,15 @@ contains
     ! Then we update the spwf-functions
     do i=1,nwt
       QPsi = HFBasis(i)%GetValue()
-      it   = (HFBasis(i)%GetIsospin() + 3)/2 
-      
+      it   = (HFBasis(i)%GetIsospin() + 3)/2
+
       TempSpinor = NewSpinor()
       !Calculating the actions of the cranking correction
       do j=1,3
         if(CrankFactor(j).eq.0.0_dp) cycle
         TempSpinor = TempSpinor + CrankFactor(j)*AngMomOperator(HFBasis(i), j)
       enddo
-      
+
       !Substituting the correction
       QPsi = QPsi - Correction(:,:,:,it)*Cutoff(:,:,:,it)*QPsi - TempSpinor
       call HFBasis(i)%SetGrid(QPsi)
@@ -178,16 +178,19 @@ contains
 
     integer :: i
     real(KIND=dp)             :: SpEnergy, SpDispersion, Propfactor
-    type(Spinor)              :: Current, ActionOfH
+    type(Spinor)              :: Current, ActionOfH, ActionOfH2
     integer, intent(in)       :: iteration
 
+    type(Spwf)                :: TempWf
     Propfactor = dt/hbar
+
+    if(TaylorOrder.eq.2) print *, 'Taylor'
 
     do i=1,nwt
       Current      = HFBasis(i)%GetValue()
       ActionofH    = hPsi(HFbasis(i))
       SpEnergy     = InproductSpinorReal(Current, ActionOfH)
-      SpDispersion = InproductSpinorReal(ActionOfH,ActionOfH) - SpEnergy**2 
+      SpDispersion = InproductSpinorReal(ActionOfH,ActionOfH) - SpEnergy**2
 
       !Precondition the descent direction if InverseKineticDamping is active.
       if(InverseKineticDamping) then
@@ -197,9 +200,26 @@ contains
         &           HFBasis(i)%GetTimeSimplex(), HFBasis(i)%GetIsospin())
       endif
 
+      if(TaylorOrder.eq.2) then
+          TempWF = NewWaveFunction(ActionOfH,HFBasis(i)%GetIsospin(),          &
+          &      HFBasis(i)%GetTimeSimplex(), HFBasis(i)%GetParity(),          &
+          &      HFBasis(i)%GetSignature(), HFBasis(i)%GetTimeReversal())
+          call TempWF%CompDer()
+
+          ActionOfH2 = hPsi(TempWF)
+          if(InverseKineticDamping) then
+            ActionOfH2 = ActionOfH2 - SpDispersion * Current
+            ActionOfH2 = InverseKinetic(ActionOfH2, E0 ,HFBasis(i)%GetParity(),&
+            & HFBasis(i)%GetSignature(), HFBasis(i)%GetTimeSimplex(),          &
+            & HFBasis(i)%GetIsospin())
+          endif
+
+          ActionOfH = ActionofH - (propfactor * 0.5_dp) * ActionofH2
+      endif
+
       ActionOFH    = - propfactor*ActionOfH
       ActionOfH    =   Current + ActionOfH
-      call HFBasis(i)%SetGrid(ActionOfH)      
+      call HFBasis(i)%SetGrid(ActionOfH)
       call HFBasis(i)%SetEnergy(SpEnergy)
       call HFBasis(i)%SetDispersion(SpDispersion)
     enddo
@@ -216,7 +236,7 @@ contains
     use geninfo
     use Damping
 
-    real(KIND=dp)                   :: Alpha, OldAlpha, f
+    real(KIND=dp), save             :: Alpha, OldAlpha, f
     type(Spwf), save,allocatable    :: NesterovVectors(:)
     real(KIND=dp)                   :: propfactor,SpEnergy, SpDispersion, q
     integer, intent(in)             :: Iteration
@@ -227,13 +247,13 @@ contains
     propfactor = dt/hbar
 
     if(Iteration.eq.1) then
-      Alpha = 1 ; Oldalpha=1
+      Alpha = 0 ; Oldalpha=0
       allocate(NesterovVectors(nwt)) ; NesterovVectors = HFBasis
     endif
 
     do i=1,nwt
       x(i)= HFBasis(i)%GetValue()
-      y(i)= NesterovVectors(i)%GetValue()      
+      y(i)= NesterovVectors(i)%GetValue()
       hy(i)  = hPsi(NesterovVectors(i))
       ! Do the Nesterov update
       call HFBasis(i)%SetGrid( y(i)  - propfactor * hy(i) )
@@ -243,16 +263,19 @@ contains
     call Gramschmidt
 
     !Calculate the new nesterovalpha
-    
-    Alpha = (1 + sqrt( 4 *OldAlpha**2 + 1))/2    
-    if (mod(Iteration,10) .eq. 0)  then
-        Alpha = 1 ; OldAlpha=1
+    if(Restart.ne.0) then
+      if (mod(Iteration,Restart) .eq. 0)  then
+          Alpha = 0 ; OldAlpha=0
+      endif
     endif
-    
+
+    Alpha = (1 + sqrt( 4 *OldAlpha**2 + 1))/2
+    print *, alpha
+    print *, (alpha + oldalpha - 1)/alpha,  ( 1 - Oldalpha)/alpha
 
     do i=1,nwt
         ! Calculate new Nesterov vectors
-        y(i) = HFBasis(i)%GetValue() + f * (HFBasis(i)%GetValue() - x(i))
+        y(i) = (alpha + oldalpha - 1)/alpha*HFBasis(i)%GetValue() +  ( 1 - Oldalpha)/alpha *x(i)
         call NesterovVectors(i)%SetGrid(y(i))
         call NesterovVectors(i)%CompDer
     enddo

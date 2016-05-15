@@ -82,6 +82,9 @@ module GenInfo
     ! IMTS = Imaginary time-step method
     ! Nest = Nesterov optimal descent
     character(len=20):: IterType='ImTS'
+    !---------------------------------------------------------------------------
+    ! Number of iterations after which to restart the Nesterov-memory
+    integer :: Restart = 25
 
     interface Stp
         module procedure StpReal
@@ -306,7 +309,7 @@ contains
                      &  Neutrons, Protons, ErrorFileName, nx, ny,nz, dx,       &
                      &  PrintIter, MomentPrec, EnergyPrec, TaylorOrder,        &
                      &  InverseKineticDamping, E0, PairingPrec, CrankPrec,     &
-                     &  IterType
+                     &  IterType, Restart
 
     !Reading the symmetries that are conserved or broken.
     read (unit=*, nml=GenInfo)

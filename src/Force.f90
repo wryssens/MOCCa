@@ -1,6 +1,6 @@
 module Force
     !----------------------------------------------------------------------------------
-    ! This module contains all the variables related to the Skyrme interaction used, 
+    ! This module contains all the variables related to the Skyrme interaction used,
     ! and that includes the physical constants, hbar, e^2 and others...
     !----------------------------------------------------------------------------------
 
@@ -18,7 +18,7 @@ module Force
     !Name of the force
     character(len=200), public   :: afor
     !-----------------------------------------------------------------------------
-    ! The diverse constants in the Skyrme force and their combinations (the Bi,Ci) 
+    ! The diverse constants in the Skyrme force and their combinations (the Bi,Ci)
     ! that enter the energy density.
     ! For the various definitions, see:
     !  P.Bonche, H.Flocard, P.H.Heenen; Nucl. Phys. A467 (1987); 115-135
@@ -40,26 +40,26 @@ module Force
     ! J^2 terms and whether or not to take average nucleon masses
     logical               :: J2terms=.false., averagemass=.true.
     !.............................................................................
-    !   Physical constants. They are set with an interaction, but have default  
+    !   Physical constants. They are set with an interaction, but have default
     !   values.
-    !    
-    !   It concerns:                                                              
-    !       - hbar in units of MeV * 10^{-22} s                                   
-    !         builtin value:                                                      
-    !             hbar   = 6.58211928                                             
-    !       - m_n and m_p in units of MeV * c^{-2}                                
-    !         builtin values:                                                     
-    !             m_n    = 939.565379                                             
-    !             m_p    = 938.272046                                             
-    !       - speed of light in units of fm/(10^{-22} s)                          
-    !         builtin value:                                                      
-    !             c      = 29.9792458                                             
+    !
+    !   It concerns:
+    !       - hbar in units of MeV * 10^{-22} s
+    !         builtin value:
+    !             hbar   = 6.58211928
+    !       - m_n and m_p in units of MeV * c^{-2}
+    !         builtin values:
+    !             m_n    = 939.565379
+    !             m_p    = 938.272046
+    !       - speed of light in units of fm/(10^{-22} s)
+    !         builtin value:
+    !             c      = 29.9792458
     !.............................................................................
-    ! P.J. Mohr et al., Rev. Mod. Phys. 84, 2012, CODATA recommended values of     
-    ! the fundamental physical constants constants:2010                           
-    !                                                                             
-    ! Or more practically on: http://physics.nist.gov/cuu/Constants/index.html    
-    !.............................................................................                                           
+    ! P.J. Mohr et al., Rev. Mod. Phys. 84, 2012, CODATA recommended values of
+    ! the fundamental physical constants constants:2010
+    !
+    ! Or more practically on: http://physics.nist.gov/cuu/Constants/index.html
+    !.............................................................................
     real(KIND=dp):: e2=1.43996446_dp, hbar = 6.58211928_dp, clum  =  29.9792458_dp
     real(KIND=dp):: nucleonmass(2) = (/939.565379_dp , 938.272046_dp /)
     real(KIND=dp):: hbm(2)      = 20.73551910_dp
@@ -67,16 +67,16 @@ module Force
     ! Small remark on hbm: it is hbar^2/m and thus does not include the two that
     ! everyone is familiar with. This for historic reasons. But I hear you asking
     ! 'Wouter, then why is the default value here hbm/2?' and I'll answer that it
-    ! is for input purposes that people that want to read a force can input 
+    ! is for input purposes that people that want to read a force can input
     ! 20.something. In the forcereading routine, hbm is multiplied again by 2.
     !-----------------------------------------------------------------------------
     !-----------------------------------------------------------------------------
-    ! Integers governing COM-mass correction. They are intrinsically connected to 
+    ! Integers governing COM-mass correction. They are intrinsically connected to
     ! an interaction.
     !
-    ! COMXBody = 
-    !   0) X-body contribution is not used in the single-particle hamiltonian 
-    !      and not printed in the energy summary. (And thus completely not 
+    ! COMXBody =
+    !   0) X-body contribution is not used in the single-particle hamiltonian
+    !      and not printed in the energy summary. (And thus completely not
     !      calculated.
     !   1) X-body contribution is not used in the single-particle hamiltonian,
     !      but calculated and added to the total energy (and printed ofcourse.)
@@ -99,7 +99,7 @@ contains
         ! Make sure SkyrmeTreatment is aligned
         call to_upper(SkyrmeTreatment,Skyrmetreatment)
 
-        ! Assigning the correct variables to the Force coefficients.    
+        ! Assigning the correct variables to the Force coefficients.
         call ReadForce
         !Calculating all EDF coefficients
         call CalcEdfCoef
@@ -115,7 +115,7 @@ contains
 
   subroutine ReadForce
   !-----------------------------------------------------------------------------
-  ! Subroutine that reads a force from the forces.param file that should be 
+  ! Subroutine that reads a force from the forces.param file that should be
   ! provided.
   !-----------------------------------------------------------------------------
 
@@ -139,7 +139,7 @@ contains
     t3a=0.0_dp;     yt3a=0.0_dp;     t3b=0.0_dp;
     x3b=0.0_dp;     yt3b=0.0_dp
     te=0.0_dp;      to=0.0_dp
-    wso=0.0_dp;     wsoq=0.0_dp 
+    wso=0.0_dp;     wsoq=0.0_dp
     COM1body=0;     COM2body=0
     J2Terms=.false.
     call ResetConstants
@@ -152,7 +152,7 @@ contains
         !Creating uppercase strings
         call to_upper(afor, UpAfor)
         call to_upper(Name, UpName)
-    
+
         if(trim(upname).eq.trim(upafor)) then
             exit
         elseif(trim(upname).eq.trim('END')) then
@@ -165,7 +165,7 @@ contains
             x3a=0.0_dp
             x3b=0.0_dp;     yt3b=0.0_dp
             te=0.0_dp;      to=0.0_dp
-            wso=0.0_dp;     wsoq=0.0_dp   
+            wso=0.0_dp;     wsoq=0.0_dp
             b14=0.0_dp;     b15=0.0_dp;     b16=0.0_dp;      b17=0.0_dp
             COM1body=0;     COM2body=0
             J2Terms=.false.
@@ -182,16 +182,16 @@ contains
 
   subroutine PrintForce
   !-----------------------------------------------------------------------------
-  ! A subroutine that prints all the info related to the force (and the EDF) 
-  ! that are used. Additionally, this prints some elementary constants that are 
+  ! A subroutine that prints all the info related to the force (and the EDF)
+  ! that are used. Additionally, this prints some elementary constants that are
   ! used.
-  !-----------------------------------------------------------------------------          
+  !-----------------------------------------------------------------------------
 
     1       format(20("-"), 'Elementary Constants', 20("-"))
     3       format(22("-"), 'Skyrme Parameters', 21("-") )
-    97      format("m_n            = ",f11.6, ' (MeV c^-2)',/ & 
+    97      format("m_n            = ",f11.6, ' (MeV c^-2)',/ &
     &              "m_p            = ",f11.6, ' (MeV c^-2)')
-    98      format("e^2            = ", f11.8 ,' (sqrt(MeV fm)) ')  
+    98      format("e^2            = ", f11.8 ,' (sqrt(MeV fm)) ')
     99      format("hbar^2/(2*mn)  = ", f11.8 ,' (MeV fm^2)'&
     &           ,/,"hbar^2/(2*mp)  = ", f11.8 ,' (MeV fm^2)')
     100     format("Name of the Force:  ", a57)
@@ -217,7 +217,7 @@ contains
     110     format("EDF Coefficients (BFH representation)")
     111     format ( &
     &' B1 =',f13.6,'  B2 =',f13.6,'  B3 =',f13.6,/, &
-    &' B4 =',f13.6,'  B5 =',f13.6,'  B6 =',f13.6,/, & 
+    &' B4 =',f13.6,'  B5 =',f13.6,'  B6 =',f13.6,/, &
     &' B7 =',f13.6,'  B8 =',f13.6,/,  &
     &' B9 =',f13.6,'  B9q=',f13.6,/, &
     &' B10=',f13.6,'  B11=',f13.6,'  B12=',f13.6,/, &
@@ -232,11 +232,11 @@ contains
     &   ' C^s_0[sat]   =',f13.6,' C^s_1[sat]   =',f13.6,/, &
     &   ' C^tau_0      =',f13.6,' C^tau_1      =',f13.6,/, &
     &   ' C^Drho_0     =',f13.6,' C^Drho_1     =',f13.6,/, &
-    &   ' C^divJ_0     =',f13.6,' C^divJ_1     =',f13.6,/, & 
+    &   ' C^divJ_0     =',f13.6,' C^divJ_1     =',f13.6,/, &
     &   ' C^T_0        =',f13.6,' C^T_1        =',f13.6,/, &
     &   ' C^F_0        =',f13.6,' C^F_1        =',f13.6,/, &
     &   ' C^Ds_0       =',f13.6,' C^Ds_1       =',f13.6,/, &
-    &   ' C^divs_0     =',f13.6,' C^divs_1     =',f13.6,/) 
+    &   ' C^divs_0     =',f13.6,' C^divs_1     =',f13.6,/)
 
     print 1
     print 98, e2
@@ -280,11 +280,11 @@ contains
 
   subroutine CalcEDFCoef()
   !-----------------------------------------------------------------------------
-  ! This subroutine calculates the Bi, the coefficients in the EDF, as a 
-  ! function of the Skyrme parameters. See the formulas in the 24Mg paper and 
+  ! This subroutine calculates the Bi, the coefficients in the EDF, as a
+  ! function of the Skyrme parameters. See the formulas in the 24Mg paper and
   ! the tensor notes.
   !-----------------------------------------------------------------------------
-  ! Note for the calculation of the C's: we use the formulas in terms of B's, 
+  ! Note for the calculation of the C's: we use the formulas in terms of B's,
   ! because these work whether or  not we are dealing with a strict force.
   !-----------------------------------------------------------------------------
   ! Note again for the C's: they are BUGGED!
@@ -308,8 +308,8 @@ contains
     B7b  = t3b*( 1   + x3b/2.0_dp)/12.0_dp
     B8b  =-t3b*( x3b +   1/2.0_dp)/12.0_dp
     !---------------------------------------------------------------------------
-    ! B9 and B9q are the constants related to the spin-orbit interaction. 
-    ! Starting from a Skyrme Force, they should in principle be equal for a 
+    ! B9 and B9q are the constants related to the spin-orbit interaction.
+    ! Starting from a Skyrme Force, they should in principle be equal for a
     ! true force, but apparently there are some physics cases where a difference
     ! between the isoscalar and isovector coupling is wanted.
     !---------------------------------------------------------------------------
@@ -330,26 +330,26 @@ contains
 
     if(J2Terms) then
       B14  = -(1.0_dp/8.0_dp) * (t1*x1 + t2*x2)
-      B15  =  (1.0_dp/8.0_dp) * (t1 - t2) 
+      B15  =  (1.0_dp/8.0_dp) * (t1 - t2)
       ! Tensor contribution
       B14 = B14 + (1.0_dp/4.0_dp) * (te + to)
       B15 = B15 - (1.0_dp/4.0_dp) * (te - to)
     endif
-   
+    !
     B16  =-(3.0_dp/8.0_dp) * (te + to)
     B17  = (3.0_dp/8.0_dp) * (te - to)
-    
-!     if(J2Terms .and. (.not. TRC)) then
-!       B18 =-(1.0_dp/32.0_dp)* (3 * t1 * x1 - t2 *x2)
-!       B19 = (1.0_dp/32.0_dp)* (3 * t1      + t2    )
-!       !Tensor contribution
-!       B18 = B18 + (1.0_dp/16.0_dp) * (3*te - to)
-!       B19 = B19 - (1.0_dp/16.0_dp) * (3*te + to)
-!     endif
-!     if(.not.TRC) then
-!       B20 = (3.0_dp/16.0_dp) * (3*te - to) 
-!       B21 =-(3.0_dp/16.0_dp) * (3*te + to)
-!     endif
+    !
+    if(J2Terms .and. (.not. TRC)) then
+      B18 =-(1.0_dp/32.0_dp)* (3 * t1 * x1 - t2 *x2)
+      B19 = (1.0_dp/32.0_dp)* (3 * t1      + t2    )
+      !Tensor contribution
+      B18 = B18 + (1.0_dp/16.0_dp) * (3*te - to)
+      B19 = B19 - (1.0_dp/16.0_dp) * (3*te + to)
+    endif
+    if(.not.TRC) then
+      B20 = (3.0_dp/16.0_dp) * (3*te - to)
+      B21 =-(3.0_dp/16.0_dp) * (3*te + to)
+    endif
 
     !---------------------------------------------------------------------------
     !Calculating the C-s
@@ -357,14 +357,14 @@ contains
     !Careful: Crho is density dependent in general. Crho contains the value at
     ! zero density, Crhosat the value at saturation density!
     !---------------------------------------------------------------------------
-    Crho(1) = (3.0_dp / 8.0_dp) * t0   
+    Crho(1) = (3.0_dp / 8.0_dp) * t0
     Crho(2) =-(1.0_dp / 4.0_dp) * t0 * (1.0_dp/2.0_dp + x0)
 
     Crhosat(1) = Crho(1)                              &
              & + 3.0_dp/48.0_dp * t3a * rhosat**byt3a &
              & + 3.0_dp/48.0_dp * t3b * rhosat**byt3b
     Crhosat(2) = Crho(2)                              &
-             & - 1.0_dp/24.0_dp * t3a * (0.5_dp + x3a) * rhosat**byt3a & 
+             & - 1.0_dp/24.0_dp * t3a * (0.5_dp + x3a) * rhosat**byt3a &
              & - 1.0_dp/24.0_dp * t3b * (0.5_dp + x3b) * rhosat**byt3b
 
     !Same remark for Cs: it is density dependent!
@@ -376,15 +376,15 @@ contains
             &       + (B12b + 0.5_dp*b13b) * rhosat**byt3b
     Cssat(2)= Cs(2) + 0.5_dp*B11                                               &
             &       + 0.5_dp*B13a  * rhosat**byt3a                             &
-            &       + 0.5_dp*B13b  * rhosat**byt3b     
+            &       + 0.5_dp*B13b  * rhosat**byt3b
 
     Cds(1)  = B18 + 0.5_dp * B19
-    Cds(2)  =       0.5_dp * B19 
+    Cds(2)  =       0.5_dp * B19
 
-    Ctau(1) = (3.0_dp/16.0_dp) * t1 + (1.0_dp/4.0_dp)*t2 * (5.0_dp/4.0_dp + x2)    
-    Ctau(2) =-(1.0_dp/8.0_dp)  *(t1 * (0.5_dp + x1) - t2 * (0.5_dp + x2)) 
+    Ctau(1) = (3.0_dp/16.0_dp) * t1 + (1.0_dp/4.0_dp)*t2 * (5.0_dp/4.0_dp + x2)
+    Ctau(2) =-(1.0_dp/8.0_dp)  *(t1 * (0.5_dp + x1) - t2 * (0.5_dp + x2))
 
-    Cdrho(1)=-(9.0_dp/64.0_dp) * t1 + 1.0_dp/16.0_dp * t2 * (5.0_dp/4.0_dp + x2) 
+    Cdrho(1)=-(9.0_dp/64.0_dp) * t1 + 1.0_dp/16.0_dp * t2 * (5.0_dp/4.0_dp + x2)
     Cdrho(2)= (1.0_dp/32.0_dp) * (3 * t1 *(0.5_dp + x1) + t2 * (0.5_dp + x2))
 
     CnablaJ(1) = B9 + 0.5_dp * B9q
@@ -399,9 +399,9 @@ contains
     Cnablas(1) = B20 + 0.5_dp * B21
     Cnablas(2) =       0.5_dp * B21
 
-    CJ0    = -1.0_dp/3.0_dp * (Ct - 2.0_dp * Cf) 
+    CJ0    = -1.0_dp/3.0_dp * (Ct - 2.0_dp * Cf)
     CJ1    = -0.5_dp        * (Ct - 0.5_dp * Cf)
-    CJ2    = -                (Ct + 0.5_dp * Cf) 
+    CJ2    = -                (Ct + 0.5_dp * Cf)
 
     return
   end subroutine CalcEDFCoef

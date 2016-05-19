@@ -11,7 +11,7 @@ module SpecialMoments
 ! Make sure that the SpherHarm variable is correctly initialised!
 !
 ! Currently implemented:
-! 
+!
 ! - Moment of the Schiff operator
 !
 !---------------------------------------------------------------------------------------
@@ -36,11 +36,11 @@ contains
         !----------------------------------------------------
 
         integer      :: SchiffMoment = 0
-        real(KIND=dp):: Constraint = 0.0_dp
+        real(KIND=dp):: Constraint = 0.0_dp, Intensity=0.0_dp
         integer      :: ConstraintType=0
 
         Namelist /SpecialMoments/ SchiffMoment, Constraint, &
-        &                         ConstraintType
+        &                         ConstraintType, Intensity
 
         read(unit=*, NML=SpecialMoments)
 
@@ -67,18 +67,18 @@ contains
     subroutine IniSchiffOperator
 
         type(Moment), pointer :: current
-        
+
         !------------------------------------------
-        ! Note that -1 is taken as l to signify 1) 
+        ! Note that -1 is taken as l to signify 1)
         ! that it is not a multipole moment
         ! and that 2) it is parity-odd.
         Schiff = NewMoment(-1, 0, 0)
 
-        ! Notice that we don't initialize the spherical 
+        ! Notice that we don't initialize the spherical
         ! harmonic for the Schiff moment here.
 
         !----------------------------------------
-        ! Find the last moment and associate the 
+        ! Find the last moment and associate the
         ! and put the Schiff moment behind it
         current => Root
 
@@ -109,7 +109,7 @@ contains
         !----------------------------------------------
         ! This routine is somewhat weird, but this is
         ! necessary, since the Schiff moment is state
-        ! dependent. This is why we recalculate the 
+        ! dependent. This is why we recalculate the
         ! operator here every time.
         !----------------------------------------------
 
@@ -124,16 +124,16 @@ contains
         endif
 
         SchiffMoment%Value   = 0.0_dp
-        SchiffMoment%Squared = 0.0_dp 
+        SchiffMoment%Squared = 0.0_dp
 
         do k=1,nz
-            do j=1,ny 
-                do i=1,nx 
+            do j=1,ny
+                do i=1,nx
                     Schiff%SpherHarm(i,j,k) = e2/10.0 *            &
                     &                        (( MeshX(i)**2        &
                     &                         + MeshY(j)**2        &
                     &                         + MeshZ(k)**2 )**2   &
-                    &                         - msr ) * MeshZ(k)                         
+                    &                         - msr ) * MeshZ(k)
                 enddo
             enddo
         enddo

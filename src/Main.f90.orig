@@ -17,6 +17,8 @@ program MOCCa
     use InOutput, only    : Input, Output, PlotDensity
     use SpwfStorage, only : PrintSpwf, DensityBasis, HFBasis
     use Pairing, only     : PairingType
+    use Testing
+
     implicit none
 
  200 format (/,' ___________________________________________________________', &
@@ -49,7 +51,7 @@ program MOCCa
      if(TestRun.eq.1) then
         print*, "MOCCa is entering test mode!"
         !call TestPairingFields()
-        !call TestDelta
+        call TestDelta
         call stp('End of TestRun')
      endif
      !--------------------------------------------------------------------------
@@ -83,6 +85,7 @@ subroutine Evolve(MaxIterations, iprint)
   use Cranking, only    : ReadjustCranking, CrankC0
   use DensityMixing,only: MixDensities
   use Cranking, only    : RutzCrank, CrankType
+  use Testing
   use HFB
 
   implicit none
@@ -165,7 +168,7 @@ subroutine Evolve(MaxIterations, iprint)
   !    not be read from file.
   ! 3) if the input file was an EV8 file, some derivatives of densities could not
   !    be read.
-  if(Recalc) then
+  if(.true.) then
     call UpdateDensities(0)
   endif
 
@@ -349,7 +352,11 @@ logical function ConvergenceCheck() result(Converged)
   !Checking convergence of the Fermi energy
   !Converged = Converged .and. ConverFermi(PairingPrec)
     !Checking convergence of the angular momentum for cranked calculations
+<<<<<<< HEAD
   !Converged = Converged .and. ConverCranking(CrankPrec)
+=======
+  Converged = Converged .and. ConverCranking(CrankPrec)
+>>>>>>> 8fdf947a07ef8b73dfe7272d3ae85a6f5b383ad1
 
   if(TotalEnergy.ge.0.0_dp) then
     call PrintEnergy
@@ -407,8 +414,9 @@ subroutine PrintIterationInfo(Iteration)
   use Moments,     only : PrintAllMoments
   use Cranking,    only : PrintCranking
   use Pairing,     only : PrintPairing, PairingType, Fermi
-  use Energy,      only : PrintEnergy
+  use Energy !,      only : PrintEnergy
   use HFB, only         : PrintQP
+  use Force
 
   implicit none
 
@@ -426,7 +434,7 @@ subroutine PrintIterationInfo(Iteration)
   call PrintCranking
   call PrintPairing
   call PrintEnergy
-
+  
 end subroutine PrintIterationInfo
 
 subroutine FinalIteration()

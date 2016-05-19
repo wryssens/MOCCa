@@ -27,7 +27,6 @@ module Pairing
   use BCS
   use HFB
   use PairingInteraction
-  use LipkinNogami
   use HartreeFock
   use GradientHFB
 
@@ -86,9 +85,6 @@ module Pairing
   !-----------------------------------------------------------------------------
   ! Modified Lipkin-Nogami pairing field and pairing gaps
   complex(KIND=dp), allocatable  :: PairingFieldLN(:,:,:,:), DeltaLN(:,:,:,:)
-  !-----------------------------------------------------------------------------
-  ! Integer for the maximum number of iterations for the readjustment of lambda
-  integer                     :: MaxLambdaIter=1
   !-----------------------------------------------------------------------------
   ! Precision on the Fermi energy
   real(KIND=dp), parameter    :: FermiPrec=1d-6
@@ -156,7 +152,7 @@ contains
      &                  Type, CutNeutron, FreezeOccupation, PairingIter,       &
      &                  HFBMix, NeutronGap, ProtonGap, ConstantGap,            &
      &                  Lipkin, LNFraction, GuessKappa, PairingMu, CutType,    &
-     &                  MaxLambdaIter, SemiBCS, SemiBCSNeutron, SemiBCSProton, &
+     &                  SemiBCS, SemiBCSNeutron, SemiBCSProton,                &
      &                  QPinHFBasis, SolvePairingStart,QPPrintWindow, Block,   &
      &                  FermiSolver, HFBIter,HFBgauge,HFConfig, LNFixN, LNFixP,&
      &                  DN2P, DN2N, ConstrainDispersion
@@ -417,9 +413,6 @@ contains
         !Setting numerical default parameters
         if(PairingIter.eq.1) then
           PairingIter=1
-        endif
-        if(MaxLambdaIter.eq.1) then
-          MaxLambdaIter=50
         endif
         !-----------------------------------------------------------------------
         ! Calling the readBlocking routine when the user wants to do blocking

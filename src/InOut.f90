@@ -6,7 +6,6 @@ module InOutput
   use Wavefunctions
   use Pairing
   use Transform
-  use SpwfFactory
   use Interfaces
 
   implicit none
@@ -278,8 +277,7 @@ contains
 
     implicit none
 
-    NameList /InAndOutput/ InputFileName,OutputFileName,ExtraOutput,Pictures, &
-    &                      PromOutput,LegacyInput
+    NameList /InAndOutput/ InputFileName,OutputFileName,PromOutput,LegacyInput
 
     !--------------- Reading Input---------------------------------------
     !Info for the GenInfo Module
@@ -560,7 +558,7 @@ contains
     endif
     !---------------------------------------------------------------------------
     ! Decide whether to cut wavefunctions or not
-    call DecideToCut(nwt,filenwt)
+    !call DecideToCut(nwt,filenwt)
     !---------------------------------------------------------------------------
     ! Reading the  Non-Essential Variables
     ! 6 ) Specifics of the finite difference scheme
@@ -1072,7 +1070,7 @@ subroutine ReadMOCCa_v1(Ichan)
     endif
     !---------------------------------------------------------------------------
     ! Decide whether to cut wavefunctions or not
-    call DecideToCut(nwt,filenwt)
+    !call DecideToCut(nwt,filenwt)
     !---------------------------------------------------------------------------
     ! 6 ) Specifics of the finite difference scheme
     !     Currently there is nothing of interest there.

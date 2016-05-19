@@ -15,7 +15,7 @@ module SpwfStorage
   !-----------------------------------------------------------------------------
   real*8  :: FermiEnergy, PrintingWindow=10.0_dp
   !-----------------------------------------------------------------------------
-  ! Whether or not MOCCa is allowed to adjust the number of states taken 
+  ! Whether or not MOCCa is allowed to adjust the number of states taken
   ! into account.
   !-----------------------------------------------------------------------------
   logical :: AdjustNumber=.false.
@@ -28,21 +28,21 @@ module SpwfStorage
   ! Only allocated when HFB pairing is active.
   type (Spwf), public, allocatable,target :: CanBasis(:)
   !-----------------------------------------------------------------------------
-  ! In addition, a pointer to either the HFBasis or the CanBasis, depending on 
+  ! In addition, a pointer to either the HFBasis or the CanBasis, depending on
   ! the type of parity. It should point to the wavefunctions needed to construct
   ! the mean-field densities in the Densities module.
   !-----------------------------------------------------------------------------
-  type (Spwf), public, pointer :: DensityBasis(:) 
+  type (Spwf), public, pointer :: DensityBasis(:)
   !-----------------------------------------------------------------------------
-  !Total angular momentum <J_x >, <J_y>, <J_z>, <J^2>, and their values at 
-  !the previous 7 iterations and the quadratic expectation value                
+  !Total angular momentum <J_x >, <J_y>, <J_z>, <J^2>, and their values at
+  !the previous 7 iterations and the quadratic expectation value
   ! <J_x^2>, <J_y^2>, <J_z^2>.
   !
   ! AMIsoBlock separates the different contributions along as much blocks as
   ! possible.
   !-----------------------------------------------------------------------------
   real(KIND=dp), public :: TotalAngMom(3)=0.0_dp, AngMomOld(3)=0.0_dp
-  real(KIND=dp), public :: J2(3) = 0.0_dp,        AMIsoBlock(2,2,2,3)=0.0_dp 
+  real(KIND=dp), public :: J2(3) = 0.0_dp,        AMIsoBlock(2,2,2,3)=0.0_dp
   !-----------------------------------------------------------------------------
   !Memory for the total dispersion of the occupied(!) spwfs
   !-----------------------------------------------------------------------------
@@ -57,23 +57,23 @@ module SpwfStorage
   !   iteration.
   real(KIND=dp), public             ::     J2total(3)    = 0.0_dp
   real(KIND=dp), public             ::  OldJ2total(3)    = 0.0_dp
-  
+
 contains
-  
+
   subroutine ReadSpwfStorageInfo()
     !---------------------------------------------------------------------------
     ! Subroutine that reads the necessary info on this module.
     !---------------------------------------------------------------------------
     NameList /SpwfStorage/ nwt, AdjustNumber, PrintingWindow
     read(unit=*, NML=SpwfStorage)
-    
+
     if(nwt.le.0) call stp('Negative number of states.', 'Nwt', nwt)
-    
-    ! The admissible number of states to take into account is less strict 
+
+    ! The admissible number of states to take into account is less strict
     ! when time Reversal is conserved
     if(TRC) then
       if((nwt).lt.(Neutrons+Protons)/2) then
-        call stp('Not enough states.', 'nwt',nwt, 'Particles', Neutrons+Protons)    
+        call stp('Not enough states.', 'nwt',nwt, 'Particles', Neutrons+Protons)
       endif
     else
       if((nwt).lt.(Neutrons+Protons)) then
@@ -81,7 +81,7 @@ contains
       endif
     endif
   end subroutine ReadSpwfStorageInfo
-    
+
   subroutine ChangeNumberWaveFunctions( NewNumber )
     !---------------------------------------------------------------------------
     ! A subroutine that changes the total number of wavefunctions.
@@ -95,7 +95,7 @@ contains
     !---------------------------------------------------------------------------
     integer, intent(in)     :: NewNumber
     integer                 :: i, N, M, NeutWf, ProtWf
-    type(Spwf), allocatable :: TempStorage(:), TempCanStorage(:)        
+    type(Spwf), allocatable :: TempStorage(:), TempCanStorage(:)
     integer, allocatable    :: OrderN(:), OrderP(:)
 
     NeutWf=1
@@ -155,12 +155,12 @@ contains
       allocate(HFBasis(NewNumber))
       !NOte that the Canbasis is not allocated here, but in the pairing module.
     endif
-    return  
+    return
   end subroutine ChangeNumberWaveFunctions
-   
+
   subroutine GramSchmidt
     !---------------------------------------------------------------------------
-    ! This subroutine uses a Gram-Schmidt scheme to orthonormalise the Spwfs in 
+    ! This subroutine uses a Gram-Schmidt scheme to orthonormalise the Spwfs in
     ! the HF basis.
     !---------------------------------------------------------------------------
     use GenInfo
@@ -175,7 +175,7 @@ contains
 
 
     if(.not.allocated(Temp%Grid)) allocate(Temp%Grid(nx,ny,nz,4,1))
-      
+
     do nw=1,nwt
       ! First normalise \Psi_{nw}
       call HFBasis(nw)%CompNorm()
@@ -183,7 +183,7 @@ contains
 
 !       ValueOne = HFBasis(nw)%GetValue()
 !       ValueOne = (1.0d0/sqrt(Norm)) * ValueOne
-      
+
       do i=1,4*nx*ny*nz
         HFBasis(nw)%Value%Grid(i,1,1,1,1) = (1.0d0/sqrt(Norm)) * HFBasis(nw)%Value%Grid(i,1,1,1,1)
       enddo
@@ -193,28 +193,28 @@ contains
       Parity    = HFBasis(nw)%GetParity()
       Signature = HFBasis(nw)%GetSignature()
       !-------------------------------------------------------------------------
-      ! Then subtract the projection on \Psi_{nw} from all the following Spwf. 
-      ! Re(\Psi(\sigma)_{mw}) = 
+      ! Then subtract the projection on \Psi_{nw} from all the following Spwf.
+      ! Re(\Psi(\sigma)_{mw}) =
       ! Re(\Psi(\sigma)_{nw})-Re(< \Psi_{nw}|\Psi_{mw} >) Re(\Psi(\sigma)_{nw})
       !                      + Im(< \Psi_{nw}|\Psi_{mw} >)Im(\Psi(\sigma)_{nw})
       ! Im(\Psi(\sigma)_{mw}) =
       ! Im(\Psi(\sigma)_{mw})-Re(< \Psi_{nw}|\Psi_{mw} >) Im(\Psi(\sigma)_{nw})
       !                      -Im(< \Psi_{nw}|\Psi_{mw} >) Re(\Psi(\sigma)_{nw})
       !-------------------------------------------------------------------------
-      ! Note that the imaginary part of the inproduct only needs to be taken 
+      ! Note that the imaginary part of the inproduct only needs to be taken
       ! into account when Time Simplex is not conserved.
       !-------------------------------------------------------------------------
       do mw=nw+1,nwt
         !-----------------------------------------------------------------------
-        ! Do not waste time in manipulating the grids if the matrixelement 
-        ! is zero. This is fulfilled, for example, when the two SPWF do not 
-        ! share all quantum numbers.         
-        !-----------------------------------------------------------------------    
+        ! Do not waste time in manipulating the grids if the matrixelement
+        ! is zero. This is fulfilled, for example, when the two SPWF do not
+        ! share all quantum numbers.
+        !-----------------------------------------------------------------------
         if(HFBasis(mw)%GetIsospin().ne.Isospin)     cycle
         if(HFBasis(mw)%GetParity().ne.Parity)       cycle
         if(HFBasis(mw)%GetSignature().ne.Signature) cycle
 
-        MatrixElement=InProduct(HFBasis(mw),HFBasis(nw))            
+        MatrixElement=InProduct(HFBasis(mw),HFBasis(nw))
         !ValueTwo = HFBasis(mw)%GetValue()
         !________________________________________________________
         ! Working version with overloaded operators.
@@ -230,7 +230,7 @@ contains
 
         do i=1,4*nx*ny*nz
           HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
-          &                                   MatrixElement(1) * HFBasis(nw)%Value%Grid(i,1,1,1,1) 
+          &                                   MatrixElement(1) * HFBasis(nw)%Value%Grid(i,1,1,1,1)
         enddo
 
         if(.not.TSC) then
@@ -238,11 +238,11 @@ contains
          Temp2 = MultiplyI(HFBasis(nw)%Value)
          do i=1,4*nx*ny*nz
             HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
-            &                                   MatrixElement(2) * Temp2%Grid(i,1,1,1,1) 
+            &                                   MatrixElement(2) * Temp2%Grid(i,1,1,1,1)
          enddo
         endif
-        
-        ! If signature is broken, but time reversal is conserved, also 
+
+        ! If signature is broken, but time reversal is conserved, also
         ! orthogonalise against the time-reversed functions
         if(.not.SC .and. TRC) then
           Temp2 = TimeReverse(HFBasis(nw)%Value)
@@ -255,12 +255,12 @@ contains
           endif
           do i=1,4*nx*ny*nz
             HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
-            &                                   MatrixElement(1) * Temp2%Grid(i,1,1,1,1) 
-          enddo                    
-          !Temp = Temp - MatrixElement(1)*Temp2                                  
+            &                                   MatrixElement(1) * Temp2%Grid(i,1,1,1,1)
+          enddo
+          !Temp = Temp - MatrixElement(1)*Temp2
         endif
         !Save the result to the corresponding wavefunction
-        !call HFBasis(mw)%SetGrid(Temp)     
+        !call HFBasis(mw)%SetGrid(Temp)
       enddo
     enddo
   end subroutine GramSchmidt
@@ -283,7 +283,7 @@ contains
     endif
     return
   end subroutine DeriveAll
-  
+
   subroutine PrintSpwf(PairingType, Fermi)
     !---------------------------------------------------------------------------
     ! This subroutine prints out all info for all relevant wavefunctions, both
@@ -298,61 +298,61 @@ contains
     character(len=160)            :: HFheader='', CanHeader=''
     real(KIND=dp), intent(in)     :: Fermi(2)
     real(KIND=dp)                 :: Distance
-    
+
     10 format (21 ('-'), ' Sp wavefunctions ', 41('-'))
     20 format (94 ('-'))
     30 format (94 ('_'),/,3x , 'Neutron wavefunctions')
     40 format (94 ('_'),/,3x , 'Proton  wavefunctions')
-    50 format (94 ('_'),/,3x , 'HF Basis') 
+    50 format (94 ('_'),/,3x , 'HF Basis')
     60 format (94 ('_'),/,3x , 'Canonical Basis' )
     !---------------------------------------------------------------------------
     ! Different explanatory headers, who match with the formats in subroutine
     ! PrintHF and PrintCanonical.
     !---------------------------------------------------------------------------
     ! Headers for Hartree-fock basis
-    !--------------------------------------------------------------------------- 
+    !---------------------------------------------------------------------------
     ! Hartree-Fock calculations
     1  format (5x, ' n ' ,1x, ' <P> ',1x, '  v^2  ',1x, '  E_sp ', 2x,'Var(h)',&
-    &          4x, '<Jx|T>',1x, '<Jy|T>', 3x, '<Jz>', 4x,'J',4x,'<r^2>') 
+    &          4x, '<Jx|T>',1x, '<Jy|T>', 3x, '<Jz>', 4x,'J',4x,'<r^2>')
     11 format (5x, ' n ' ,2x,'<P>',2x, '<Rz>',4x,'v^2',5x,'E_sp',4x,'Var(h)',  &
     &          3x, '<Jx>',2x, '<Jy|T>', 1x, '<Jz>', 3x , 'J',4x ,'<r^2>',1x)
     12 format (5x, ' n ' ,2x,'<P>',2x, '<Rz>',4x,'v^2',5x,'E_sp',4x,'Var(h)',  &
     &          3x, '<Jx|T>',1x, '<Jy>', 2x, '<Jz>', 3x , 'J',4x ,'<r^2>',1x)
     13 format (5x, ' n ' ,2x,'<P>',2x, '<Rz>',4x,'v^2',5x,'E_sp',4x,'Var(h)',  &
     &          3x, '<Jx>',1x, '<Jy>', 2x, '<Jz>', 3x , 'J',4x ,'<r^2>',1x)
-    
-    !--------------------------------------------------------------------------- 
+
+    !---------------------------------------------------------------------------
     ! BCS calculations
     2  format (6x,'n',3x,'<P>',4x,'v^2',4x,'Delta',4x,'E_sp',4x,'Var(h)',3x,   &
       &        '<Jx|T>',1x, '<Jy|T>', 2x, '<Jz>', 4x,'J',4x,'<r^2>')
     21 format (6x,'n',3x,'<P>',2x,'<Rz>',3x,'v^2',4x,'Delta',4x,'E_sp',4x,     &
       &        'Var(h)',5x,'<Jx>',2x,'<Jy|T>', 2x, '<Jz>', 4x,'J',4x,'<r^2>')
 
-    !--------------------------------------------------------------------------- 
+    !---------------------------------------------------------------------------
     ! HFB calculations
     3  format (6x,'n',3x,'<P>',3x,'Rhoii',3x,'Delta',3x,'m',4x,'E_sp',4x,      &
-    &          'Var(h)',3x,'<Jx|T>',1x, '<Jy|T>', 2x, '<Jz>',5x,'J',3x,'<r^2>') 
+    &          'Var(h)',3x,'<Jx|T>',1x, '<Jy|T>', 2x, '<Jz>',5x,'J',3x,'<r^2>')
     31 format (6x,'n',3x,'<P>',2x,'<Rz>',2x,'Rhoii',2x,'Delta',5x,'m',4x,'E_sp'&
     &         ,4x,'Var(h)',3x,'<Jx|T>',1x,'<Jy|T>',2x,'<Jz>',5x,'J',3x,'<r^2>')
     32 format (5x, ' n ' ,1x, ' <P> ',1x, '<Rz> ', 1x, ' Rhoii ',1x, ' Delta ',&
     &             1x, ' m ', 1x, '  E_sp  ', 1x, ' Var(h) ', 1x, ' <Jx> ', 1x ,&
     &            '   J  ', 1x, ' <Jz> ', 1x ,' <r^2> ')
-    
+
     ! Headers for Canonical basis
     !---------------------------------------------------------------------------
     4  format (6x,'n',3x,'<P>',4x,'v^2',5x,'E_sp',3x,'<Jx|T>',1x,'<Jy|T>',2x,&
-    &          '<Jz>',4x,'J',4x,'<r^2> ') 
+    &          '<Jz>',4x,'J',4x,'<r^2> ')
     41 format (6x,'n',3x,'<P>',2x,'<Rz>',4x,'v^2',5x,'E_sp',3x,'<Jx|T>',1x,  &
-    &         '<Jy|T>',2x,'<Jz>',4x,'J',4x,'<r^2> ') 
+    &         '<Jy|T>',2x,'<Jz>',4x,'J',4x,'<r^2> ')
     42 format (5x,' n ', 1x, ' <P> ', 1x,'<Rz> ', 1x,'  v^2  ',  1x,'  E_sp  ',&
     &           1x,' <Jx> ',1x,' <Jz> ',1x,'   J  ', 1x,' <r^2> ')
-    
+
     100 format (94('_'))
-    
+
     print 10
-    
+
     select case(PairingType)
-    
+
     case(0)
        if(TSC .and. SC) then
         write(HFheader, fmt=1)
@@ -370,7 +370,7 @@ contains
       elseif(TSC) then
         Write(HFheader, fmt=21)
       endif
-      PrintType = 2 
+      PrintType = 2
     case(2)
        if(TSC .and. TRC .and. SC) then
         write(HFheader, fmt=3)
@@ -382,10 +382,10 @@ contains
         write(HFHeader, fmt=32)
         write(CanHeader,fmt=42)
        endif
-       PrintType = 3 
+       PrintType = 3
     end select
-    
-    if(IC) then        
+
+    if(IC) then
         do it=1,2
             if(it.eq.1) print 30
             if(it.eq.2) print 40
@@ -393,13 +393,13 @@ contains
             !-------------------------------------------------------------------
             !1) Printing the HF basis
             !   a) Get the ordering of the Spwfs for every isospin
-            Order = OrderSpwfsIso( (it*2) - 3, .false. )            
+            Order = OrderSpwfsIso( (it*2) - 3, .false. )
             print *, HFheader
             print 100
             do i=1,size(Order)
                 Distance = abs(HFBasis(Order(i))%GetEnergy() - Fermi(it))
-                if(Distance.lt.PrintingWindow) then 
-                    ! We also print the sum of particles that would be 
+                if(Distance.lt.PrintingWindow) then
+                    ! We also print the sum of particles that would be
                     ! there if the orbitals were completely filled.
                     ifFilled = i
                     if(TRC) ifFilled=2*i
@@ -412,21 +412,21 @@ contains
             !   a) Get the ordering of the Spwfs for every isospin
             if(PairingType.ne.2) cycle
             print 60
-            Order = OrderSpwfsIso( (it*2) - 3, .true. )           
+            Order = OrderSpwfsIso( (it*2) - 3, .true. )
             print *, CanHeader
             print 100
             do i=1,size(Order)
                 Distance = abs(CanBasis(Order(i))%GetEnergy() - Fermi(it))
                 if(Distance.lt.PrintingWindow) then
-                    ! We also print the sum of particles that would be 
+                    ! We also print the sum of particles that would be
                     ! there if the orbitals were completely filled.
                     ifFilled = i
                     if(TRC) ifFilled=2*i
                     write(*, fmt='(i4,1x)', ADVANCE='no') ifFilled
                     call CanBasis(Order(i))%PrintCanonical(Order(i), PrintType)
-                endif            
-            enddo 
-        enddo 
+                endif
+            enddo
+        enddo
     else
         call stp('No Isospin breaking printing yet.')
     endif
@@ -434,23 +434,23 @@ contains
     print 20
 
   end subroutine PrintSpwf
-        
+
   subroutine UpdateAM(SaveOlderValues)
     !---------------------------------------------------------------------------
-    ! This subroutine calculates the angular momentum in each direction for 
+    ! This subroutine calculates the angular momentum in each direction for
     ! every Spwf, and sums it.
     !---------------------------------------------------------------------------
     integer :: wave, i,P,S,it
     logical, intent(in) :: SaveOlderValues
     !Save the values of the previous iteration
-    
+
     if(SaveOlderValues) then
         AngMomOld   = TotalAngMom
         OldJ2Total  = J2Total
     endif
- 
+
     TotalAngMom = 0.0_dp ; J2Total = 0.0_dp ; AMIsoblock = 0.0_dp
-    
+
     do wave=1,nwt
       call HFBasis(wave)%CompAngMoment()
       ! When canonical basis is allocated we need to recalculate the angular
@@ -475,28 +475,28 @@ contains
 
           AMIsoblock(S,P,it,i) = AMIsoblock(S,P,it,i) +                  &
           & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMoment(i)
-        enddo   
+        enddo
       enddo
       ! Artificially set total J_x and J_y to zero when dictated by symmetries.
       ! In that case the above summation is not \sum v^2_i <Psi_i|J_x|\Psi_i>
       ! but rather \sum v^2_i <Psi_i|J_x T |\Psi_i>
       if(SC)          TotalAngMom(1) = 0.0
       if(SC .or. TSC) TotalAngMom(2) = 0.0
-    endif      
-    
+    endif
+
   end subroutine UpdateAM
 
   function OrderSpwfs(Canonical) result(Indices)
     !---------------------------------------------------------------------------
-    ! Function that returns the order of the wavefunctions, that is: a list of 
-    ! integers denoting the indices of the wavefunctions ordered according to 
+    ! Function that returns the order of the wavefunctions, that is: a list of
+    ! integers denoting the indices of the wavefunctions ordered according to
     ! increasing energy.
     !---------------------------------------------------------------------------
     integer       :: i, HolePos, Indices(nwt), ToInsertIndex
-    real(Kind=dp) :: Energies(nwt), ToInsert 
+    real(Kind=dp) :: Energies(nwt), ToInsert
     logical, intent(in) :: Canonical
     type(Spwf), pointer :: ToSort(:)
-    
+
     if(Canonical) then
       ToSort => CanBasis
     else
@@ -539,7 +539,7 @@ contains
     real(Kind=dp)        :: ToInsert
     type(Spwf), pointer  :: ToSort(:)
     logical, intent(in)  :: Can
-    
+
     if(Can) then
       ToSort => CanBasis
     else
@@ -580,7 +580,7 @@ contains
       Indices(HolePos) = ToInsertIndex
     enddo
   end function OrderSpwfsISO
-  
+
   subroutine CompNablaMElements()
     !---------------------------------------------------------------------------
     ! Computes the matrix elements of Nabla
@@ -600,7 +600,7 @@ contains
     ! Why do we need them?
     !  1) Calculation of 2-body COM correction in Energy module.
     !---------------------------------------------------------------------------
-    ! This is one of the most complicated routines in MOCCa, due to the 
+    ! This is one of the most complicated routines in MOCCa, due to the
     ! complications of the symmetries here. Any suggestions to make this
     ! less complicated are absolutely welcome!
     ! P.S. I nominate the subroutine pipj in CR8/EV8/EV4 as the place in the
@@ -608,21 +608,21 @@ contains
     ! transformation are totally implicit.
     !---------------------------------------------------------------------------
      use Spinors, only : InproductSpinor
-     
+
      integer     :: i,j,m, mstart, mstop
      type(Spinor):: Value, Der
 
      !Allocating the correct number of NablaMElements
      if(.not.allocated(NablaMElements)) then
-       if(TRC) then 
+       if(TRC) then
         allocate(NablaMElements(2*nwt,2*nwt,3,2))
        else
         allocate(NablaMElements(  nwt,  nwt,3,2))
        endif
      endif
-        
-     NablaMElements= 0.0_dp    
-       
+
+     NablaMElements= 0.0_dp
+
      if(.not.TRC) then
       !Looking for the first nwt elements in the list
         do i=1,nwt
@@ -649,7 +649,7 @@ contains
               !If signature is not conserved, we calculate all the different
               ! components
               mstart=1
-              mstop =3            
+              mstop =3
             endif
             !Calculate the actual Matrix element
             do m=mstart,mstop
@@ -669,7 +669,7 @@ contains
             !-------------------------------------------------------------------
             if(     HFBasis(i)%GetIsospin().ne.HFBasis(j)%GetIsospin()) cycle
             if(PC .and. HFBasis(i)%GetParity().eq.HFBasis(j)%GetParity()) cycle
-          
+
             if(SC) then
               do m=1,2
                 Der = HFBasis(j)%GetDer(m)
@@ -679,7 +679,7 @@ contains
                 NablaMElements(j+nwt,i,m,1) =  NablaMElements(i,j+nwt,m,1)
                 NablaMElements(j+nwt,i,m,2) = -NablaMElements(i,j+nwt,m,2)
               enddo
-            
+
               !Only same signature contributes for z component
               Der = HFBasis(j)%GetDer(3)
               NablaMElements(i,j,3,:) =  Inproductspinor(Value, Der)
@@ -704,85 +704,85 @@ contains
       endif
   end subroutine CompNablaMElements
 
-  subroutine DrawWaveFunction(wave, Direction, FileName)
-    !---------------------------------------------------------------------------
-    ! Subroutine that draws the density corresponding to a single wavefunction.
-    !---------------------------------------------------------------------------
-    use GnuFor
-    use Mesh
-    integer,intent(in)        :: wave, Direction
-    character(len=6)          :: xlabel,ylabel
-    character(len=*), intent(in) :: FileName
-    real(KIND=dp),allocatable :: ToPlot(:,:,:)
-    real(KIND=dp)             :: Density(nx,ny,nz)
-    integer                   :: i,j,k, X, Y, Z, Succes
-
-    print *, '---------------------------------------'
-    print *, 'Plotting wavefunction nr. ', wave
-    print *, ' In direction:', Direction
-    print *, '---------------------------------------'
-    Density = HFBasis(wave)%GetDensity()
-
-    !Always taking the middle to cut the slices on
-    X=1; Y=1; Z=1
-    !The middle is elsewhere when symmetries are broken
-    if(.not. SC) X=nx/2
-    if(.not. TSC) Y=ny/2
-    if(.not. PC) Z=nz/2
-
-    select case (Direction)
-    case (1)
-      allocate(ToPlot(3,ny,nz))
-      xlabel='z (fm)'
-      ylabel='y (fm)'
-      do k=1,nz
-        ToPlot(2,:,k) = MeshY
-      enddo
-      do j=1,ny
-        ToPlot(1,j,:) = MeshZ  
-      enddo
-      ToPlot(3,:,:) = Density(X,:,:)
-    case (2)
-      allocate(ToPlot(3,nx,nz))
-      xlabel='z (fm)'
-      ylabel='x (fm)'
-      do k=1,nz
-        ToPlot(2,:,k) = MeshX
-      enddo
-      do i=1,nx
-        ToPlot(1,i,:) = MeshZ   
-      enddo
-      ToPlot(3,:,:) = Density(:,Y,:)
-    case (3)
-      allocate(ToPlot(3,nx,ny))
-      xlabel='y (fm)'
-      ylabel='x (fm)'
-      do j=1,ny
-        ToPlot(2,:,j) = MeshX
-      enddo
-      do i=1,nx
-        ToPlot(1,i,:) = MeshY   
-      enddo
-      ToPlot(3,:,:) = Density(:,:,Z)
-    end select
-
-    call write_xyzgrid_data                                                    &
-    &     ("DensityProfile", size(ToPlot,2),size(ToPlot,3), ToPlot, Succes)
-
-    if(Succes.eq. 0) then
-    ! Writing the gnuplot command script
-      call write_xyzgrid_contour                                               &
-      &       ( "Command", "DensityProfile" ,Filename, xlabel, ylabel, Succes)
-      if(Succes.eq.0) then
-        !Run Gnuplot with the command file
-        call run_gnuplot("Command")
-      else
-        call stp('Writing gnuplot command file was unsuccesfull.')
-      endif
-    else
-      call stp('Writing datafile for gnuplot was unsuccesfull.')
-    endif
-
-    deallocate(ToPlot)
-  end subroutine DrawWaveFunction
-end module SpwfStorage 
+  ! subroutine DrawWaveFunction(wave, Direction, FileName)
+  !   !---------------------------------------------------------------------------
+  !   ! Subroutine that draws the density corresponding to a single wavefunction.
+  !   !---------------------------------------------------------------------------
+  !   use GnuFor
+  !   use Mesh
+  !   integer,intent(in)        :: wave, Direction
+  !   character(len=6)          :: xlabel,ylabel
+  !   character(len=*), intent(in) :: FileName
+  !   real(KIND=dp),allocatable :: ToPlot(:,:,:)
+  !   real(KIND=dp)             :: Density(nx,ny,nz)
+  !   integer                   :: i,j,k, X, Y, Z, Succes
+  !
+  !   print *, '---------------------------------------'
+  !   print *, 'Plotting wavefunction nr. ', wave
+  !   print *, ' In direction:', Direction
+  !   print *, '---------------------------------------'
+  !   Density = HFBasis(wave)%GetDensity()
+  !
+  !   !Always taking the middle to cut the slices on
+  !   X=1; Y=1; Z=1
+  !   !The middle is elsewhere when symmetries are broken
+  !   if(.not. SC) X=nx/2
+  !   if(.not. TSC) Y=ny/2
+  !   if(.not. PC) Z=nz/2
+  !
+  !   select case (Direction)
+  !   case (1)
+  !     allocate(ToPlot(3,ny,nz))
+  !     xlabel='z (fm)'
+  !     ylabel='y (fm)'
+  !     do k=1,nz
+  !       ToPlot(2,:,k) = MeshY
+  !     enddo
+  !     do j=1,ny
+  !       ToPlot(1,j,:) = MeshZ
+  !     enddo
+  !     ToPlot(3,:,:) = Density(X,:,:)
+  !   case (2)
+  !     allocate(ToPlot(3,nx,nz))
+  !     xlabel='z (fm)'
+  !     ylabel='x (fm)'
+  !     do k=1,nz
+  !       ToPlot(2,:,k) = MeshX
+  !     enddo
+  !     do i=1,nx
+  !       ToPlot(1,i,:) = MeshZ
+  !     enddo
+  !     ToPlot(3,:,:) = Density(:,Y,:)
+  !   case (3)
+  !     allocate(ToPlot(3,nx,ny))
+  !     xlabel='y (fm)'
+  !     ylabel='x (fm)'
+  !     do j=1,ny
+  !       ToPlot(2,:,j) = MeshX
+  !     enddo
+  !     do i=1,nx
+  !       ToPlot(1,i,:) = MeshY
+  !     enddo
+  !     ToPlot(3,:,:) = Density(:,:,Z)
+  !   end select
+  !
+  !   call write_xyzgrid_data                                                    &
+  !   &     ("DensityProfile", size(ToPlot,2),size(ToPlot,3), ToPlot, Succes)
+  !
+  !   if(Succes.eq. 0) then
+  !   ! Writing the gnuplot command script
+  !     call write_xyzgrid_contour                                               &
+  !     &       ( "Command", "DensityProfile" ,Filename, xlabel, ylabel, Succes)
+  !     if(Succes.eq.0) then
+  !       !Run Gnuplot with the command file
+  !       call run_gnuplot("Command")
+  !     else
+  !       call stp('Writing gnuplot command file was unsuccesfull.')
+  !     endif
+  !   else
+  !     call stp('Writing datafile for gnuplot was unsuccesfull.')
+  !   endif
+  !
+  !   deallocate(ToPlot)
+  ! end subroutine DrawWaveFunction
+end module SpwfStorage

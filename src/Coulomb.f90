@@ -917,42 +917,42 @@ contains
   end subroutine MGCoulomb
 
 
-  subroutine PrintPotentialRadial(FileName)
-    !---------------------------------------------------------------------------
-    ! This subroutine produces a graph of the Coulomb potential along
-    ! the radial direction.
-    !---------------------------------------------------------------------------
-    use GnuFor
-
-    integer                         :: i, maxCoord, error
-    real(KIND=dp), allocatable      :: ToPlotR(:), ToPlotCoulombPotential(:)
-    character (len = *), intent(in) :: FileName
-
-    maxCoord = min(potmx,potmy,potmz)
-
-    allocate(ToPlotR(maxcoord))
-    allocate(ToPlotCoulombPotential(maxcoord))
-
-    do i=1,maxCoord
-           ToPlotR(i) = r(i,i,i)
-           ToPlotCoulombPotential(i) = CoulombPotential(i,i,i)
-    enddo
-
-    call write_xy_data ( "RadialPotential", maxcoord, ToPlotR,                 &
-    &                    ToPlotCoulombPotential, error )
-    if(error.ne.ZeroI) then
-            call stp('Error in Write_xy_data', "Error", error)
-    endif
-
-    call write_xy_plot ( "RadialPotentialCommand", "RadialPotential", FileName,&
-    &                    "r", "Potential", error )
-    if(error.ne.ZeroI) then
-            call stp('Error in Write_xy_plot', "Error", error)
-    endif
-
-    call Run_GnuPlot("RadialPotentialCommand")
-
-    deallocate(ToPlotR); deallocate(ToPlotCoulombPotential)
-
-  end subroutine PrintPotentialRadial
+  ! subroutine PrintPotentialRadial(FileName)
+  !   !---------------------------------------------------------------------------
+  !   ! This subroutine produces a graph of the Coulomb potential along
+  !   ! the radial direction.
+  !   !---------------------------------------------------------------------------
+  !   use GnuFor
+  !
+  !   integer                         :: i, maxCoord, error
+  !   real(KIND=dp), allocatable      :: ToPlotR(:), ToPlotCoulombPotential(:)
+  !   character (len = *), intent(in) :: FileName
+  !
+  !   maxCoord = min(potmx,potmy,potmz)
+  !
+  !   allocate(ToPlotR(maxcoord))
+  !   allocate(ToPlotCoulombPotential(maxcoord))
+  !
+  !   do i=1,maxCoord
+  !          ToPlotR(i) = r(i,i,i)
+  !          ToPlotCoulombPotential(i) = CoulombPotential(i,i,i)
+  !   enddo
+  !
+  !   call write_xy_data ( "RadialPotential", maxcoord, ToPlotR,                 &
+  !   &                    ToPlotCoulombPotential, error )
+  !   if(error.ne.ZeroI) then
+  !           call stp('Error in Write_xy_data', "Error", error)
+  !   endif
+  !
+  !   call write_xy_plot ( "RadialPotentialCommand", "RadialPotential", FileName,&
+  !   &                    "r", "Potential", error )
+  !   if(error.ne.ZeroI) then
+  !           call stp('Error in Write_xy_plot', "Error", error)
+  !   endif
+  !
+  !   call Run_GnuPlot("RadialPotentialCommand")
+  !
+  !   deallocate(ToPlotR); deallocate(ToPlotCoulombPotential)
+  !
+  ! end subroutine PrintPotentialRadial
 end module Coulomb

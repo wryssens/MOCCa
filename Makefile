@@ -29,7 +29,7 @@ ifeq ($(CXX),gfortran-5)
 
   ifeq ($(DEBUG),no)
     #Optimal flag
-    CXXFLAGS := -Og -ffast-math -g
+    CXXFLAGS := -Ofast
   else
     # Debugging flag
     CXXFLAGS= -Og -fbacktrace -fcheck=all 

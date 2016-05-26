@@ -9,7 +9,12 @@ module ImaginaryTime
 
   !-----------------------------------------------------------------------------
   !Procedure that determines the evolution of a Spwf under imaginary time.
-  procedure(GradDesc),pointer :: EvolveSpwf
+  abstract interface
+      subroutine Evolve_interface(Iteration)
+        integer, intent(in)       :: iteration
+      end subroutine
+  end interface
+  procedure(Evolve_Interface),pointer :: EvolveSpwf
 
 contains
 

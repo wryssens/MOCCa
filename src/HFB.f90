@@ -374,8 +374,6 @@ contains
               ! when appropriate
               ActionOfPairing = GetPairDensity(HFBasis(jjj)%Value,HFBasis(iii)%Value,TR)
               factor          = Cutoff(1)*Cutoff(2)*DBLE(KappaHFB(i,j,P,it))
-              if(isnan(abs(KappaHFB(i,j,P,it)))) call stp("Isnan Kappa")
-              if(any(isnan(abs(ActionOfPairing)))) call stp('Isnan AP')
               do l=1,nx*ny*nz
                 Field(l,1,1,it) = Field(l,1,1,it) - factor*ActionOfPairing(l,1,1)
               enddo

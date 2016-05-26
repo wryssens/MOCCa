@@ -82,50 +82,36 @@ contains
         !---------------------------------------------------------------------
         ! Constrain the sum of the proton & neutron parts
         Desired = Current%Constraint(1)
+
+        power = 1
+        O2    = sum(Current%Squared)
+        Value = sum(Current%Value)
+
         if(Current%Total) then
-          power = 2
-          O2    = 16 * pi/(2*Current%l + 1) * sum(sum(Density%Rho,4)*Current%SpherHarm**4)
-          Value = sum(CalculateTotalQl(Current%l))**2
-        else
+          Desired = sqrt(Desired)
+          Value   = sum(CalculateTotalQl(Current%l))
+          O2 = sum(CalculateTotalQl(Current%l,2))
           power = 1
-          O2    = sum(Current%Squared)
-          Value = sum(Current%Value)
         endif
+        !endif
       case(2)
         !---------------------------------------------------------------------
         !Constrain proton & neutron contributions to different values
         Desired = Current%Constraint
-        if(Current%Total) then
-          power = 2
-          do it=1,2
-            O2(it)  = sum(Density%Rho(:,:,:,it)*Current%SpherHarm**4)
-          enddo
-          Value = CalculateTotalQl(Current%l)**2
-        else
-          power = 1
-          O2    = Current%Squared
-          Value = Current%Value
-        endif
+        power = 1
+        O2    = Current%Squared
+        Value = Current%Value
       case(3)
         !---------------------------------------------------------------------
         ! Constrain the difference between proton and neutron
         ! Note the extra minus signs!
         Desired(1) =  Current%Constraint(1)
         Desired(2) = -Current%Constraint(2)
-        if(Current%Total) then
-          power = 2
-          do it=1,2
-            O2(it)  = sum(Density%Rho(:,:,:,it)*Current%SpherHarm**4)
-          enddo
-          Value    = CalculateTotalQl(Current%l)**2
-          Value(1) =   Value(1) - Value(2)
-          Value(2) = - Value(1)
-        else
-          power = 1
-          O2    = sum(Current%Squared)
-          Value(1) =   Current%Value(1) - Current%Value(2)
-          Value(2) = - Value(1)
-        endif
+
+        power = 1
+        O2    = sum(Current%Squared)
+        Value(1) =   Current%Value(1) - Current%Value(2)
+        Value(2) = - Value(1)
       end select
 
       !Calculate the update

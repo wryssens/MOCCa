@@ -76,7 +76,7 @@ contains
     !---------------------------------------------------------------------------
 
     use Coulomb, only: SolveCoulomb
-    use Derivatives 
+    use Derivatives
     !Allocate the potentials if this has not already happened
     if(.not.allocated(UPot)) then
       allocate(BPot(nx,ny,nz,2), NablaBPot(nx,ny,nz,3,2),UPot(nx,ny,nz,2))
@@ -743,7 +743,7 @@ contains
 
     ! Slightly wasteful usage of CPU time here. We overwrite the previously
     ! calculated second derivate d_mu d_mu since it is pretty inaccurate
-    ! when not represente correctly. If CPU time is important, this can be commented
+    ! when not represented correctly. If CPU time is important, this can be commented
     ! out.
 !     DPsi(1,1) = SecondDerivativeSpinor(Psi%Value,1,-Psi%Parity,-Psi%Signature, Psi%TimeSimplex)
 !     DPsi(2,2) = SecondDerivativeSpinor(Psi%Value,2,-Psi%Parity,-Psi%Signature,-Psi%TimeSimplex)

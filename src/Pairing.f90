@@ -312,6 +312,8 @@ contains
         if(HFConfig) then
           call ReadHFConfig()
           HFFill => PickHFConfig
+        else
+          HFFill => NaiveFill
         endif
 
       case(1)

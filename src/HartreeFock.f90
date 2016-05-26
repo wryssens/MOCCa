@@ -22,7 +22,7 @@ implicit none
 ! Isospin(1,2) = (N,P)
 integer :: HFConfiguration(2,2,2) = 0
 
-procedure(PickHFConfig),pointer :: HFFill => NaiveFill
+procedure(PickHFConfig),pointer :: HFFill !=> NaiveFill
 
 contains
 

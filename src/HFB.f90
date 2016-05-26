@@ -160,6 +160,7 @@ module HFB
       integer, intent(inout) :: flag(2)
       complex(KIND=dp), intent(in), allocatable :: Delta(:,:,:,:)
       complex(KIND=dp), intent(in), allocatable :: DeltaLN(:,:,:,:)
+      real(KIND=dp)                             :: LNLambda(2)
     end function
   end interface
   abstract interface
@@ -3315,6 +3316,8 @@ subroutine InsertionSortQPEnergies
   ! - Don't use this routine when S^T_y is broken
   !-----------------------------------------------------------------------------
     integer, intent(inout) :: flag(2)
+    complex(KIND=dp), intent(in), allocatable :: Delta(:,:,:,:)
+    complex(KIND=dp), intent(in), allocatable :: DeltaLN(:,:,:,:)
     real(KIND=dp) :: LNLambda(2)
     integer       :: i,j,it, ii, k, P, iii
     real(KIND=dp) :: c2(2),c3(2),c4(2), trx(2), txd(2), ex(2), gkr(2), erx(2)
@@ -3324,8 +3327,6 @@ subroutine InsertionSortQPEnergies
     complex(KIND=dp) :: Chi(HFBSize,HFBSize,2,2), Chika(HFBSize,HFBSize,2,2)
     complex(KIND=dp) :: Gamka(HFBSize,HFBSize,2,2)
     real(KIND=dp)    :: hl1(2) , hl2(2), deno(2), xnum(2)
-    complex(KIND=dp), intent(in), allocatable :: Delta(:,:,:,:)
-    complex(KIND=dp), intent(in), allocatable :: DeltaLN(:,:,:,:)
 
     c2 = 0.0_dp ; c3 =0.0_dp ; c4 = 0.0_dp
     trx= 0.0_dp ; txd=0.0_dp ; ex = 0.0_dp ; gkr = 0.0_dp ; erx = 0.0_dp

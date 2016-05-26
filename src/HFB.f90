@@ -155,14 +155,6 @@ module HFB
   ! Either with or without signature conservation.
 
   abstract interface
-    subroutine Diag_interface
-      import :: dp
-    end subroutine
-  end interface
-
-  procedure(Diag_interface), pointer :: DiagonaliseHFBHamiltonian
-
-  abstract interface
     function LNCr8_interface(Delta, DeltaLN, flag) result(LNLambda)
       import :: dp
       integer, intent(inout) :: flag(2)
@@ -170,8 +162,13 @@ module HFB
       complex(KIND=dp), intent(in), allocatable :: DeltaLN(:,:,:,:)
     end function
   end interface
+  abstract interface
+        subroutine diag_interface()
+        end Subroutine
+  end interface
 
-  procedure(LNCR8_interface), pointer                         :: LNCr8
+  procedure(LNCR8_interface), pointer  :: LNCr8
+  procedure(Diag_interface), pointer :: DiagonaliseHFBHamiltonian
 
 contains
   subroutine PrepareHFBModule

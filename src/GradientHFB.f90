@@ -48,11 +48,52 @@ module GradientHFB
 
   real(KIND=dp) :: over
 
-  procedure(H20_sig), pointer            :: H20
-  procedure(constructrho_sig), pointer   :: constructrho
-  procedure(constructkappa_sig), pointer :: constructkappa
-  procedure(gradupdate_sig), pointer     :: gradupdate
-  procedure(ortho_sig), pointer          :: ortho
+  abstract interface
+    function H20Interface(Ulim,Vlim,hlim,Dlim,S) result(H20)
+      import :: dp
+      integer, intent(in)        :: S
+      real(KIND=dp), intent(in)  :: Ulim(:,:), Vlim(:,:), dlim(:,:), hlim(:,:)
+      real(KIND=dp)              :: H20(size(Ulim,1),size(Ulim,1))
+    end function
+  end interface
+  abstract interface
+    function ConstructRhoInterface(Vlim,S) result(Rho)
+      import :: dp
+      real(KIND=dp), intent(in) :: Vlim(:,:)
+      real(KIND=dp)             :: Rho(size(Vlim,1),size(Vlim,1))
+      integer, intent(in)       :: S
+    end function
+  end interface
+  abstract interface
+    function ConstructKappaInterface(Ulim,Vlim,S) result(Kappa)
+      import :: dp
+      real(KIND=dp), intent(in) :: Ulim(:,:), Vlim(:,:)
+      real(KIND=dp),allocatable :: Kappa(:,:)
+      integer, intent(in)       :: S
+    end function
+  end interface
+  abstract interface
+    subroutine GradUpdateInterface(step, U1,V1,Grad,U2,V2, S)
+      import :: dp
+      real(KIND=dp), intent(in) :: U1(:,:), V1(:,:), step
+      real(KIND=dp), intent(in) :: Grad(:,:)
+      real(KIND=dp),intent(out) :: U2(:,:), V2(:,:)
+      integer, intent(in)       :: S
+    end subroutine
+  end interface
+
+  abstract interface
+    subroutine orthointerface(U,V,S)
+        import :: dp
+        real(KIND=dp), intent(inout) :: U(:,:), V(:,:)
+        integer, intent(in)          :: S
+    end subroutine
+  end interface
+  procedure(H20Interface), pointer            :: H20
+  procedure(constructrhoInterface), pointer   :: constructrho
+  procedure(constructkappaInterface), pointer :: constructkappa
+  procedure(gradupdateInterface), pointer     :: gradupdate
+  procedure(orthoInterface), pointer          :: ortho
 
 contains
 
@@ -271,14 +312,14 @@ contains
         !-----------------------------------------------------------------------
         ! Point to the right routines
         if(SC) then
-          H20 => H20_sig
+          H20            => H20_sig
           ConstructRho   => ConstructRho_sig
           ConstructKappa => ConstructKappa_sig
           GradUpdate     => GradUpdate_sig
           ortho          => ortho_sig
         else
-          H20 => H20_nosig
-          ConstructRho => ConstructRho_nosig
+          H20            => H20_nosig
+          ConstructRho   => ConstructRho_nosig
           ConstructKappa => ConstructKappa_nosig
           GradUpdate     => GradUpdate_nosig
           ortho          => ortho_nosig

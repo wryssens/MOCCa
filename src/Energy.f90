@@ -34,7 +34,13 @@ module Energy
   ! Two different ways of calculating and treating Skyrme terms
   real(KIND=dp) :: Skyrmeterms(32),BTerm(21)
 
-  procedure(PrintEnergy_Bterms),pointer :: PrintEnergy
+  abstract interface
+    subroutine PrintEnergy_interface(Lagrange)
+      logical, intent(in), optional :: Lagrange
+    end subroutine
+  end interface
+
+  procedure(PrintEnergy_interface),pointer :: PrintEnergy
 contains
 
   subroutine CompEnergy

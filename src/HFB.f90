@@ -153,7 +153,14 @@ module HFB
   !-----------------------------------------------------------------------------
   ! Procedure pointer for the diagonalisation of the HFBhamiltonian.
   ! Either with or without signature conservation.
-  procedure(DiagonaliseHFBHamiltonian_Signature), pointer :: DiagonaliseHFBHamiltonian
+
+  abstract interface
+    subroutine Diag_interface
+      import :: dp
+    end subroutine
+  end interface
+
+  procedure(Diag_interface), pointer :: DiagonaliseHFBHamiltonian
 
   abstract interface
     function LNCr8_interface(Delta, DeltaLN, flag) result(LNLambda)

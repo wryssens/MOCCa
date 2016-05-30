@@ -343,13 +343,13 @@ logical function ConvergenceCheck() result(Converged)
 
   Converged = .true.
   !Checking convergence of the multipole Degrees of freedom
-  !Converged = Converged .and. ConverMultipoleAll(MomentPrec)
+  Converged = Converged .and. ConverMultipoleAll(MomentPrec)
   ! Checking convergence of the Energy
   Converged = Converged .and. ConverEnergy(EnergyPrec)
   !Checking convergence of the Fermi energy
-  !Converged = Converged .and. ConverFermi(PairingPrec)
-    !Checking convergence of the angular momentum for cranked calculations
-  !Converged = Converged .and. ConverCranking(CrankPrec)
+  Converged = Converged .and. ConverFermi(PairingPrec)
+  !Checking convergence of the angular momentum for cranked calculations
+  Converged = Converged .and. ConverCranking(CrankPrec)
 
   if(TotalEnergy.ge.0.0_dp) then
     call PrintEnergy

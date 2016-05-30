@@ -7,22 +7,22 @@ module WaveFunctions
   use GenInfo
   use Mesh
   use Spinors
-  implicit none  
+  implicit none
 
   public
 
-  type Spwf 
-    
+  type Spwf
+
 
     !---------------------------------------------------------------------------
     ! Value
     !   Values of the associated wavefunction on the lattice
     ! Der
     !   Values of the partial derivatives of the WF.
-    ! Lap 
+    ! Lap
     !   Value of the Laplacian of the WF.
     ! Occupation
-    !   Occupation factor of the Spwf. In the case of HFB calculations, it is 
+    !   Occupation factor of the Spwf. In the case of HFB calculations, it is
     !   the diagonal element of RhoHFB for HF basis and the occupation for the
     !   canonical basis.
     ! Dispersion
@@ -40,36 +40,36 @@ module WaveFunctions
     ! AngQuantum
     !  Quantum number of the angular momentum, meaning j so that <J^2> = j*(j+1)
     !
-    !---------------------------------------------------------------------------   
-    type(Spinor) :: Value           
-    type(Spinor) :: Der(3)          
-    type(Spinor) :: Lap             
-    real(KIND=dp) :: Occupation     
-    real(KIND=dp) :: Energy         
-    real(KIND=dp) :: Dispersion     
-    real(KIND=dp) :: Norm           
-    real(KIND=dp) :: AngMoment(3)    
+    !---------------------------------------------------------------------------
+    type(Spinor) :: Value
+    type(Spinor) :: Der(3)
+    type(Spinor) :: Lap
+    real(KIND=dp) :: Occupation
+    real(KIND=dp) :: Energy
+    real(KIND=dp) :: Dispersion
+    real(KIND=dp) :: Norm
+    real(KIND=dp) :: AngMoment(3)
     real(KIND=dp) :: J2(3)
     real(KIND=dp) :: AngQuantum
     !---------------------------------------------------------------------------
     ! The following integers are the quantum numbers of the wavefunction.
     ! For each of them, 0 indicates that the symmetry is broken.
-    ! They are defined by the following relations: 
+    ! They are defined by the following relations:
     !
-    ! [\check{S}^T_y \Psi] (x,y,z,\sigma) = 
+    ! [\check{S}^T_y \Psi] (x,y,z,\sigma) =
     !                     \Psi^*(x,-y,z,\sigma) = \Psi(x,y,z,\sigma)
     !
     ! [\hat{P} \Psi] (x,y,z,\sigma)
     !                    = \Psi(-x,-y,-z,\sigma) = p \Psi(x,y,z,\sigma)
     !
-    ! \hat{R}_z \Psi(x,y,z,\sigma) 
+    ! \hat{R}_z \Psi(x,y,z,\sigma)
     !                    = -i \sigma \Psi(-x,-y,-z, \sigma)
     !                    = s \sigma \Psi(x,y,z,\sigma)
     !
-    ! Note that signature in this code(s) and the usual quantum number \eta are 
-    ! related: s = -i\eta. TimeSimplex can only be 1 or 0, since we can 
-    ! arbitrarily choose the eigenvalue of that operator. TimeReversal can only 
-    ! be 1 or 0, since there are no eigenvalues to be associated with this 
+    ! Note that signature in this code(s) and the usual quantum number \eta are
+    ! related: s = -i\eta. TimeSimplex can only be 1 or 0, since we can
+    ! arbitrarily choose the eigenvalue of that operator. TimeReversal can only
+    ! be 1 or 0, since there are no eigenvalues to be associated with this
     ! operator.
     !---------------------------------------------------------------------------
     integer :: Isospin,TimeSimplex,Parity,Signature,TimeReversal
@@ -79,7 +79,7 @@ module WaveFunctions
     !---------------------------------------------------------------------------
     real(KIND=dp) :: Eqp=1.0_dp
     !---------------------------------------------------------------------------
-    ! Real version of the quantum numbers. They are the expected values of the 
+    ! Real version of the quantum numbers. They are the expected values of the
     ! symmetry operators.
     !---------------------------------------------------------------------------
     real(KIND=dp) :: IsospinR, TimeSimplexR, ParityR, SignatureR, TimeReversalR
@@ -89,7 +89,7 @@ module WaveFunctions
     real(KIND=dp) :: RMSRadius=0.0_dp
     !---------------------------------------------------------------------------
     ! Delta : pairing gap for this wavefunction. Delta_{i, ibar} in BCS,
-    ! maximum of the pairing gaps for this wavefunction in HFB. 
+    ! maximum of the pairing gaps for this wavefunction in HFB.
     !---------------------------------------------------------------------------
     complex(KIND=dp) :: Delta=0.0_dp
     !---------------------------------------------------------------------------
@@ -126,8 +126,8 @@ module WaveFunctions
     !---------------------------------------------------------------------------
     procedure, pass, public :: SetEnergy
     procedure, pass, public :: SetDispersion
-    procedure, pass, public :: SetIsospin        
-    procedure, pass, public :: SetSignature        
+    procedure, pass, public :: SetIsospin
+    procedure, pass, public :: SetSignature
     procedure, pass, public :: SetParity
     procedure, pass, public :: SetTimeSimplex
     procedure, pass, public :: SetTimeReversal
@@ -141,7 +141,7 @@ module WaveFunctions
     procedure, pass, public :: SetPairPartner
     procedure, pass, public :: SetSignatureR
     ! Overloading so creating wavefunctions is easier.
-    generic :: SetGrid => SetGridMesh,SetGridSpinor,SetGridComponent 
+    generic :: SetGrid => SetGridMesh,SetGridSpinor,SetGridComponent
     !---------------------------------------------------------------------------
     !Density Computing Routines
     !---------------------------------------------------------------------------
@@ -161,7 +161,7 @@ module WaveFunctions
     !procedure, pass, public :: PrintInfo
     procedure, pass, public :: PrintHF
     procedure, pass, public :: PrintCanonical
-    procedure, pass, public :: CompNorm        
+    procedure, pass, public :: CompNorm
     procedure, pass, public :: SetOcc
     procedure, pass, public :: CompDer
     procedure, pass, public :: CompAngMoment
@@ -191,18 +191,18 @@ module WaveFunctions
     !Overloading "*" to be used with numbers and wavefunctions.
     module procedure MultiplySpwfcomplex, MultiplySpwfReal
   end interface
-   
+
 contains
   function AddSpwf (WF1, WF2) result (SumWF)
   !-----------------------------------------------------------------------------
   ! Sum operator for wavefunctions
   !-----------------------------------------------------------------------------
-  ! Attention please: the derivatives are not added together! This is never 
+  ! Attention please: the derivatives are not added together! This is never
   ! useful in MOCCa and thus was removed.
   !-----------------------------------------------------------------------------
     type(Spwf), intent(in) :: WF1, WF2
     type(Spwf)             :: SumWF
-       
+
     !Some initial checks on symmetries.
     if(WF1%Parity.ne.WF2%Parity) then
       call stp("You can't add wavefunctions with different parity!")
@@ -216,9 +216,9 @@ contains
     if(WF1%Isospin.ne.WF2%Isospin) then
       call stp("You can't add wavefunctions with different isospin!")
     endif
- 
+
     SumWF%Value    = WF1%Value  + WF2%Value
-    
+
 !    Completely unneccessary to add derivatives....
 !    SumWF%Der(1)   = WF1%Der(1) + WF2%Der(1)
 !    SumWF%Der(2)   = WF1%Der(2) + WF2%Der(2)
@@ -238,14 +238,14 @@ contains
     SumWF%AngMoment    = 0.0_dp
     SumWF%J2           = 0.0_dp
   end function AddSpwf
-  
+
   function MultiplySpwfReal(A, WF) result(AWF)
-  
+
     type(Spwf), intent(in)       :: WF
     type(Spwf)                   :: AWF
     real(KIND=dp), intent(in)    :: A
     type(Spinor)                 :: Psi
-  
+
     !AWF%Value = A * WF%Value
     AWF = NewWaveFunction(Psi, WF%Isospin, WF%TimeSimplex, WF%Parity, &
     &                     WF%Signature, WF%TimeReversal)
@@ -253,16 +253,16 @@ contains
   end function MultiplySpwfReal
 
   function MultiplySpwfComplex(A, WF) result(AWF)
-  
+
     type(Spwf), intent(in)       :: WF
     type(Spwf)                   :: AWF
     complex(KIND=dp), intent(in) :: A
     type(Spinor)                 :: Psi
-  
+
     Psi = A * WF%Value
     AWF = NewWaveFunction(Psi, WF%Isospin, WF%TimeSimplex, WF%Parity, &
     &                     WF%Signature, WF%TimeReversal)
-  
+
   end function MultiplySpwfComplex
 
   function SaxPyWF(Phi,A,Psi) result(Chi)
@@ -316,7 +316,7 @@ contains
     Chi%J2           = 0.0_dp
 
   end function SaxPyWF
-    
+
   function MinusSpwf (WF1, WF2) result (DiffWF)
   !-----------------------------------------------------------------------------
   ! Minus operator for wavefunctions
@@ -349,7 +349,7 @@ contains
     DiffWF%Parity       = WF1%Parity
     DiffWF%TimeReversal = WF1%TimeReversal
     DiffWF%Signature    = WF1%Signature
-      
+
     DiffWF%Norm=0.0_dp
     DiffWF%Energy=0.0_dp
     DiffWF%Occupation=0.0_dp
@@ -365,11 +365,11 @@ contains
     ! Please note that this function only affects the actual value and quantum
     ! numbers, the derivatives and other quantities are unaffected! This is due
     ! to the fact that this function is only useful for HFB when time-reversal
-    ! is conserved and Signature is broken. This function is only used in 
+    ! is conserved and Signature is broken. This function is only used in
     ! the HFBoccupations subroutine. This should be modified in the future
     ! if more general use is needed.
     type(Spwf), intent(in) :: Wf
-    
+
     TPsi%Value      = TimeReverse(WF%Value)
     TPsi%Isospin    = WF%Isospin
     TPsi%Parity     = WF%Parity
@@ -400,7 +400,7 @@ contains
     Wf%Value = NewSpinor()
 
   end subroutine ResetWf
-  
+
   function NewWaveFunction                                                     &
   &(Value,Isospin,TimeSimplex,Parity,Signature,TimeReversal)result(WaveFunction)
     !---------------------------------------------------------------------------
@@ -431,10 +431,10 @@ contains
     WaveFunction%RMSRadius     = 0.0_dp
     WaveFunction%J2            = 0.0_dp
   end function NewWaveFunction
-        
+
   function CopyWaveFunction(WF) result(Copy)
     !---------------------------------------------------------------------------
-    ! This function makes a perfect copy of an Spwf. 
+    ! This function makes a perfect copy of an Spwf.
     !---------------------------------------------------------------------------
     class(Spwf), intent(in) :: WF
     type (Spwf)             :: Copy
@@ -459,7 +459,7 @@ contains
     Copy%PairPartner=WF%Pairpartner
 
   end function CopyWaveFunction
-        
+
   function GetValue(WF) result(Value)
     !---------------------------------------------------------------------------
     ! This function returns the value of the Spwf (which is a spinor)
@@ -469,7 +469,7 @@ contains
 
     Value = WF%Value
   end function GetValue
-        
+
   subroutine SetGridSpinor(WaveFunction, Grid)
     !---------------------------------------------------------------------------
     !Function that assigns a spinor to Wavefunction Spinor
@@ -477,10 +477,10 @@ contains
     !---------------------------------------------------------------------------
     type(Spinor)  :: Grid
     class (Spwf)  :: WaveFunction
-    
+
     WaveFunction%Value = Grid
   end subroutine SetGridSpinor
-        
+
   subroutine SetGridMesh(WaveFunction, Grid)
     !---------------------------------------------------------------------------
     ! Function that assigns a Mesh to Wavefunction Spinor
@@ -493,12 +493,12 @@ contains
     WaveFunction%Value%Grid(:,:,:,:,:) = Grid
     return
   end subroutine SetGridMesh
-        
+
   subroutine SetGridComponent(WaveFunction, Component,Grid,IsoComponent)
     !---------------------------------------------------------------------------
     ! Function that assigns values to one component of the Spinor of a spwf.
     ! Overloaded to "SetGrid" with SetGridSpinor and SetGridMesh
-    !---------------------------------------------------------------------------                
+    !---------------------------------------------------------------------------
     real(KIND=dp), intent(in)     :: Grid(:,:,:)
     class (Spwf)                  :: WaveFunction
     integer, intent(in)           :: Component
@@ -513,21 +513,21 @@ contains
 
   function GetDensity(WaveFunction) result(Density)
     !---------------------------------------------------------------------------
-    !Function returns the density \rho 
+    !Function returns the density \rho
     !---------------------------------------------------------------------------
     class(Spwf), intent(in) :: WaveFunction
     real(KIND=dp)           :: Density(nx,ny,nz)
     !This type of thing is exactly why the class "Spinor" exists.
     if(.not.allocated(Wavefunction%Value%Grid)) call stp('Den')
     Density = RealMultiplySpinor(WaveFunction%Value,WaveFunction%Value)
-  
+
   end function GetDensity
-        
+
   pure real(KIND=dp) function GetEnergy(WaveFunction) result(Energy)
     class (Spwf), intent (in) :: WaveFunction
     Energy=WaveFunction%Energy
   end function GetEnergy
-        
+
   real(KIND=dp) function GetEqp(WaveFunction) result(Eqp)
     class (Spwf), intent (in) :: WaveFunction
     Eqp=WaveFunction%eqp
@@ -538,19 +538,19 @@ contains
     real(KIND=dp), intent(in)  :: eqp
     WaveFunction%eqp = eqp
   end subroutine Seteqp
-  
+
   subroutine SetDelta(WaveFunction, Delta)
     class(Spwf), intent(inout) :: WaveFunction
     complex(KIND=dp), intent(in)  :: Delta
     WaveFunction%Delta = Delta
   end subroutine SetDelta
-  
+
   subroutine SetPairPartner(WaveFunction, Partner)
     class(Spwf), intent(inout) :: WaveFunction
     integer, intent(in)        :: Partner
     WaveFunction%PairPartner = Partner
   end subroutine SetPairPartner
-  
+
   real(KIND=dp) function GetDispersion(WaveFunction) result(Dispersion)
     class (Spwf), intent (in) :: WaveFunction
     Dispersion=WaveFunction%Dispersion
@@ -558,30 +558,30 @@ contains
 
   real(KIND=dp) function GetAngMoment(WaveFunction, Direction) result(AngMoment)
     class (Spwf), intent (in) :: WaveFunction
-    integer, intent(in)       :: Direction            
+    integer, intent(in)       :: Direction
     AngMoment=WaveFunction%AngMoment(Direction)
     return
   end function GetAngMoment
-  
+
   real(KIND=dp) function GetAngMomentSquared(Wavefunction, Direction) result(J2)
     class (Spwf), intent (in) :: WaveFunction
-    integer, intent(in)       :: Direction            
+    integer, intent(in)       :: Direction
     J2=WaveFunction%J2(Direction)
     return
-  end function GetAngMomentSquared  
-  
+  end function GetAngMomentSquared
+
  real(KIND=dp) function GetAngQuantum(Wavefunction) result(J)
-    class (Spwf), intent (in) :: WaveFunction       
+    class (Spwf), intent (in) :: WaveFunction
     J =WaveFunction%AngQuantum
     return
-  end function GetAngQuantum  
-        
+  end function GetAngQuantum
+
   subroutine SetAngMoment(WaveFunction, AngMoment)
     class(Spwf), intent(inout) :: WaveFunction
     real(KIND=dp), intent(in)  :: AngMoment(3)
     WaveFunction%AngMoment     = AngMoment
   end subroutine SetAngMoment
-  
+
   subroutine SetAngMomentSquared(WaveFunction, AngMoment)
     class(Spwf), intent(inout) :: WaveFunction
     real(KIND=dp), intent(in)  :: AngMoment(3)
@@ -601,7 +601,7 @@ contains
     TRZ = .false.
 
     Temp = 0.0_dp
-    Temp = AngularMomentum(WaveFunction, WaveFunction, .true.,TRX,TRY,TRZ)               
+    Temp = AngularMomentum(WaveFunction, WaveFunction, .true.,TRX,TRY,TRZ)
 
     !Angular Momentum in the three directions
     !Note: only the real parts!
@@ -615,8 +615,8 @@ contains
     &                  - 0.5_dp*(1.0_dp-sqrt( 1.0_dp + 4.0_dp*sum(Temp(4:6,1))))
 !     InproductSpinorReal(AngMomOperator(Wavefunction,1), AngMomOperator(Wavefunction,1))
   end subroutine CompAngMoment
- 
-  subroutine SetEnergy(WaveFunction,Energy) 
+
+  subroutine SetEnergy(WaveFunction,Energy)
     !---------------------------------------------------------------------------
     ! Function sets the energy of a Wavefunction.
     !---------------------------------------------------------------------------
@@ -624,8 +624,8 @@ contains
     class (Spwf), intent(inout) :: WaveFunction
     WaveFunction%Energy=Energy
   end subroutine SetEnergy
-        
-   subroutine SetDispersion(WaveFunction,Dispersion) 
+
+   subroutine SetDispersion(WaveFunction,Dispersion)
     !---------------------------------------------------------------------------
     ! Function sets the energy of a Wavefunction.
     !---------------------------------------------------------------------------
@@ -634,16 +634,16 @@ contains
     WaveFunction%Dispersion=Dispersion
   end subroutine SetDispersion
 
-  subroutine CompNorm(WaveFunction) 
+  subroutine CompNorm(WaveFunction)
     !---------------------------------------------------------------------------
     ! This subroutine computes the norm of the Spwf and assigns it to the
-    ! wavefunction. 
+    ! wavefunction.
     !---------------------------------------------------------------------------
     class (Spwf), intent(inout) :: WaveFunction
-    ! int_{-\infty}^{\infty} |\Psi|**2 dv \approx 
-    !                    dv*\Sum_{box} |\Psi(spin up)|**2 + |\Psi(spin down)|**2 
+    ! int_{-\infty}^{\infty} |\Psi|**2 dv \approx
+    !                    dv*\Sum_{box} |\Psi(spin up)|**2 + |\Psi(spin down)|**2
     !Using the spinor inproduct.
-    WaveFunction%Norm = InproductSpinorReal(WaveFunction%Value,WaveFunction%Value) 
+    WaveFunction%Norm = InproductSpinorReal(WaveFunction%Value,WaveFunction%Value)
   end subroutine CompNorm
 
   real(KIND=dp) function GetNorm(WaveFunction) result(Norm)
@@ -653,7 +653,7 @@ contains
     class (Spwf), intent(in) :: WaveFunction
     Norm=WaveFunction%Norm
   end function GetNorm
-        
+
   subroutine SetOcc(WaveFunction, Occupation)
     !---------------------------------------------------------------------------
     ! This function assigns the occupation factor of a Spwf.
@@ -668,7 +668,7 @@ contains
     Occupation=WaveFunction%Occupation
     return
   end function GetOcc
-        
+
   subroutine SetIsospin(WaveFunction, Isospin)
     !---------------------------------------------------------------------------
     ! Function that changes the isospin of a Spwf.
@@ -681,7 +681,7 @@ contains
     endif
     WaveFunction%Isospin=Isospin
     return
-  end subroutine SetIsospin 
+  end subroutine SetIsospin
 
   pure integer function GetIsospin(WaveFunction) result(Isospin)
     !---------------------------------------------------------------------------
@@ -702,7 +702,7 @@ contains
         call stp('Invalid TimeReversal assignment')
     endif
     WaveFunction%TimeReversal=TimeReversal
-  end subroutine SetTimeReversal 
+  end subroutine SetTimeReversal
 
   integer function GetTimeReversal(WaveFunction) result(TimeReversal)
     !---------------------------------------------------------------------------
@@ -725,7 +725,7 @@ contains
     endif
     WaveFunction%TimeSimplex=TimeSimplex
     return
-  end subroutine SetTimeSimplex 
+  end subroutine SetTimeSimplex
 
   pure integer function GetTimeSimplex(WaveFunction) result(TimeSimplex)
     !---------------------------------------------------------------------------
@@ -747,7 +747,7 @@ contains
       call stp('Invalid Parity Assignment')
     endif
     WaveFunction%Parity=Parity
-  end subroutine SetParity 
+  end subroutine SetParity
 
   pure integer function GetParity(WaveFunction) result(Parity)
     !---------------------------------------------------------------------------
@@ -757,7 +757,7 @@ contains
 
     Parity=Wavefunction%Parity
   end function GetParity
-  
+
   pure real(KIND=dp) function GetParityR(WaveFunction) result(ParityR)
     !---------------------------------------------------------------------------
     ! Function that outputs the parity of a Spwf.
@@ -779,7 +779,7 @@ contains
     endif
     WaveFunction%Signature=Signature
     return
-  end subroutine SetSignature 
+  end subroutine SetSignature
 
   pure integer function GetSignature(WaveFunction) result(Signature)
     !---------------------------------------------------------------------------
@@ -819,11 +819,11 @@ contains
     P=WF%Parity
     S=WF%Signature
     TS=WF%TimeSimplex
-    
+
     WF%Der = DeriveSpinor(WF%Value,P,S,TS)
-    WF%Lap = LapSpinor(WF%Value,P,S,TS)    
+    WF%Lap = LapSpinor(WF%Value,P,S,TS)
   end subroutine CompDer
-        
+
  pure function GetDer(WF,Direction) result(Der)
     !---------------------------------------------------------------------------
     ! Function that returns the laplacian of the Spwf.
@@ -831,20 +831,20 @@ contains
     class(Spwf), intent(in) :: WF
     type(Spinor)            :: Der
     integer, intent(in)     :: Direction
-    
+
     Der = WF%Der(Direction)
  end function GetDer
-        
+
   function GetLap(WF) result(Lap)
     !---------------------------------------------------------------------------
     ! Function that returns the laplacian of the Spwf.
     !---------------------------------------------------------------------------
     class(Spwf), intent(in) :: WF
     type(Spinor)            :: Lap
-                  
+
     Lap = WF%Lap
   end function GetLap
-             
+
   pure function InProduct(WFOne,WFTwo) result(IP)
     !---------------------------------------------------------------------------
     !This function computes the (possibly complex) inproduct of two Spwfs.
@@ -855,10 +855,10 @@ contains
     real(KIND=dp)            :: IP(2) !Real and imaginary parts.
 
     IP =0.0_dp
-    if(  (WFOne%Isospin.ne.WFTwo%Isospin).or.& 
+    if(  (WFOne%Isospin.ne.WFTwo%Isospin).or.&
     &     (WFOne%Parity.ne.WFTwo%Parity).or.&
     &  (WFOne%Signature.ne.WFTwo%Signature)) then
-    !If the isospin, signature and the parity quantum numbers are not equal, 
+    !If the isospin, signature and the parity quantum numbers are not equal,
     !the inproduct is exactly zero.
           return
     else
@@ -866,11 +866,11 @@ contains
           IP(2) = 0.0_dp
           if(.not.TSC) then
               !Only compute this if time simplex is not conserved.
-              IP(2) = InproductSpinorImaginary(WFOne%Value, WFTwo%Value)                     
+              IP(2) = InproductSpinorImaginary(WFOne%Value, WFTwo%Value)
           endif
     endif
   end function InProduct
-        
+
   pure function GetQNumbers(WF) result(Numbers)
     !---------------------------------------------------------------------------
     !This function returns the quantum numbers of the Wavefunction.
@@ -884,8 +884,8 @@ contains
 
   function AngMomOperator(WF, Direction) result(ActionOfJ)
     !---------------------------------------------------------------------------
-    ! Subroutine that computes the action of the angular momentum operator on a 
-    ! wavefunction WF. 
+    ! Subroutine that computes the action of the angular momentum operator on a
+    ! wavefunction WF.
     ! Input is the wavefunction, but the output is a spinor.
     !---------------------------------------------------------------------------
     !       J_x = 1/2*( 0  1 ) + i z \partial_y - i y\partial_z
@@ -899,13 +899,13 @@ contains
     !---------------------------------------------------------------------------
     class(Spwf), intent(in) :: WF
     integer, intent(in)     :: Direction
-    ! Temp1 contains the spin part, temp2 and temp3 the orbital parts.   
+    ! Temp1 contains the spin part, temp2 and temp3 the orbital parts.
     type(Spinor)            :: ActionOfJ, Temp1, Temp2, Temp3, Temp4
     integer                 :: i,k
-    
+
     Temp1=NewSpinor();Temp2=NewSpinor(); Temp3=NewSpinor();Temp4=NewSpinor()
     ActionOfJ = NewSpinor()
-    
+
     select case(Direction)
     case (1)
       !The action of Jx
@@ -941,13 +941,13 @@ contains
       do k=1,4
           do i=1,nx*ny*nz
             Temp2%Grid(i,1,1,k,1) = Mesh3D(1,i,1,1) * WF%Der(2)%Grid(i,1,1,k,1)
-          enddo      
+          enddo
           do i=1,nx*ny*nz
             Temp3%Grid(i,1,1,k,1) = Mesh3D(2,i,1,1) * WF%Der(1)%Grid(i,1,1,k,1)
           enddo
       enddo
     end select
-    
+
     Temp4 = Temp3 - Temp2
     Temp4 = MultiplyI(Temp4)
     ActionOfJ = Temp1 + Temp4
@@ -967,10 +967,10 @@ contains
         !       J_z = 1/2*( 1  0 ) + i y \partial_x - i x\partial_y
         !                 ( 0 -1 )
         !---------------------------------------------------------------------------
-        ! Note that we use Mesh3D in this routine instead of Mesh3DX/Y/Z. While 
+        ! Note that we use Mesh3D in this routine instead of Mesh3DX/Y/Z. While
         ! the latter might be easier to read, there is some subtle bug that I do not
-        ! fully understand (yet) when using it combined with a 'vector' loop of the 
-        ! style 
+        ! fully understand (yet) when using it combined with a 'vector' loop of the
+        ! style
         ! for i = 1,nx*ny*nz
         !
         ! which does not combine correct mesh positions with the wavefunction.
@@ -988,7 +988,7 @@ contains
 
         if(WF1%GetParity().ne.WF2%GetParity())   return
         if(WF1%GetIsospin().ne.WF2%GetIsospin()) return
-        
+
         ! Get the signatures for checking in every Cartesian direction
         sig1 = wf1%GetSignature()
         sig2 = wf2%GetSignature()
@@ -1009,13 +1009,13 @@ contains
         if(TRX) then
             do i=1,nx*ny*nz
                 AngMom(1,1) = AngMom(1,1) + 0.5_dp * (                              &
-                &                         - Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) & 
+                &                         - Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) &
                 &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
-                &                         + Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) & 
+                &                         + Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) &
                 &                         - Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
                 AngMom(1,1) = AngMom(1,1)    &
                 &           + Psi%Grid(i,1,1,2,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
-                &           - Psi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,3,1) & 
+                &           - Psi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
                 !
                 &           + Psi%Grid(i,1,1,1,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,4,1) &
                 &           - Psi%Grid(i,1,1,1,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
@@ -1030,14 +1030,14 @@ contains
         else
             do i=1,nx*ny*nz
                 AngMom(1,1) = AngMom(1,1) + 0.5_dp * (                              &
-                &                           Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,3,1) & 
+                &                           Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,3,1) &
                 &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,4,1) &
-                &                         + Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,1,1) & 
+                &                         + Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,1,1) &
                 &                         + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,2,1))
 
                 AngMom(1,1) = AngMom(1,1)    &
                 &           + Psi%Grid(i,1,1,2,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
-                &           - Psi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,1,1) & 
+                &           - Psi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
                 !
                 &           - Psi%Grid(i,1,1,1,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
                 &           + Psi%Grid(i,1,1,1,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
@@ -1080,15 +1080,15 @@ contains
             do i=1,nx*ny*nz
                 ! Spin
                 AngMom(2,1) = AngMom(2,1) + 0.5_dp * (                              &
-                &                         + Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,4,1) & 
+                &                         + Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,4,1) &
                 &                         - Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,3,1) &
-                &                         - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,2,1) & 
+                &                         - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,2,1) &
                 &                         + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,1,1))
 
-                !Orbital 
+                !Orbital
                 AngMom(2,1) = AngMom(2,1)    &
                 &           + Psi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
-                &           - Psi%Grid(i,1,1,2,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,1,1) & 
+                &           - Psi%Grid(i,1,1,2,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
                 !
                 &           - Psi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
                 &           + Psi%Grid(i,1,1,1,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
@@ -1097,21 +1097,21 @@ contains
                 &           - Psi%Grid(i,1,1,4,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
                 !
                 &           - Psi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
-                &           + Psi%Grid(i,1,1,3,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,4,1) 
+                &           + Psi%Grid(i,1,1,3,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,4,1)
             enddo
         endif
 
         !-------------------------------------------------------------------------------
         ! Z-direction
-        do i=1,nx*ny*nz            
+        do i=1,nx*ny*nz
             AngMom(3,1) = AngMom(3,1) + 0.5_dp * (                              &
-            &                           Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) & 
+            &                           Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) &
             &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
-            &                         - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) & 
+            &                         - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) &
             &                         - Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
             AngMom(3,1) = AngMom(3,1)    &
             &           + Psi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
-            &           - Psi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,1,1) & 
+            &           - Psi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
             !
             &           - Psi%Grid(i,1,1,1,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
             &           + Psi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
@@ -1120,7 +1120,7 @@ contains
             &           - Psi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
             !
             &           - Psi%Grid(i,1,1,3,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
-            &           + Psi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,4,1) 
+            &           + Psi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,4,1)
         enddo
 
         if(Quadratic) then
@@ -1225,7 +1225,7 @@ contains
 
                 AngMom(6,1) = AngMom(6,1) + l1*r1 + l2*r2 + l3*r3 + l4*r4
              enddo
-             
+
          endif
 
         AngMom = AngMom * dv
@@ -1246,37 +1246,37 @@ contains
   !        fmt =  n, <P> , (<S>) , Rho_{i,i}, Delta, Pairing Partner,
   !        E , d^2h , (<Jx>), (<Jy>), <Jz>
   !-----------------------------------------------------------------------------
-  ! Note that: 
-  ! * Values between brackets only get printed in the case of some 
+  ! Note that:
+  ! * Values between brackets only get printed in the case of some
   !   symmetry breakings.
-  !  
+  !
   !-----------------------------------------------------------------------------
-  
+
   !-----------------------------------------------------------------------------
   ! Hartree-Fock calculations
   !           n        <P>        v^2       E_sp      d2H   <Jx/y/z> , J, < r^2 >
-  1  format ( i3, 1x, f5.2, 1x, f7.4, 1x, f8.3, 1x, e9.2, 1x, 5(f7.2) ) 
-  !           n        <P>       <S>        v^2       E_sp      d2H     
+  1  format ( i3, 1x, f5.2, 1x, f7.4, 1x, f8.3, 1x, e9.2, 1x, 5(f7.2) )
+  !           n        <P>       <S>        v^2       E_sp      d2H
   11 format ( i3, 1x, f5.2, 1x, f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2, 1x,      &
   !           <Jx/y/z>, J, <r^2>
-  &           5(f6.2))  
+  &           5(f6.2))
 
   !-----------------------------------------------------------------------------
   ! BCS calculations
   !           n        <P> <S>   v^2       Delta     E_sp   d2H <Jx/y/z>,J,<r^2>
   2  format (i3,1x, f5.2,  1x, f7.4, 1x, f7.2 ,1x, f8.3, 1x, e9.2, 5(f7.2))
   !           n     <P> <S>    v^2  Delta     E_sp      d2H     <Jx/y/z>J<r^2>
-  21 format (i3,2(1x, f5.2), 1x,f7.4,1x,f7.2,1x, f8.3, 1x, e9.2, 5(f7.2) ) 
-  
+  21 format (i3,2(1x, f5.2), 1x,f7.4,1x,f7.2,1x, f8.3, 1x, e9.2, 5(f7.2) )
+
   !-----------------------------------------------------------------------------
   ! HFB calculations
   !           n      <P>    RhoII  Delta PairPartner E_spd2H <Jx/y/z> ,J,<r^2>
-  3  format ( i3,1x,f5.2,1x,f7.4,1x,f7.2,1x, i3, 1x,f8.3,1x,e9.2,5(f7.2)) 
-  !           n      <P>     <S>    RhoII   Delta , PairPartner E_sp  d2H 
+  3  format ( i3,1x,f5.2,1x,f7.4,1x,f7.2,1x, i3, 1x,f8.3,1x,e9.2,5(f7.2))
+  !           n      <P>     <S>    RhoII   Delta , PairPartner E_sp  d2H
   31 format ( i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x,f8.3,1x,e9.2,        &
-  &           5(f7.2)) 
+  &           5(f7.2))
   !           <Jx/y/z>,J, <r^2>
-  !           n      <P>     <S>    RhoII   Delta , PairPartner E_sp  d2H 
+  !           n      <P>     <S>    RhoII   Delta , PairPartner E_sp  d2H
   32 format ( i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x,f8.3,1x,e9.2,        &
   &           5(f7.2))
   !           <Jx/y/z>J, <r^2>
@@ -1284,17 +1284,17 @@ contains
   integer, intent(in)     :: i
   integer, intent(in)     :: PrintType
   real(KIND =dp)          :: PrintOcc
-  
+
   PrintOcc = WF%Occupation
   ! Don't print double the occupation number when Time-reversal is conserved.
   if(TRC) PrintOcc = PrintOcc/2
-  
-  select case(PrintType)    
+
+  select case(PrintType)
     case(1) !HF calculations
         !Time Reversal and signature conservation => <Rz> = 1
         if(TRC .and. SC .and. TSC) then
             print 1, i,WF%ParityR,PrintOcc,WF%Energy,WF%Dispersion,       &
-            &          WF%AngMoment(1:3), WF%AngQuantum, WF%RMSRadius 
+            &          WF%AngMoment(1:3), WF%AngQuantum, WF%RMSRadius
         elseif(SC.and.TSC) then
             print 11, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
             &           WF%Dispersion,WF%AngMoment(1:3),WF%AngQuantum,    &
@@ -1309,9 +1309,9 @@ contains
             &           WF%Dispersion,WF%AngMoment(1:3), WF%AngQuantum,   &
             &           WF%RMSRadius
         else
-            call stp('no printout defined yet.')
+            !call stp('no printout defined yet.')
         endif
-        
+
     case(2) !BCS calculations
         if(TRC .and. SC) then
             print 2, i,WF%ParityR,PrintOcc,Real(WF%Delta), WF%Energy,     &
@@ -1322,9 +1322,9 @@ contains
             &          WF%Energy,WF%Dispersion,WF%AngMoment(1:3),         &
             &          WF%AngQuantum, WF%RMSRadius
         else
-            call stp('No Printout defined yet.')
+            !call stp('No Printout defined yet.')
         endif
-        
+
     case(3) !HFB calculations
         if(TRC .and. SC .and. TSC) then
             print 3, i,WF%ParityR,PrintOcc,Real(WF%Delta),WF%PairPartner,        &
@@ -1336,41 +1336,40 @@ contains
             &          WF%AngQuantum, WF%RMSRadius
         endif
     case DEFAULT
-        call stp('Undefined printtype in subroutine PrintHF.')
-  
+        !call stp('Undefined printtype in subroutine PrintHF.')
   end select
-  
+
   end subroutine PrintHF
-  
+
   subroutine PrintCanonical(WF,i, PrintType)
   !-----------------------------------------------------------------------------
-  ! Prints the info of a normal Spwf function in the Canonical basis, dependent 
+  ! Prints the info of a normal Spwf function in the Canonical basis, dependent
   ! on the value of PrintType. The values and formats of PrintType should match
   ! with the ones from PrintHF.
   !-----------------------------------------------------------------------------
   ! PrintType
   ! = 3 => Minimal printout for HFB
   !        fmt =  n, <P> , (<S>) , v^2 , E , d^2h , <Jx>, <Jy>, <Jz>
-  ! 
+  !
   !-----------------------------------------------------------------------------
-  
+
   class(Spwf), intent(in) :: WF
   integer, intent(in)     :: i
   integer, intent(in)     :: PrintType
-  
+
   !-----------------------------------------------------------------------------
   ! HFB calculations
   !           n      <P>    v^2      E_sp   <Jx/y/z> ,J,<r^2>
-  3  format ( i3,1x,f5.2,1x,f7.4,1x,f8.3,5(f7.2)) 
+  3  format ( i3,1x,f5.2,1x,f7.4,1x,f8.3,5(f7.2))
   !           n    <P>  <S>   v^2      E_sp   <Jx/y/z> J <r^2>
-  31 format ( i3, 2(1x,f5.2) ,1x,f7.4,1x,f8.3,5(f7.2)) 
+  31 format ( i3, 2(1x,f5.2) ,1x,f7.4,1x,f8.3,5(f7.2))
 
   real(KIND =dp)          :: PrintOcc
-  
+
   PrintOcc = WF%Occupation
   ! Don't print double the occupation number when Time-reversal is conserved.
   if(TRC) PrintOcc = PrintOcc/2
-  
+
   select case(PrintType)
   case(3)
     if(TRC.and.SC.and.TSC) then
@@ -1383,9 +1382,9 @@ contains
   case DEFAULT
     call stp('Undefined printtype in PrintCanonical.')
   end select
-  
+
   end subroutine PrintCanonical
-  
+
 !-------------------------------------------------------------------------------
 
 !---------------- Density-Computing Routines------------------------------------
@@ -1403,10 +1402,10 @@ contains
       tau = tau + RealMultiplySpinor(WaveFunction%Der(i), WaveFunction%Der(i))
     enddo
   end function GetTau
-        
+
   pure function GetDerRho(WF) result(DerRho)
     !---------------------------------------------------------------------------
-    ! This function returns the contribution of this wavefunction to 
+    ! This function returns the contribution of this wavefunction to
     ! the derivative of rho.
     !       \partial_{k} \rho = 2 \sum_{i} \Psi_i \partial_k \Psi_i
     !---------------------------------------------------------------------------
@@ -1422,12 +1421,12 @@ contains
     enddo
     DerRho = DerRho*2.0_dp
   end function GetDerRho
-        
+
   function GetLapRho(WaveFunction) result(LapRho)
     !---------------------------------------------------------------------------
     ! Function that returns the value of the Laplacian of the density.
     ! \Delta \rho = 2*\sum_{\sigma} Re[
-    !     \Delta \phi^*(\sigma) ]\phi(\sigma) 
+    !     \Delta \phi^*(\sigma) ]\phi(\sigma)
     !   + \grad \phi^*(\sigma) \grad \phi(\sigma)
     !---------------------------------------------------------------------------
     !NOTE:
@@ -1440,7 +1439,7 @@ contains
     LapRho = 2.0_dp*RealMultiplySpinor(WaveFunction%Lap,WaveFunction%Value)
     do j=1,3
      LapRho = LapRho +                                                         &
-     &        2.0_dp*RealMultiplySpinor(WaveFunction%Der(j),WaveFunction%Der(j))             
+     &        2.0_dp*RealMultiplySpinor(WaveFunction%Der(j),WaveFunction%Der(j))
     enddo
   end function GetLapRho
 
@@ -1456,10 +1455,10 @@ contains
     Vecj=0.0_dp
     ! vec(j)_{mu} = Im(\sum_{sigma} \Psi^*\partial_{mu}(\psi) )
     do m=1,3
-      Vecj(:,:,:,m)= ImagMultiplySpinor(WaveFunction%Value, WaveFunction%Der(m))                     
+      Vecj(:,:,:,m)= ImagMultiplySpinor(WaveFunction%Value, WaveFunction%Der(m))
     enddo
   end function GetVecj
-        
+
   function GetRotVecJ(WF) result (RotVecJ)
     !---------------------------------------------------------------------------
     ! Function that returns the curl of the \vec{j} density.
@@ -1467,20 +1466,20 @@ contains
     ! Note that no second derivatives figure since the curl of a gradient is 0.
     !---------------------------------------------------------------------------
     !NOTE:
-    ! This is a non-active subroutine, it is never called.              
+    ! This is a non-active subroutine, it is never called.
     !---------------------------------------------------------------------------
     class (Spwf),intent(in) :: WF
     real(KIND=dp)           :: RotVecj(nx,ny,nz,3)
 
     RotVecJ = 0.0_dp
-    !X Component     
+    !X Component
     RotVecJ(:,:,:,1) =  ImagMultiplySpinor(WF%Der(2) , WF%Der(3))
     !Y Component
     RotVecJ(:,:,:,2) =  ImagMultiplySpinor(WF%Der(3) , WF%Der(1))
     !Z Component
-    RotVecJ(:,:,:,3) =  ImagMultiplySpinor(WF%Der(1) , WF%Der(2)) 
+    RotVecJ(:,:,:,3) =  ImagMultiplySpinor(WF%Der(1) , WF%Der(2))
   end function GetRotVecJ
-        
+
   function GetVecs(WaveFunction) result(Vecs)
     !---------------------------------------------------------------------------
     ! Function that returns the spin density \vec{s}
@@ -1493,10 +1492,10 @@ contains
     Vecs=0.0_dp
     do l=1,3
         Psi = Pauli(WaveFunction%Value,l)
-        Vecs(:,:,:,l) = RealMultiplySpinor(WaveFunction%Value,Psi)   
+        Vecs(:,:,:,l) = RealMultiplySpinor(WaveFunction%Value,Psi)
     enddo
   end function GetVecs
-  
+
   function GetVecT(WF) result(VecT)
     !---------------------------------------------------------------------------
     ! Function that returns the density \vec{T}
@@ -1540,7 +1539,7 @@ contains
     enddo
     VecT(:,:,:,3)  = Temp
   end function GetVecT
-        
+
   function GetVecF(WaveFunction) result(VecF)
     !-------------------------------------------------------
     ! Function that returns the density \vec{F}
@@ -1554,12 +1553,12 @@ contains
 
     Psi = NewSpinor()
     do nu=1,3
-        Psi  = Psi + Pauli(WaveFunction%Der(nu),nu) 
+        Psi  = Psi + Pauli(WaveFunction%Der(nu),nu)
     enddo
     do mu=1,3
-        VecF(:,:,:,mu) = RealMultiplySpinor(Wavefunction%Der(mu),Psi)                            
+        VecF(:,:,:,mu) = RealMultiplySpinor(Wavefunction%Der(mu),Psi)
     enddo
-    return            
+    return
   end function GetVecF
 
   function GetJMuNu(WaveFunction) result(JMuNu)
@@ -1574,14 +1573,14 @@ contains
     JMuNu=0.0_dp
     do nu=1,3
       do mu=1,3
-        P = Pauli(WaveFunction%Der(mu),nu)                
-        ! We take the imaginary part of the product of the spinors, 
+        P = Pauli(WaveFunction%Der(mu),nu)
+        ! We take the imaginary part of the product of the spinors,
         ! instead of multiplying by -I/2.
         JMuNu(:,:,:,mu,nu) =  ImagMultiplySpinor(WaveFunction%Value, P)
       enddo
     enddo
   end function GetJMuNu
-        
+
   function GetNablaJ(WF) result(NablaJ)
     !---------------------------------------------------------------------------
     !Functions that returns \Nabla * J
@@ -1592,8 +1591,8 @@ contains
     type(Spinor)            :: Psi
 
     NablaJ=0.0_dp
-    
-    ! This is very ugly, but I did not immediately find a way to write this more 
+
+    ! This is very ugly, but I did not immediately find a way to write this more
     ! elegantly without needing A LOT OF extra operations...
     i=1;j=2;k=3
     Psi  = Pauli(WF%Der(j),k)
@@ -1619,12 +1618,12 @@ contains
     Psi  = Pauli(WF%Der(j),k)
     NablaJ = NablaJ + dble(LeviCivita(i,j,k))*ImagMultiplySpinor(WF%Der(i),Psi)
   end function GetNablaJ
-        
+
 !--------------- In- and Output ------------------------------------------------
   subroutine WriteSpwf(wf, unit)
     !---------------------------------------------------------------------------
-    ! Custom subroutine for writing Spwfs to file. 
-    ! This is necessary to keep the components of an Spwf private: the standard 
+    ! Custom subroutine for writing Spwfs to file.
+    ! This is necessary to keep the components of an Spwf private: the standard
     ! write doesn't work with them.
     !---------------------------------------------------------------------------
     class(Spwf), intent(in) :: wf
@@ -1636,12 +1635,12 @@ contains
     write(unit) wf%Occupation, &
     &       wf%Energy, wf%Dispersion, wf%Norm, wf%AngMoment, &
     &       wf%Isospin,wf%TimeSimplex,wf%Parity,wf%Signature,wf%TimeReversal
-       
+
   end subroutine WriteSpwf
   subroutine ReadSpwf(wf, unit, filenx,fileny,filenz)
     !---------------------------------------------------------------------------
-    ! Custom subroutine for reading Spwfs from file. 
-    ! This is necessary to keep the components of an Spwf private: the standard 
+    ! Custom subroutine for reading Spwfs from file.
+    ! This is necessary to keep the components of an Spwf private: the standard
     ! read doesn't work with them.
     !---------------------------------------------------------------------------
     class(Spwf), intent(inout) :: wf
@@ -1651,22 +1650,22 @@ contains
     call ReadSpinor(wf%Value,unit,filenx,fileny,filenz,1)
     !Allocating the derivatives
     do i=1,3
-        wf%Der(i)=NewSpinor(); 
+        wf%Der(i)=NewSpinor();
     enddo
     wf%Lap = NewSpinor()
     Read(unit) wf%Occupation, &
     &       wf%Energy, wf%Dispersion, wf%Norm, wf%AngMoment, &
     &       wf%Isospin,wf%TimeSimplex,wf%Parity,wf%Signature,wf%TimeReversal
-    
+
     if(abs(wf%Isospin).ne.1) then
       call stp('Wrong isospin on file.')
     endif
-    
+
   end subroutine ReadSpwf
-        
+
   subroutine SymmetryOperators(wf)
     !---------------------------------------------------------------------------
-    ! Subroutine that computes the expected values of the symmetry 
+    ! Subroutine that computes the expected values of the symmetry
     ! operators for the wavefunction.
     ! In addition, the RMS radius of the wavefunction is computed.
     !---------------------------------------------------------------------------
@@ -1705,7 +1704,7 @@ contains
     call wf%CalcRMSRadius()
 
   end subroutine SymmetryOperators
-  
+
   subroutine CalcRMSRadius(wf)
     !---------------------------------------------------------------------------
     ! Calculates and stores sqrt(<R^2>) for every wavefunction.
@@ -1714,6 +1713,6 @@ contains
     class(Spwf), intent(inout) :: wf
 
     wf%RMSradius = sqrt(sum(sum(Mesh3D**2,1) * wf%GetDensity())*dv)
-  
+
   end subroutine CalcRMSRadius
 end module WaveFunctions

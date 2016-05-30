@@ -93,10 +93,8 @@ contains
         Value = sum(Current%Value)
 
         if(Current%Total) then
-          Desired = sqrt(Desired)
           Value   = sum(CalculateTotalQl(Current%l))
-          O2 = sum(CalculateTotalQl(Current%l,2))
-          power = 1
+          O2      = sum(Current%Squared)
         endif
         !endif
       case(2)
@@ -122,7 +120,7 @@ contains
       !Calculate the update
       do it=1,2
         Update(:,:,:,it) = c0*(Value(it)  - Desired(it))/(O2(it) + d0)*       &
-        &                  Current%SpherHarm**power
+        &                  Current%SpherHarm
       enddo
       Correction = Correction + Update
     enddo

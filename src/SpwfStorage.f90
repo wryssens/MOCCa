@@ -181,9 +181,6 @@ contains
       call HFBasis(nw)%CompNorm()
       Norm=HFBasis(nw)%GetNorm()
 
-!       ValueOne = HFBasis(nw)%GetValue()
-!       ValueOne = (1.0d0/sqrt(Norm)) * ValueOne
-
       do i=1,4*nx*ny*nz
         HFBasis(nw)%Value%Grid(i,1,1,1,1) = (1.0d0/sqrt(Norm)) * HFBasis(nw)%Value%Grid(i,1,1,1,1)
       enddo
@@ -224,9 +221,6 @@ contains
         !Temp = (-MatrixElement(1))*Temp
         !Temp = Temp + ValueTwo
         !________________________________________________________
-        ! TODO: rewrite the rest of the routine too when breaking
-        ! signature and/or timereversal
-        !_________________________________________________________
 
         do i=1,4*nx*ny*nz
           HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
@@ -237,7 +231,7 @@ contains
          !Imaginary Part of MatrixElement (Zero when timesimplex is conserved).
          Temp2 = MultiplyI(HFBasis(nw)%Value)
          do i=1,4*nx*ny*nz
-            HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
+            HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) + &
             &                                   MatrixElement(2) * Temp2%Grid(i,1,1,1,1)
          enddo
         endif
@@ -263,6 +257,7 @@ contains
         !call HFBasis(mw)%SetGrid(Temp)
       enddo
     enddo
+
   end subroutine GramSchmidt
 
   subroutine DeriveAll()

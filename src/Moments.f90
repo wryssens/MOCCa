@@ -26,7 +26,9 @@ module Moments
 ! leaving all the `angles' free. We define the total size as:
 !
 ! Q_l = 4 \sqrt{pi}/\sqrt{2*l+1} *
-!        \sqrt{ \Sum_{m = 0,..,l} [ < Re Q_{lm} >**2 + < Im Q_{lm}**2 > ] }
+!        \sqrt{ \Sum_{m = 0,..,l} f(m) [ < Re Q_{lm} >**2 + < Im Q_{lm}**2 > ] }
+! with f(m) = 2 if m \not = 0 and f(m) = 1 for m = 0.
+!
 ! For the l = 2 multipole moments, this reduces to Q0 (see EV8 article), leaving
 ! gamma angle free. For higher l, there are obviously more angles.
 !
@@ -935,7 +937,7 @@ subroutine PrintAllMoments()
       !-------------------------------------------------------------------------
       type(Moment), pointer :: Current => null()
       integer               :: currentl
-      real(KIND=dp)         :: ql(2)
+      real(KIND=dp)         :: ql(2), factor, R
       character(len=1)      :: AX='Z',secAx1='Y', secAx2='Z'
 
     100 format (20('-'),' Multipole Moments ', 21('-'))
@@ -943,12 +945,14 @@ subroutine PrintAllMoments()
       1 format (60('_'))
       2 format (16x,4x, 'Neutrons',8x, 'Protons',9x, 'Total')
       7 format ('Beta_{', 2i2 , '}', 3(1x,f15.4) )
+     71 format ('Beta_{',2x, i2,'}', 3(1x,f15.4) )
       8 format ('Q_{',i2,'}',5x, 3(1x,f15.4))
       9 format ('Constrained', 33x, f15.4)
      91 format ('Pulling to ', 33x, f15.4)
      92 format ('Multiplier ', 33x, f15.4)
      10 format ('Quantisation Axis             : ', a1)
      11 format ('  With secondary axis ordering: ', a1, ',', a1)
+
 
      select case(QuantisationAxis)
      case(1)
@@ -1006,7 +1010,25 @@ subroutine PrintAllMoments()
       enddo
       print 1
       nullify(Current)
+      !-------------------------------------------------------------------------
+      !Printing Beta_lm deformation parameters
+      print 2
+      print 1
+      Current => Root
+      currentl = Current%l
+      do while(associated(Current%Next))
+        Current => Current%Next
+        !------------------------------------
+        !Print a new line when getting new l.
+        if(currentl .ne. Current%l) print *
+        currentl = Current%l
 
+        if(Current%l.gt.1 ) then
+            print 7, Current%l, Current%m,Current%Beta
+        endif
+      enddo
+      nullify(Current)
+      print 1
       !-------------------------------------------------------------------------
       ! Printing the total multipole moments Q_l
       print 2
@@ -1030,25 +1052,23 @@ subroutine PrintAllMoments()
       print 1
       nullify(Current)
       !-------------------------------------------------------------------------
-      !Printing Beta deformation parameters
+      !Printing Beta_l deformation parameters
       print 2
       print 1
-      Current => Root
-      currentl = Current%l
-      do while(associated(Current%Next))
-        Current => Current%Next
-        !------------------------------------
-        !Print a new line when getting new l.
-        if(currentl .ne. Current%l) print *
-        currentl = Current%l
+      nullify(Current)
+      do currentl=1, MaxMoment
+        R = 1.2_dp  * (neutrons + protons)**(1.0_dp/3.0_dp)
+        factor = 4.0_dp * pi /(3.0_dp * (neutrons+ protons) * R**(Currentl))
 
-        if(Current%l.gt.1 ) then
-            print 7, Current%l, Current%m,Current%Beta
-        endif
+        ql = CalculateTotalQl(currentl)
+        if(all(ql.eq.0.0_dp)) cycle
+        print 71, currentl,factor*ql,factor*sum(ql)
+        Current => FindMoment(Currentl,0,.false.)
+        if(.not.associated(Current)) cycle
       enddo
+      print 1
       nullify(Current)
 
-      print 1
 
       call PrintQuadrupoleAlt
       print 101
@@ -1233,6 +1253,7 @@ subroutine PrintAllMoments()
         Desired= Current%Constraint(1)
         if(Current%Total) then
           Factor = Factor * sum(Current%Value)
+          if(Current%m .ne. 0) Factor = Factor * 2
           Value  = 1
           Desired = Desired/(sum(CalculateTotalQl(Current%l) + 0.000001))
         else
@@ -1653,8 +1674,15 @@ subroutine PrintAllMoments()
           ToReadjust%Constraint(1) = ToReadjust%Constraint(1)-ReadjustSlowDown*&
           &                 (sum(ToReadjust%Value)-ToReadjust%TrueConstraint(1))
         else
+          print *, ToReadjust%Constraint(1)
+          print *, sum(CalculateTotalQl(ToReadjust%l))
+          print *, ToReadjust%TrueConstraint(1)
+          print *
+
           ToReadjust%Constraint(1) = ToReadjust%Constraint(1)-ReadjustSlowDown*&
           &   (sum(CalculateTotalQl(ToReadjust%l))-ToReadjust%TrueConstraint(1))
+
+
         endif
       case(2)
         !Proton and neutron separately

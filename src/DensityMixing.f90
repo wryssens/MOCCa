@@ -30,11 +30,12 @@ contains
     !---------------------------------------------------------------------------
     integer, intent(in) :: Iteration
 
+    DensityChange = 1 - Density * DensityHistory(1)/(Density * Density)
     select case(MixingScheme)
       case(0)
         ! Do linear damping
-        DensityChange =                                                        &
-        &             sum(Density%Rho-DensityHistory(1)%Rho)*dv/(1-DampingParam)
+        !                                                       &
+        !&        sum((Density%Rho-DensityHistory(1)%Rho)**2)*dv/(1-DampingParam)
         Density = (1-DampingParam) * Density + DampingParam*DensityHistory(1)
       case(1)
         call DIIS(mod(Iteration,100))

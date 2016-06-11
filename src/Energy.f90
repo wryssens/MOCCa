@@ -390,7 +390,6 @@ contains
 
     !B9 * \rho_t \Nabla J_t
     Terms(11) = B9 * sum(RhoT*NablaJT)
-
     !B9q * \rho_q \Nabla J_q
     do it=1,2
       Terms(12) = Terms(12) + B9q*(sum(Den%Rho(:,:,:,it)*Den%NablaJ(:,:,:,it)))

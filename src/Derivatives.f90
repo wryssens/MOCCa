@@ -111,9 +111,6 @@ module Derivatives
     & -9.0_dp/8064.0_dp, 128.0_dp/8064.0_dp, -1008.0_dp/8064.0_dp, 1.0_dp,     &
     & -14350.0_dp/8064.0_dp, 1.0_dp, -1008.0_dp/8064.0_dp, 128.0_dp/8064.0_dp, &
     & -9.0_dp/8064.0_dp /)
-
-
-
 contains
     subroutine ReadDerivativesInfo()
       !-----------------------------------------------------------------------
@@ -667,36 +664,36 @@ contains
 
     p =real(SignExtension, KIND=dp)
 
-      !Things on the start of the line
-      do i=1,N
-          !Going forward is no problem, and going backward on the line itself
-          do j=-i+1,N
-                 DerLine(i) = DerLine(i) + Coefs(j)*Line(i+j)
-          enddo
-          !Going backward on the Lineextension
-          do j=-N,-i
-                Derline(i) = Derline(i) + p*coefs(j)*LineExtension(1-(i+j))
-          enddo
-      enddo
+    !Things on the start of the line
+    do i=1,N
+        !Going forward is no problem, and going backward on the line itself
+        do j=-i+1,N
+               DerLine(i) = DerLine(i) + Coefs(j)*Line(i+j)
+        enddo
+        !Going backward on the Lineextension
+        do j=-N,-i
+              Derline(i) = Derline(i) + p*coefs(j)*LineExtension(1-(i+j))
+        enddo
+    enddo
 
-      !Things on the middle of the line
-      do i=1+N, ny-N
-                do j=-N,N
-                        DerLine(i) = DerLine(i) + Coefs(j)*Line(i+j)
-                enddo
-      enddo
+    !Things on the middle of the line
+    do i=1+N, ny-N
+              do j=-N,N
+                      DerLine(i) = DerLine(i) + Coefs(j)*Line(i+j)
+              enddo
+    enddo
 
-      !Things on the end of the line
-      do i=ny-N+1, ny
-          !Going backward is no problem, going forward till the end of the line
-          do j=-N,ny-i
-                DerLine(i) = DerLine(i) + Coefs(j)*Line(i+j)
-          enddo
-      enddo
+    !Things on the end of the line
+    do i=ny-N+1, ny
+        !Going backward is no problem, going forward till the end of the line
+        do j=-N,ny-i
+              DerLine(i) = DerLine(i) + Coefs(j)*Line(i+j)
+        enddo
+    enddo
 
-      factor = 1.0_dp/dx
-      if(D.eq.2) factor = factor/dx
-      DerLine=DerLine*factor
+    factor = 1.0_dp/dx
+    if(D.eq.2) factor = factor/dx
+    DerLine=DerLine*factor
 
   end function Central_1DY
 

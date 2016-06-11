@@ -263,7 +263,7 @@ contains
     Value = wf%GetValue()
 
     !Checking input
-    if(TimeSimplex.eq.0) call stp("Signature is already broken!")
+    if(TimeSimplex.eq.0) call stp("Time-simplex is already broken!")
 
     !When breaking parity, we need to store the values for the entire y-axis.
     Temp=NewSizeSpinor(size(Value%Grid,1),ny,size(Value%Grid,3))
@@ -285,7 +285,7 @@ contains
 
     Temp = Conj(Temp)
 
-    !Creating a new wavefunction, with the same quantum numbers,
+    ! Creating a new wavefunction, with the same quantum numbers,
     ! except for the Time Simplex, which is now0.
     wf = NewWaveFunction(Temp, wf%GetIsoSpin(),0,Parity,Signature,TimeReversal)
 

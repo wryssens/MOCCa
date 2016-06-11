@@ -277,7 +277,8 @@ contains
 
     implicit none
 
-    NameList /InAndOutput/ InputFileName,OutputFileName,PromOutput,LegacyInput
+    NameList /InAndOutput/ InputFileName,OutputFileName,PromOutput,LegacyInput,&
+    &                      Pictures
 
     !--------------- Reading Input---------------------------------------
     !Info for the GenInfo Module
@@ -1197,7 +1198,7 @@ end subroutine ReadMOCCa_v1
       do j=1,ny
           i = nx/2+1
           if(SC) i = 1
-          write(iunit, '(3f10.5)') Density%Rho(i,j,k,1), Density%Rho(i,j,k,2),&
+          write(iunit, '(5f10.5)') MeshY(j), MeshZ(k), Density%Rho(i,j,k,1), Density%Rho(i,j,k,2),&
           &                       sum(Density%Rho(i,j,k,:))
       enddo
     enddo
@@ -1211,7 +1212,7 @@ end subroutine ReadMOCCa_v1
         j = ny/2+1
         if(TSC) j = 1
         do i=1,nx
-          write(iunit, '(3f10.5)') Density%Rho(i,j,k,1), Density%Rho(i,j,k,2),&
+          write(iunit, '(5f10.5)') MeshX(i), MeshZ(k),Density%Rho(i,j,k,1), Density%Rho(i,j,k,2),&
           &                       sum(Density%Rho(i,j,k,:))
         enddo
     enddo
@@ -1224,7 +1225,7 @@ end subroutine ReadMOCCa_v1
     if(PC) k =1
        do j=1,ny
         do i=1,nx
-          write(iunit, '(3f10.5)') Density%Rho(i,j,k,1), Density%Rho(i,j,k,2),&
+          write(iunit, '(5f10.5)') MeshX(i), MeshY(j),Density%Rho(i,j,k,1), Density%Rho(i,j,k,2),&
           &                       sum(Density%Rho(i,j,k,:))
         enddo
       enddo

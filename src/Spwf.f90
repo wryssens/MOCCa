@@ -1601,19 +1601,19 @@ contains
     i=1;j=3;k=2
     Psi  = Pauli(WF%Der(j),k)
     NablaJ = NablaJ + dble(LeviCivita(i,j,k))*ImagMultiplySpinor(WF%Der(i),Psi)
-
+    !
     i=3;j=2;k=1
     Psi  = Pauli(WF%Der(j),k)
     NablaJ = NablaJ + dble(LeviCivita(i,j,k))*ImagMultiplySpinor(WF%Der(i),Psi)
-
+     ! !
     i=3;j=1;k=2
     Psi  = Pauli(WF%Der(j),k)
     NablaJ = NablaJ + dble(LeviCivita(i,j,k))*ImagMultiplySpinor(WF%Der(i),Psi)
-
+    ! !
     i=2;j=1;k=3
     Psi  = Pauli(WF%Der(j),k)
     NablaJ = NablaJ + dble(LeviCivita(i,j,k))*ImagMultiplySpinor(WF%Der(i),Psi)
-
+    !
     i=2;j=3;k=1
     Psi  = Pauli(WF%Der(j),k)
     NablaJ = NablaJ + dble(LeviCivita(i,j,k))*ImagMultiplySpinor(WF%Der(i),Psi)

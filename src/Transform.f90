@@ -270,7 +270,7 @@ contains
 
     ! Moving the old values to their correct place in the new spinor.
     Temp%Grid(:, ny/2+1:ny,:,:,:) = Value%Grid(:,1:ny/2,:,:,:)
-
+   
     !Using the symmetries of the wavefunction to construct the rest
     do l=1,4
       s = CompSignExtension(2,Parity,Signature,TimeSimplex,l)
@@ -282,9 +282,6 @@ contains
         enddo
       enddo
     enddo
-
-    Temp = Conj(Temp)
-
     ! Creating a new wavefunction, with the same quantum numbers,
     ! except for the Time Simplex, which is now0.
     wf = NewWaveFunction(Temp, wf%GetIsoSpin(),0,Parity,Signature,TimeReversal)

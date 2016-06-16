@@ -1617,6 +1617,7 @@ contains
     i=2;j=3;k=1
     Psi  = Pauli(WF%Der(j),k)
     NablaJ = NablaJ + dble(LeviCivita(i,j,k))*ImagMultiplySpinor(WF%Der(i),Psi)
+    
   end function GetNablaJ
 
 !--------------- In- and Output ------------------------------------------------

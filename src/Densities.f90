@@ -437,6 +437,7 @@ contains
     real(KIND=dp) :: ContractionJ(nx,ny,nz,3,2), DerContraction(nx,ny,nz,3)
     real(KIND=dp), intent(in) :: Jmunu(nx,ny,nz,3,3,2)
     real(KIND=dp)             :: NablaJ(nx,ny,nz,2)
+    
     call stp('This is bugged!')
 
     ! Summing the vector part

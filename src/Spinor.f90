@@ -272,10 +272,10 @@ contains
     integer                  :: i
 
     do i=1,nx*ny*nz
-      ImPsiPhi(i,1,1) = Psi%Grid(i,1,1,1,1) * Phi%Grid(i,1,1,2,1) &
-      &               - Psi%Grid(i,1,1,2,1) * Phi%Grid(i,1,1,1,1) &
-      &               + Psi%Grid(i,1,1,3,1) * Phi%Grid(i,1,1,4,1) &
-      &               - Psi%Grid(i,1,1,4,1) * Phi%Grid(i,1,1,3,1)
+      ImPsiPhi(i,1,1) =  Psi%Grid(i,1,1,1,1) * Phi%Grid(i,1,1,2,1) &
+      &                - Psi%Grid(i,1,1,2,1) * Phi%Grid(i,1,1,1,1) &
+      &                + Psi%Grid(i,1,1,3,1) * Phi%Grid(i,1,1,4,1) &
+      &                - Psi%Grid(i,1,1,4,1) * Phi%Grid(i,1,1,3,1)
     enddo
 
   end function ImagMultiplySpinor

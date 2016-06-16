@@ -321,7 +321,7 @@ contains
     integer, intent(in)                :: Parity,Timesimplex,Signature
     real(KIND=dp)                      :: LineExtensionY(N)
 
-    if(TimeSimplex.ne.ZeroI) then
+    if(TimeSimplex.ne.0) then
         !Using Time Simplex
         LineExtensionY = Grid(X,1:N,Z)
     else

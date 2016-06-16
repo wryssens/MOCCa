@@ -231,7 +231,7 @@ contains
          !Imaginary Part of MatrixElement (Zero when timesimplex is conserved).
          Temp2 = MultiplyI(HFBasis(nw)%Value)
          do i=1,4*nx*ny*nz
-            HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
+            HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) + &
             &                           MatrixElement(2) * Temp2%Grid(i,1,1,1,1)
          enddo
         endif

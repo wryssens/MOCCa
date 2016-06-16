@@ -17,6 +17,7 @@ program MOCCa
     use InOutput, only    : Input, Output, PlotDensity
     use SpwfStorage, only : PrintSpwf, DensityBasis, HFBasis
     use Pairing, only     : PairingType
+    use Testing
     implicit none
 
  200 format (/,' ___________________________________________________________', &
@@ -48,8 +49,7 @@ program MOCCa
      ! In testing mode.
      if(TestRun.eq.1) then
         print*, "MOCCa is entering test mode!"
-        !call TestPairingFields()
-        !call TestDelta
+        call TestDY
         call stp('End of TestRun')
      endif
      !--------------------------------------------------------------------------

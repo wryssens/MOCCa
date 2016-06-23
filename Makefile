@@ -7,13 +7,13 @@ MODDIR :=   mod
 
 TARGET :=   MOCCa.exe
 SRC    :=   CompilationInfo.f90 GenInfo.f90 Force.f90 OptimizedDerivatives.f90 Derivatives.f90 
-SRC    +=   GnuForInterface.f90 CoulombDerivatives.f90 Mesh.f90 Spinor.f90 
+SRC    +=   CoulombDerivatives.f90 Mesh.f90 Spinor.f90 
 SRC    +=   Spwf.f90 SpwfStorage.f90 Damping.f90 Densities.f90 
 SRC    +=   Moments.f90 SpecialMoments.f90 MultiGrid.f90 Coulomb.f90 PairingInteraction.f90 
 SRC    +=   LipkinNogami.f90 HartreeFock.f90 HFB.f90 GradientHFB.f90 BCS.f90 Pairing.f90 Cranking.f90 
 SRC    +=   MeanFields.f90 ImaginaryTime.f90 Energy.f90 DensityMixing.f90 
 SRC    +=   Transform.f90 SpwfFactory.f90 Interfaces.f90 InOut.f90 Test.f90 Main.f90 
-LIBS   :=  -llapack -lblas
+LIBS   :=   -llapack -lblas
 
 #Make the lists of objects
 OBJ :=      $(patsubst %.f90,$(OBJDIR)/%.o,$(SRC))
@@ -29,7 +29,7 @@ ifeq ($(CXX),gfortran-5)
 
   ifeq ($(DEBUG),no)
     #Optimal flag
-    CXXFLAGS := -O3
+    CXXFLAGS := -O3 -g -pg
   else
     # Debugging flag
     CXXFLAGS= -Og -fbacktrace -fcheck=all 

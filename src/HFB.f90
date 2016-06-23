@@ -2186,6 +2186,7 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
                 V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(N/2+1:N   ,1:N)
                 QuasiEnergies(N+1:2*N  ,P,it) = EigenValues(     1:N)
             endif
+            if(it.eq.1 .and. P.eq.1) print *, QuasiEnergies(1:2*N,P,it)
         enddo
     enddo
     !
@@ -2261,130 +2262,130 @@ subroutine DiagonaliseHFBHamiltonian_NoSignature
     enddo
 end subroutine DiagonaliseHFBHamiltonian_NoSignature
 
-  subroutine DiagonaliseHFBHamiltonian_ZHEEVR
-    !---------------------------------------------------------------------------
-    ! Alternative subroutine for diagonalising the HFB Hamiltonian.
-    !---------------------------------------------------------------------------
-    ! Subroutine that solves the HFB eigenvalue problem
-    !
-    !      ( U_k )        ( U_k )
-    !   H  (     )  = Ek  (     )
-    !      ( V_k )        ( V_k )
-    !
-    ! And stores the result in matrices U & V.
-    !---------------------------------------------------------------------------
-    ! NOTE
-    ! 1) Extra documentation for the diagonalisation routine
-    !    http://www.netlib.org/lapack/explore-html/d9/dd2/zheevr_8f.html
-    !---------------------------------------------------------------------------
-    integer, save                       :: size, m, lwork,lrwork,liwork
-    complex(KIND=dp), allocatable,save       :: Eigenvectors(:,:)
-    complex(KIND=dp), allocatable,save       :: Temp(:,:)
-    real(KIND=dp) , allocatable,save         :: Eigenvalues(:)
-    complex(KIND=dp), allocatable,save       :: Work(:), rwork(:)
-    integer, allocatable,save                :: iwork(:), isuppz(:)
-    integer                             :: Succes,i,j,jj,it,P, N, jjj, S
-    real(KIND=dp)                       :: Sig
-    real(KIND=dp)                       :: time0=0,time1=0,timetot=0
+!  subroutine DiagonaliseHFBHamiltonian_ZHEEVR
+!    !---------------------------------------------------------------------------
+!    ! Alternative subroutine for diagonalising the HFB Hamiltonian.
+!    !---------------------------------------------------------------------------
+!    ! Subroutine that solves the HFB eigenvalue problem
+!    !
+!    !      ( U_k )        ( U_k )
+!    !   H  (     )  = Ek  (     )
+!    !      ( V_k )        ( V_k )
+!    !
+!    ! And stores the result in matrices U & V.
+!    !---------------------------------------------------------------------------
+!    ! NOTE
+!    ! 1) Extra documentation for the diagonalisation routine
+!    !    http://www.netlib.org/lapack/explore-html/d9/dd2/zheevr_8f.html
+!    !---------------------------------------------------------------------------
+!    integer, save                       :: size, m, lwork,lrwork,liwork
+!    complex(KIND=dp), allocatable,save       :: Eigenvectors(:,:)
+!    complex(KIND=dp), allocatable,save       :: Temp(:,:)
+!    real(KIND=dp) , allocatable,save         :: Eigenvalues(:)
+!    complex(KIND=dp), allocatable,save       :: Work(:), rwork(:)
+!    integer, allocatable,save                :: iwork(:), isuppz(:)
+!    integer                             :: Succes,i,j,jj,it,P, N, jjj, S
+!    real(KIND=dp)                       :: Sig
+!    real(KIND=dp)                       :: time0=0,time1=0,timetot=0
 
-    size = maxval(blocksizes)
-    !---------------------------------------------------------------------------
-    ! Preliminary work.
-    if(.not.allocated(WORK)) then
-        !Allocate several arrays for the LAPACK routine
-        allocate(Temp(2*size, 2*size))                   ; Temp = 0.0_dp
-        allocate(Eigenvectors(2*HFBSize, 2*HFBsize))     ; Eigenvectors= 0.0_dp
-        allocate(Eigenvalues(2*size))                    ; EigenValues=0.0_dp
-        allocate(Isuppz(4*size))                         ; ISUPPZ=0
-        ! Do a preliminary call to the LAPACK routine to find the optimum
-        ! WORK sizes.
-        LWORK = -1 ; LRWORK = -1 ; LIWORK = -1
-        allocate(work(1), rwork(1), iwork(1))
-        call ZHEEVR('V', 'A', 'U', 2*size, Temp,                            &
-        &            2*size, 0.0_dp , 0.0_dp,0,0,                           &
-        &            0.0_dp, 2*size, Eigenvalues, Eigenvectors, 2*HFBSize,  &
-        &            isuppz,work,lwork,rwork,                               &
-        &            lrwork, iwork, liwork, Succes)
+!    size = maxval(blocksizes)
+!    !---------------------------------------------------------------------------
+!    ! Preliminary work.
+!    if(.not.allocated(WORK)) then
+!        !Allocate several arrays for the LAPACK routine
+!        allocate(Temp(2*size, 2*size))                   ; Temp = 0.0_dp
+!        allocate(Eigenvectors(2*HFBSize, 2*HFBsize))     ; Eigenvectors= 0.0_dp
+!        allocate(Eigenvalues(2*size))                    ; EigenValues=0.0_dp
+!        allocate(Isuppz(4*size))                         ; ISUPPZ=0
+!        ! Do a preliminary call to the LAPACK routine to find the optimum
+!        ! WORK sizes.
+!        LWORK = -1 ; LRWORK = -1 ; LIWORK = -1
+!        allocate(work(1), rwork(1), iwork(1))
+!        call ZHEEVR('V', 'A', 'U', 2*size, Temp,                            &
+!        &            2*size, 0.0_dp , 0.0_dp,0,0,                           &
+!        &            0.0_dp, 2*size, Eigenvalues, Eigenvectors, 2*HFBSize,  &
+!        &            isuppz,work,lwork,rwork,                               &
+!        &            lrwork, iwork, liwork, Succes)
 
-        lwork = ceiling(DBLE(WORK(1))) ; lrwork = ceiling(DBLE(RWORK(1)))
-        liwork =IWORK(1)
-        deallocate(WORK, RWORK, IWORK)
-        allocate(WORK(lwork), RWORK(lrwork), IWORK(liwork))
-    endif
-    !----------------------------------------------------------------------------
-    U = 0.0_dp ; V=0.0_dp
-    do it=1,Iindex
-      do P=1,Pindex
-        Temp = 0.0_dp
-        N = blocksizes(P,it)
-        do j=1,2*N
-          do i=1,2*N
-            Temp(i,j) = HFBHamil(i,j,P,it)
-          enddo
-        enddo
-        !------------------------------------------------------------------------
-        ! Temporary trick to separate signatures.
+!        lwork = ceiling(DBLE(WORK(1))) ; lrwork = ceiling(DBLE(RWORK(1)))
+!        liwork =IWORK(1)
+!        deallocate(WORK, RWORK, IWORK)
+!        allocate(WORK(lwork), RWORK(lrwork), IWORK(liwork))
+!    endif
+!    !----------------------------------------------------------------------------
+!    U = 0.0_dp ; V=0.0_dp
+!    do it=1,Iindex
+!      do P=1,Pindex
+!        Temp = 0.0_dp
+!        N = blocksizes(P,it)
+!        do j=1,2*N
+!          do i=1,2*N
+!            Temp(i,j) = HFBHamil(i,j,P,it)
+!          enddo
+!        enddo
+!        !------------------------------------------------------------------------
+!        ! Temporary trick to separate signatures.
 
-        if(SC) then
-          do j=1,N
-            jj = blockindices(j,P,it)
-            jjj= mod(jj-1,nwt)+1
-            S = HFBasis(jjj)%GetSignature()
-            if(jjj .ne. jj) S = -S
-            Temp(j,j)     = Temp(j,j)     + 1000*S
-            Temp(j+N,j+N) = Temp(j+N,j+N) - 1000*S
-          enddo
-        endif
-        !------------------------------------------------------------------------
+!        if(SC) then
+!          do j=1,N
+!            jj = blockindices(j,P,it)
+!            jjj= mod(jj-1,nwt)+1
+!            S = HFBasis(jjj)%GetSignature()
+!            if(jjj .ne. jj) S = -S
+!            Temp(j,j)     = Temp(j,j)     + 1000*S
+!            Temp(j+N,j+N) = Temp(j+N,j+N) - 1000*S
+!          enddo
+!        endif
+!        !------------------------------------------------------------------------
 
-        Succes = 0
-        m = N
-        call ZHEEVR('V', 'A', 'U', 2*N , Temp(1:2*N,1:2*N),2*N, 0.0_dp,          &
-          &          0.0_dp,0,0,0.0_dp, 2*N, Eigenvalues(1:2*N),                 &
-          &          Eigenvectors(1:2*N,1:2*N),2*N, isuppz, work, lwork, rwork,  &
-          &          lrwork,iwork, liwork,Succes)
-        if(Succes.ne.0) then
-          call stp("Error in diagonalising the HFB Hamiltonian.",                &
-          &        "ZHEEVR Errorcode", Succes)
-        endif
-        !-------------------------------------------------------------------------
-        ! We store all possible eigenvectors and later make the proper selection.
-        U(1:N,1:2*N,P,it) = Eigenvectors(  1:N    ,1:2*N)
-        V(1:N,1:2*N,P,it) = Eigenvectors(  N+1:2*N,1:2*N)
-        QuasiEnergies(1:2*N,P,it) = EigenValues(1:2*N)
+!        Succes = 0
+!        m = N
+!        call ZHEEVR('V', 'A', 'U', 2*N , Temp(1:2*N,1:2*N),2*N, 0.0_dp,          &
+!          &          0.0_dp,0,0,0.0_dp, 2*N, Eigenvalues(1:2*N),                 &
+!          &          Eigenvectors(1:2*N,1:2*N),2*N, isuppz, work, lwork, rwork,  &
+!          &          lrwork,iwork, liwork,Succes)
+!        if(Succes.ne.0) then
+!          call stp("Error in diagonalising the HFB Hamiltonian.",                &
+!          &        "ZHEEVR Errorcode", Succes)
+!        endif
+!        !-------------------------------------------------------------------------
+!        ! We store all possible eigenvectors and later make the proper selection.
+!        U(1:N,1:2*N,P,it) = Eigenvectors(  1:N    ,1:2*N)
+!        V(1:N,1:2*N,P,it) = Eigenvectors(  N+1:2*N,1:2*N)
+!        QuasiEnergies(1:2*N,P,it) = EigenValues(1:2*N)
 
-        !-------------------------------------------------------------------------
-        ! Calculate the quasiparticle signatures for further use
-        QuasiSignatures(:,P,it)=0.0_dp
-        do i=1,2*N
-          do j=1,N
-            jj  = blockindices(j,P,it)
-            jjj = mod(jj-1,nwt)+1
-            Sig = HFBasis(jjj)%GetSignatureR()
-            if(jj.ne.jjj) Sig = -Sig
-            !-----------------------------------------------------
-            ! The U components have the same signature
-            QuasiSignatures(i,P,it) = QuasiSignatures(i,P,it)    &
-            &                       + sig * abs(U(j,i,P,it))**2
-            !-----------------------------------------------------
-            ! The V components have opposite signature, thus
-            ! opposite sign.
-            QuasiSignatures(i,P,it) = QuasiSignatures(i,P,it)    &
-            &                       - sig * abs(V(j,i,P,it))**2
-          enddo
-        enddo
-        !------------------------------------------------------------------------
-        ! Extra for temporary trick
-        if(SC) then
-          QuasiEnergies(1:2*N, P, it) = QuasiEnergies(1:2*N, P, it) &
-          &                         - 1000*QuasiSignatures(1:2*N,P,it)
-        endif
-      enddo
-    enddo
+!        !-------------------------------------------------------------------------
+!        ! Calculate the quasiparticle signatures for further use
+!        QuasiSignatures(:,P,it)=0.0_dp
+!        do i=1,2*N
+!          do j=1,N
+!            jj  = blockindices(j,P,it)
+!            jjj = mod(jj-1,nwt)+1
+!            Sig = HFBasis(jjj)%GetSignatureR()
+!            if(jj.ne.jjj) Sig = -Sig
+!            !-----------------------------------------------------
+!            ! The U components have the same signature
+!            QuasiSignatures(i,P,it) = QuasiSignatures(i,P,it)    &
+!            &                       + sig * abs(U(j,i,P,it))**2
+!            !-----------------------------------------------------
+!            ! The V components have opposite signature, thus
+!            ! opposite sign.
+!            QuasiSignatures(i,P,it) = QuasiSignatures(i,P,it)    &
+!            &                       - sig * abs(V(j,i,P,it))**2
+!          enddo
+!        enddo
+!        !------------------------------------------------------------------------
+!        ! Extra for temporary trick
+!        if(SC) then
+!          QuasiEnergies(1:2*N, P, it) = QuasiEnergies(1:2*N, P, it) &
+!          &                         - 1000*QuasiSignatures(1:2*N,P,it)
+!        endif
+!      enddo
+!    enddo
 
-    if(SC) call InsertionSortQPEnergies()
+!    if(SC) call InsertionSortQPEnergies()
 
-end subroutine DiagonaliseHFBHamiltonian_ZHEEVR
+!end subroutine DiagonaliseHFBHamiltonian_ZHEEVR
 
 subroutine InsertionSortQPEnergies
     !-----------------------------------------------------------------------
@@ -2684,84 +2685,84 @@ subroutine InsertionSortQPEnergies
 
   end subroutine ConstructRHOHFB
 
-  subroutine DiagonaliseRhoHFB_ZHEEV
-    !---------------------------------------------------------------------------
-    ! Diagonalise RhoHFB and find both the occupation numbers and the
-    ! transformation matrix between HFbasis and the canonical basis.
-    !
-    !---------------------------------------------------------------------------
-    complex(KIND=dp), allocatable, save :: Work(:)
-    real(KIND=dp), allocatable,    save :: RWork(:)
-    integer,                       save :: WorkSize
-    complex(KIND=dp), allocatable, save :: Temp(:,:)
-    integer                             :: Succes, P, it, N, i, ii, iii
+!  subroutine DiagonaliseRhoHFB_ZHEEV
+!    !---------------------------------------------------------------------------
+!    ! Diagonalise RhoHFB and find both the occupation numbers and the
+!    ! transformation matrix between HFbasis and the canonical basis.
+!    !
+!    !---------------------------------------------------------------------------
+!    complex(KIND=dp), allocatable, save :: Work(:)
+!    real(KIND=dp), allocatable,    save :: RWork(:)
+!    integer,                       save :: WorkSize
+!    complex(KIND=dp), allocatable, save :: Temp(:,:)
+!    integer                             :: Succes, P, it, N, i, ii, iii
 
-    !---------------------------------------------------------------------------
-    ! Some preparations for the diagonalisation routine further on.
-    if(.not.allocated(WORK)) then
-      ! This RWORK array has to have a specific size, see the ZHEEV docs at
-      ! http://www.netlib.org/lapack/explore-html/d6/dee/zheev_8f.html
-      allocate(RWORK(3*maxval(blocksizes)-2))
-      allocate(Temp(HFBSize,HFBSize))
-      Temp = 0.0_dp ;  RWORK = 0.0_dp
-      WORKSIZE = -1 ; allocate(WORK(1))
-      ! Preliminary call to determine WORKSIZE
-      call ZHEEV('V', 'U', maxval(blocksizes), Temp,maxval(blocksizes),      &
-      &           Occupations, WORK, WORKSIZE, RWORK, Succes)
-      WORKSIZE = ceiling(real(WORK(1)))
-      deallocate(WORK); allocate(WORK(WORKSIZE))
-    endif
+!    !---------------------------------------------------------------------------
+!    ! Some preparations for the diagonalisation routine further on.
+!    if(.not.allocated(WORK)) then
+!      ! This RWORK array has to have a specific size, see the ZHEEV docs at
+!      ! http://www.netlib.org/lapack/explore-html/d6/dee/zheev_8f.html
+!      allocate(RWORK(3*maxval(blocksizes)-2))
+!      allocate(Temp(HFBSize,HFBSize))
+!      Temp = 0.0_dp ;  RWORK = 0.0_dp
+!      WORKSIZE = -1 ; allocate(WORK(1))
+!      ! Preliminary call to determine WORKSIZE
+!      call ZHEEV('V', 'U', maxval(blocksizes), Temp,maxval(blocksizes),      &
+!      &           Occupations, WORK, WORKSIZE, RWORK, Succes)
+!      WORKSIZE = ceiling(real(WORK(1)))
+!      deallocate(WORK); allocate(WORK(WORKSIZE))
+!    endif
 
-    do it=1,Iindex
-      do P=1,Pindex
-          Temp          = 0.0_dp
-          N             = blocksizes(P,it)
-          Temp(1:N,1:N) = RhoHFB(1:N,1:N,P,it)
+!    do it=1,Iindex
+!      do P=1,Pindex
+!          Temp          = 0.0_dp
+!          N             = blocksizes(P,it)
+!          Temp(1:N,1:N) = RhoHFB(1:N,1:N,P,it)
 
-          !-------------------------------------------------------------------
-          ! Since our matrices are not split into signature blocks, and in
-          ! general the eigenvalues of the density matrix are degenerate,
-          ! we need to ensure that states of different signature do not get
-          ! mixed. We do this by artificially shifting the eigenvalues of
-          ! the negative signatures.
-          !
-          ! Notice that, if V is some eigenvector of some matrix A with
-          ! eigenvalue lambda, then V is also an eigenvalue of (A - b*I)
-          ! where I is the identity matrix and b is a number.
-          ! Its corresponding eigenvalue is then just shifted, but the
-          ! the eigenvectors of A and (A - b*I) are the same.
-          !
-          ! In this way, we subtract two from the negative signature
-          ! diagonal elements, thus putting the negative signature
-          ! eigenvalues in the (-2,-1) range, well separated from the
-          ! positive signature eigenvalues in the (0,1) range.
-          if(SC) then
-            do i=1,blocksizes(P,it)
-              ii  = blockindices(i,P,it)
-              iii = mod(ii-1,nwt)+1
-              if( ii .ne. iii .or. HFBasis(iii)%GetSignature().eq.-1) then
-                Temp(i,i) = Temp(i,i) - 2.0_dp
-              endif
-            enddo
-          endif
+!          !-------------------------------------------------------------------
+!          ! Since our matrices are not split into signature blocks, and in
+!          ! general the eigenvalues of the density matrix are degenerate,
+!          ! we need to ensure that states of different signature do not get
+!          ! mixed. We do this by artificially shifting the eigenvalues of
+!          ! the negative signatures.
+!          !
+!          ! Notice that, if V is some eigenvector of some matrix A with
+!          ! eigenvalue lambda, then V is also an eigenvalue of (A - b*I)
+!          ! where I is the identity matrix and b is a number.
+!          ! Its corresponding eigenvalue is then just shifted, but the
+!          ! the eigenvectors of A and (A - b*I) are the same.
+!          !
+!          ! In this way, we subtract two from the negative signature
+!          ! diagonal elements, thus putting the negative signature
+!          ! eigenvalues in the (-2,-1) range, well separated from the
+!          ! positive signature eigenvalues in the (0,1) range.
+!          if(SC) then
+!            do i=1,blocksizes(P,it)
+!              ii  = blockindices(i,P,it)
+!              iii = mod(ii-1,nwt)+1
+!              if( ii .ne. iii .or. HFBasis(iii)%GetSignature().eq.-1) then
+!                Temp(i,i) = Temp(i,i) - 2.0_dp
+!              endif
+!            enddo
+!          endif
 
-          call ZHEEV('V', 'U', N, Temp(1:N,1:N), N, Occupations(1:N,P,it)    &
-          &          , WORK, WORKSIZE, RWORK, Succes)
-          if(Succes.ne.0) then
-            call stp('ZHEEV failed to diagonalise RHOHFB', 'Errorcode', Succes)
-          endif
+!          call ZHEEV('V', 'U', N, Temp(1:N,1:N), N, Occupations(1:N,P,it)    &
+!          &          , WORK, WORKSIZE, RWORK, Succes)
+!          if(Succes.ne.0) then
+!            call stp('ZHEEV failed to diagonalise RHOHFB', 'Errorcode', Succes)
+!          endif
 
-          CanTransfo(1:N,1:N,P,it) = Temp(1:N,1:N)
-          !------------------------------------------------------------------
-          ! Since we shifted the eigenvalues of the negative signature states
-          ! by -2, we now need to find the actual occupation numbers.
-          ! Notice the slight offset to make sure we are not accidentally
-          ! adding two to positive signature eigenvalues
-          if(SC) where( Occupations.lt.-0.1_dp) Occupations = Occupations + 2
-      enddo
-    enddo
-    where (abs(CanTransfo) .lt. 1d-11) CanTransfo = 0.0_dp
-  end subroutine DiagonaliseRhoHFB_ZHEEV
+!          CanTransfo(1:N,1:N,P,it) = Temp(1:N,1:N)
+!          !------------------------------------------------------------------
+!          ! Since we shifted the eigenvalues of the negative signature states
+!          ! by -2, we now need to find the actual occupation numbers.
+!          ! Notice the slight offset to make sure we are not accidentally
+!          ! adding two to positive signature eigenvalues
+!          if(SC) where( Occupations.lt.-0.1_dp) Occupations = Occupations + 2
+!      enddo
+!    enddo
+!    where (abs(CanTransfo) .lt. 1d-11) CanTransfo = 0.0_dp
+!  end subroutine DiagonaliseRhoHFB_ZHEEV
 
   subroutine DiagonaliseRhoHFB!_diagoncr8
         !-------------------------------------------------------------------------

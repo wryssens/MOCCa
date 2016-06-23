@@ -231,7 +231,12 @@ implicit none
   !-----------------------------------------------------------------------------
   !Pointer to the cutoff procedure chosen.
   !-----------------------------------------------------------------------------
-  procedure(RutzCutOff), pointer :: CompCutoff
+   abstract interface
+        subroutine comp_cutoff()
+        end Subroutine
+  end interface
+  
+  procedure(comp_cutoff), pointer :: CompCutoff
   !-----------------------------------------------------------------------------
   ! Quadrupole moments in different representations, for printing purposes only.
   !

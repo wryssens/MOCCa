@@ -1440,7 +1440,7 @@ subroutine PrintAllMoments()
     return
   end function ConverMultipoleAll
 
-  subroutine RutzCutOff()
+  subroutine RutzCutOff
     !---------------------------------------------------------------------------
     ! This function computes the density cut-off function for the computation of
     ! the multipole moments. Multipole constraints should be computed using a

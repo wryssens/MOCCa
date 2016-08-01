@@ -136,11 +136,12 @@ contains
     call WFInput()
     !---------------------------------------------------------------------------
     if(    (inPC .neqv. PC)  .or. (inTSC .neqv. TSC) .or. (inSC .neqv. SC)     &
-    & .or. (inTRC.neqv. TRC) .or. (inIC  .neqv. IC)) then
+    & .or. (inTRC.neqv. TRC) .or. (inIC  .neqv. IC)  .or. (filenx.ne.nx)       &
+    & .or. (fileny.ne.ny)    .or. (filenz.ne. nz)  ) then
       !If the symmetries requested are not the ones stored on the wavefunction
       !file, transform all the wavefunctions and densities.
       call TransformInput(inTRC,inTSC,inIC,inPC,inSC,                          &
-      &                   filenx,fileny,filenz,filenwt)
+      &                   filenx,fileny,filenz,filenwt,filedx)
       print 1, inPC, PC, inSC, SC, inTSC, TSC, inTRC, TRC, inIC, IC,           &
       &       filenx,nx,fileny,ny,filenz,nz,filenwt, nwt
     endif
@@ -455,7 +456,7 @@ contains
 
     !File parameters to compare against
     integer       :: fileneutrons,fileprotons,i, version
-    real(KIND=dp) :: filedx, fileintensity(4)
+    real(KIND=dp) :: fileintensity(4)
 
     !---------------------------------------------------------------------------
     ! Checking for a valid input file
@@ -1007,50 +1008,50 @@ subroutine ReadMOCCa_v1(Ichan)
     endif
     !---------------------------------------------------------------------------
     ! b) Mesh parameters & number of wavefunctions must correspond
-    if(filenx.ne.nx) then
-      if( 2*filenx.ne.nx .or. SC ) then
-        call stp(' nx is not compatible between file and data.',               &
-        &        'on file: ', filenx                                           &
-        &      , 'in data: ', nx     )
-      endif
-    endif
-    if(SC.neqv.inSC .and. 2*filenx.ne.nx)then
-        call stp(' nx is not compatible between file and data.',               &
-        &        'on file: ', filenx                                           &
-        &      , 'in data: ', nx     )
-    endif
-    if(fileny.ne.ny ) then
-      if( 2*fileny.ne.ny .or. TSC ) then
-        call stp(' ny is not compatible between file and data.',               &
-        &        'on file: ', fileny                                           &
-        &      , 'in data: ', ny     )
-      endif
-    endif
-    if(TSC.neqv.inTSC .and. 2*fileny.ne.ny)then
-        call stp(' ny is not compatible between file and data.',               &
-        &        'on file: ', fileny                                           &
-        &      , 'in data: ', ny     )
-    endif
-    if(filenz.ne.nz ) then
-      if( 2*filenz.ne.nz .or. PC ) then
-        call stp(' nz is not compatible between file and data.',               &
-        &        'on file: ', filenz                                           &
-        &      , 'in data: ', nz    )
-      endif
-    endif
-    if(PC.neqv.inPC .and. 2*filenz.ne.nz)then
-        call stp(' nz is not compatible between file and data.',               &
-        &        'on file: ', filenz                                           &
-        &      , 'in data: ', nz     )
-    endif
-    if( nwt.gt.filenwt .and. TRC) then
-      call stp('Nwt is not compatible between file and data.',                 &
-      &        'In data: ', nwt, 'On file :', filenwt )
-    endif
-    if( nwt.ne.2*filenwt .and. .not.TRC .and. inTRC) then
-      call stp('Nwt should be doubled when breaking TimeReversal.',            &
-      &        'In data: ', nwt, 'On file :', filenwt )
-    endif
+    !if(filenx.ne.nx) then
+    !  if( 2*filenx.ne.nx .or. SC ) then
+    !    call stp(' nx is not compatible between file and data.',               &
+    !    &        'on file: ', filenx                                           &
+    !    &      , 'in data: ', nx     )
+    !  endif
+    !endif
+    !if(SC.neqv.inSC .and. 2*filenx.ne.nx)then
+    !    call stp(' nx is not compatible between file and data.',               &
+    !    &        'on file: ', filenx                                           &
+    !    &      , 'in data: ', nx     )
+    !endif
+    !if(fileny.ne.ny ) then
+    !  if( 2*fileny.ne.ny .or. TSC ) then
+    !    call stp(' ny is not compatible between file and data.',               &
+    !    &        'on file: ', fileny                                           &
+    !    &      , 'in data: ', ny     )
+    !  endif
+    !endif
+    !if(TSC.neqv.inTSC .and. 2*fileny.ne.ny)then
+    !    call stp(' ny is not compatible between file and data.',               &
+    !    &        'on file: ', fileny                                           &
+    !    &      , 'in data: ', ny     )
+    !endif
+    !if(filenz.ne.nz ) then
+    !  if( 2*filenz.ne.nz .or. PC ) then
+    !    call stp(' nz is not compatible between file and data.',               &
+    !    &        'on file: ', filenz                                           &
+    !    &      , 'in data: ', nz    )
+    !  endif
+    !endif
+    !if(PC.neqv.inPC .and. 2*filenz.ne.nz)then
+    !    call stp(' nz is not compatible between file and data.',               &
+    !    &        'on file: ', filenz                                           &
+    !    &      , 'in data: ', nz     )
+    !endif
+    !if( nwt.gt.filenwt .and. TRC) then
+    !  call stp('Nwt is not compatible between file and data.',                 &
+    !  &        'In data: ', nwt, 'On file :', filenwt )
+    !endif
+    !if( nwt.ne.2*filenwt .and. .not.TRC .and. inTRC) then
+    !  call stp('Nwt should be doubled when breaking TimeReversal.',            &
+    !  &        'In data: ', nwt, 'On file :', filenwt )
+    !endif
     !---------------------------------------------------------------------------
     ! c) There should be enough space for neutrons & protons
     N = nwt

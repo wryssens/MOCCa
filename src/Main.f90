@@ -18,8 +18,12 @@ program MOCCa
     use SpwfStorage, only : PrintSpwf, DensityBasis, HFBasis
     use Pairing, only     : PairingType
     use Testing
+    use Transform
     implicit none
 
+    real*8 :: time(2)
+    integer :: i
+    
  200 format (/,' ___________________________________________________________', &
      &       /,'|                                                          |', &
      &       /,'|  MOCCa                                                   |', &
@@ -49,7 +53,6 @@ program MOCCa
      ! In testing mode.
      if(TestRun.eq.1) then
         print*, "MOCCa is entering test mode!"
-        call TestDY
         call stp('End of TestRun')
      endif
      !--------------------------------------------------------------------------
@@ -309,7 +312,7 @@ subroutine Evolve(MaxIterations, iprint)
   endif
 
   !Reanalysis of the result with Lagrange derivatives.
-  call FinalIteration()
+  !call FinalIteration()
 
   if(Convergence) then
      print 5

@@ -1713,12 +1713,9 @@ subroutine PrintAllMoments()
         & epsilon *  (sum(ToReadjust%Value) - sum(ToReadjust%OldValue(:,1))) / &
         & (O2(1) + d0)
       else
-        print *, ToReadjust%Intensity
         O2 = sum(ToReadjust%Squared) * sum(ToReadjust%Value)/sum(CalculateTotalQl(Toreadjust%l))
         Old = CalculateTotalQl(Toreadjust%l,1)
 
-        print *, sum(Old), O2(1), sum(CalculateTotalQl(Toreadjust%l))
-        print *, (sum(CalculateTotalQl(Toreadjust%l))-sum(Old))/(O2(1) + d0)
         ToReadjust%Intensity = ToReadjust%Intensity + epsilon*                 &
         & (sum(CalculateTotalQl(Toreadjust%l))-sum(Old))/(O2(1) + d0)
       endif

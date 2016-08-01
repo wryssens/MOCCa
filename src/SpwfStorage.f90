@@ -159,6 +159,101 @@ contains
   end subroutine ChangeNumberWaveFunctions
 
   subroutine GramSchmidt
+     use GenInfo
+     use CompilationInfo
+
+     implicit none
+
+     integer      :: nw,mw, Signature, Parity, Isospin, i
+     real(KIND=dp):: Norm
+     type(Spinor) :: ValueOne,ValueTwo,Temp, Temp2
+     real(KIND=dp):: MatrixElement(2)
+
+     if(.not.allocated(Temp%Grid)) allocate(Temp%Grid(nx,ny,nz,4,1))
+
+      do nw=1,nwt
+        ! First normalise \Psi_{nw}
+        Norm=0.0_dp
+        do i=1,4*nx*ny*nz
+          Norm = Norm + HFBasis(nw)%Value%Grid(i,1,1,1,1)**2
+        enddo
+        Norm = Norm * dv
+        Norm = (1.0d0/sqrt(Norm))  
+        do i=1,4*nx*ny*nz
+          HFBasis(nw)%Value%Grid(i,1,1,1,1) = Norm* HFBasis(nw)%Value%Grid(i,1,1,1,1)
+        enddo
+      !call HFBasis(nw)%CompNorm()
+
+      Isospin   = HFBasis(nw)%GetIsospin()
+      Parity    = HFBasis(nw)%GetParity()
+      Signature = HFBasis(nw)%GetSignature()
+      !-------------------------------------------------------------------------
+      ! Then subtract the projection on \Psi_{nw} from all the following Spwf.
+      ! Re(\Psi(\sigma)_{mw}) =
+      ! Re(\Psi(\sigma)_{nw})-Re(< \Psi_{nw}|\Psi_{mw} >) Re(\Psi(\sigma)_{nw})
+      !                      + Im(< \Psi_{nw}|\Psi_{mw} >)Im(\Psi(\sigma)_{nw})
+      ! Im(\Psi(\sigma)_{mw}) =
+      ! Im(\Psi(\sigma)_{mw})-Re(< \Psi_{nw}|\Psi_{mw} >) Im(\Psi(\sigma)_{nw})
+      !                      -Im(< \Psi_{nw}|\Psi_{mw} >) Re(\Psi(\sigma)_{nw})
+      !-------------------------------------------------------------------------
+      ! Note that the imaginary part of the inproduct only needs to be taken
+      ! into account when Time Simplex is not conserved.
+      !-------------------------------------------------------------------------
+      do mw=nw+1,nwt
+        !-----------------------------------------------------------------------
+        ! Do not waste time in manipulating the grids if the matrixelement
+        ! is zero. This is fulfilled, for example, when the two SPWF do not
+        ! share all quantum numbers.
+        !-----------------------------------------------------------------------
+        if(HFBasis(mw)%GetIsospin()  .ne.Isospin)   cycle
+        if(HFBasis(mw)%GetParity()   .ne.Parity)    cycle
+        if(HFBasis(mw)%GetSignature().ne.Signature) cycle
+        
+        MatrixElement = 0.0_dp
+        do i=1,4*nx*ny*nz
+          MatrixElement(1)= MatrixElement(1) + &
+          & HFBasis(mw)%Value%Grid(i,1,1,1,1)*HFBasis(nw)%Value%Grid(i,1,1,1,1) 
+        enddo
+        
+        do i=1,4*nx*ny*nz
+          HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
+          &                 MatrixElement(1) * HFBasis(nw)%Value%Grid(i,1,1,1,1)
+        enddo
+
+!        if(.not.TSC) then
+!         !Imaginary Part of MatrixElement (Zero when timesimplex is conserved).
+!         Temp2 = MultiplyI(HFBasis(nw)%Value)
+!         do i=1,4*nx*ny*nz
+!            HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) + &
+!            &                           MatrixElement(2) * Temp2%Grid(i,1,1,1,1)
+!         enddo
+!        endif
+
+!        ! If signature is broken, but time reversal is conserved, also
+!        ! orthogonalise against the time-reversed functions
+!        if(.not.SC .and. TRC) then
+!          Temp2 = TimeReverse(HFBasis(nw)%Value)
+!          MatrixElement(1)  = InproductSpinorReal(Temp2, HFBasis(mw)%Value)
+!          if(.not.TSC) then
+!             MatrixElement(2)  = InproductSpinorImaginary(Temp2, HFBasis(mw)%Value)
+!             Temp2 = MultiplyI(Temp2)
+!             Temp = Temp - MatrixElement(2)*Temp2
+!             Temp2 = -MultiplyI(Temp2)
+!          endif
+!          do i=1,4*nx*ny*nz
+!            HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
+!            &                                   MatrixElement(1) * Temp2%Grid(i,1,1,1,1)
+!          enddo
+!          !Temp = Temp - MatrixElement(1)*Temp2
+!        endif
+        !Save the result to the corresponding wavefunction
+        !call HFBasis(mw)%SetGrid(Temp)
+      enddo
+    enddo
+
+  end subroutine GramSchmidt
+
+  subroutine GramSchmidt_OLD
     !---------------------------------------------------------------------------
     ! This subroutine uses a Gram-Schmidt scheme to orthonormalise the Spwfs in
     ! the HF basis.
@@ -184,7 +279,7 @@ contains
       do i=1,4*nx*ny*nz
         HFBasis(nw)%Value%Grid(i,1,1,1,1) = (1.0d0/sqrt(Norm)) * HFBasis(nw)%Value%Grid(i,1,1,1,1)
       enddo
-      call HFBasis(nw)%CompNorm()
+      !call HFBasis(nw)%CompNorm()
 
       Isospin   = HFBasis(nw)%GetIsospin()
       Parity    = HFBasis(nw)%GetParity()
@@ -258,7 +353,7 @@ contains
       enddo
     enddo
 
-  end subroutine GramSchmidt
+  end subroutine GramSchmidt_OLD
 
   subroutine DeriveAll()
     !---------------------------------------------------------------------------

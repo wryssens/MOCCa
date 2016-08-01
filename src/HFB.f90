@@ -2186,7 +2186,7 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
                 V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(N/2+1:N   ,1:N)
                 QuasiEnergies(N+1:2*N  ,P,it) = EigenValues(     1:N)
             endif
-            if(it.eq.1 .and. P.eq.1) print *, QuasiEnergies(1:2*N,P,it)
+            !if(it.eq.1 .and. P.eq.1) print *, QuasiEnergies(1:2*N,P,it)
         enddo
     enddo
     !

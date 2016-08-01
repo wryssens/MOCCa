@@ -17,6 +17,7 @@ module Transform
   use CompilationInfo
   use GenInfo
   use Spinors
+  use Densities
   use WaveFunctions
   use Spwfstorage
   use Spinors
@@ -25,20 +26,12 @@ module Transform
 
   implicit none
 
-  !-----------------------------------------------------------------------------
-  ! Interpolation coefficients for changing the mesh size, using the Lagrangian
-  ! formulas representation. Note that the coefficients have 2 components:
-  ! one for coordinates present in the Mesh module and one
-  ! for coordinates that are accessible through symmetries.
-  !-----------------------------------------------------------------------------
-  real(KIND=dp), allocatable :: InterpolationCoefX(:,:,:)
-  real(KIND=dp), allocatable :: InterpolationCoefY(:,:,:)
-  real(KIND=dp), allocatable :: InterpolationCoefZ(:,:,:)
+  real(KIND=dp), allocatable :: interpolX(:,:,:), interpolY(:,:,:), interpolZ(:,:,:)
 
 contains
 
   subroutine TransformInput(inTRC,inTSC,inIC,inPC,inSC,                        &
-  &                         filenx,fileny,filenz,filenwt)
+  &                         filenx,fileny,filenz,filenwt, filedx)
   !-----------------------------------------------------------------------------
   ! Transform the data read from the wavefunction file to a form appropriate
   ! for the different symmetry combinations. (This includes the densities!)
@@ -46,75 +39,86 @@ contains
   !-----------------------------------------------------------------------------
   logical, intent(in)       :: inTRC, inTSC, inIC, inPC, inSC
   integer, intent(in)       :: filenx,fileny,filenz,filenwt
+  real(KIND=dp), intent(in) :: filedx
   type(Spwf), allocatable   :: HFBasisTransformed(:)
   integer                   :: wave, index
+ 
+    !-----------------------------------------------------------------------------
+    ! Checking for Time Reversal breaking first!
+    ! Note that we try to take the same ordering as CR8: first all the neutron
+    ! wavefunctions, then all the proton wavefunctions.
+    if(inTRC.eqv.TRC) then
+      allocate(HFBasisTransformed(nwt))
+      do wave=1,nwt
+        HFBasisTransformed(wave) = CopyWaveFunction(HFBasis(wave))
+      enddo
+    else
+      allocate(HFBasisTransformed(nwt))
+      ! Count the neutron wavefunctions
+      do wave=1,filenwt
+        if(HFBasis(wave)%GetIsospin().gt.0) exit
+      enddo
+      index = wave - 1
+      ! Create the neutron time-reversed pairs
+      do wave=1,index
+        call BreakTimeReversal(HFBasis(wave), HFBasisTransformed(wave),          &
+        &                                     HFBasisTransformed(wave+index) )
+      enddo
 
-  !-----------------------------------------------------------------------------
-  !Checking for Time Reversal breaking first!
-  ! Note that we try to take the same ordering as CR8: first all the neutron
-  ! wavefunctions, then all the proton wavefunctions.
-  if(inTRC.eqv.TRC) then
-    allocate(HFBasisTransformed(nwt))
+      ! Create the proton time-reversed pairs
+      do wave=index+1,filenwt
+        call BreakTimeReversal(HFBasis(wave),HFBasisTransformed(wave+index),     &
+        &                                    HFBasisTransformed(wave+filenwt))
+      enddo
+    endif
+    !-----------------------------------------------------------------------------
+    !Checking for Parity Breaking
+    if(inPC.neqv.PC) then
+      !Breaking Parity
+      do wave=1,size(HFBasisTransformed)
+        call BreakParity(HFBasisTransformed(wave) )
+      enddo
+    endif
+    !-----------------------------------------------------------------------------
+    !Checking for Signature Breaking
+    if(inSC.neqv.SC) then
+      !Breaking Signature
+      do wave=1,size(HFBasisTransformed)
+        call BreakSignature(HFBasisTransformed(wave))
+      enddo
+    endif
+    !-----------------------------------------------------------------------------
+    !Checking for Time Simplex Breaking
+    if(inTSC.neqv.TSC) then
+      !Breaking Parity
+      do wave=1,size(HFBasisTransformed)
+        call BreakTimeSimplex(HFBasisTransformed(wave))
+      enddo
+    endif
+    !-----------------------------------------------------------------------------
+    !Applying the changes to the HFBasis
+    call ChangeNumberWaveFunctions(nwt)
     do wave=1,nwt
-      HFBasisTransformed(wave) = CopyWaveFunction(HFBasis(wave))
+      HFBasis(wave) = HFBasisTransformed(wave)
+      call HFBasis(wave)%SymmetryOperators()
     enddo
-
-  else
-    allocate(HFBasisTransformed(nwt))
-    ! Count the neutron wavefunctions
-    do wave=1,filenwt
-      if(HFBasis(wave)%GetIsospin().gt.0) exit
+    
+    !-----------------------------------------------------------------------------
+    ! Transforming the densities
+    call TransformDensities(inSC, inTSC, inPC , filenx, fileny, filenz)
+    
+    !-----------------------------------------------------------------------------
+    ! Interpolation 
+    call ConstructInterpolationFunctions(filenx,fileny,filenz,filedx)
+    
+    ! Interpolating the wavefunctions
+    do wave=1,nwt
+      HFBasis(wave) = InterpolateSpwf(HFBasis(wave))
     enddo
-    index = wave - 1
-
-    ! Create the neutron time-reversed pairs
-    do wave=1,index
-      call BreakTimeReversal(HFBasis(wave), HFBasisTransformed(wave),          &
-      &                                     HFBasisTransformed(wave+index) )
-    enddo
-
-    ! Create the proton time-reversed pairs
-    do wave=index+1,filenwt
-      call BreakTimeReversal(HFBasis(wave),HFBasisTransformed(wave+index),     &
-      &                                    HFBasisTransformed(wave+filenwt))
-    enddo
-  endif
-  !-----------------------------------------------------------------------------
-  !Checking for Parity Breaking
-  if(inPC.neqv.PC) then
-    !Breaking Parity
-    do wave=1,size(HFBasisTransformed)
-      call BreakParity(HFBasisTransformed(wave) )
-    enddo
-  endif
-  !-----------------------------------------------------------------------------
-  !Checking for Signature Breaking
-  if(inSC.neqv.SC) then
-    !Breaking Signature
-    do wave=1,size(HFBasisTransformed)
-      call BreakSignature(HFBasisTransformed(wave))
-    enddo
-  endif
-  !-----------------------------------------------------------------------------
-  !Checking for Time Simplex Breaking
-  if(inTSC.neqv.TSC) then
-    !Breaking Parity
-    do wave=1,size(HFBasisTransformed)
-      call BreakTimeSimplex(HFBasisTransformed(wave))
-    enddo
-  endif
-  !-----------------------------------------------------------------------------
-  !Applying the changes to the HFBasis
-  call ChangeNumberWaveFunctions(nwt)
-  do wave=1,nwt
-    HFBasis(wave) = HFBasisTransformed(wave)
-    call HFBasis(wave)%SymmetryOperators()
-  enddo
-
-  !-----------------------------------------------------------------------------
-  ! Transforming the densities
-  call TransformDensities(inSC, inTSC, inPC , filenx, fileny, filenz)
-
+  
+    Density = NewDensityVector()
+    Recalc=.true.
+  
   end subroutine TransformInput
 
   subroutine BreakParity(wf)
@@ -1671,5 +1675,199 @@ end subroutine TransformHFBMatrices
 
     call NewWfTwo%SetGrid(Temp)
   end subroutine BreakTimeReversal
+  
+    subroutine ConstructInterpolationFunctions(mx,my,mz,ex)
+    !---------------------------------------------------------------------------
+    ! Construct the values of the interpolation functions f_r associated with
+    ! the old mesh at the points of the new mesh.
+    ! (mx,my,mz, ex) => (nx,ny,nz,dx)
+    !
+    !
+    ! Currently only valid when conserving all of the spatial symmetries
+    ! 
+    !---------------------------------------------------------------------------
+    
+    integer, intent(in)       :: mx,my,mz
+    real(KIND=dp), intent(in) :: ex
+    integer                   :: i,j,k
+    real(KIND=dp)             :: fac, c,d,x1,x2, dh, ph
+    real(KIND=dp), parameter  :: eps = 1d-3
+    
+    allocate(interpolX(nx,mx,2), interpolY(ny,my,2), interpolZ(nz,mz,2))
+    InterpolX = 0.0d0
+    InterpolY = 0.0d0
+    InterpolZ = 0.0d0
+    
+    dh = dx/ex
+    fac =   0.5d0 / mx
+    x1  = - 0.5d0 * dh
+    ph  = 0.5 * pi/mx
+    do i=1,nx
+      x1 = x1 + dh
+      x2  = - 0.5d0
+      do j=1,mx        
+        x2 = x2 + 1
+        if (abs(x1-x2).le.eps) then
+          c = pi/ph
+        else
+          c = sin(pi * (x1 - x2))/sin(ph*(x1-x2))
+        endif
+        if (abs((x1+x2)/(2*mx)-1.0_dp).le.eps) then
+          d= pi/ph
+        else
+          d  = sin(pi*(x1+x2))/sin(ph*(x1+x2))
+        endif
+        InterpolX(i,j,1) = fac * (c - d)
+        InterpolX(i,j,2) = fac * (c + d)
+      enddo
+    enddo
+    
+    fac =   0.5d0 / my
+    x1  = - 0.5d0 * dh
+    ph  = 0.5 * pi/my
+    do i=1,ny
+      x1 = x1 + dh
+      x2  = - 0.5d0
+      do j=1,my        
+        x2 = x2 + 1
+        if (abs(x1-x2).le.eps) then
+          c = pi/ph
+        else
+          c = sin(pi * (x1 - x2))/sin(ph*(x1-x2))
+        endif
+        if (abs((x1+x2)/(2*my)-1.0_dp).le.eps) then
+          d= pi/ph
+        else
+          d  = sin(pi*(x1+x2))/sin(ph*(x1+x2))
+        endif
+        InterpolY(i,j,1) = fac * (c - d)
+        InterpolY(i,j,2) = fac * (c + d)
+      enddo
+    enddo
+    
+    fac =   0.5d0 / mz
+    x1  = - 0.5d0 * dh
+    ph  =   0.5 * pi/mz
+    do i=1,nz
+      x1 = x1 + dh
+      x2 = - 0.5d0
+      do j=1,mz        
+        x2 = x2 + 1 
+        if (abs(x1-x2).le.eps) then
+          c = pi/ph
+        else
+          c = sin(pi*(x1-x2))/sin(ph*(x1-x2))
+        endif
+        if (abs((x1+x2)/(2*mz)-1.0_dp).le.eps) then
+          d= pi/ph
+        else
+          d  = sin(pi*(x1+x2))/sin(ph*(x1+x2))
+        endif
+        InterpolZ(i,j,1) = fac * (c - d)
+        InterpolZ(i,j,2) = fac * (c + d)
+      enddo
+    enddo
+  
+  end subroutine ConstructInterpolationFunctions
+    
+  function InterpolateSpwf(Phi) result(Psi)
+    !---------------------------------------------------------------------------
+    ! Interpolate a given wave-function from a certain mesh to 
+    ! the new mesh (nx,ny,nz,dx), using the interpolation functions.
+    !
+    !---------------------------------------------------------------------------
+    
+    type(Spwf), intent(in) :: Phi
+    type(Spwf)             :: Psi
+    integer                :: oldnx,oldny,oldnz
+    integer                :: i,j,k, ii,jj,kk, P
+    real(KIND=dp),allocatable :: temp(:,:,:,:), alt(:,:,:,:)
+    
+    Psi = CopyWaveFunction(Phi)
+    
+    Psi%Value = NewSpinor()
+    Psi%Der(1)= NewSpinor()
+    Psi%Der(2)= NewSpinor()
+    Psi%Der(3)= NewSpinor()
+    Psi%Lap   = NewSpinor()
+    
+    oldnx = size(Phi%Value%Grid,1)
+    oldny = size(Phi%Value%Grid,2)
+    oldnz = size(Phi%Value%Grid,3)
+    
+    ! First interpolate the x-direction
+    allocate(temp(nx,oldny,oldnz,4))
+    allocate(alt (nx,ny,oldnz,4)) 
+    do k=1,oldnz
+      do j=1,oldny
+        do i=1,nx 
+          temp(i,j,k,:) = 0.0_dp
+          do ii=1,oldnx
+            temp(i,j,k,1) = temp(i,j,k,1) + InterpolX(i,ii,2) * Phi%Value%Grid(ii,j,k,1,1)
+            temp(i,j,k,2) = temp(i,j,k,2) + InterpolX(i,ii,1) * Phi%Value%Grid(ii,j,k,2,1)
+            temp(i,j,k,3) = temp(i,j,k,3) + InterpolX(i,ii,1) * Phi%Value%Grid(ii,j,k,3,1)
+            temp(i,j,k,4) = temp(i,j,k,4) + InterpolX(i,ii,2) * Phi%Value%Grid(ii,j,k,4,1)
+          enddo
+        enddo
+      enddo
+    enddo
+    ! Then interpolate in the y-direction
+    do k=1,oldnz
+      do i=1,nx
+        do j=1,ny
+          alt(i,j,k,:) = 0.0_dp
+          do jj=1,oldny
+            alt(i,j,k,1) = alt(i,j,k,1) + InterpolY(j,jj,2) * temp(i,jj,k,1)
+            alt(i,j,k,2) = alt(i,j,k,2) + InterpolY(j,jj,1) * temp(i,jj,k,2)
+            alt(i,j,k,3) = alt(i,j,k,3) + InterpolY(j,jj,2) * temp(i,jj,k,3)
+            alt(i,j,k,4) = alt(i,j,k,4) + InterpolY(j,jj,1) * temp(i,jj,k,4)
+          enddo
+        enddo
+      enddo
+    enddo
+    ! Finally interpolate in the z-direction
+    select case(Phi%Parity)
+    
+    case(1)
+      do j=1,ny
+        do i=1,nx
+          do k=1,nz
+            Psi%Value%Grid(i,j,k,:,1) = 0.0_dp
+            do kk=1,oldnz
+              Psi%Value%Grid(i,j,k,1,1) = Psi%Value%Grid(i,j,k,1,1) + InterpolZ(k,kk,2) * alt(i,j,kk,1)
+              Psi%Value%Grid(i,j,k,2,1) = Psi%Value%Grid(i,j,k,2,1) + InterpolZ(k,kk,2) * alt(i,j,kk,2)
+              Psi%Value%Grid(i,j,k,3,1) = Psi%Value%Grid(i,j,k,3,1) + InterpolZ(k,kk,1) * alt(i,j,kk,3)
+              Psi%Value%Grid(i,j,k,4,1) = Psi%Value%Grid(i,j,k,4,1) + InterpolZ(k,kk,1) * alt(i,j,kk,4)
+            enddo
+          enddo
+        enddo
+      enddo
+    case(-1)
+      do j=1,ny
+        do i=1,nx
+          do k=1,nz
+            Psi%Value%Grid(i,j,k,:,1) = 0.0_dp
+            do kk=1,oldnz
+              Psi%Value%Grid(i,j,k,1,1) = Psi%Value%Grid(i,j,k,1,1) + InterpolZ(k,kk,2) * alt(i,j,kk,1)
+              Psi%Value%Grid(i,j,k,2,1) = Psi%Value%Grid(i,j,k,2,1) + InterpolZ(k,kk,2) * alt(i,j,kk,2)
+              Psi%Value%Grid(i,j,k,3,1) = Psi%Value%Grid(i,j,k,3,1) + InterpolZ(k,kk,1) * alt(i,j,kk,3)
+              Psi%Value%Grid(i,j,k,4,1) = Psi%Value%Grid(i,j,k,4,1) + InterpolZ(k,kk,1) * alt(i,j,kk,4)
+            enddo
+            
+          enddo
+        enddo
+      enddo
+    case(0)
+      call stp("Cannot interpolate for broken parity atm")
+    end select
+    
+    do i=1,min(oldnx,nx) 
+      print *, Psi%Value%Grid(i,1,1,1,1),Phi%Value%Grid(i,1,1,1,1)
+    enddo
+    do i=1, nx - oldnx
+      print *, Psi%Value%Grid(oldnx + i,1,1,1,1)
+    enddo 
+    print *
+  end function InterpolateSpwf
 
 end module Transform

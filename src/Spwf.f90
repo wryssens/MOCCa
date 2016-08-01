@@ -12,8 +12,6 @@ module WaveFunctions
   public
 
   type Spwf
-
-
     !---------------------------------------------------------------------------
     ! Value
     !   Values of the associated wavefunction on the lattice
@@ -845,7 +843,7 @@ contains
     Lap = WF%Lap
   end function GetLap
 
-  pure function InProduct(WFOne,WFTwo) result(IP)
+  function InProduct(WFOne,WFTwo) result(IP)
     !---------------------------------------------------------------------------
     !This function computes the (possibly complex) inproduct of two Spwfs.
     !                   < WFOne|WFTwo >

@@ -599,7 +599,7 @@ contains
     return
   end function InproductSpinorImaginary
   
-  pure function InproductSpinorReal(Psi,Phi) result(Inproduct)
+  function InproductSpinorReal(Psi,Phi) result(Inproduct)
     !---------------------------------------------------------------------------
     ! This function computes the real part of the inproduct of two spinors, 
     !       int d\vec{r} \Psi^\dagger \Phi
@@ -609,6 +609,7 @@ contains
     integer                   :: i
 
     Inproduct = 0.0_dp
+
     do i=1,nx*ny*nz*4
       Inproduct = Inproduct + Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1)
     enddo
@@ -616,7 +617,7 @@ contains
     return
   end function InproductSpinorReal
   
-  pure function InproductSpinor(Psi,Phi) result(Inproduct)
+  function InproductSpinor(Psi,Phi) result(Inproduct)
     !---------------------------------------------------------------------------
     ! This function computes the inproduct of two spinors, 
     !       int d\vec{r} \Psi^\dagger \Phi
@@ -629,7 +630,7 @@ contains
   
   end function InproductSpinor
   
-  pure function InproductSpinorComplex(Psi,Phi) result(Inproduct)
+  function InproductSpinorComplex(Psi,Phi) result(Inproduct)
     !---------------------------------------------------------------------------
     ! This function computes the inproduct of two spinors, 
     !       int d\vec{r} \Psi^\dagger \Phi

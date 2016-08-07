@@ -42,6 +42,7 @@ module InOutput
   !-----------------------------------------------------------------------------
   ! Whether or not to write extra output files for various other codes.
   logical :: PromOutput = .false.
+  logical :: AllowTransform = .false.
   !-----------------------------------------------------------------------------
   logical :: LegacyInput=.false.
   ! Convergence information
@@ -135,9 +136,10 @@ contains
     !of file it exactly is.
     call WFInput()
     !---------------------------------------------------------------------------
-    if(    (inPC .neqv. PC)  .or. (inTSC .neqv. TSC) .or. (inSC .neqv. SC)     &
-    & .or. (inTRC.neqv. TRC) .or. (inIC  .neqv. IC)  .or. (filenx.ne.nx)       &
-    & .or. (fileny.ne.ny)    .or. (filenz.ne. nz)  ) then
+    !if(    (inPC .neqv. PC)  .or. (inTSC .neqv. TSC) .or. (inSC .neqv. SC)     &
+    !& .or. (inTRC.neqv. TRC) .or. (inIC  .neqv. IC)  .or. (filenx.ne.nx)       &
+    !& .or. (fileny.ne.ny)    .or. (filenz.ne. nz)  ) then
+    if(AllowTransform) then
       !If the symmetries requested are not the ones stored on the wavefunction
       !file, transform all the wavefunctions and densities.
       call TransformInput(inTRC,inTSC,inIC,inPC,inSC,                          &
@@ -279,7 +281,7 @@ contains
     implicit none
 
     NameList /InAndOutput/ InputFileName,OutputFileName,PromOutput,LegacyInput,&
-    &                      Pictures
+    &                      Pictures, AllowTransform
 
     !--------------- Reading Input---------------------------------------
     !Info for the GenInfo Module

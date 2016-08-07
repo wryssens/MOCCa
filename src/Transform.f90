@@ -1780,7 +1780,8 @@ end subroutine TransformHFBMatrices
     type(Spwf), intent(in) :: Phi
     type(Spwf)             :: Psi
     integer                :: oldnx,oldny,oldnz
-    integer                :: i,j,k, ii,jj,kk, P
+    integer                :: i,j,k, ii,jj,kk, P,l
+    real(KIND=dp)          :: norm(2)
     real(KIND=dp),allocatable :: temp(:,:,:,:), alt(:,:,:,:)
     
     Psi = CopyWaveFunction(Phi)
@@ -1827,47 +1828,71 @@ end subroutine TransformHFBMatrices
     enddo
     ! Finally interpolate in the z-direction
     select case(Phi%Parity)
-    
-    case(1)
-      do j=1,ny
-        do i=1,nx
-          do k=1,nz
-            Psi%Value%Grid(i,j,k,:,1) = 0.0_dp
-            do kk=1,oldnz
-              Psi%Value%Grid(i,j,k,1,1) = Psi%Value%Grid(i,j,k,1,1) + InterpolZ(k,kk,2) * alt(i,j,kk,1)
-              Psi%Value%Grid(i,j,k,2,1) = Psi%Value%Grid(i,j,k,2,1) + InterpolZ(k,kk,2) * alt(i,j,kk,2)
-              Psi%Value%Grid(i,j,k,3,1) = Psi%Value%Grid(i,j,k,3,1) + InterpolZ(k,kk,1) * alt(i,j,kk,3)
-              Psi%Value%Grid(i,j,k,4,1) = Psi%Value%Grid(i,j,k,4,1) + InterpolZ(k,kk,1) * alt(i,j,kk,4)
+      case(1)
+        do j=1,ny
+          do i=1,nx
+            do k=1,nz
+              Psi%Value%Grid(i,j,k,:,1) = 0.0_dp
+              do kk=1,oldnz
+                Psi%Value%Grid(i,j,k,1,1) = Psi%Value%Grid(i,j,k,1,1) + InterpolZ(k,kk,2) * alt(i,j,kk,1)
+                Psi%Value%Grid(i,j,k,2,1) = Psi%Value%Grid(i,j,k,2,1) + InterpolZ(k,kk,2) * alt(i,j,kk,2)
+                Psi%Value%Grid(i,j,k,3,1) = Psi%Value%Grid(i,j,k,3,1) + InterpolZ(k,kk,1) * alt(i,j,kk,3)
+                Psi%Value%Grid(i,j,k,4,1) = Psi%Value%Grid(i,j,k,4,1) + InterpolZ(k,kk,1) * alt(i,j,kk,4)
+              enddo
             enddo
           enddo
         enddo
-      enddo
-    case(-1)
-      do j=1,ny
-        do i=1,nx
-          do k=1,nz
-            Psi%Value%Grid(i,j,k,:,1) = 0.0_dp
-            do kk=1,oldnz
-              Psi%Value%Grid(i,j,k,1,1) = Psi%Value%Grid(i,j,k,1,1) + InterpolZ(k,kk,2) * alt(i,j,kk,1)
-              Psi%Value%Grid(i,j,k,2,1) = Psi%Value%Grid(i,j,k,2,1) + InterpolZ(k,kk,2) * alt(i,j,kk,2)
-              Psi%Value%Grid(i,j,k,3,1) = Psi%Value%Grid(i,j,k,3,1) + InterpolZ(k,kk,1) * alt(i,j,kk,3)
-              Psi%Value%Grid(i,j,k,4,1) = Psi%Value%Grid(i,j,k,4,1) + InterpolZ(k,kk,1) * alt(i,j,kk,4)
+      case(-1)
+        do j=1,ny
+          do i=1,nx
+            do k=1,nz
+              Psi%Value%Grid(i,j,k,:,1) = 0.0_dp
+              do kk=1,oldnz
+                Psi%Value%Grid(i,j,k,1,1) = Psi%Value%Grid(i,j,k,1,1) + InterpolZ(k,kk,1) * alt(i,j,kk,1)
+                Psi%Value%Grid(i,j,k,2,1) = Psi%Value%Grid(i,j,k,2,1) + InterpolZ(k,kk,1) * alt(i,j,kk,2)
+                Psi%Value%Grid(i,j,k,3,1) = Psi%Value%Grid(i,j,k,3,1) + InterpolZ(k,kk,2) * alt(i,j,kk,3)
+                Psi%Value%Grid(i,j,k,4,1) = Psi%Value%Grid(i,j,k,4,1) + InterpolZ(k,kk,2) * alt(i,j,kk,4)
+              enddo
             enddo
-            
           enddo
         enddo
-      enddo
     case(0)
       call stp("Cannot interpolate for broken parity atm")
     end select
     
-    do i=1,min(oldnx,nx) 
-      print *, Psi%Value%Grid(i,1,1,1,1),Phi%Value%Grid(i,1,1,1,1)
-    enddo
-    do i=1, nx - oldnx
-      print *, Psi%Value%Grid(oldnx + i,1,1,1,1)
-    enddo 
-    print *
+!    do i=1,oldnx
+!      print *, Phi%Value%Grid(i,1,1,1:4,1)
+!    enddo
+!    print *
+!    do i=1,nx
+!      print *, Psi%Value%Grid(i,1,1,1:4,1)
+!    enddo
+!    print *    
+!    print *
+!    norm = 0.0_dp
+!    do l=1,4
+!      do k=1,nz
+!        do j=1,ny
+!          do i=1,nx
+!            norm(1)= norm(1) + Psi%Value%Grid(i,j,k,l,1)**2
+!          enddo
+!        enddo
+!      enddo
+!    enddo
+!    
+!    do l=1,4
+!      do k=1,oldnz
+!        do j=1,oldny
+!          do i=1,oldnx
+!            norm(2)= norm(2) + Phi%Value%Grid(i,j,k,l,1)**2
+!          enddo
+!        enddo
+!      enddo
+!    enddo
+!    
+!    print *, 'Norm', sqrt(norm(1) * dv), sqrt(norm(2) * dv*2)*2
+!    print *
+
   end function InterpolateSpwf
 
 end module Transform

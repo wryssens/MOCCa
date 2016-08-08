@@ -1680,7 +1680,7 @@ end subroutine TransformHFBMatrices
     call NewWfTwo%SetGrid(Temp)
   end subroutine BreakTimeReversal
   
-    subroutine ConstructInterpolationFunctions(mx,my,mz,ex)
+  subroutine ConstructInterpolationFunctions(mx,my,mz,ex)
     !---------------------------------------------------------------------------
     ! Construct the values of the interpolation functions f_r associated with
     ! the old mesh at the points of the new mesh.
@@ -1701,6 +1701,13 @@ end subroutine TransformHFBMatrices
     InterpolX = 0.0d0
     InterpolY = 0.0d0
     InterpolZ = 0.0d0
+    
+    if(.not. SC) then
+      call stp('Interpolation not yet supported for signature breaking calculations.')
+    endif
+    if(.not. TSC) then
+      call stp('Interpolation not yet supported for timesimplex breaking calculations.')
+    endif
     
     dh = dx/ex
     fac =   0.5d0 / mx
@@ -1778,11 +1785,7 @@ end subroutine TransformHFBMatrices
         InterpolZ(i,j,2) = fac * (c + d)
       enddo
     enddo
-  
-!    print *, InterpolZ(:,3,1)
-!    print *, InterpolZ(:,3,2)
-!    stop
-  
+    
   end subroutine ConstructInterpolationFunctions
     
   function InterpolateSpwf(Phi) result(Psi)

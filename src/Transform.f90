@@ -43,7 +43,7 @@ contains
   type(Spwf), allocatable   :: HFBasisTransformed(:)
   integer                   :: wave, index
  
-    !-----------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
     ! Checking for Time Reversal breaking first!
     ! Note that we try to take the same ordering as CR8: first all the neutron
     ! wavefunctions, then all the proton wavefunctions.
@@ -61,17 +61,17 @@ contains
       index = wave - 1
       ! Create the neutron time-reversed pairs
       do wave=1,index
-        call BreakTimeReversal(HFBasis(wave), HFBasisTransformed(wave),          &
+        call BreakTimeReversal(HFBasis(wave), HFBasisTransformed(wave),        &
         &                                     HFBasisTransformed(wave+index) )
       enddo
 
       ! Create the proton time-reversed pairs
       do wave=index+1,filenwt
-        call BreakTimeReversal(HFBasis(wave),HFBasisTransformed(wave+index),     &
+        call BreakTimeReversal(HFBasis(wave),HFBasisTransformed(wave+index),   &
         &                                    HFBasisTransformed(wave+filenwt))
       enddo
     endif
-    !-----------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
     !Checking for Parity Breaking
     if(inPC.neqv.PC) then
       !Breaking Parity
@@ -79,7 +79,7 @@ contains
         call BreakParity(HFBasisTransformed(wave) )
       enddo
     endif
-    !-----------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
     !Checking for Signature Breaking
     if(inSC.neqv.SC) then
       !Breaking Signature
@@ -87,7 +87,7 @@ contains
         call BreakSignature(HFBasisTransformed(wave))
       enddo
     endif
-    !-----------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
     !Checking for Time Simplex Breaking
     if(inTSC.neqv.TSC) then
       !Breaking Parity
@@ -95,27 +95,28 @@ contains
         call BreakTimeSimplex(HFBasisTransformed(wave))
       enddo
     endif
-    !-----------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
     !Applying the changes to the HFBasis
     call ChangeNumberWaveFunctions(nwt)
     do wave=1,nwt
       HFBasis(wave) = HFBasisTransformed(wave)
       call HFBasis(wave)%SymmetryOperators()
-    enddo
-    
-    !-----------------------------------------------------------------------------
+    enddo    
+    !---------------------------------------------------------------------------
     ! Transforming the densities
     call TransformDensities(inSC, inTSC, inPC , filenx, fileny, filenz)
-    
-    !-----------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
     ! Interpolation 
-    call ConstructInterpolationFunctions(filenx,fileny,filenz,filedx)
-    
+    call ConstructInterpolationFunctions(size(HFBasis(1)%Value%Grid,1)         &
+    &                                   ,size(HFBasis(1)%Value%Grid,2)         &
+    &                                   ,size(HFBasis(1)%Value%Grid,3)         &
+    &                                   ,filedx)
     ! Interpolating the wavefunctions
     do wave=1,nwt
       HFBasis(wave) = InterpolateSpwf(HFBasis(wave))
     enddo
-  
+    !---------------------------------------------------------------------------
+    ! Make sure the densities get recalculated
     Density = NewDensityVector()
     Recalc=.true.
   
@@ -130,7 +131,7 @@ contains
     type(Spwf), intent(inout) :: wf
     type(Spinor)              :: Temp, Value
     integer                   :: p, TimeSimplex, Parity, Signature,TimeReversal
-    integer                   ::  i,j,k,l, s
+    integer                   :: i,j,k,l, s, oldnz
     real(KIND=dp)             :: Energy, Occ, Dispersion, AngMom(3)
 
     !Setting up the parameters of the wavefunction we are dealing with
@@ -155,18 +156,19 @@ contains
     !instead of only half.
     !Note that the x and y dimensions need not be nx/ny when we are breaking
     !more than one symmetry.
-    Temp = NewSizeSpinor(size(Value%Grid,1), size(Value%Grid,2), nz)
+    oldnz = size(Value%Grid,3)
+    Temp  = NewSizeSpinor(size(Value%Grid,1), size(Value%Grid,2), 2*oldnz)
     ! Moving the old values to their correct place in the new spinor.
-    Temp%Grid(:,:,nz/2+1:nz ,:,:) = Value%Grid(:,:,1:nz/2,:,:)
+    Temp%Grid(:,:,oldnz+1:2*oldnz ,:,:) = Value%Grid(:,:,1:oldnz,:,:)
 
     !Using the symmetries of the wavefunction to construct the rest
     do l=1,4
       s = CompSignExtension(3,Parity,Signature,TimeSimplex,l)
       do j=1, size(Value%Grid,2)
         do i=1,size(Value%Grid,1)
-          Temp%Grid(i,j,1:nz/2,l,1) =                                          &
+          Temp%Grid(i,j,1:oldnz,l,1) =                                         &
           & s*Reverse(LineExtensionCoulombZ(Value%Grid(:,:,:,l,1), &
-          & nz/2,Parity,TimeSimplex,Signature,i,j))
+          & oldnz,Parity,TimeSimplex,Signature,i,j))
         enddo
       enddo
     enddo
@@ -190,7 +192,7 @@ contains
     type(Spwf), intent(inout) :: wf
     type(Spinor)              :: Temp, Value
     integer                   :: p, TimeSimplex, Parity, Signature, TimeReversal
-    integer                   :: i,j,k,l,s
+    integer                   :: i,j,k,l,s, oldnx
     real(KIND=dp)             :: AngMom(3), Energy, Occ, Dispersion
 
     !Setting up the parameters of the wavefunction we are dealing with
@@ -213,19 +215,20 @@ contains
 
     ! When breaking parity, we need to store the values for the entire x-axis,
     ! instead of only half.
-    Temp = NewSizeSpinor(nx,size(Value%Grid,2), size(Value%Grid,3))
+    oldnx = size(Value%Grid,1)
+    Temp  = NewSizeSpinor(2*oldnx,size(Value%Grid,2), size(Value%Grid,3))
 
     ! Moving the old values to their correct place in the new spinor.
-    Temp%Grid(nx/2+1:nx,:,:,:,:) = Value%Grid(1:nx/2,:,:,:,:)
+    Temp%Grid(oldnx+1:2*oldnx,:,:,:,:) = Value%Grid(1:oldnx,:,:,:,:)
 
     !Using the symmetries of the wavefunction to construct the rest.
     do l=1,4
       s = CompSignExtension(1,Parity,Signature,TimeSimplex,l)
       do k=1,size(Value%Grid,3)
         do j=1,size(Value%Grid,2)
-          Temp%Grid(1:nx/2,j,k,l,1) = real(s, KIND=dp)* &
+          Temp%Grid(1:oldnx,j,k,l,1) = real(s, KIND=dp)* &
           & Reverse(LineExtensionCoulombX(Value%Grid(:,:,:,l,1), &
-          & nx/2,Parity,TimeSimplex,Signature,j,k))
+          & oldnx,Parity,TimeSimplex,Signature,j,k))
         enddo
       enddo
     enddo
@@ -248,7 +251,7 @@ contains
     type(Spwf), intent(inout) :: wf
     type(Spinor)              :: Temp, Value
     integer                   :: p, TimeSimplex, Parity, Signature, TimeReversal
-    integer                   :: i,j,k,l,s
+    integer                   :: i,j,k,l,s, oldny
     real(KIND=dp)             :: Occ, Energy,Dispersion, AngMom(3)
 
     !Setting up the parameters of the wavefunction we are dealing with
@@ -269,20 +272,21 @@ contains
     !Checking input
     if(TimeSimplex.eq.0) call stp("Time-simplex is already broken!")
 
+    oldny = size(Value%Grid,2)
     !When breaking parity, we need to store the values for the entire y-axis.
-    Temp=NewSizeSpinor(size(Value%Grid,1),ny,size(Value%Grid,3))
+    Temp=NewSizeSpinor(size(Value%Grid,1),2*oldny,size(Value%Grid,3))
 
     ! Moving the old values to their correct place in the new spinor.
-    Temp%Grid(:, ny/2+1:ny,:,:,:) = Value%Grid(:,1:ny/2,:,:,:)
+    Temp%Grid(:, oldny+1:2*oldny,:,:,:) = Value%Grid(:,1:oldny,:,:,:)
    
     !Using the symmetries of the wavefunction to construct the rest
     do l=1,4
       s = CompSignExtension(2,Parity,Signature,TimeSimplex,l)
       do k=1,size(Value%Grid,3)
         do i=1,size(Value%Grid,1)
-          Temp%Grid(i,1:ny/2,k,l,1) = s*Reverse( &
+          Temp%Grid(i,1:oldny,k,l,1) = s*Reverse( &
           & LineExtensionCoulombY(Value%Grid(:,:,:,l,1), &
-            & ny/2,Parity,TimeSimplex,Signature,i,k))
+            & oldny,Parity,TimeSimplex,Signature,i,k))
         enddo
       enddo
     enddo
@@ -1747,26 +1751,37 @@ end subroutine TransformHFBMatrices
     
     fac =   0.5d0 / mz
     x1  = - 0.5d0 * dh
+    if(.not. PC) x1 = x1 - nz/2 * dh   
     ph  =   0.5 * pi/mz
     do i=1,nz
       x1 = x1 + dh
       x2 = - 0.5d0
+      if(.not. PC) x2 = x2 - mz/2 
       do j=1,mz        
-        x2 = x2 + 1 
+        x2 = x2 + 1
         if (abs(x1-x2).le.eps) then
           c = pi/ph
         else
           c = sin(pi*(x1-x2))/sin(ph*(x1-x2))
-        endif
-        if (abs((x1+x2)/(2*mz)-1.0_dp).le.eps) then
-          d= pi/ph
+        endif        
+        if(.not. PC) then 
+          d = 0.0d0
         else
-          d  = sin(pi*(x1+x2))/sin(ph*(x1+x2))
+          if (abs((x1+x2)/(2*mz)-1.0_dp).le.eps) then
+            d= pi/ph
+          else
+            d  = sin(pi*(x1+x2))/sin(ph*(x1+x2))
+          endif
         endif
+        
         InterpolZ(i,j,1) = fac * (c - d)
         InterpolZ(i,j,2) = fac * (c + d)
       enddo
     enddo
+  
+!    print *, InterpolZ(:,3,1)
+!    print *, InterpolZ(:,3,2)
+!    stop
   
   end subroutine ConstructInterpolationFunctions
     
@@ -1780,7 +1795,7 @@ end subroutine TransformHFBMatrices
     type(Spwf), intent(in) :: Phi
     type(Spwf)             :: Psi
     integer                :: oldnx,oldny,oldnz
-    integer                :: i,j,k, ii,jj,kk, P,l
+    integer                :: i,j,k, ii,jj,kk, P,l, aP
     real(KIND=dp)          :: norm(2)
     real(KIND=dp),allocatable :: temp(:,:,:,:), alt(:,:,:,:)
     
@@ -1815,7 +1830,7 @@ end subroutine TransformHFBMatrices
     ! Then interpolate in the y-direction
     do k=1,oldnz
       do i=1,nx
-        do j=1,ny
+        do j=1,ny 
           alt(i,j,k,:) = 0.0_dp
           do jj=1,oldny
             alt(i,j,k,1) = alt(i,j,k,1) + InterpolY(j,jj,2) * temp(i,jj,k,1)
@@ -1826,39 +1841,30 @@ end subroutine TransformHFBMatrices
         enddo
       enddo
     enddo
+    
+    !---------------------------------------------------------------------------
     ! Finally interpolate in the z-direction
-    select case(Phi%Parity)
-      case(1)
-        do j=1,ny
-          do i=1,nx
-            do k=1,nz
-              Psi%Value%Grid(i,j,k,:,1) = 0.0_dp
-              do kk=1,oldnz
-                Psi%Value%Grid(i,j,k,1,1) = Psi%Value%Grid(i,j,k,1,1) + InterpolZ(k,kk,2) * alt(i,j,kk,1)
-                Psi%Value%Grid(i,j,k,2,1) = Psi%Value%Grid(i,j,k,2,1) + InterpolZ(k,kk,2) * alt(i,j,kk,2)
-                Psi%Value%Grid(i,j,k,3,1) = Psi%Value%Grid(i,j,k,3,1) + InterpolZ(k,kk,1) * alt(i,j,kk,3)
-                Psi%Value%Grid(i,j,k,4,1) = Psi%Value%Grid(i,j,k,4,1) + InterpolZ(k,kk,1) * alt(i,j,kk,4)
-              enddo
-            enddo
+    ! Depending on the parity of the wave-function, we need to use the 
+    ! interpolation coefficients differently.
+    P  = (Phi%Parity + 3)/2 
+    if(PC) then
+      aP = mod(P,2)+1
+    else
+      aP = P
+    endif
+    do j=1,ny
+      do i=1,nx
+        do k=1,nz
+          Psi%Value%Grid(i,j,k,:,1) = 0.0_dp
+          do kk=1,oldnz
+            Psi%Value%Grid(i,j,k,1,1) = Psi%Value%Grid(i,j,k,1,1) + InterpolZ(k,kk,P ) * alt(i,j,kk,1)
+            Psi%Value%Grid(i,j,k,2,1) = Psi%Value%Grid(i,j,k,2,1) + InterpolZ(k,kk,P ) * alt(i,j,kk,2)
+            Psi%Value%Grid(i,j,k,3,1) = Psi%Value%Grid(i,j,k,3,1) + InterpolZ(k,kk,aP) * alt(i,j,kk,3)
+            Psi%Value%Grid(i,j,k,4,1) = Psi%Value%Grid(i,j,k,4,1) + InterpolZ(k,kk,aP) * alt(i,j,kk,4)
           enddo
         enddo
-      case(-1)
-        do j=1,ny
-          do i=1,nx
-            do k=1,nz
-              Psi%Value%Grid(i,j,k,:,1) = 0.0_dp
-              do kk=1,oldnz
-                Psi%Value%Grid(i,j,k,1,1) = Psi%Value%Grid(i,j,k,1,1) + InterpolZ(k,kk,1) * alt(i,j,kk,1)
-                Psi%Value%Grid(i,j,k,2,1) = Psi%Value%Grid(i,j,k,2,1) + InterpolZ(k,kk,1) * alt(i,j,kk,2)
-                Psi%Value%Grid(i,j,k,3,1) = Psi%Value%Grid(i,j,k,3,1) + InterpolZ(k,kk,2) * alt(i,j,kk,3)
-                Psi%Value%Grid(i,j,k,4,1) = Psi%Value%Grid(i,j,k,4,1) + InterpolZ(k,kk,2) * alt(i,j,kk,4)
-              enddo
-            enddo
-          enddo
-        enddo
-    case(0)
-      call stp("Cannot interpolate for broken parity atm")
-    end select
+      enddo
+    enddo
     
 !    do i=1,oldnx
 !      print *, Phi%Value%Grid(i,1,1,1:4,1)

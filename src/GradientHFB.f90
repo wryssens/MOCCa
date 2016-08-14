@@ -100,7 +100,7 @@ contains
   subroutine GetUandV
     !---------------------------------------------------------------------------
     ! Get U and V values from the HFB module.
-    ! Also ery important: counts the number of of (U,V) vectors in every block.
+    ! Also very important: counts the number of of (U,V) vectors in every block.
     !
     !
     !---------------------------------------------------------------------------
@@ -134,26 +134,26 @@ contains
         call stp('No legacy for signature broken.')
       endif
     endif
-    ! print *, HFBColumns(1:blocksizes(1,2),1,2)
-    ! print *, HFBColumns(1:blocksizes(2,2),2,2)
+     print *, HFBColumns(1:blocksizes(1,2),1,2)
+     print *, HFBColumns(1:blocksizes(2,2),2,2)
 
     if(allocated(qpexcitations)) then
       call BlockQuasiParticles
     endif
-    ! print *, HFBColumns(1:blocksizes(1,2),1,2)
-    ! print *, HFBColumns(1:blocksizes(2,2),2,2)
-    !
-    ! do i=1,blocksizes(2,2)
-    !   print *, DBLE(U(i,1:2*blocksizes(2,2),2,2))
-    ! enddo
-    ! print *
-    !
-    ! do i=1,blocksizes(2,2)
-    !   print *, DBLE(V(i,1:2*blocksizes(2,2),2,2))
-    ! enddo
-    ! print *
+     print *, HFBColumns(1:blocksizes(1,2),1,2)
+     print *, HFBColumns(1:blocksizes(2,2),2,2)
+    
+     do i=1,blocksizes(2,2)
+       print *, DBLE(U(i,1:2*blocksizes(2,2),2,2))
+     enddo
+     print *
+    
+     do i=1,blocksizes(2,2)
+       print *, DBLE(V(i,1:2*blocksizes(2,2),2,2))
+     enddo
+     print *
 
-    ! stop
+     stop
     do it=1,Iindex
         do P=1,Pindex
             N = blocksizes(P,it)

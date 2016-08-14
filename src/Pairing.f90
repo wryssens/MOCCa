@@ -609,6 +609,10 @@ contains
   ! |     (HFBasis for BCS, Canonical for HFB)
   ! |---------
   !-----------------------------------------------------------------------------
+    
+        
+    use HFB, only: blocksizes
+    
     1 format(' Warning! ',/,                                       &
     &        ' Pairing calculations did not converge.',/,          &
     &        ' Pairing iterations:  ', i4,/,                       &
@@ -616,7 +620,8 @@ contains
     &        ' New Fermi Energy:    ', 2f10.6)
 
     real(KIND=dp)    :: OldFermi(2), Particles(2)
-    integer          :: outeriter
+    integer          :: outeriter,j
+
 
     if(PairingType.eq.0) then
      if(FreezeOccupation) return
@@ -691,6 +696,7 @@ contains
       !call CompPDensity(PairDensity)
       !LNLambda = CalcLambda2()
     endif
+
   end subroutine SolvePairing
 
   subroutine SetDeltas

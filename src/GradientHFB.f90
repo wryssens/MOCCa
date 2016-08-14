@@ -134,26 +134,13 @@ contains
         call stp('No legacy for signature broken.')
       endif
     endif
-     print *, HFBColumns(1:blocksizes(1,2),1,2)
-     print *, HFBColumns(1:blocksizes(2,2),2,2)
+!     print *, HFBColumns(1:blocksizes(1,2),1,2)
+!     print *, HFBColumns(1:blocksizes(2,2),2,2)
 
     if(allocated(qpexcitations)) then
       call BlockQuasiParticles
     endif
-     print *, HFBColumns(1:blocksizes(1,2),1,2)
-     print *, HFBColumns(1:blocksizes(2,2),2,2)
-    
-     do i=1,blocksizes(2,2)
-       print *, DBLE(U(i,1:2*blocksizes(2,2),2,2))
-     enddo
-     print *
-    
-     do i=1,blocksizes(2,2)
-       print *, DBLE(V(i,1:2*blocksizes(2,2),2,2))
-     enddo
-     print *
 
-     stop
     do it=1,Iindex
         do P=1,Pindex
             N = blocksizes(P,it)
@@ -176,7 +163,7 @@ contains
                   GradV(1:N,ind(P,it),P,it) = DBLE(V(1:N,j,P,it))
                   GradU(1:N,ind(P,it),P,it) = DBLE(U(1:N,j,P,it))
 
-                  if(any(abs(GradU(1:N/2,ind(P,it),P,it)).gt.0.0d0) .or. .not. SC) then
+                  if(any(abs(GradU(1:N/2,ind(P,it),P,it)).gt.1.0d-10) .or. .not. SC) then
                     sigblocks(P,it) = sigblocks(P,it) +1
                   endif
                   ind(P,it) = ind(P,it)+ 1
@@ -184,29 +171,65 @@ contains
             enddo
         enddo
     enddo
+    
+!    print *, 'Negative parity'
+!    print *, HFBColumns(1:blocksizes(1,2),1,2)
 
+!    do i=1,blocksizes(1,2)
+!     print *, DBLE(GradU(i,1:blocksizes(1,2),1,2))
+!    enddo
+!    print *
+
+!    do i=1,blocksizes(1,2)
+!     print *, DBLE(GradV(i,1:blocksizes(1,2),1,2))
+!    enddo
+!    print *
+!    
+!    print *, 'Positive parity'
+!    print *, HFBColumns(1:blocksizes(2,2),2,2)
+
+!    do i=1,blocksizes(2,2)
+!     print *, DBLE(GradU(i,1:blocksizes(2,2),2,2))
+!    enddo
+!    print *
+
+!    do i=1,blocksizes(2,2)
+!     print *, DBLE(GradV(i,1:blocksizes(2,2),2,2))
+!    enddo
+!    print *
+!stop
+    
   end subroutine GetUandV
 
   subroutine OutHFBModule
       !-------------------------------------------------------------------------
       ! Put our solution into the HFB module correctly.
       !-------------------------------------------------------------------------
-      ! TODO: put the conjugate states too
-      !-------------------------------------------------------------------------
-      integer :: i,j,P,it,N
+
+      integer :: i,j,P,it,N, S
 
       do it=1,Iindex
           do P=1,Pindex
               N = blocksizes(P,it)
+              S = sigblocks(P,it)
               do i=1,N
-                  do j=1,N
-                      ! Don't forget to point HFBcolumns the correct way!
-                      HFBColumns(j,P,it) = j + N
-                      V(i,j+N,P,it) = GradV(i,j,P,it)
-                      U(i,j+N,P,it) = GradU(i,j,P,it)
+                  do j=1,S
+                      HFBColumns(j,P,it) = j
+                      U(i,j,P,it) = GradU(i,j,P,it)
+                      V(i,j,P,it) = GradV(i,j,P,it)
+
                       ! The conjugate states
-                      ! U(i,j,P,it)   = GradV(i,j,P,it)
-                      ! V(i,j+N,P,it) = GradU(i,j,P,it)
+                      U(i,2*N-j+1,P,it) = GradV(i,j,P,it)
+                      V(i,2*N-j+1,P,it) = GradU(i,j,P,it)
+                  enddo
+                  do j=1,N-S
+                      HFBColumns(j+S,P,it) = j + N
+                      U(i,j+N,P,it) = GradU(i,j+S,P,it)
+                      V(i,j+N,P,it) = GradV(i,j+S,P,it)
+
+                      ! The conjugate states
+                      U(i,N-j+1,P,it) = GradV(i,j+S,P,it)
+                      V(i,N-j+1,P,it) = GradU(i,j+S,P,it)
                   enddo
               enddo
               RhoHFB(1:N,1:N,P,it)   = ConstructRho(GradV(1:N,1:N,P,it),       &
@@ -217,7 +240,17 @@ contains
               &                                       sigblocks(P,it))
           enddo
       enddo
-      ! stop
+      
+!    print *
+!    do j =1, blocksizes(1,2)
+!      print *, DBLE(U(j,1:2*blocksizes(1,2),1,2))
+!    enddo
+!    print *
+!    do j =1, blocksizes(1,2)
+!      print *, DBLE(V(j,1:2*blocksizes(1,2),1,2))
+!    enddo
+!    print *
+!      ! stop
   end subroutine OutHFBModule
 
   subroutine BlockHFBHamil(Delta, Fermi, L2)
@@ -458,8 +491,8 @@ contains
                 ! (226Ra) but is worse for light nuclei (24Mg). However, since
                 ! the computational burden for these light nuclei is so small
                 ! already, I don't care for them.
-                gamma(P,it) = gradientnorm(p,it)/oldnorm(p,it)
-                gamma(P,it) = gamma(P,it) - PR(p,it)/oldnorm(p,it)
+                gamma(P,it) = 0.0_dp != gradientnorm(p,it)/oldnorm(p,it)
+                !gamma(P,it) = gamma(P,it) - PR(p,it)/oldnorm(p,it)
                 !---------------------------------------------------------------
                 ! Update
                 Direction(1:N,1:N,P,it) = Direction(1:N,1:N,P,it)  +           &

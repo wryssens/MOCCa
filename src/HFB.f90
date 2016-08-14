@@ -2156,8 +2156,7 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
               do i=1,N
                 print *, DBLE(HFBHamil(i,1:2*N,P,it))
               enddo
-
-              call stp('1st')
+              call stp('Diagoncr8 failed')
             endif
             U(      1:N/2,    1:N  ,P,it) = Eigenvectors(       1:N/2   ,  1:N  )
             V(  N/2+1:N  ,    1:N  ,P,it) = Eigenvectors(   N/2+1:N     ,  1:N  )
@@ -3687,7 +3686,6 @@ subroutine PrintBlocking
     N = size(QPExcitations)
 
     if(.not.allocated(QPBlockind)) call QPindices()
-
     do i=1,N
         index = QPblockind(i)
         P     = QPParities(i)
@@ -3713,11 +3711,21 @@ subroutine PrintBlocking
         C   = loc(1)
         do j=1,blocksizes(P,it)
             if(HFBColumns(j,P,it) .eq. C) then
+!                print *, HFBColumns(1:blocksizes(P,it),P,it)
+!                print *, HFBColumns(j,P,it), 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
+!                print *
+!                print *, HFBColumns(j,P,it)
+!                print *, DBLE(V(1:blocksizes(P,it),HFBColumns(j,P,it),P,it))
+!                print *
+                
                 HFBColumns(j,P,it) = 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
+!                print *, HFBColumns(j,P,it)
+!                print *, DBLE(V(1:blocksizes(P,it),HFBColumns(j,P,it),P,it))
+!                print *                
             endif
         enddo
     enddo
-
+    print *
   end subroutine BlockQuasiParticles
 
   subroutine PrintQP()

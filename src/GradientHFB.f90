@@ -312,7 +312,7 @@ contains
     real(KIND=dp), intent(in)                 :: Prec, DN2(2)
 
     !---------------------------------------------------------------------------
-    real(KIND=dp) :: gamma(2,2), maxstep, step, L20Norm(2), LN(2)
+    real(KIND=dp) :: gamma(2,2), maxstep, step, L20Norm(2), LN(2), Disp(2)
     real(KIND=dp) :: N20norm(2), par(2), slope,  OldFermi(2)
     real(KIND=dp) :: gradientnorm(2,2), oldnorm(2,2), PR(2,2), z(2)=0.0
     integer       :: i,j,P,it,N, Rzindex,iter, inneriter, first=1, succes(2)
@@ -410,6 +410,8 @@ contains
       succes = 0
       if(Lipkin .and. mod(iter,10).eq.1) then
          LN = Lncr8(Delta,DeltaLN,succes)
+      elseif(ConstrainDispersion) then 
+         Disp = Dispersion()      
       endif
       if(any(succes.ne.0)) call stp("lncr8 failed")
       do it=1,Iindex
@@ -433,7 +435,10 @@ contains
           ! We don't take this luxury for the L2 variable, as it is kind of a
           ! nonsense to add it anyway.
           if(Lipkin) then
-            L2(it) = L2(it) + 0.1*(LN(it) - L2(it))
+            L2(it) = L2(it) + 0.1*(LN(it)   - L2(it))
+          elseif(ConstrainDispersion) then
+            L2(it) = L2(it) - 0.01*(Disp(it) - DN2(it))
+!            if(it.eq.1) print *, 'iter, it',it, L2(it), Disp(it), DN2(it)
           endif
       enddo
       !-------------------------------------------------------------------------

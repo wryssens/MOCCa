@@ -369,10 +369,10 @@ contains
         elseif(trim(FermiSolver).eq.'GRADIENT') then
           FindFermiEnergy   => HFBFermiGradient
           if(HFBIter.eq.-1) HFBIter=500
-          if(ConstrainDispersion) then
-            call stp('MOCCa can not yet constrain the dispersion'// &
-            &        ' in combination with gradient solver.')
-          endif
+!          if(ConstrainDispersion) then
+!            call stp('MOCCa can not yet constrain the dispersion'// &
+!            &        ' in combination with gradient solver.')
+!          endif
         elseif(trim(FermiSolver).eq.'BISECTION') then
           FindFermiEnergy   => HFBFindFermiEnergyBisection
           if(HFBIter.eq.-1) HFBIter=50

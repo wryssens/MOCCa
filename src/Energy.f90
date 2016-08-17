@@ -29,7 +29,7 @@ module Energy
   real(KIND=dp),public :: Kinetic(2),  CoulombEnergy
   real(KIND=dp),public :: CoulombExchange,CoMCorrection(2,2)
   real(KIND=dp),public :: TotalEnergy, OldEnergy(7), SpEnergy, PairingEnergy(2)
-  real(KIND=dp),public :: LNEnergy(2), Routhian
+  real(KIND=dp),public :: LNEnergy(2), Routhian, OldRouthian(7)
 
   ! Two different ways of calculating and treating Skyrme terms
   real(KIND=dp) :: Skyrmeterms(32),BTerm(21)
@@ -113,6 +113,10 @@ contains
     &             sum(LNEnergy)
 
     !Calculate the Routhian too
+    do i=0,5
+        OldRouthian(7-i) = OldRouthian(6-i)
+    enddo
+    OldRouthian(1) = Routhian
     Routhian = TotalEnergy                                                     &
     !                         Contribution of multipole moment constraints
     &                      +    sum(ConstraintEnergy*Density%Rho)*dv           &

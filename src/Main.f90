@@ -492,6 +492,7 @@ subroutine PrintSummary_v2(Iteration)
   use Energy, only: TotalEnergy, OldEnergy
   use Spwfstorage, only : TotalAngMom
   use Densities,   only : DensityChange
+  use Pairing, only : Fermi
   use Cranking
   use Moments
   use GenInfo
@@ -504,14 +505,16 @@ subroutine PrintSummary_v2(Iteration)
   integer      :: i
 
   1 format('----------- Iteration ', i6,'--------------')
-  2 format("Summ.    E=" f10.3, "   dE=",e10.3)
-  3 format("Summ.  Q20=" f10.3, "  Q22=",f10.3)
-  4 format("Summ. dQ20=" e10.3, " dQ22=",e10.3)
-  5 format('Summ.   Jz=',f10.3, '  OmZ=',f10.3)
-  6 format('Summ.  dH2=',e10.3)
+  2 format("Summ.     E=" f10.3, "   dE=",e10.3)
+ 22 format("Summ. Fermi=" f10.3, "      ",f10.3) 
+  3 format("Summ.   Q20=" f10.3, "  Q22=",f10.3)
+  4 format("Summ.  dQ20=" e10.3, " dQ22=",e10.3)
+  5 format('Summ.    Jz=',f10.3, '  OmZ=',f10.3)
+  6 format('Summ.   dH2=',e10.3)
   ! Printing energy
   print 1, Iteration
   print 2, TotalEnergy,abs((TotalEnergy - OldEnergy(1))/TotalEnergy)
+  print 22, Fermi
   !------------------------------------------------------------------
   ! Note that we can best look back two values due when there is a
   ! Rutz constraint active.

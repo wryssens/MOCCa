@@ -520,7 +520,7 @@ subroutine PrintSummary_v2(Iteration)
   print 3, Q20,Q22
   print 4, dQ20, dQ22
 
-  if(CrankType(3).ne.0) then
+  if(.not.TRC) then
     print 5, TotalAngMom(3), Omega(3)
   endif
 

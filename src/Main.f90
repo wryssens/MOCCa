@@ -489,7 +489,7 @@ subroutine PrintSummary_v2(Iteration)
   !-----------------------------------------------------------------------------
 
   use CompilationInfo
-  use Energy, only: TotalEnergy, OldEnergy
+  use Energy, only: TotalEnergy, OldEnergy, Routhian, OldRouthian
   use Spwfstorage, only : TotalAngMom
   use Densities,   only : DensityChange
   use Pairing, only : Fermi
@@ -506,7 +506,9 @@ subroutine PrintSummary_v2(Iteration)
 
   1 format('----------- Iteration ', i6,'--------------')
   2 format("Summ.     E=" f10.3, "   dE=",e10.3)
+ 21 format("Summ.     R=" f10.3, "   dR=",e10.3)
  22 format("Summ. Fermi=" f10.3, "      ",f10.3) 
+  
   3 format("Summ.   Q20=" f10.3, "  Q22=",f10.3)
   4 format("Summ.  dQ20=" e10.3, " dQ22=",e10.3)
   5 format('Summ.    Jz=',f10.3, '  OmZ=',f10.3)
@@ -514,6 +516,7 @@ subroutine PrintSummary_v2(Iteration)
   ! Printing energy
   print 1, Iteration
   print 2, TotalEnergy,abs((TotalEnergy - OldEnergy(1))/TotalEnergy)
+  print 21, Routhian, abs((Routhian - OldRouthian(1))/Routhian)
   print 22, Fermi
   !------------------------------------------------------------------
   ! Note that we can best look back two values due when there is a

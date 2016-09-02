@@ -224,10 +224,11 @@ contains
     !----------------------------------
     use geninfo
     use Damping
-
+    use Energy, only : totalenergy, oldenergy, nesterovsignal
+    
     real(KIND=dp), save             :: Alpha, OldAlpha, f
     type(Spwf), save,allocatable    :: NesterovVectors(:)
-    real(KIND=dp)                   :: propfactor,SpEnergy, SpDispersion, q
+    real(KIND=dp)                   :: propfactor,SpDispersion, q
     integer, intent(in)             :: Iteration
     integer                         :: i
     integer,allocatable,save        :: NIter(:)
@@ -240,9 +241,14 @@ contains
       allocate(NesterovVectors(nwt)) ; NesterovVectors = HFBasis
     endif
 
+
     do i=1,nwt
       x(i)= HFBasis(i)%GetValue()
-      y(i)= NesterovVectors(i)%GetValue()
+      !if(NesterovSignal.eq.1) then 
+      !  y(i)= x(i)
+      !else
+        y(i)= NesterovVectors(i)%GetValue()
+      !endif
       hy(i)  = hPsi(NesterovVectors(i))
       ! Do the Nesterov update
       call HFBasis(i)%SetGrid( y(i)  - propfactor * hy(i) )
@@ -252,22 +258,26 @@ contains
     call Gramschmidt
 
     !Calculate the new nesterovalpha
-    if(Restart.ne.0) then
-      if (mod(Iteration,Restart) .eq. 0)  then
-          Alpha = 0 ; OldAlpha=0
-      endif
-    endif
-
+    !if(NesterovSignal.eq.1) then
+      !if (mod(Iteration,Restart) .eq. 0)  then
+!          Alpha = 1 ; OldAlpha=1
+!          print *, 'restarted', TotalEnergy, OldEnergy(1)
+      !endif
+!      do i=1,nwt
+!          ! Calculate new Nesterov vectors
+!          y(i) =HFBasis(i)%GetValue()
+!          call NesterovVectors(i)%SetGrid(y(i))
+!          call NesterovVectors(i)%CompDer
+!      enddo      
+    !endif
     Alpha = (1 + sqrt( 4 *OldAlpha**2 + 1))/2
-    print *, alpha
-    print *, (alpha + oldalpha - 1)/alpha,  ( 1 - Oldalpha)/alpha
-
     do i=1,nwt
         ! Calculate new Nesterov vectors
-        y(i) = (alpha + oldalpha - 1)/alpha*HFBasis(i)%GetValue() +  ( 1 - Oldalpha)/alpha *x(i)
+        y(i) = ((alpha + oldalpha - 1)/alpha)*HFBasis(i)%GetValue() +  ((1-Oldalpha))/alpha *x(i)
         call NesterovVectors(i)%SetGrid(y(i))
         call NesterovVectors(i)%CompDer
     enddo
+    !endif
 
     !Update Ak
     OldAlpha = Alpha

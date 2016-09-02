@@ -2332,6 +2332,4 @@ subroutine PrintAllMoments()
      nullify(Current)
      return
   end subroutine ReadMomentData
-
-
 end module Moments

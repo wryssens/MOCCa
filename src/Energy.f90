@@ -34,6 +34,9 @@ module Energy
   ! Two different ways of calculating and treating Skyrme terms
   real(KIND=dp) :: Skyrmeterms(32),BTerm(21)
 
+  ! Signal to the Nesterov iteration whether or not the energy decreased
+  integer       :: NesterovSignal=0
+
   abstract interface
     subroutine PrintEnergy_interface(Lagrange)
       logical, intent(in), optional :: Lagrange
@@ -125,6 +128,13 @@ contains
 
     !Energy due to the single particle states.
     SpEnergy = SpwfEnergy()
+
+    ! Signal
+    if(TotalEnergy .gt. OldEnergy(1)) then
+      NesterovSignal = 1
+    else 
+      NesterovSignal = 0
+    endif
 
     return
   end subroutine CompEnergy

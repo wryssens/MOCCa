@@ -158,7 +158,7 @@ contains
     return
   end subroutine ChangeNumberWaveFunctions
 
-  subroutine GramSchmidt
+  subroutine GramSchmidt_NEW
      use GenInfo
      use CompilationInfo
 
@@ -251,9 +251,9 @@ contains
       enddo
     enddo
 
-  end subroutine GramSchmidt
+  end subroutine GramSchmidt_NEW
 
-  subroutine GramSchmidt_OLD
+  subroutine GramSchmidt!_OLD
     !---------------------------------------------------------------------------
     ! This subroutine uses a Gram-Schmidt scheme to orthonormalise the Spwfs in
     ! the HF basis.
@@ -353,7 +353,7 @@ contains
       enddo
     enddo
 
-  end subroutine GramSchmidt_OLD
+  end subroutine GramSchmidt!_OLD
 
   subroutine DeriveAll()
     !---------------------------------------------------------------------------

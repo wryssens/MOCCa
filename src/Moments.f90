@@ -581,9 +581,10 @@ contains
     1 format (21('-'), ' Multipole Moments', 21('-') )
     2 format ('Maximum l considered ' , i3 )
 
-    3 format ('Quantisation Axis for the multipole moments: ', a1)
-    4 format ('  With secondary axis ordering             : ', a1, ',', a1)
-    5 format ('  Total permutation    : ',20x, '(', a1, ',', a1, ',', a1, ')')
+    3 format ('Quantisation Axis for the multipole moments:  ', a1)
+    4 format ('  With secondary axis ordering             :  ', a1, ',', a1)
+    5 format ('  Total permutation                        : ', &
+    &                                        '(', a1, ',', a1, ',', a1, ')')
 
     6 format ('Cutoff parameters')
     7 format ('  CutoffType', i2)
@@ -1894,19 +1895,31 @@ subroutine PrintAllMoments()
 
     use Densities
 
-   10 format(' Cart. Moments', ' X' , 14x, 'Y', 14x, 'Z')
-    1 format( 'N', 7x ,3f15.7)
-    2 format( 'P', 7x ,3f15.7)
-    3 format( 'T', 7x ,3f15.7)
-   11 format(' (Q, gamma)   ', ' Q', 14x, 'Gamma')
-   12 format(' (iq1, iq2)   ', ' iq1', 12x, 'iq2')
-   13 format('              ', ' X^2', 12x, 'Y^2', 12x, 'Z^2')
+    1 format(' Cart. Moments', ' X' , 14x, 'Y', 14x, 'Z')
+   11 format(' Cart. N', 2x ,3f15.7)
+   12 format(' Cart. P', 2x ,3f15.7)
+   13 format(' Cart. T', 2x ,3f15.7)
+    
+    2 format(' (Q, gamma)   ', ' Q', 14x, 'Gamma')
+   21 format(' (Q,g) N', 2x ,3f15.7)
+   22 format(' (Q,g) P', 2x ,3f15.7)
+   23 format(' (Q,g) T', 2x ,3f15.7)
+    
+    3 format(' (iq1, iq2)   ', ' iq1', 12x, 'iq2')
+   31 format(' iq    N', 2x ,3f15.7)
+   32 format(' iq    P', 2x ,3f15.7)
+   33 format(' iq    T', 2x ,3f15.7)
+   
+    4 format('              ', ' X^2', 12x, 'Y^2', 12x, 'Z^2')
+   41 format(' X^2_i N', 2x ,3f15.7)
+   42 format(' X^2_i P', 2x ,3f15.7)
+   43 format(' X^2_i T', 2x ,3f15.7) 
 
     !real(kind=DP)        :: QAlt(3), GAlt(3)
     real(KIND=dp) :: Qi(3,3)
     integer       :: i
 
-    print 10
+    print 1
     !---------------------------------------------------------------
     !Printing only the diagonal components
     ! Note that these depend on the quantization axis and secondary axis.
@@ -1914,37 +1927,37 @@ subroutine PrintAllMoments()
     case(1)
       select case(SecondaryAxis)
       case(1)
-        print 1, QCartesian(3,3,1), QCartesian(1,1,1), QCartesian(2,2,1)
-        print 2, QCartesian(3,3,2), QCartesian(1,1,2), QCartesian(2,2,2)
-        print 3, QCartesian(3,3,3), QCartesian(1,1,3), QCartesian(2,2,3)
+        print 11, QCartesian(3,3,1), QCartesian(1,1,1), QCartesian(2,2,1)
+        print 12, QCartesian(3,3,2), QCartesian(1,1,2), QCartesian(2,2,2)
+        print 13, QCartesian(3,3,3), QCartesian(1,1,3), QCartesian(2,2,3)
       case(2)
-        print 1, QCartesian(3,3,1), QCartesian(2,2,1), QCartesian(1,1,1)
-        print 2, QCartesian(3,3,2), QCartesian(2,2,2), QCartesian(1,1,2)
-        print 3, QCartesian(3,3,3), QCartesian(2,2,3), QCartesian(1,1,3)
+        print 11, QCartesian(3,3,1), QCartesian(2,2,1), QCartesian(1,1,1)
+        print 12, QCartesian(3,3,2), QCartesian(2,2,2), QCartesian(1,1,2)
+        print 13, QCartesian(3,3,3), QCartesian(2,2,3), QCartesian(1,1,3)
       end select
 
     case(2)
       select case(SecondaryAxis)
       case(1)
-        print 1, QCartesian(1,1,1), QCartesian(3,3,1), QCartesian(2,2,1)
-        print 2, QCartesian(1,1,2), QCartesian(3,3,2), QCartesian(2,2,2)
-        print 3, QCartesian(1,1,3), QCartesian(3,3,3), QCartesian(2,2,3)
+        print 11, QCartesian(1,1,1), QCartesian(3,3,1), QCartesian(2,2,1)
+        print 12, QCartesian(1,1,2), QCartesian(3,3,2), QCartesian(2,2,2)
+        print 13, QCartesian(1,1,3), QCartesian(3,3,3), QCartesian(2,2,3)
       case(2)
-        print 1, QCartesian(2,2,1), QCartesian(3,3,1), QCartesian(1,1,1)
-        print 2, QCartesian(2,2,2), QCartesian(3,3,2), QCartesian(1,1,2)
-        print 3, QCartesian(2,2,3), QCartesian(3,3,3), QCartesian(1,1,3)
+        print 11, QCartesian(2,2,1), QCartesian(3,3,1), QCartesian(1,1,1)
+        print 12, QCartesian(2,2,2), QCartesian(3,3,2), QCartesian(1,1,2)
+        print 13, QCartesian(2,2,3), QCartesian(3,3,3), QCartesian(1,1,3)
       end select
 
     case(3)
       select case(SecondaryAxis)
       case(1)
-        print 1, QCartesian(1,1,1), QCartesian(2,2,1), QCartesian(3,3,1)
-        print 2, QCartesian(1,1,2), QCartesian(2,2,2), QCartesian(3,3,2)
-        print 3, QCartesian(1,1,3), QCartesian(2,2,3), QCartesian(3,3,3)
+        print 11, QCartesian(1,1,1), QCartesian(2,2,1), QCartesian(3,3,1)
+        print 12, QCartesian(1,1,2), QCartesian(2,2,2), QCartesian(3,3,2)
+        print 13, QCartesian(1,1,3), QCartesian(2,2,3), QCartesian(3,3,3)
       case(2)
-        print 1, QCartesian(2,2,1), QCartesian(1,1,1), QCartesian(3,3,1)
-        print 2, QCartesian(2,2,2), QCartesian(1,1,2), QCartesian(3,3,2)
-        print 3, QCartesian(2,2,3), QCartesian(1,1,3), QCartesian(3,3,3)
+        print 11, QCartesian(2,2,1), QCartesian(1,1,1), QCartesian(3,3,1)
+        print 12, QCartesian(2,2,2), QCartesian(1,1,2), QCartesian(3,3,2)
+        print 13, QCartesian(2,2,3), QCartesian(1,1,3), QCartesian(3,3,3)
       end select
     end select
 
@@ -1958,16 +1971,16 @@ subroutine PrintAllMoments()
   !    GAlt(3) = atan2(sqrt(2.0_dp) * sum(Q22%Value(:)), sum(Q20%Value(:)))
   !-----------------------------------------------------------------------------
 
-    print 11
+    print 2
     !Note that Gamma is represented in radians, but is printed in degrees!
-    print 1, Q(1), G(1)* 360.0_dp/(2*pi)!, QAlt(1), GAlt(1)* 360.0_dp/(2*pi)
-    print 2, Q(2), G(2)* 360.0_dp/(2*pi)!, QAlt(2), GAlt(2)* 360.0_dp/(2*pi)
-    print 3, Q(3), G(3)* 360.0_dp/(2*pi)!, QAlt(3), GAlt(3)* 360.0_dp/(2*pi)
+    print 21, Q(1), G(1)* 360.0_dp/(2*pi)!, QAlt(1), GAlt(1)* 360.0_dp/(2*pi)
+    print 22, Q(2), G(2)* 360.0_dp/(2*pi)!, QAlt(2), GAlt(2)* 360.0_dp/(2*pi)
+    print 23, Q(3), G(3)* 360.0_dp/(2*pi)!, QAlt(3), GAlt(3)* 360.0_dp/(2*pi)
 
-    print 12
-    print 1, iq1(1), iq2(1)
-    print 2, iq1(2), iq2(2)
-    print 3, iq1(3), iq2(3)
+    print 3
+    print 31, iq1(1), iq2(1)
+    print 32, iq1(2), iq2(2)
+    print 33, iq1(3), iq2(3)
 
     ! The expectation values of X^2, Y^2 and Z^2
     do i=1,3
@@ -1976,10 +1989,10 @@ subroutine PrintAllMoments()
       Qi(i,3) = Qi(i,1) + Qi(i,2)
     enddo
 
-    print 13
-    print 1, Qi(:,1)
-    print 2, Qi(:,2)
-    print 3, Qi(:,3)
+    print 4
+    print 41, Qi(:,1)
+    print 42, Qi(:,2)
+    print 43, Qi(:,3)
 
   end subroutine PrintQuadrupoleAlt
 

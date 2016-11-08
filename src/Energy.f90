@@ -555,7 +555,7 @@ contains
     logical, intent(in), optional :: Lagrange
 
       1 format (22('-'),  ' Energies (MeV) ', 22('-'))
-     11 format (18('-'),  ' Lagrange Energies (MeV) ', 18('-'))
+     11 format (18('-'),  ' Lagrange Energies (MeV) ', 17('-'))
       2 format (60('_'))
       3 format (60('-'))
     102 format (1x, 3('B', i2,2x,  f12.5, 2x))
@@ -684,9 +684,9 @@ contains
      29 format (2x,'Total        =', f12.5)
 
     103 format (' Kinetic Energy ',/,                                          &
-        &    2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5)
+        &    2x,'Kin.  N', f12.5, ' Kin.  P', f12.5, ' Total ', f12.5)
     104 format (' Pairing Energy ',/,                                          &
-        &    2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5)
+        &    2x,'Pair. N', f12.5, ' Pair. P', f12.5, ' Total ', f12.5)
     105 format (' Lipkin-Nogami Energy ',/,                                    &
         &    2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5)
     106 format (' Coulomb ',/,3x,'Direct', f12.5, ' Exch.  ', f12.5)
@@ -706,8 +706,9 @@ contains
         & 3x,'Rel. Difference: ', 4x,es20.11)
     110 format(' 1-body COM Correction')
     111 format(' 2-body COM Correction')
-    112 format(2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5)
-    113 format(' Routhian:', 10x, f15.6)
+    112 format(2x,'COM1  N', f12.5, ' COM1  P', f12.5, ' Total ', f12.5)
+    113 format(2x,'COM2  N', f12.5, ' COM2  P', f12.5, ' Total ', f12.5)
+    114 format(' Routhian:', 10x, f15.6)
 
     !Header
     if(present(Lagrange)) then
@@ -760,7 +761,7 @@ contains
     endif
     if(any(COMCorrection(2,:) .ne. 0.0_dp)) then
       print 111
-      print 112, COMCorrection(2,:), sum(COMCorrection(2,:))
+      print 113, COMCorrection(2,:), sum(COMCorrection(2,:))
     endif
 
     print 2
@@ -769,7 +770,7 @@ contains
     if(.not.present(Lagrange)) then
 
       print 107, TotalEnergy, SPEnergy
-      print 113, Routhian
+      print 114, Routhian
       if(OldEnergy(1).ne.0.0_dp) then
         print 108, abs(TotalEnergy - OldEnergy(1)),                            &
         &          abs((TotalEnergy - OldEnergy(1))/OldEnergy(1)),             &
@@ -782,7 +783,7 @@ contains
       !calculated with non-lagrange derivatives.
       print 109, TotalEnergy, OldEnergy(1), TotalEnergy - OldEnergy(1),        &
       &          abs((TotalEnergy - OldEnergy(1))/TotalEnergy)
-      print 113, Routhian
+      print 114, Routhian
     endif
     print 3
 

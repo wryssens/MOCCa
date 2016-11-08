@@ -7,9 +7,11 @@ module SpwfStorage
 
   save
   !-----------------------------------------------------------------------------
-  !Total number of neutron, proton and total states.
+  !Total number of single-particle states, as well as the separate neutron and
+  ! and proton count. (These last two are currently only used to print some info
+  ! for the analysis scripts.)
   !-----------------------------------------------------------------------------
-  integer :: nwt=0
+  integer :: nwt=0, nwn=0, nwp=0
   !-----------------------------------------------------------------------------
   !Fermi Energy and printing window around Fermi Energy
   !-----------------------------------------------------------------------------

@@ -7,6 +7,7 @@ module InOutput
   use Pairing
   use Transform
   use Interfaces
+  use Spwfstorage
 
   implicit none
   public
@@ -62,7 +63,7 @@ contains
 
     1 format(20('-'), 'Information from file', 19('-'))
   100 format(60('-'))
-    2 format('File:', a20)
+    2 format('File: ', a40)
     3 format('Mesh parameters:')
     4 format('  nx=',i5,'  ny=',i5,'  nz=',i5 )
     5 format('  dx=',f12.8, '(fm)')
@@ -78,7 +79,8 @@ contains
    15 format('  Proton  pairingstrength:', f10.3)
 
     print 1
-    print 2, trim(InputFilename)
+    print 2, InputFileName
+    print *
     print 3
     print 4, filenx,fileny,filenz
     print 5, filedx
@@ -188,7 +190,7 @@ contains
   ! EV4         => ReadEV4
   ! MOCCa       => MOCCa
   !-----------------------------------------------------------------------------
-    integer             :: InputChannel
+    integer             :: InputChannel,i
 
     !Getting an open channel for input
     call get_unit(InputChannel)
@@ -242,6 +244,22 @@ contains
         else
           call ReadMOCCa_v1(InputChannel)
         endif
+    endif
+    
+    !---------------------------------------------------------------------------
+    ! Quickly count the number of proton and neutron states read, for printing
+    ! purposes only.
+    nwn = 0 ;  nwp = 0
+    do i=1,nwt
+        if(HFBasis(i)%GetIsospin().eq.-1) then
+                nwn = nwn +1
+        else
+                nwp = nwp +1
+        endif
+    enddo
+    ! Sanity check
+    if(nwn + nwp .ne. nwt) then
+        call stp('Count of neutron and proton states is wrong.')
     endif
   end subroutine WFInput
 
@@ -342,7 +360,9 @@ contains
     6 format ( 'Nucleus')
     7 format ( '    N = ', f10.5  ,'  Z = ', f10.5)
     8 format ( 'Wavefunctions')
-    9 format ( '  nwt = ', i5)
+    9 format ( '  nwt = ', i5, / &
+    &          '  nwn = ', i5, / &
+    &          '  nwp = ', i5 )
     10 format ( 'Iterative process')
     11 format ( '   dt = ', f5.2 ,' (10^{-22} s) ')
     12 format ( '  Iter= ', i5)
@@ -389,7 +409,8 @@ contains
     print 6
     print 7 , neutrons, protons
     print 8
-    print 9 , nwt
+    
+    print 9 , nwt,nwn,nwp
     print 10
     print 11, dt
     print 12, MaxIter

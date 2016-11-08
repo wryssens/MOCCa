@@ -175,7 +175,7 @@ contains
 
     1 format (18('-'), ' Angular Momentum (hbar) ',17('-') )
     2 format (15x, 'Total', 4x, 'Desired', 4x, 'Omega', 4x, 'Energy')
-    3 format (3x,' J_',a1,'  ','|', 4f10.3 )
+    3 format (3x,'J_',a1,'   ','|', 4f10.3 )
 
     5 format (3x,'P R_z ','|',6x,'++',8x,'-+',8x,'+-',8x,'--')
     6 format (2x,' ___________________________________________________' )

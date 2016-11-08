@@ -8,9 +8,20 @@ program MOCCa
     !       ((_|       |                                                       |
     !        `-\       /                                                       |
     !           `.___.'                                                        |
-    ! Creation: 8th of April, 2013.                                            |
-    ! Update  : 7th of November 2014                                           |
+    ! Creation: 8th of April   , 2013.                                         |
+    ! Update  : 8th of November, 2016.                                         |
     ! Wouter Ryssens                                                           |
+    !---------------------------------------------------------------------------
+
+    !---------------------------------------------------------------------------
+    ! Some general comments and things to keep in mind
+    !
+    ! *) Output is currently roughly organized as envisioned by Wouter, and as 
+    !    such might seem suboptimal to many people. It is however slated for 
+    !    redesign as soon as Michael, Wouter and whoever has a strong opinion on
+    !    the subject agree on a course to follow. 
+    ! *) For now (November 2016) a small redesign is planned to make the output
+    !    more grep/awk/python-analysable. 
     !---------------------------------------------------------------------------
 
     use GenInfo
@@ -114,7 +125,8 @@ subroutine Evolve(MaxIterations, iprint)
   7 format ("Energy            changed for less than : ", e9.2)
   8 format ("Total dispersion of the occupied Spwfs  : ", e9.2)
   9 format ("Average dispersion of the occupied Spwfs: ", e9.2)
-100 format (/,94('='),/, 20x,' START OF THE ITERATIVE PROCESS ' ,/, 94('='),/)
+100 format (/,60('='),/, 18x,' START OF THE ITERATIVE PROCESS ' ,/, 60('='))
+101 format (/,60('='),/, 18x,' **FINAL** Iteration ')
 
   logical, intent(in) :: iprint
   integer, intent(in) :: MaxIterations
@@ -204,10 +216,10 @@ subroutine Evolve(MaxIterations, iprint)
 
   !Checking for the presence of Rutz-Type constraints
   RutzCheck = CheckForRutzMoments()
-
-  !call OddTPot
-  print 100
-
+ 
+  if(MaxIterations.ne.0) then
+        print 100
+  endif
   !-----------------------------------------------------------------------------
   !Start of the Mean-field iterations
   do while((Iteration.lt.MaxIterations))
@@ -298,10 +310,12 @@ subroutine Evolve(MaxIterations, iprint)
   	if(Convergence) exit
 
     if(mod(Iteration, PrintIter).eq.0 .or. Iteration.eq.MaxIterations) then
+      if(Iteration.eq.MaxIterations) print 101
       !Print info after selected amount of iterations.
       call PrintIterationInfo(Iteration)
     endif
   enddo
+  
   !End of the mean-field iterations
   !-----------------------------------------------------------------------------
 
@@ -417,7 +431,7 @@ subroutine PrintIterationInfo(Iteration)
 
   integer, intent(in) :: Iteration
 
-  1 format (/,94('='))
+  1 format (/,60('='))
   2 format (' Iteration ', i5)
 
   print 1

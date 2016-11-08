@@ -157,16 +157,13 @@ contains
     !
     !---------------------------------------------------------------------------
     1       format(21("-"), 'Coulomb Parameters' , 21('-'))
-    2       format("Solver           = ", a25)
-    3       format("Discretisation   = ", i1)
-    4       format("Omega Parameter  = ", f8.3)
-    5       format("Coulomb Exchange = Slater Approximation")
-    6       format("Error Tolerance  = ", e12.3)
-    7       format("MaxLCoul         =", i3)
-    8       format("Extra points      ",/,                         &
-    &              '               X = ', i2,/,                    &
-    &              '               Y = ', i2,/,                    &
-    &              '               Z = ', i2 )
+    2       format("Solver               = ", a25)
+    3       format("Discretisation       = ", i2)
+    4       format("Omega Parameter      = ", f8.3)
+    5       format("Coulomb Exchange     = Slater Approximation")
+    6       format("Error Tolerance      = ", e10.3)
+    7       format("MaxLCoul             =", i3)
+    8       format("Extra points (X/Y/Z) = (",i2,',',i2,',',i2,')' )
     character(len=25) :: GS='Gauss-Seidel' , Sor='S. Overrelaxation',          &
     &   CG='Conjugate Gradients', Cheb='GS + Cheby Acceleration',              &
     &   MG='Multigrid', Com = 'Combination'

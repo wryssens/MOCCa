@@ -181,7 +181,7 @@ contains
     Pindex = 1 ; if(PC) Pindex = 2
     Iindex = 1 ; if(IC) Iindex = 2
 
-    if(.not.allocated(Blocksizes))   allocate(blocksizes(Pindex,Iindex))
+    if(.not.allocated(Blocksizes))   allocate( blocksizes(Pindex,Iindex))
     if(.not.allocated(Blockindices)) allocate( blockindices(HFBsize,Pindex,Iindex))
 
     ! Counts the number of wavefunctions in every parity-isospin block

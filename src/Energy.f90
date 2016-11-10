@@ -688,7 +688,7 @@ contains
     104 format (' Pairing Energy ',/,                                          &
         &    2x,'Pair. N', f12.5, ' Pair. P', f12.5, ' Total ', f12.5)
     105 format (' Lipkin-Nogami Energy ',/,                                    &
-        &    2x,'Neutron', f12.5, ' Proton ', f12.5, ' Total ', f12.5)
+        &    2x,'  LN  N', f12.5, '    LN P ', f12.5, ' Total ', f12.5)
     106 format (' Coulomb ',/,3x,'Direct', f12.5, ' Exch.  ', f12.5)
     107 format (' Total Energy ',/,                                            &
         & 3x,'from functional: ', f20.11, /,                                    &
@@ -702,6 +702,7 @@ contains
     109 format (' Total Energy ',/,                                            &
         & 3x,'Lagrange:        ', f20.11,/,                                     &
         & 3x,'Non-Lagrange:    ', f20.11,/,                                     &
+        & 3x,'Spwf energy:     ', f20.11,/,                                     &
         & 3x,'Abs. Difference: ', f20.11,/,                                     &
         & 3x,'Rel. Difference: ', 4x,es20.11)
     110 format(' 1-body COM Correction')
@@ -781,7 +782,8 @@ contains
     else
       !Note that oldenergy(1) now contains the last total energy that was
       !calculated with non-lagrange derivatives.
-      print 109, TotalEnergy, OldEnergy(1), TotalEnergy - OldEnergy(1),        &
+      print 109, TotalEnergy, OldEnergy(1), SPEnergy,         &
+      &          TotalEnergy - OldEnergy(1),                  &
       &          abs((TotalEnergy - OldEnergy(1))/TotalEnergy)
       print 114, Routhian
     endif

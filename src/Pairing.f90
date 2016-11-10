@@ -513,7 +513,7 @@ contains
 
     use Densities, only : Density
 
-    1 format (27('-'), 'Pairing', 26('-'))
+    1 format (26('-'), ' Pairing ', 25('-'))
     2 format (25x, ' N ',7x, ' P ')
     3 format (' Fermi Level (MeV) ',2x,f10.5,2x,f10.5)
     4 format (' Particles         ',2x,f10.5,2x,f10.5)

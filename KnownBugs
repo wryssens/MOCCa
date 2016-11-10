@@ -23,3 +23,7 @@
   
 - MOCCa with broken symmetries should at the moment not be able to take different
   quantizationaxis.
+  
+- Printing of Beta deformation parameters does not take into account imaginary parts
+
+- When AllowTransform switch is not indicated but transformation is asked anyway, the code does uncontrollabe things. Somehow the testing criterions do not function.

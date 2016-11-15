@@ -39,6 +39,10 @@
 #                                                                              #
 # - PREFIX.e.tab      total energies and energy of tensor terms                #
 # - PREFIX.ef.tab     Fermi energies and quantities related to the LN scheme   #
+# - PREFIX.[iso].qlm.tab    Multipole moments <Q_lm>  and related \beta_lm for #
+#                           neutrons (n), protons(p) and total(t).             #
+# - PREFIX.[iso].ql.tab     Total multipole moments <Q_l>  and related \beta_l #
+#                           for neutrons (n), protons(p) and total(t).         #
 #                                                                              #
 # - PREFIX.[base].[iso].par=[par].sig=[sig].tab                                #   
 #                                                                              #
@@ -171,13 +175,15 @@ BEGIN{
         flag[multipole]=0
         energyflag     =0
         pairingflag    =0
-        
+        angmomflag     =0
         
         HFBasisflag    =0
         CanBasisflag   =0
         
         #Only detect the first mention of HF(B)
         pairingtypeflag=1
+        
+        
 }
 
 {
@@ -497,6 +503,36 @@ BEGIN{
                 #Reset flag
                 flag[multipole]=0
         }
+        
+        if ( angmomflag && $2 == "Angular") {
+                getline;
+                getline;
+                getline;
+                getline;
+                
+                if( SC ==  0) {
+                    Jx[iq]     = $3
+                    OmegaX[iq] = $5
+                    getline;
+                }
+                else{
+                    Jx[iq]     = 0
+                    OmegaX[iq] = 0
+                }
+                
+                if( TSC == 0) {
+                    Jy[iq]     = $3
+                    OmegaY[iq] = $5
+                    getline;
+                }
+                else{
+                    Jy[iq]     = 0
+                    OmegaY[iq] = 0
+                }
+                
+                Jz[iq]     = $3
+                OmegaZ[iq] = $5               
+        }
 
         if ( pairingflag && $2 == "Pairing") {
                 getline;
@@ -611,14 +647,14 @@ END{
     # total energy
     # and closely related observables
     if ( calc == "pes" ) {
-        print "!         Q20       Q22       Q2    gamma      beta2     E(func)     E(sp)  E(func)noLN      eLN(n)     eLN(p)        Jz          omega" > "tmp.e.tab";
+        print "!         Q20       Q22       Q2    gamma      beta2     E(func)     E(sp)  E(func)noLN      eLN(n)     eLN(p)      OmegaX      Jx        OmegaY      Jy        OmegaZ      Jz" > "tmp.e.tab";
     }
     iq=1;
     while ( iq < iqmax + 1 ) {
         enoln = Energy[iq,1] - ELN[iq,3];
         if ( calc == "pes" ) {
-            printf("%3.0f %9.1f %9.1f %9.1f %8.3f %10.3f %10.3f %10.3f   %10.3f %10.3f   %10.6f %12.5f %8.3f \n",
-               iq,Qlm[iq,"Re",2,0,3], Qlm[iq,"Re",2,2,3], Q0[iq,3], Gamma[iq,3], Betal[iq,2,3],Energy[iq,1],Energy[iq,3],enoln,ELN[iq,1],ELN[iq,2],Jz[iq,3],omega[iq,3]) >> "tmp.e.tab"; 
+            printf("%3.0f %9.1f %9.1f %9.1f %8.3f %10.3f %10.3f %10.3f   %10.3f %10.3f   %10.6f %8.3f %12.5f %8.3f %12.5f %8.3f %12.5f \n",
+               iq,Qlm[iq,"Re",2,0,3], Qlm[iq,"Re",2,2,3], Q0[iq,3], Gamma[iq,3], Betal[iq,2,3],Energy[iq,1],Energy[iq,3],enoln,ELN[iq,1],ELN[iq,2],OmegaX[iq],Jx[iq],OmegaY[iq],Jy[iq],OmegaZ[iq],Jz[iq]) >> "tmp.e.tab"; 
         }
         iq += 1;
     }
@@ -628,9 +664,9 @@ END{
     # Deformations of all the Re/Im Qlm detected for neutrons, protons and total 
     iq = 1;
     if ( calc == "pes" ) {
-        printf("!    ") > "tmp.n.eq.tab";
-        printf("!    ") > "tmp.p.eq.tab";
-        printf("!    ") > "tmp.t.eq.tab";
+        printf("!    ") > "tmp.n.qlm.tab";
+        printf("!    ") > "tmp.p.qlm.tab";
+        printf("!    ") > "tmp.t.qlm.tab";
         #Make the header by looking which Qlm entries are initialised
         if ( calc == "pes" ) {
             l = 1
@@ -638,51 +674,99 @@ END{
                 m = 0
                 while ( m < l+1 ) {
                     if( Qlm[iq,"Re",l,m,3] != "" ) {
-                        printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.n.eq.tab";
-                        printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.p.eq.tab";
-                        printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.t.eq.tab";
+                        printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.n.qlm.tab";
+                        printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.p.qlm.tab";
+                        printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.t.qlm.tab";
                     }
                     m+=1
                 }
                 l+=1 
             }
-            printf("\n")>>"tmp.n.eq.tab"
-            printf("\n")>>"tmp.p.eq.tab"  
-            printf("\n")>>"tmp.t.eq.tab"     
+            printf("\n")>>"tmp.n.qlm.tab"
+            printf("\n")>>"tmp.p.qlm.tab"  
+            printf("\n")>>"tmp.t.qlm.tab"     
         }
     }
     while ( iq < iqmax + 1 ) {
         if ( calc == "pes" ) {
-            printf("%3.0f", iq) >> "tmp.n.eq.tab"
-            printf("%3.0f", iq) >> "tmp.p.eq.tab" 
-            printf("%3.0f", iq) >> "tmp.t.eq.tab"  
+            printf("%3.0f", iq) >> "tmp.n.qlm.tab"
+            printf("%3.0f", iq) >> "tmp.p.qlm.tab" 
+            printf("%3.0f", iq) >> "tmp.t.qlm.tab"  
             l = 1
             while ( l < maxmultipole +1) {
                 m = 0
                 while ( m < l+1 ) {
                     if( Qlm[iq,"Re",l,m,3] != "" ) {
-                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.eq.tab"
-                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.eq.tab"
-                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.eq.tab"
+                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.qlm.tab"
+                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.qlm.tab"
+                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.qlm.tab"
                     }
                     if( Qlm[iq,"Im",l,m,3] != "" ) {
-                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.eq.tab"
-                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.eq.tab"
-                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.eq.tab"
+                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.qlm.tab"
+                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.qlm.tab"
+                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.qlm.tab"
                     }
                     m +=1
                 }
                 l+=1 
             }
-            printf("\n")>>"tmp.n.eq.tab"
-            printf("\n")>>"tmp.p.eq.tab"  
-            printf("\n")>>"tmp.t.eq.tab"   
+            printf("\n")>>"tmp.n.qlm.tab"
+            printf("\n")>>"tmp.p.qlm.tab"  
+            printf("\n")>>"tmp.t.qlm.tab"   
         }    
         iq += 1;
     }
-    close("tmp.n.eq.tab");
-    close("tmp.p.eq.tab");
-    close("tmp.t.eq.tab");
+    close("tmp.n.qlm.tab");
+    close("tmp.p.qlm.tab");
+    close("tmp.t.qlm.tab");
+    #---------------------------------------------------------------------------
+    # Deformations of all the Ql detected for neutrons, protons and total 
+    iq = 1;
+    if ( calc == "pes" ) {
+        printf("!     ") > "tmp.n.ql.tab";
+        printf("!     ") > "tmp.p.ql.tab";
+        printf("!     ") > "tmp.t.ql.tab";
+        #Make the header by looking which Qlm entries are initialised
+        if ( calc == "pes" ) {
+            l = 1
+            while ( l < maxmultipole +1) {
+                
+                if( Ql[iq,l,3] != "" ) {
+                    printf("  ReQ%1.0f         Beta%1.0f   ",l,l)> "tmp.n.ql.tab";
+                    printf("  ReQ%1.0f         Beta%1.0f   ",l,l)> "tmp.p.ql.tab";
+                    printf("  ReQ%1.0f         Beta%1.0f   ",l,l)> "tmp.t.ql.tab";
+                }
+                l+=1 
+            }
+            printf("\n")>>"tmp.n.ql.tab"
+            printf("\n")>>"tmp.p.ql.tab"  
+            printf("\n")>>"tmp.t.ql.tab"     
+        }
+    }
+    while ( iq < iqmax + 1 ) {
+        if ( calc == "pes" ) {
+            printf("%3.0f", iq) >> "tmp.n.ql.tab"
+            printf("%3.0f", iq) >> "tmp.p.ql.tab" 
+            printf("%3.0f", iq) >> "tmp.t.ql.tab"  
+            l = 1
+            while ( l < maxmultipole +1) {
+                if( Ql[iq,l,3] != "" ) {
+                    printf("%12.3e %10.3f", Ql[iq,l,1],Betal[iq,l,1])>> "tmp.n.ql.tab"
+                    printf("%12.3e %10.3f", Ql[iq,l,2],Betal[iq,l,2])>> "tmp.p.ql.tab"
+                    printf("%12.3e %10.3f", Ql[iq,l,3],Betal[iq,l,3])>> "tmp.t.ql.tab"
+                }
+                l+=1 
+            }
+            
+            printf("\n")>>"tmp.n.ql.tab"
+            printf("\n")>>"tmp.p.ql.tab"  
+            printf("\n")>>"tmp.t.ql.tab"   
+        }    
+        iq += 1;
+    }
+    close("tmp.n.ql.tab");
+    close("tmp.p.ql.tab");
+    close("tmp.t.ql.tab");
     #---------------------------------------------------------------------------
     #------------ Fermi energies and information on Lipkin-Nogami scheme--------
     if ( calc == "pes" ) {

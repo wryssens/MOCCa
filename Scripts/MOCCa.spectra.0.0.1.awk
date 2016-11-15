@@ -16,12 +16,12 @@
 # + implement band and iso options                                             #
 # + implement quasiparticle basis reading & writing                            #
 # + Add detection of quadrupole orientation                                    #
-# + Debug writing of spwfs to file
+# + Add blocking information                                                   #
 #==============================================================================#
 #                                                                              #
 #    Usage                                                                     #
 #                                                                              #
-#    awk -f MOCCa.spectra.awk "calc=XXX" < PREFIX.out                          #
+#    awk -f MOCCa.spectra.awk "calc=XXX"   PREFIX.out                          #
 #                                                                              #
 #    where PREFIX.out is a collection of MOCCa outputs, arranged in the desired#
 #    order. (For instance by cat'ing the different files one after another).   #
@@ -37,10 +37,10 @@
 #-------------------------------------------------------------------------------
 # This script generates the following files (see headers for detailed content) #
 #                                                                              #
-# - PREFIX.e          total energies and energy of tensor terms                #
-# - PREFIX.ef         Fermi energies and quantities related to the LN scheme   #
+# - PREFIX.e.tab      total energies and energy of tensor terms                #
+# - PREFIX.ef.tab     Fermi energies and quantities related to the LN scheme   #
 #                                                                              #
-# - [base].[iso].spwf.par=[par].sig=[sig]                                      #   
+# - PREFIX.[base].[iso].par=[par].sig=[sig].tab                                #   
 #                                                                              #
 #  where                                                                       #
 #                                                                              #
@@ -66,7 +66,7 @@
 #  - Canonical and quasiparticle basis files will only be created with HFB runs#
 #===============================================================================
 
-function SortSpwfs (file, iso, basis, PC, SC, TRC){
+function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC){
     #---------------------------------------------------------------------------
     # Sort a file of SPWF info according to the symmetries of the calculation.
     # We use the extra awk script Spwf.sort.awk to sort on a specific column.
@@ -86,6 +86,10 @@ function SortSpwfs (file, iso, basis, PC, SC, TRC){
         command =  "mv " file  " spwf.par=0"
         system(command)
     }
+    
+    # Remove the original file
+    system("rm " file)
+    
     if (TRC == 0 && SC == 1) {
         # only distinguish between positive and negative signature when 
         # time-reversal is not conserved.
@@ -149,9 +153,16 @@ function SortSpwfs (file, iso, basis, PC, SC, TRC){
         }         
     }
     
-    #Clearly name all of the files
-    command = "for f in spwf* \n do \n mv $f " basis "." iso ".$f \n done" 
-    system(command)
+    # Clearly name all of the files
+    # Do this via a temporary script in order to get the correct bash shell. 
+    # In a more naive way on my ubuntu installation it uses the default /bin/sh 
+    # which is dash and not bash, and does not accept substring substitutions.
+    command = "for f in spwf* \n do \n mv $f " prefix "." basis "." iso ".${f/spwf./}.tab \n done" 
+    printf("#!/bin/bash \n") > "script.sh"
+    printf(command ) >> "script.sh"
+    close("script.sh")
+    system("bash script.sh")
+    system("rm script.sh")
 }
 
 
@@ -177,11 +188,10 @@ BEGIN{
         # Determine filename using awk builtins 
         # (NR = number of records processed)
         # (FILENAME) = filename
-#        if ( NR == 1 ) {
-#                lengthfilename = length(FILENAME);
-#                prefix = substr(FILENAME,1,lengthfilename-4);
-#                print "\n filename = " prefix "\n";
-#        }
+        if ( NR == 1 ) {
+                lengthfilename = length(FILENAME);
+                prefix = substr(FILENAME,1,lengthfilename-4);
+        }
         
         #  Take some parameters from the start of the calculations. 
         #  a) number of protons & neutrons
@@ -601,26 +611,26 @@ END{
     # total energy
     # and closely related observables
     if ( calc == "pes" ) {
-        print "!         Q20       Q22       Q2    gamma      beta2     E(func)     E(sp)  E(func)noLN      eLN(n)     eLN(p)        Jz          omega" > "tmp.e";
+        print "!         Q20       Q22       Q2    gamma      beta2     E(func)     E(sp)  E(func)noLN      eLN(n)     eLN(p)        Jz          omega" > "tmp.e.tab";
     }
     iq=1;
     while ( iq < iqmax + 1 ) {
         enoln = Energy[iq,1] - ELN[iq,3];
         if ( calc == "pes" ) {
             printf("%3.0f %9.1f %9.1f %9.1f %8.3f %10.3f %10.3f %10.3f   %10.3f %10.3f   %10.6f %12.5f %8.3f \n",
-               iq,Qlm[iq,"Re",2,0,3], Qlm[iq,"Re",2,2,3], Q0[iq,3], Gamma[iq,3], Betal[iq,2,3],Energy[iq,1],Energy[iq,3],enoln,ELN[iq,1],ELN[iq,2],Jz[iq,3],omega[iq,3]) >> "tmp.e"; 
+               iq,Qlm[iq,"Re",2,0,3], Qlm[iq,"Re",2,2,3], Q0[iq,3], Gamma[iq,3], Betal[iq,2,3],Energy[iq,1],Energy[iq,3],enoln,ELN[iq,1],ELN[iq,2],Jz[iq,3],omega[iq,3]) >> "tmp.e.tab"; 
         }
         iq += 1;
     }
-    close("tmp.e");
+    close("tmp.e.tab");
     #---------------------------------------------------------------------------
     #---------------------------------------------------------------------------
     # Deformations of all the Re/Im Qlm detected for neutrons, protons and total 
     iq = 1;
     if ( calc == "pes" ) {
-        printf("!    ") > "tmp.n.eq";
-        printf("!    ") > "tmp.p.eq";
-        printf("!    ") > "tmp.t.eq";
+        printf("!    ") > "tmp.n.eq.tab";
+        printf("!    ") > "tmp.p.eq.tab";
+        printf("!    ") > "tmp.t.eq.tab";
         #Make the header by looking which Qlm entries are initialised
         if ( calc == "pes" ) {
             l = 1
@@ -628,65 +638,65 @@ END{
                 m = 0
                 while ( m < l+1 ) {
                     if( Qlm[iq,"Re",l,m,3] != "" ) {
-                        printf("   ReQ%1.0f%1.0f     Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.n.eq";
-                        printf("   ReQ%1.0f%1.0f     Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.p.eq";
-                        printf("   ReQ%1.0f%1.0f     Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.t.eq";
+                        printf("   ReQ%1.0f%1.0f     Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.n.eq.tab";
+                        printf("   ReQ%1.0f%1.0f     Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.p.eq.tab";
+                        printf("   ReQ%1.0f%1.0f     Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.t.eq.tab";
                     }
                     m+=1
                 }
                 l+=1 
             }
-            printf("\n")>>"tmp.n.eq"
-            printf("\n")>>"tmp.p.eq"  
-            printf("\n")>>"tmp.t.eq"     
+            printf("\n")>>"tmp.n.eq.tab"
+            printf("\n")>>"tmp.p.eq.tab"  
+            printf("\n")>>"tmp.t.eq.tab"     
         }
     }
     while ( iq < iqmax + 1 ) {
         if ( calc == "pes" ) {
-            printf("%3.0f", iq) >> "tmp.n.eq"
-            printf("%3.0f", iq) >> "tmp.p.eq" 
-            printf("%3.0f", iq) >> "tmp.t.eq"  
+            printf("%3.0f", iq) >> "tmp.n.eq.tab"
+            printf("%3.0f", iq) >> "tmp.p.eq.tab" 
+            printf("%3.0f", iq) >> "tmp.t.eq.tab"  
             l = 1
             while ( l < maxmultipole +1) {
                 m = 0
                 while ( m < l+1 ) {
                     if( Qlm[iq,"Re",l,m,3] != "" ) {
-                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.eq"
-                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.eq"
-                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.eq"
+                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.eq.tab"
+                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.eq.tab"
+                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.eq.tab"
                     }
                     if( Qlm[iq,"Im",l,m,3] != "" ) {
-                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.eq"
-                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.eq"
-                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.eq"
+                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.eq.tab"
+                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.eq.tab"
+                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.eq.tab"
                     }
                     m +=1
                 }
                 l+=1 
             }
-            printf("\n")>>"tmp.n.eq"
-            printf("\n")>>"tmp.p.eq"  
-            printf("\n")>>"tmp.t.eq"   
+            printf("\n")>>"tmp.n.eq.tab"
+            printf("\n")>>"tmp.p.eq.tab"  
+            printf("\n")>>"tmp.t.eq.tab"   
         }    
         iq += 1;
     }
-    close("tmp.n.eq");
-    close("tmp.p.eq");
-    close("tmp.t.eq");
+    close("tmp.n.eq.tab");
+    close("tmp.p.eq.tab");
+    close("tmp.t.eq.tab");
     #---------------------------------------------------------------------------
     #------------ Fermi energies and information on Lipkin-Nogami scheme--------
     if ( calc == "pes" ) {
-        print "!      eF_n     eF_p   lambda_2n lambda_2p  eLN(n)   eLN(p) <DeltaN^2> <DeltaZ^2>" > "tmp.ef";
+        print "!      eF_n     eF_p   lambda_2n lambda_2p  eLN(n)   eLN(p) <DeltaN^2> <DeltaZ^2>" > "tmp.ef.tab";
     }
     iq = 1;
     while ( iq < iqmax + 1 ) {
         if ( calc == "pes" ) {
           printf("%3.0f %8.3f %8.3f  %8.3f %8.3f  %8.3f %8.3f   %8.3f  %8.3f\n",
-               iq,Fermi[iq,1],Fermi[iq,2],Lambda2[iq,1],Lambda2[iq,2],ELN[iq,1], ELN[iq,2], Dispersion[iq,1], Dispersion[iq,2]) >> "tmp.ef"; 
+               iq,Fermi[iq,1],Fermi[iq,2],Lambda2[iq,1],Lambda2[iq,2],ELN[iq,1], ELN[iq,2], Dispersion[iq,1], Dispersion[iq,2]) >> "tmp.ef.tab"; 
         }
         iq += 1;
     }
-    close("tmp.ef")
+    close("tmp.ef.tab")
     
     
     #---------------------------------------------------------------------------
@@ -698,18 +708,21 @@ END{
             if ( calc == "pes" ) {
                 i = 1
                 while( neutronhf[iq,N,i] != "" ) {
-                    printf("%10.3f", neutronhf[iq,N,i] ) >> "tmp.n.hf"
+                    printf("%10.3f", neutronhf[iq,N,i] ) >> "tmp.n.hf.tab"
                     i +=1
                 }
                 
-                printf("\n" ) >> "tmp.n.hf"
+                printf("\n" ) >> "tmp.n.hf.tab"
             }
               
             iq+=1
         }
+        if ( calc == "pes" ) {
+            printf("*\n") >>  "tmp.n.hf.tab"
+        }
         N+=1
     }
-    close("tmp.n.hf")
+    close("tmp.n.hf.tab")
     
     #---------------------------------------------------------------------------
     # Neutron canonical basis (if HFB is active)
@@ -721,16 +734,19 @@ END{
                 if ( calc == "pes" ) {
                     i = 1
                     while( neutroncan[iq,N,i] != "" ) {
-                        printf("%10.3f", neutroncan[iq,N,i] ) >> "tmp.n.can"
+                        printf("%10.3f", neutroncan[iq,N,i] ) >> "tmp.n.can.tab"
                         i +=1
                     }
-                printf("\n" ) >> "tmp.n.can"
+                printf("\n" ) >> "tmp.n.can.tab"
                 }
                 iq+=1
             }
+            if ( calc == "pes" ) {
+                printf("*\n") >> "tmp.n.can.tab"
+            }            
             N+=1
         }
-        close("tmp.n.can")
+        close("tmp.n.can.tab")
     }
     #---------------------------------------------------------------------------
     # Proton HF basis
@@ -741,18 +757,21 @@ END{
             if ( calc == "pes" ) {
                 i = 1
                 while( protonhf[iq,P,i] != "" ) {
-                    printf("%10.3f", protonhf[iq,P,i] ) >> "tmp.p.hf"
+                    printf("%10.3f", protonhf[iq,P,i] ) >> "tmp.p.hf.tab"
                     i +=1
                 }
                 
-                printf("\n" ) >> "tmp.p.hf"
+                printf("\n" ) >> "tmp.p.hf.tab"
             }
               
             iq+=1
         }
+        if ( calc == "pes" ) {
+            printf(" *\n") >> "tmp.p.hf.tab";
+        }        
         P+=1
     }
-    close("tmp.p.hf")
+    close("tmp.p.hf.tab")
     
     P = 1;
     while ( protoncan[1,P,1] != "" ) {
@@ -761,26 +780,48 @@ END{
             if ( calc == "pes" ) {
                 i = 1
                 while( protoncan[iq,P,i] != "" ) {
-                    printf("%10.3f", protoncan[iq,P,i] ) >> "tmp.p.can"
+                    printf("%10.3f", protoncan[iq,P,i] ) >> "tmp.p.can.tab"
                     i +=1
                 }
                 
-                printf("\n" ) >> "tmp.p.can"
+                printf("\n" ) >> "tmp.p.can.tab"
             }
               
             iq+=1
         }
+        if ( calc == "pes" ) {
+            printf("* \n") >> "tmp.p.can.tab";
+        }
         P+=1
     }
-    close("tmp.p.can")
+    close("tmp.p.can.tab")
     
+    #---------------------------------------------------------------------------
     #Sort all of the SPWFs into blocks by their quantum number
-    SortSpwfs("tmp.n.hf", "neutron", "hf", PC, SC, TRC) ;
-    SortSpwfs("tmp.p.hf", "proton" , "hf", PC, SC, TRC) ;
+    SortSpwfs("tmp.n.hf.tab", "neutron", "hf", prefix, PC, SC, TRC) ;
+    SortSpwfs("tmp.p.hf.tab", "proton" , "hf", prefix, PC, SC, TRC) ;
     if(PairingType == "HFB") {
-        SortSpwfs("tmp.n.can", "neutron", "ca", PC, SC, TRC) ;
-        SortSpwfs("tmp.p.can", "proton" , "ca", PC, SC, TRC) ;
+        SortSpwfs("tmp.n.can.tab", "neutron", "ca", prefix, PC, SC, TRC) ;
+        SortSpwfs("tmp.p.can.tab", "proton" , "ca", prefix, PC, SC, TRC) ;
     }
+    
+    #---------------------------------------------------------------------------
+    # Move all the temporary files to correctly named ones. 
+    # Do this via a temporary script in order to get the correct bash shell. 
+    # In a more naive way on my ubuntu installation it uses the default /bin/sh 
+    # which is dash and not bash, and does not accept substring substitutions.
+    
+    printf("#!/bin/bash \n")               >  "script.sh"
+    printf("for f in tmp*tab \n")          >> "script.sh"
+    printf("do \n")                        >> "script.sh"
+    printf("mv $f ${f/tmp/" prefix"}  \n") >> "script.sh"
+    printf("done \n")                      >> "script.sh"
+    
+    close("script.sh")
+    system("bash script.sh")
+    system("rm script.sh")
+    
+    
 }
 
 

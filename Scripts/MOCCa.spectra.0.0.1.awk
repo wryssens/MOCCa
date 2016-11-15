@@ -638,9 +638,9 @@ END{
                 m = 0
                 while ( m < l+1 ) {
                     if( Qlm[iq,"Re",l,m,3] != "" ) {
-                        printf("   ReQ%1.0f%1.0f     Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.n.eq.tab";
-                        printf("   ReQ%1.0f%1.0f     Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.p.eq.tab";
-                        printf("   ReQ%1.0f%1.0f     Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.t.eq.tab";
+                        printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.n.eq.tab";
+                        printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.p.eq.tab";
+                        printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.t.eq.tab";
                     }
                     m+=1
                 }
@@ -767,7 +767,7 @@ END{
             iq+=1
         }
         if ( calc == "pes" ) {
-            printf(" *\n") >> "tmp.p.hf.tab";
+            printf("*\n") >> "tmp.p.hf.tab";
         }        
         P+=1
     }
@@ -790,7 +790,7 @@ END{
             iq+=1
         }
         if ( calc == "pes" ) {
-            printf("* \n") >> "tmp.p.can.tab";
+            printf("*\n") >> "tmp.p.can.tab";
         }
         P+=1
     }

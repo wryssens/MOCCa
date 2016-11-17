@@ -16,10 +16,9 @@ BEGIN{
 # commentline or not, in order to avoid having multiple comment lines one after
 # another. 
 #
-commentplus=1
-commentmin =1
+countplus=0
+countmin=0
 }
-
 {
         #-----------------------------------------------------------------------
         # Start to read the file with the datasets.
@@ -28,24 +27,22 @@ commentmin =1
         if( $column == 1.0 ) {
             printf($0)   >> "tmp.p"
             printf("\n") >> "tmp.p"
-            commentplus=0
+            countplus += 1
+            if(countplus == points){
+                countplus = 0
+                printf("*\n") >> "tmp.p"
+            }
         }
         else if ( $column == -1.0) {
             printf($0)   >> "tmp.m"
             printf("\n") >> "tmp.m"
-            commentmin=0
+            countmin += 1
+            if(countmin == points){
+                countmin = 0
+                printf("*\n") >> "tmp.m"
+            }
         }
-        else if ( NF == 1 && commentmin==0) {
-            printf($0)   >> "tmp.m"
-            printf("\n") >> "tmp.m"
-            commentmin=1
-        }    
-        else if ( NF == 1 && commentplus==0) {    
-            printf($0)   >> "tmp.p"
-            printf("\n") >> "tmp.p"
-            commentplus = 1
-        }
-                
+                       
         close("tmp.p")
         close("tmp.m")
 }

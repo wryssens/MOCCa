@@ -17,6 +17,8 @@
 # + implement quasiparticle basis reading & writing                            #
 # + Add detection of quadrupole orientation                                    #
 # + Add blocking information                                                   #
+# + Add convergence info                                                       #
+# + Add header for spwf info
 #==============================================================================#
 #                                                                              #
 #    Usage                                                                     #
@@ -59,7 +61,7 @@
 #  [par]  = +1  positive parity                                                #
 #         = -1  negative parity                                                #
 #         =  0  parity broken                                                  #
-#  [sig]  = +1  positive signature                                             #
+#  [sig]  = +1  positive signature                                             #    
 #         = -1  negative signatiure                                            #
 #         =  0  signature broken                                               #
 #                                                                              #
@@ -70,7 +72,7 @@
 #  - Canonical and quasiparticle basis files will only be created with HFB runs#
 #===============================================================================
 
-function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC){
+function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
     #---------------------------------------------------------------------------
     # Sort a file of SPWF info according to the symmetries of the calculation.
     # We use the extra awk script Spwf.sort.awk to sort on a specific column.
@@ -78,7 +80,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC){
         
     if (PC == 1) {
         # Sort the spwfs according to parity
-        command = "awk -f Spwf.sort.awk 'column=3' < " file;
+        command = "awk -f Spwf.sort.awk 'column=3' 'points=" iqmax "' < " file;
         system(command);
         # Moving 
         command = " mv tmp.p spwf.par=+1"
@@ -101,7 +103,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC){
             # Sort the spwfs according to signature
             #Positive spwf.parity
             file = "par=+1"
-            command = "awk -f Spwf.sort.awk 'column=4' < " file;
+            command = "awk -f Spwf.sort.awk 'column=4' 'points=" iqmax "' < " file;
             system(command);
             
             command = " mv tmp.p spwf.par=+1.sig=+1"
@@ -111,7 +113,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC){
             
             #Negative spwf.parity
             file = "par=-1"
-            command = "awk -f Spwf.sort.awk 'column=4' < " file;
+            command = "awk -f Spwf.sort.awk 'column=4' 'points=" iqmax "' < " file;
             system(command);
             
             command = " mv tmp.p spwf.par=-1.sig=+1"
@@ -121,7 +123,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC){
         }
         else {
             file = "spwf.neutron.par=0"
-            command = "awk -f Spwf.sort.awk 'column=4' < " file;
+            command = "awk -f Spwf.sort.awk 'column=4' 'points=" iqmax "' < " file;
             system(command);
             
             command = " mv tmp.p spwf.par=0.sig=+1"
@@ -801,9 +803,9 @@ END{
               
             iq+=1
         }
-        if ( calc == "pes" ) {
-            printf("*\n") >>  "tmp.n.hf.tab"
-        }
+#        if ( calc == "pes" ) {
+#            printf("*\n") >>  "tmp.n.hf.tab"
+#        }
         N+=1
     }
     close("tmp.n.hf.tab")
@@ -825,9 +827,9 @@ END{
                 }
                 iq+=1
             }
-            if ( calc == "pes" ) {
-                printf("*\n") >> "tmp.n.can.tab"
-            }            
+#            if ( calc == "pes" ) {
+#                printf("*\n") >> "tmp.n.can.tab"
+#            }            
             N+=1
         }
         close("tmp.n.can.tab")
@@ -850,9 +852,9 @@ END{
               
             iq+=1
         }
-        if ( calc == "pes" ) {
-            printf("*\n") >> "tmp.p.hf.tab";
-        }        
+#        if ( calc == "pes" ) {
+#            printf("*\n") >> "tmp.p.hf.tab";
+#        }        
         P+=1
     }
     close("tmp.p.hf.tab")
@@ -873,20 +875,20 @@ END{
               
             iq+=1
         }
-        if ( calc == "pes" ) {
-            printf("*\n") >> "tmp.p.can.tab";
-        }
+#        if ( calc == "pes" ) {
+#            printf("*\n") >> "tmp.p.can.tab";
+#        }
         P+=1
     }
     close("tmp.p.can.tab")
     
     #---------------------------------------------------------------------------
     #Sort all of the SPWFs into blocks by their quantum number
-    SortSpwfs("tmp.n.hf.tab", "neutron", "hf", prefix, PC, SC, TRC) ;
-    SortSpwfs("tmp.p.hf.tab", "proton" , "hf", prefix, PC, SC, TRC) ;
+    SortSpwfs("tmp.n.hf.tab", "neutron", "hf", prefix, PC, SC, TRC,iqmax) ;
+    SortSpwfs("tmp.p.hf.tab", "proton" , "hf", prefix, PC, SC, TRC,iqmax) ;
     if(PairingType == "HFB") {
-        SortSpwfs("tmp.n.can.tab", "neutron", "ca", prefix, PC, SC, TRC) ;
-        SortSpwfs("tmp.p.can.tab", "proton" , "ca", prefix, PC, SC, TRC) ;
+        SortSpwfs("tmp.n.can.tab", "neutron", "ca", prefix, PC, SC, TRC,iqmax) ;
+        SortSpwfs("tmp.p.can.tab", "proton" , "ca", prefix, PC, SC, TRC,iqmax) ;
     }
     
     #---------------------------------------------------------------------------

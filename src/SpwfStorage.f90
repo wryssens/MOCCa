@@ -376,7 +376,7 @@ contains
     return
   end subroutine DeriveAll
 
-  subroutine PrintSpwf(PairingType, Fermi)
+  subroutine PrintSpwf(PairingType, Fermi, PrintAllSpwf)
     !---------------------------------------------------------------------------
     ! This subroutine prints out all info for all relevant wavefunctions, both
     ! canonical and hartree-fock basis.
@@ -389,7 +389,8 @@ contains
     integer, intent(in)           :: PairingType
     character(len=160)            :: HFheader='', CanHeader=''
     real(KIND=dp), intent(in)     :: Fermi(2)
-    real(KIND=dp)                 :: Distance
+    real(KIND=dp)                 :: Distance    
+    logical, intent(in)           :: PrintAllSpwf
 
     10 format (21 ('-'), ' Sp wavefunctions ', 41('-'))
     20 format (94 ('-'))
@@ -490,6 +491,8 @@ contains
             print 100
             do i=1,size(Order)
                 Distance = abs(HFBasis(Order(i))%GetEnergy() - Fermi(it))
+                ! Print in any case if all SPWFS are asked for
+                if(PrintAllSpwf) Distance = 0
                 if(Distance.lt.PrintingWindow) then
                     ! We also print the sum of particles that would be
                     ! there if the orbitals were completely filled.
@@ -509,6 +512,8 @@ contains
             print 100
             do i=1,size(Order)
                 Distance = abs(CanBasis(Order(i))%GetEnergy() - Fermi(it))
+                ! Print in any case if all SPWFS are asked for
+                if(PrintAllSpwf) Distance = 0
                 if(Distance.lt.PrintingWindow) then
                     ! We also print the sum of particles that would be
                     ! there if the orbitals were completely filled.

@@ -212,7 +212,7 @@ subroutine Evolve(MaxIterations, iprint)
   call CompEnergy
 
   !Printing observables
-  call PrintIterationInfo(0)
+  call PrintIterationInfo(0, .true.)
 
   !Checking for the presence of Rutz-Type constraints
   RutzCheck = CheckForRutzMoments()
@@ -312,7 +312,7 @@ subroutine Evolve(MaxIterations, iprint)
     if(mod(Iteration, PrintIter).eq.0 .or. Iteration.eq.MaxIterations) then
       if(Iteration.eq.MaxIterations) print 101
       !Print info after selected amount of iterations.
-      call PrintIterationInfo(Iteration)
+      call PrintIterationInfo(Iteration, .false.)
     endif
   enddo
   
@@ -322,7 +322,7 @@ subroutine Evolve(MaxIterations, iprint)
   if (Convergence .and. mod(Iteration, PrintIter).ne.0) then
     ! If convergence happens during iterations, it is possible
     ! that a printout has been skipped
-    call printIterationInfo(Iteration)
+    call printIterationInfo(Iteration, .true.)
   endif
 
   !Reanalysis of the result with Lagrange derivatives.
@@ -415,7 +415,7 @@ subroutine PrintStartInfo()
 
 end subroutine PrintStartInfo
 
-subroutine PrintIterationInfo(Iteration)
+subroutine PrintIterationInfo(Iteration, PrintAll)
   !-----------------------------------------------------------------------------
   ! Wrapper subroutine for all the printing routines.
   !
@@ -430,6 +430,7 @@ subroutine PrintIterationInfo(Iteration)
   implicit none
 
   integer, intent(in) :: Iteration
+  logical, intent(in) :: PrintAll
 
   1 format (/,60('='))
   2 format (' Iteration ', i5)
@@ -437,7 +438,7 @@ subroutine PrintIterationInfo(Iteration)
   print 1
   print 2, Iteration
 
-  call printSpwf(PairingType, Fermi)
+  call printSpwf(PairingType, Fermi, PrintAll)
   if(PairingType.eq.2) call PrintQp()
   call PrintAllMoments
   call PrintCranking

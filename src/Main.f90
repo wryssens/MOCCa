@@ -312,7 +312,7 @@ subroutine Evolve(MaxIterations, iprint)
     if(mod(Iteration, PrintIter).eq.0 .or. Iteration.eq.MaxIterations) then
       if(Iteration.eq.MaxIterations) print 101
       !Print info after selected amount of iterations.
-      call PrintIterationInfo(Iteration, .false.)
+      call PrintIterationInfo(Iteration, .true.)
     endif
   enddo
   

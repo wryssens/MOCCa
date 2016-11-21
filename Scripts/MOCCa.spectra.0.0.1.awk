@@ -94,7 +94,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
     }
     
     # Remove the original file
-    system("rm " file)
+    #system("rm " file)
     
     if (TRC == 0 && SC == 1) {
         # only distinguish between positive and negative signature when 
@@ -299,7 +299,7 @@ BEGIN{
                     getline;
                 }
             }
-
+        
             
             #----------------------------------
             # Neutron states in the canonical basis
@@ -367,7 +367,6 @@ BEGIN{
                 }
             }
             CanBasisflag = 0
-            HFBasisflag  = 0
         }
            
         

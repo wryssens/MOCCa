@@ -26,4 +26,6 @@
   
 - Printing of Beta deformation parameters does not take into account imaginary parts
 
+- HFB solver really does not behave well when pairing disappears.
+
 - When AllowTransform switch is not indicated but transformation is asked anyway, the code does uncontrollabe things. Somehow the testing criterions do not function.

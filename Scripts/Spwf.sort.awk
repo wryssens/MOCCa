@@ -43,6 +43,9 @@ countmin=0
             }
         }
                        
+}
+
+END{
         close("tmp.p")
         close("tmp.m")
 }

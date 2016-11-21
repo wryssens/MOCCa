@@ -18,34 +18,58 @@ BEGIN{
 #
 countplus=0
 countmin=0
+qmax = 0
 }
 {
         #-----------------------------------------------------------------------
         # Start to read the file with the datasets.
         # ----------------------------------------------------------------------
-                        
-        if( $column == 1.0 ) {
-            printf($0)   >> "tmp.p"
-            printf("\n") >> "tmp.p"
-            countplus += 1
-            if(countplus == points){
-                countplus = 0
-                printf("*\n") >> "tmp.p"
-            }
+        if( $2 > qmax) {
+            qmax = $2
         }
-        else if ( $column == -1.0) {
-            printf($0)   >> "tmp.m"
-            printf("\n") >> "tmp.m"
-            countmin += 1
-            if(countmin == points){
-                countmin = 0
-                printf("*\n") >> "tmp.m"
+        if( $column == 1.0) {
+            
+            if(NP[$2] == "") {
+                NP[$2] = 0 
             }
+            NP[$2] += 1
+            plus[$2, NP[$2]] = $0
         }
-                       
+        if( $column == -1.0) {
+            
+            if(NM[$2] == "") {
+                NM[$2] = 0 
+            }
+            NM[$2] += 1
+            min[$2, NM[$2]] = $0
+        }                                        
 }
 
 END{
+        i = 1
+        while( NP[1] + 1 > i ){
+            iq = 1
+            while ( iq < qmax +1){
+                   printf(plus[iq,i]) >> "tmp.p"
+                   printf("\n") >> "tmp.p"
+                   iq +=1
+            }
+            printf("*\n") >> "tmp.p"
+            i +=1 
+        }
+        
+        i = 1
+        while( NM[1] + 1 > i ){
+            iq = 1
+            while (iq < qmax +1 ){
+                   printf(min[iq,i]) >> "tmp.m"
+                   printf("\n")      >> "tmp.m"
+                   iq +=1
+            }
+            printf("*\n") >> "tmp.m"
+            i +=1 
+        }
+
         close("tmp.p")
         close("tmp.m")
 }

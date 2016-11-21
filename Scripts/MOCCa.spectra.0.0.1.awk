@@ -80,8 +80,9 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
         
     if (PC == 1) {
         # Sort the spwfs according to parity
-        command = "awk -f Spwf.sort.awk 'column=3' 'points=" iqmax "' < " file;
+        command = "awk -f Spwf.sort.awk 'column=5' 'points=" iqmax "' < " file;
         system(command);
+        #exit
         # Moving 
         command = " mv tmp.p spwf.par=+1"
         system(command)
@@ -94,7 +95,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
     }
     
     # Remove the original file
-    #system("rm " file)
+    system("rm " file)
     
     if (TRC == 0 && SC == 1) {
         # only distinguish between positive and negative signature when 
@@ -103,7 +104,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
             # Sort the spwfs according to signature
             #Positive spwf.parity
             file = "par=+1"
-            command = "awk -f Spwf.sort.awk 'column=4' 'points=" iqmax "' < " file;
+            command = "awk -f Spwf.sort.awk 'column=6' 'points=" iqmax "' < " file;
             system(command);
             
             command = " mv tmp.p spwf.par=+1.sig=+1"
@@ -113,7 +114,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
             
             #Negative spwf.parity
             file = "par=-1"
-            command = "awk -f Spwf.sort.awk 'column=4' 'points=" iqmax "' < " file;
+            command = "awk -f Spwf.sort.awk 'column=6' 'points=" iqmax "' < " file;
             system(command);
             
             command = " mv tmp.p spwf.par=-1.sig=+1"
@@ -123,7 +124,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
         }
         else {
             file = "spwf.neutron.par=0"
-            command = "awk -f Spwf.sort.awk 'column=4' 'points=" iqmax "' < " file;
+            command = "awk -f Spwf.sort.awk 'column=6' 'points=" iqmax "' < " file;
             system(command);
             
             command = " mv tmp.p spwf.par=0.sig=+1"
@@ -786,12 +787,13 @@ END{
     
     #---------------------------------------------------------------------------
     # Neutron HF basis
-    N = 1;
-    while ( neutronhf[1,N,1] != "" ) {
-        iq = 1;
-        while ( iq < iqmax +1){
+    iq = 1;
+    while ( iq < iqmax +1  ) {
+        N = 1;
+        while ( neutronhf[iq,N,1] != "" ){
             if ( calc == "pes" ) {
                 i = 1
+                printf("%4i %4i", N, iq) >> "tmp.n.hf.tab"
                 while( neutronhf[iq,N,i] != "" ) {
                     printf("%10.3f", neutronhf[iq,N,i] ) >> "tmp.n.hf.tab"
                     i +=1
@@ -800,47 +802,44 @@ END{
                 printf("\n" ) >> "tmp.n.hf.tab"
             }
               
-            iq+=1
+            N+=1
         }
-#        if ( calc == "pes" ) {
-#            printf("*\n") >>  "tmp.n.hf.tab"
-#        }
-        N+=1
+        iq+=1
     }
     close("tmp.n.hf.tab")
     
     #---------------------------------------------------------------------------
     # Neutron canonical basis (if HFB is active)
     if(PairingType == "HFB") {
-        N = 1;
-        while ( neutroncan[1,N,1] != "" ) {
-            iq = 1;
-            while ( iq < iqmax +1){
+        iq = 1;
+        while ( iq < iqmax +1  ) {
+            N = 1;
+            while ( neutroncan[1,N,1] != "" ){
                 if ( calc == "pes" ) {
                     i = 1
+                    printf("%4i %4i", N, iq) >> "tmp.n.can.tab"
                     while( neutroncan[iq,N,i] != "" ) {
                         printf("%10.3f", neutroncan[iq,N,i] ) >> "tmp.n.can.tab"
                         i +=1
                     }
                 printf("\n" ) >> "tmp.n.can.tab"
                 }
-                iq+=1
+                N+=1
             }
-#            if ( calc == "pes" ) {
-#                printf("*\n") >> "tmp.n.can.tab"
-#            }            
-            N+=1
+          
+            iq+=1
         }
         close("tmp.n.can.tab")
     }
     #---------------------------------------------------------------------------
     # Proton HF basis
-    P = 1;
-    while ( protonhf[1,P,1] != "" ) {
-        iq = 1;
-        while ( iq < iqmax +1){
+    iq = 1;
+    while ( iq < iqmax +1 ) {
+        P = 1;
+        while ( protonhf[iq,P,1] != ""){
             if ( calc == "pes" ) {
                 i = 1
+                printf("%4i %4i", P, iq) >> "tmp.p.hf.tab"
                 while( protonhf[iq,P,i] != "" ) {
                     printf("%10.3f", protonhf[iq,P,i] ) >> "tmp.p.hf.tab"
                     i +=1
@@ -848,22 +847,20 @@ END{
                 
                 printf("\n" ) >> "tmp.p.hf.tab"
             }
-              
-            iq+=1
+            P+=1
         }
-#        if ( calc == "pes" ) {
-#            printf("*\n") >> "tmp.p.hf.tab";
-#        }        
-        P+=1
+       
+        iq+=1
     }
     close("tmp.p.hf.tab")
     
-    P = 1;
-    while ( protoncan[1,P,1] != "" ) {
-        iq = 1;
-        while ( iq < iqmax +1){
+    iq = 1;
+    while ( iq < iqmax +1 ) {
+        P = 1;
+        while ( protoncan[iq,P,1] != "" ){
             if ( calc == "pes" ) {
                 i = 1
+                printf("%4i %4i", P, iq) >> "tmp.p.can.tab"
                 while( protoncan[iq,P,i] != "" ) {
                     printf("%10.3f", protoncan[iq,P,i] ) >> "tmp.p.can.tab"
                     i +=1
@@ -872,17 +869,14 @@ END{
                 printf("\n" ) >> "tmp.p.can.tab"
             }
               
-            iq+=1
+            P+=1
         }
-#        if ( calc == "pes" ) {
-#            printf("*\n") >> "tmp.p.can.tab";
-#        }
-        P+=1
+        iq+=1
     }
     close("tmp.p.can.tab")
-    
-    #---------------------------------------------------------------------------
-    #Sort all of the SPWFs into blocks by their quantum number
+#    
+#    #---------------------------------------------------------------------------
+#    #Sort all of the SPWFs into blocks by their quantum number
     SortSpwfs("tmp.n.hf.tab", "neutron", "hf", prefix, PC, SC, TRC,iqmax) ;
     SortSpwfs("tmp.p.hf.tab", "proton" , "hf", prefix, PC, SC, TRC,iqmax) ;
     if(PairingType == "HFB") {

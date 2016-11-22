@@ -737,9 +737,9 @@ contains
 
     Term3=NewSpinor()
 
-    DPsi(1:3,1) = DeriveSpinor(Der(1),-Psi%Parity,-Psi%Signature, Psi%TimeSimplex)
-    DPsi(1:3,2) = DeriveSpinor(Der(2),-Psi%Parity,-Psi%Signature,-Psi%TimeSimplex)
-    DPsi(1:3,3) = DeriveSpinor(Der(3),-Psi%Parity, Psi%Signature, Psi%TimeSimplex)
+    call DeriveSpinor(Der(1), DPsi(1:3,1),-Psi%Parity,-Psi%Signature, Psi%TimeSimplex)
+    call DeriveSpinor(Der(2), DPsi(1:3,2),-Psi%Parity,-Psi%Signature,-Psi%TimeSimplex)
+    call DeriveSpinor(Der(3), DPsi(1:3,3),-Psi%Parity, Psi%Signature, Psi%TimeSimplex)
 
     ! Slightly wasteful usage of CPU time here. We overwrite the previously
     ! calculated second derivate d_mu d_mu since it is pretty inaccurate

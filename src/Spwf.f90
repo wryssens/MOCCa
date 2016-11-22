@@ -818,7 +818,7 @@ contains
     S=WF%Signature
     TS=WF%TimeSimplex
 
-    WF%Der = DeriveSpinor(WF%Value,P,S,TS)
+    call DeriveSpinor(WF%Value,WF%Der,P,S,TS)
     WF%Lap = LapSpinor(WF%Value,P,S,TS)
   end subroutine CompDer
 

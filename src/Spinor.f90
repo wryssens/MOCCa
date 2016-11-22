@@ -492,13 +492,17 @@ contains
 
   end function ActionOfTimeSimplex
   
-  function DeriveSpinor(Psi,Parity,Signature,TimeSimplex) result(dPsi)
+  subroutine  DeriveSpinor(Psi, dPsi, Parity,Signature,TimeSimplex) 
     !-------------------------------------------------------------------------
     ! This function uses the derivatives module to calculate the derivative of 
     ! the spinor Psi.
     ! Notice that the result is an array of three spinors.
     !       Parity, Signature and Timesimplex indicate the symmetries which the 
     !        spinor possesses.
+    !
+    !-------------------------------------------------------------------------
+    ! This function has become a subroutine to deal with the various memory
+    ! leaks by the ifort compiler.
     !-------------------------------------------------------------------------
     use Derivatives
 
@@ -508,9 +512,11 @@ contains
     real(KIND=dp)             :: DerivResult(nx,ny,nz,3), GridPsi(nx,ny,nz,4,1)
     integer                   :: i,l,k,n
     
-    do i=1,3
-         allocate(DPsi(i)%Grid(nx,ny,nz,4,1))
-    enddo
+    if(.not.allocated(DPsi(1)%Grid)) then
+        do i=1,3
+             allocate(DPsi(i)%Grid(nx,ny,nz,4,1))
+        enddo
+    endif
     do k=1, size(Psi%Grid,5)
       do l=1,4
         dPsi(1)%Grid(:,:,:,l,k) = &
@@ -522,7 +528,7 @@ contains
       enddo
     enddo
     return    
-  end function DeriveSpinor
+  end subroutine DeriveSpinor
   
   function SecondDerivativeSpinor(Psi,Direction,Parity,Signature,TimeSimplex)  &
   &                              result(dPsi)

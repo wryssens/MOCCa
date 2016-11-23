@@ -11,41 +11,50 @@
 #                                                                              #
 #===============================================================================
 BEGIN{
-#
-# These flags track whether or not the last line written to file was a 
-# commentline or not, in order to avoid having multiple comment lines one after
-# another. 
-#
-countplus=0
-countmin=0
-qmax = 0
+
 }
 {
         #-----------------------------------------------------------------------
         # Start to read the file with the datasets.
+        # Notice that this ignores any lines that are not spwf
         # ----------------------------------------------------------------------
-        if( $2 > qmax) {
+        if( column == -1 && NF !=1) {
+            if( $2 > qmax) {
+                qmax = $2
+            }
+            if(Nz[$2] == "") {
+                Nz[$2] = 0 
+            }
+            Nz[$2] += 1 
+            zero[$2, Nz[$2]] = $0
+        }        
+        else if( NF != 1 ) {
+            if( $2 > qmax) {
             qmax = $2
-        }
-        if( $column == 1.0) {
-            
-            if(NP[$2] == "") {
-                NP[$2] = 0 
             }
-            NP[$2] += 1
-            plus[$2, NP[$2]] = $0
-        }
-        if( $column == -1.0) {
-            
-            if(NM[$2] == "") {
-                NM[$2] = 0 
+            if( $column == 1.0) {
+                
+                if(NP[$2] == "") {
+                    NP[$2] = 0 
+                }
+                NP[$2] += 1
+                plus[$2, NP[$2]] = $0
             }
-            NM[$2] += 1
-            min[$2, NM[$2]] = $0
-        }                                        
+            else if( $column == -1.0) {
+                
+                if(NM[$2] == "") {
+                    NM[$2] = 0 
+                }
+                NM[$2] += 1
+                min[$2, NM[$2]] = $0
+            }
+                        
+        }
+                                    
 }
 
 END{
+    if(column != -1) {
         i = 1
         while( NP[1] + 1 > i ){
             iq = 1
@@ -72,6 +81,23 @@ END{
 
         close("tmp.p")
         close("tmp.m")
+    }
+    else {
+        i = 1
+        while( Nz[1] + 1 > i ){
+            iq = 1
+            while ( iq < qmax +1){
+                   printf(zero[iq,i]) >> "tmp.zero"
+                   printf("\n") >> "tmp.zero"
+                   iq +=1
+            }
+            printf("*\n") >> "tmp.zero"
+            i +=1 
+        }
+    
+    }
+       
+      
 }
 
 

@@ -90,7 +90,9 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
         system(command)
     }
     else{
-        command =  "mv " file  " spwf.par=0"
+        command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' < " file;
+        system(command)
+        command = " mv tmp.zero spwf.par=0"
         system(command)
     }
     
@@ -102,7 +104,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
         # time-reversal is not conserved.
         if (PC == 1) {
             # Sort the spwfs according to signature
-            #Positive spwf.parity
+            # Positive spwf.parity
             file = "par=+1"
             command = "awk -f Spwf.sort.awk 'column=6' 'points=" iqmax "' < " file;
             system(command);
@@ -149,13 +151,26 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
     else if ( SC == 0) {
         #No signature sorting
         if(PC == 1) {
-            command =  "mv spwf.par=+1 spwf.par=+1.sig=0"
+            command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' < spwf.par=+1";
             system(command)
-            command =  "mv spwf.par=-1 spwf.par=-1.sig=0"
-            system(command)        
+            command = " mv tmp.p spwf.par=+1.sig=0"
+            system(command)
+            
+            command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' < spwf.par=-1";
+            system(command)
+            command = " mv tmp.p spwf.par=-1.sig=0"
+            system(command)
+    
+            command="rm spwf.par=-1"
+            system(command)
+            command="rm spwf.par=+1"
+            system(command)
+          
         }
         else{
-            command =  "mv spwf.par=+1 spwf.par=0.sig=0"
+            command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' < spwf.par=0 ";
+            system(command)
+            command = " mv tmp.zero spwf.par=0.sig=0"
             system(command)
         }         
     }

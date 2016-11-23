@@ -265,6 +265,15 @@ BEGIN{
                 PairingType = "HF"
             }
         }
+        #   f) dealing with one-body correction or not?
+        if ($1 == "COM1Body=") {
+            if($2 == 0) {
+                COM1flag = 0
+            }
+            else{
+                COM1flag = 1
+            }
+        }
        
         #------------------------------------------------------------------------
         # This flag marks the end of a MOCCa calculation in the file
@@ -628,12 +637,15 @@ BEGIN{
                 Coulomb[iq,direct] = $2
                 Coulomb[iq,exch]   = $4
 
-                getline;
-                getline;
-                
-                COM1[iq,1] = $3
-                COM1[iq,2] = $6
-                COM1[iq,3] = $8
+                if(COM1flag == 1) {
+                    getline;
+                    getline;
+                    
+                    COM1[iq,1] = $3
+                    COM1[iq,2] = $6
+                    COM1[iq,3] = $8
+                    
+                }
                 
                 getline;
                 getline;

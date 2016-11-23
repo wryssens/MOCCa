@@ -324,12 +324,12 @@ contains
 
     !Info on the Moments Module
     call ReadMomentData()
+           
     ! If signalled, read info on extra moments
     if(SpecialInput) call readSpecialMoments
 
     !Reading the names for the in- and outputfiles.
     read (unit=*, nml=InAndOutput)
-
     ! Force namelist
     call ReadForceInfo()
 
@@ -338,6 +338,7 @@ contains
 
     !Reading the Cranking Namelist
     call ReadCrankingInfo()
+
     return
   end subroutine ReadRunInfo
 

@@ -348,8 +348,7 @@ contains
     Current=>Root
     nullify(Current%Next) ;  nullify(Current%Prev) ; nullify(NextMoment)
 
-    ! Finding the Spherical Harmonics
-    SpherHarmMesh=SphericalHarmonics(Mesh3D,nx,ny,nz)
+    call SphericalHarmonics(Mesh3D,nx,ny,nz, SpherHarmMesh)
 
     !Creating all the moments and assigning each moment the spherical harmonic
     do l=1, MaxMoment
@@ -386,7 +385,7 @@ contains
     return
   end subroutine IniMoments
 
-  function SphericalHarmonics(Mesh,mx,my,mz) result(SpherHarmMesh)
+  subroutine SphericalHarmonics(Mesh,mx,my,mz,SpherHarmMesh)
     !---------------------------------------------------------------------------
     ! This function computes the values of all the spherical harmonics up to
     ! l=Maxmoment for the coordinates in Mesh. The input Mesh is thus an array
@@ -408,15 +407,15 @@ contains
     integer, intent(in)        :: mx,my,mz
     real(KIND=dp), intent(in)  :: Mesh(3,mx,my,mz)
 
-    real(KIND=dp)  :: LegendreMesh(mx,my,mz,0:MaxMoment,0:MaxMoment)
+    real(KIND=dp)  :: LegendreMesh (mx,my,mz,0:MaxMoment,0:MaxMoment)
     real(KIND=dp)  :: SpherHarmMesh(mx,my,mz,0:MaxMoment,0:MaxMoment,2)
     !r, Sin(\theta),Cos(\theta),\phi, sin(m*\Phi) and cos(m*\Phi)
     real(KIND=dp)  :: r,cosTheta,sinTheta, phi,sinmPhi, cosmPhi
     real(KIND=dp)  :: fac, X,Y,Z
-    integer        :: q,i,j,k,l,m
+    integer        :: i,j,k,l,m,q
     real(KIND=dp)  :: factorialquotient
 
-    !LegendreMesh = 0.0_dp
+    !LegendreMesh = 0.0_dp  
 
     do k=1,mz
       do j=1,my
@@ -424,7 +423,6 @@ contains
           X = Mesh(1,i,j,k)
           Y = Mesh(2,i,j,k)
           Z = Mesh(3,i,j,k)
-
 
           r        =sqrt(X**2+Y**2+Z**2)
           select case(QuantisationAxis)
@@ -494,8 +492,7 @@ contains
       enddo
     enddo
 
-    return
-  end function SphericalHarmonics
+  end subroutine SphericalHarmonics
 
   function NewMoment(l,m,ImPart)
     !---------------------------------------------------------------------------
@@ -2166,6 +2163,7 @@ subroutine PrintAllMoments()
     if(SecondaryAxis .le. 0 .or. SecondaryAxis .gt. 2) then
       call stp('Illegal value of secondary axis!')
     endif
+
     !Initialising the Linked List
     call IniMoments()
 

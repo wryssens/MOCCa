@@ -515,7 +515,7 @@ contains
   endif
 
   ! Computing the spherical harmonics at the extra points.
-  SpherHarmCoulomb = SphericalHarmonics(Mesh3DExt, mx,my,mz)
+  call SphericalHarmonics(Mesh3DExt, mx,my,mz, SpherHarmCoulomb)
 
   !Computing the distances r, for use in Coulombbound.
   r = sqrt(Mesh3DExt(1,:,:,:)**2+ Mesh3DExt(2,:,:,:)**2+ Mesh3DExt(3,:,:,:)**2)

@@ -42,7 +42,8 @@ contains
   real(KIND=dp), intent(in) :: filedx
   type(Spwf), allocatable   :: HFBasisTransformed(:)
   integer                   :: wave, index
- 
+  logical                   :: interpolx, interpoly, interpolz
+
     !---------------------------------------------------------------------------
     ! Checking for Time Reversal breaking first!
     ! Note that we try to take the same ordering as CR8: first all the neutron
@@ -107,14 +108,29 @@ contains
     call TransformDensities(inSC, inTSC, inPC , filenx, fileny, filenz)
     !---------------------------------------------------------------------------
     ! Interpolation 
-    call ConstructInterpolationFunctions(size(HFBasis(1)%Value%Grid,1)         &
-    &                                   ,size(HFBasis(1)%Value%Grid,2)         &
-    &                                   ,size(HFBasis(1)%Value%Grid,3)         &
-    &                                   ,filedx)
-    ! Interpolating the wavefunctions
-    do wave=1,nwt
-      HFBasis(wave) = InterpolateSpwf(HFBasis(wave))
-    enddo
+    interpolx = .false.
+    interpoly = .false.
+    interpolz = .false.
+
+    if(( SC .eqv.  inSC  ).and.( nx.ne.  filenx)) interpolx = .true.
+    if(( SC .neqv. inSC  ).and.( nx.ne.2*filenx)) interpolx = .true.
+
+    if((TSC .eqv.  inTSC ).and.( ny.ne.  fileny)) interpoly = .true.
+    if((TSC .neqv. inTSC ).and.( ny.ne.2*fileny)) interpoly = .true.
+
+    if(( PC .eqv.  inPC  ).and.( nz.ne.  filenz)) interpolz = .true.
+    if(( PC .neqv. inPC  ).and.( nz.ne.2*filenz)) interpolz = .true.
+
+    if(interpolx .or. interpoly .or. interpolz) then
+      call ConstructInterpolationFunctions(size(HFBasis(1)%Value%Grid,1)         &
+      &                                   ,size(HFBasis(1)%Value%Grid,2)         &
+      &                                   ,size(HFBasis(1)%Value%Grid,3)         &
+      &                                   ,filedx)
+      ! Interpolating the wavefunctions
+      do wave=1,nwt
+        HFBasis(wave) = InterpolateSpwf(HFBasis(wave))
+      enddo
+    endif
     !---------------------------------------------------------------------------
     ! Make sure the densities get recalculated
     Density = NewDensityVector()

@@ -13,12 +13,10 @@
 #                                                                              #
 #==============================================================================#
 # TODO                                                                         #
-# + implement band and iso options                                             #
 # + implement quasiparticle basis reading & writing                            #
 # + Add detection of quadrupole orientation                                    #
 # + Add blocking information                                                   #
 # + Add convergence info                                                       #
-# + Add header for spwf info
 #==============================================================================#
 #                                                                              #
 #    Usage                                                                     #
@@ -51,7 +49,7 @@
 #                                                                              #
 #  [base] = hf "Hartree-Fock" basis diagonalizing the sp Hamiltonian           #
 #         = ca canonical      basis diagonalizing the one-body density matrix  # 
-#         = q  quasiparticle  basis diagonalizing the q-p Hamiltonian          # 
+#         = qp  quasiparticle  basis diagonalizing the q-p Hamiltonian         # 
 #          (NOT IMPLEMENTED)                                                   #
 #  [iso]  = n  neutrons                                                        #
 #         = p  protons                                                         #

@@ -23,14 +23,11 @@
 #                                                                              #
 #    Usage                                                                     #
 #                                                                              #
-#    awk -f MOCCa.spectra.awk "calc=XXX"   PREFIX.out                          #
+#    awk -f MOCCa.spectra.awk  PREFIX.out                                      #
 #                                                                              #
 #    where PREFIX.out is a collection of MOCCa outputs, arranged in the desired#
 #    order. (For instance by cat'ing the different files one after another).   #
 #                                                                              #
-#    calc = pes       quadrupole deformation energy curve                      #   
-#         = band      rotational band                       NOT IMPLEMENTED YET#           
-#         = iso       isotopic or isotonic chain            NOT IMPLEMENTED YET#
 #                                                                              #
 #    Note that it is VERY important that the different MOCCa runs match in type#
 #    DO NOT TRY TO MIX with one awk call:                                      #
@@ -80,12 +77,13 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
         
     if (PC == 1) {
         # Sort the spwfs according to parity
-        command = "awk -f Spwf.sort.awk 'column=5' 'points=" iqmax "' < " file;
+        command = "awk -f Spwf.sort.awk 'column=4' 'points=" iqmax "' < " file;
         system(command);
         #exit
         # Moving 
         command = " mv tmp.p spwf.par=+1"
         system(command)
+        
         command = " mv tmp.m spwf.par=-1"
         system(command)
     }
@@ -106,7 +104,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
             # Sort the spwfs according to signature
             # Positive spwf.parity
             file = "par=+1"
-            command = "awk -f Spwf.sort.awk 'column=6' 'points=" iqmax "' < " file;
+            command = "awk -f Spwf.sort.awk 'column=5' 'points=" iqmax "' < " file;
             system(command);
             
             command = " mv tmp.p spwf.par=+1.sig=+1"
@@ -116,7 +114,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
             
             #Negative spwf.parity
             file = "par=-1"
-            command = "awk -f Spwf.sort.awk 'column=6' 'points=" iqmax "' < " file;
+            command = "awk -f Spwf.sort.awk 'column=5' 'points=" iqmax "' < " file;
             system(command);
             
             command = " mv tmp.p spwf.par=-1.sig=+1"
@@ -126,7 +124,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
         }
         else {
             file = "spwf.neutron.par=0"
-            command = "awk -f Spwf.sort.awk 'column=6' 'points=" iqmax "' < " file;
+            command = "awk -f Spwf.sort.awk 'column=5' 'points=" iqmax "' < " file;
             system(command);
             
             command = " mv tmp.p spwf.par=0.sig=+1"
@@ -187,6 +185,60 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
     system("rm script.sh")
 }
 
+function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
+{
+    #===========================================================================
+    # Depending on the pairingtype and symmetries, correctly order the Spwf info
+    #===========================================================================
+    
+    Eind=0
+    #Spenergy
+    if(PairingType == "HFB" && basis =="hf")
+    {
+        Eind=7
+    }
+    if(PairingType == "HFB" && basis =="can")
+    {
+        Eind=5
+    }
+    else if (PairingType=="BCS")
+    {
+        Eind=6
+    }
+    else if (PairingType =="HF")
+    {
+        Eind=5
+    }
+                  
+    #index of the state
+    sorted[1] = $2
+        
+    # Expected value of parity
+    sorted[2] = $3
+    
+    if( TRC != 1.0 || SC != 1.0 ){
+        # Expected value of signature
+        sorted[3] = $4
+        #Occupation number or Rho_ii
+        sorted[4] = $5
+    }
+    else {
+        #Automatically positive signature
+        sorted[3] =  1
+        sorted[4] = $4
+    }
+
+    sorted[5] = $Eind
+    
+    # Angular momentum quantum numbers Jx, Jy, Jz and J as well as <r^2>
+    k = 1
+    while (k < 6){
+        sorted[5+k] = $(Eind + k)
+        k+=1
+    }
+
+    return 
+}
 
 BEGIN{
         iq = 0
@@ -314,18 +366,18 @@ BEGIN{
             N = 1
             if(HFBasisflag == 1){
                 while( N < nwn + 1 && NF != 1){
-                    i=1 
-                    
-                    while ( i<NF+1 ) { 
-                        neutronhf[iq, N ,i]= $i
-                        i+=1 
-                    }
+                                      
+                     ReadSpwf("hf", PairingType, SC, TSC, PC, TRC, line)
+                     i = 1
+                     while( i < NF +1 ){
+                        neutronhf[iq,N,i] = line[i]
+                        i+=1
+                     }
+                     
                     N +=1
                     getline;
                 }
             }
-        
-            
             #----------------------------------
             # Neutron states in the canonical basis
             N = 1
@@ -336,9 +388,9 @@ BEGIN{
                 getline;
                 while( N < nwn + 1 && NF != 1){
                     i=1 
-
+                    ReadSpwf("can", PairingType, SC, TSC, PC, TRC, line)
                     while ( i<NF+1 ) { 
-                        neutroncan[iq, N ,i]= $i
+                        neutroncan[iq, N ,i]= line[i]
                         i+=1 
                     }
                     N +=1
@@ -358,9 +410,9 @@ BEGIN{
             if(HFBasisflag == 1){
                 while( P < nwp + 1 && NF != 1){
                     i=1
- 
+                    ReadSpwf("hf", PairingType, SC, TSC, PC, TRC, line)
                     while ( i<NF+1 ) { 
-                        protonhf[iq, P ,i]= $i
+                        protonhf[iq, P ,i]= line[i]
                         i+=1 
                     }
                     P +=1
@@ -381,13 +433,12 @@ BEGIN{
                 getline;
                 while( P < nwp + 1 && NF != 1){
                     i=1 
-
+                    ReadSpwf("can", PairingType, SC, TSC, PC, TRC, line)
                     while ( i<NF+1 ) { 
-                        protoncan[iq, P ,i]= $i
+                        protoncan[iq, P ,i]= line[i]
                         i+=1 
                     }
                     P +=1
-                    #print protoncan[iq,4,4]
                     getline;
                 }
             }
@@ -675,16 +726,16 @@ END{
     #---------------------------------------------------------------------------
     # total energy
     # and closely related observables
-    if ( calc == "pes" ) {
-        print "!         Q20       Q22       Q2    gamma      beta2     E(func)     E(sp)  E(func)noLN      eLN(n)     eLN(p)      OmegaX      Jx        OmegaY      Jy        OmegaZ      Jz" > "tmp.e.tab";
-    }
+    #if ( calc == "pes" ) {
+        print "!       E(func)     E(sp)  E(func)noLN      eLN(n)     eLN(p)      OmegaX      Jx        OmegaY      Jy        OmegaZ      Jz" > "tmp.e.tab";
+    #}
     iq=1;
     while ( iq < iqmax + 1 ) {
         enoln = Energy[iq,1] - ELN[iq,3];
-        if ( calc == "pes" ) {
-            printf("%3.0f %9.1f %9.1f %9.1f %8.3f %10.3f %10.3f %10.3f   %10.3f %10.3f   %10.6f %8.3f %12.5f %8.3f %12.5f %8.3f %12.5f \n",
-               iq,Qlm[iq,"Re",2,0,3], Qlm[iq,"Re",2,2,3], Q0[iq,3], Gamma[iq,3], Betal[iq,2,3],Energy[iq,1],Energy[iq,3],enoln,ELN[iq,1],ELN[iq,2],OmegaX[iq],Jx[iq],OmegaY[iq],Jy[iq],OmegaZ[iq],Jz[iq]) >> "tmp.e.tab"; 
-        }
+#        if ( calc == "pes" ) {
+            printf("%3.0f %10.3f %10.3f   %10.3f %10.3f   %10.6f %8.3f %12.5f %8.3f %12.5f %8.3f %12.5f \n",
+               iq,Energy[iq,1],Energy[iq,3],enoln,ELN[iq,1],ELN[iq,2],OmegaX[iq],Jx[iq],OmegaY[iq],Jy[iq],OmegaZ[iq],Jz[iq]) >> "tmp.e.tab"; 
+#        }
         iq += 1;
     }
     close("tmp.e.tab");
@@ -692,12 +743,12 @@ END{
     #---------------------------------------------------------------------------
     # Deformations of all the Re/Im Qlm detected for neutrons, protons and total 
     iq = 1;
-    if ( calc == "pes" ) {
+#    if ( calc == "pes" ) {
         printf("!    ") > "tmp.n.qlm.tab";
         printf("!    ") > "tmp.p.qlm.tab";
         printf("!    ") > "tmp.t.qlm.tab";
         #Make the header by looking which Qlm entries are initialised
-        if ( calc == "pes" ) {
+#        if ( calc == "pes" ) {
             l = 1
             while ( l < maxmultipole +1) {
                 m = 0
@@ -714,10 +765,10 @@ END{
             printf("\n")>>"tmp.n.qlm.tab"
             printf("\n")>>"tmp.p.qlm.tab"  
             printf("\n")>>"tmp.t.qlm.tab"     
-        }
-    }
+#        }
+#    }
     while ( iq < iqmax + 1 ) {
-        if ( calc == "pes" ) {
+#        if ( calc == "pes" ) {
             printf("%3.0f", iq) >> "tmp.n.qlm.tab"
             printf("%3.0f", iq) >> "tmp.p.qlm.tab" 
             printf("%3.0f", iq) >> "tmp.t.qlm.tab"  
@@ -742,7 +793,7 @@ END{
             printf("\n")>>"tmp.n.qlm.tab"
             printf("\n")>>"tmp.p.qlm.tab"  
             printf("\n")>>"tmp.t.qlm.tab"   
-        }    
+#        }    
         iq += 1;
     }
     close("tmp.n.qlm.tab");
@@ -751,12 +802,12 @@ END{
     #---------------------------------------------------------------------------
     # Deformations of all the Ql detected for neutrons, protons and total 
     iq = 1;
-    if ( calc == "pes" ) {
+#    if ( calc == "pes" ) {
         printf("!     ") > "tmp.n.ql.tab";
         printf("!     ") > "tmp.p.ql.tab";
         printf("!     ") > "tmp.t.ql.tab";
         #Make the header by looking which Qlm entries are initialised
-        if ( calc == "pes" ) {
+#        if ( calc == "pes" ) {
             l = 1
             while ( l < maxmultipole +1) {
                 
@@ -770,10 +821,10 @@ END{
             printf("\n")>>"tmp.n.ql.tab"
             printf("\n")>>"tmp.p.ql.tab"  
             printf("\n")>>"tmp.t.ql.tab"     
-        }
-    }
+#        }
+#    }
     while ( iq < iqmax + 1 ) {
-        if ( calc == "pes" ) {
+#        if ( calc == "pes" ) {
             printf("%3.0f", iq) >> "tmp.n.ql.tab"
             printf("%3.0f", iq) >> "tmp.p.ql.tab" 
             printf("%3.0f", iq) >> "tmp.t.ql.tab"  
@@ -790,7 +841,7 @@ END{
             printf("\n")>>"tmp.n.ql.tab"
             printf("\n")>>"tmp.p.ql.tab"  
             printf("\n")>>"tmp.t.ql.tab"   
-        }    
+#        }    
         iq += 1;
     }
     close("tmp.n.ql.tab");
@@ -798,27 +849,33 @@ END{
     close("tmp.t.ql.tab");
     #---------------------------------------------------------------------------
     #------------ Fermi energies and information on Lipkin-Nogami scheme--------
-    if ( calc == "pes" ) {
+#    if ( calc == "pes" ) {
         print "!      eF_n     eF_p   lambda_2n lambda_2p  eLN(n)   eLN(p) <DeltaN^2> <DeltaZ^2>" > "tmp.ef.tab";
-    }
+#    }
     iq = 1;
     while ( iq < iqmax + 1 ) {
-        if ( calc == "pes" ) {
+#        if ( calc == "pes" ) {
           printf("%3.0f %8.3f %8.3f  %8.3f %8.3f  %8.3f %8.3f   %8.3f  %8.3f\n",
                iq,Fermi[iq,1],Fermi[iq,2],Lambda2[iq,1],Lambda2[iq,2],ELN[iq,1], ELN[iq,2], Dispersion[iq,1], Dispersion[iq,2]) >> "tmp.ef.tab"; 
-        }
+#        }
         iq += 1;
     }
     close("tmp.ef.tab")
     
-    
+    #----------------------------------------------
+    # Deciding on the header for the SPWF files
+    #
+    header = "*             index     <P>       <Rz>       v^2      Esp       <Jx>      <Jy>      <Jz>       J        <r^2> \n"
+       
     #---------------------------------------------------------------------------
     # Neutron HF basis
+    printf(header) > "tmp.n.hf.tab"
+    
     iq = 1;
     while ( iq < iqmax +1  ) {
         N = 1;
         while ( neutronhf[iq,N,1] != "" ){
-            if ( calc == "pes" ) {
+#            if ( calc == "pes" ) {
                 i = 1
                 printf("%4i %4i", N, iq) >> "tmp.n.hf.tab"
                 while( neutronhf[iq,N,i] != "" ) {
@@ -827,28 +884,29 @@ END{
                 }
                 
                 printf("\n" ) >> "tmp.n.hf.tab"
-            }
+#            }
               
             N+=1
         }
         iq+=1
     }
     close("tmp.n.hf.tab")
-    
+
     #---------------------------------------------------------------------------
     # Neutron canonical basis (if HFB is active)
     if(PairingType == "HFB") {
+        printf(header) > "tmp.n.can.tab"
         iq = 1;
         while ( iq < iqmax +1  ) {
             N = 1;
             while ( neutroncan[1,N,1] != "" ){
-                if ( calc == "pes" ) {
+#                if ( calc == "pes" ) {
                     i = 1
                     printf("%4i %4i", N, iq) >> "tmp.n.can.tab"
                     while( neutroncan[iq,N,i] != "" ) {
                         printf("%10.3f", neutroncan[iq,N,i] ) >> "tmp.n.can.tab"
                         i +=1
-                    }
+#                    }
                 printf("\n" ) >> "tmp.n.can.tab"
                 }
                 N+=1
@@ -861,10 +919,11 @@ END{
     #---------------------------------------------------------------------------
     # Proton HF basis
     iq = 1;
+    printf(header) > "tmp.p.hf.tab"
     while ( iq < iqmax +1 ) {
         P = 1;
         while ( protonhf[iq,P,1] != ""){
-            if ( calc == "pes" ) {
+#            if ( calc == "pes" ) {
                 i = 1
                 printf("%4i %4i", P, iq) >> "tmp.p.hf.tab"
                 while( protonhf[iq,P,i] != "" ) {
@@ -873,34 +932,39 @@ END{
                 }
                 
                 printf("\n" ) >> "tmp.p.hf.tab"
-            }
+#            }
             P+=1
         }
-       
         iq+=1
     }
     close("tmp.p.hf.tab")
     
-    iq = 1;
-    while ( iq < iqmax +1 ) {
-        P = 1;
-        while ( protoncan[iq,P,1] != "" ){
-            if ( calc == "pes" ) {
-                i = 1
-                printf("%4i %4i", P, iq) >> "tmp.p.can.tab"
-                while( protoncan[iq,P,i] != "" ) {
-                    printf("%10.3f", protoncan[iq,P,i] ) >> "tmp.p.can.tab"
-                    i +=1
-                }
-                
-                printf("\n" ) >> "tmp.p.can.tab"
+    #---------------------------------------------------------------------------
+    # Proton canonical basis
+    if(PairingType == "HFB"){
+        printf(header) > "tmp.p.can.tab"
+        iq = 1;
+        while ( iq < iqmax +1 ) {
+            P = 1;
+            while ( protoncan[iq,P,1] != "" ){
+#                if ( calc == "pes" ) {
+                    i = 1
+                    printf("%4i %4i", P, iq) >> "tmp.p.can.tab"
+                    while( protoncan[iq,P,i] != "" ) {
+                        printf("%10.3f", protoncan[iq,P,i] ) >> "tmp.p.can.tab"
+                        i +=1
+                    }
+                    
+                    printf("\n" ) >> "tmp.p.can.tab"
+#                }
+                  
+                P+=1
             }
-              
-            P+=1
+            iq+=1
         }
-        iq+=1
+    close("tmp.p.can.tab")    
     }
-    close("tmp.p.can.tab")
+#    exit
 #    
 #    #---------------------------------------------------------------------------
 #    #Sort all of the SPWFs into blocks by their quantum number

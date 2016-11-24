@@ -18,7 +18,11 @@ BEGIN{
         # Start to read the file with the datasets.
         # Notice that this ignores any lines that are not spwf
         # ----------------------------------------------------------------------
-        if( column == -1 && NF !=1) {
+        if( NR == 1) {
+            header = $0
+        }
+        
+        if( column == -1 && NF !=1 && NR !=1) {
             if( $2 > qmax) {
                 qmax = $2
             }
@@ -28,7 +32,7 @@ BEGIN{
             Nz[$2] += 1 
             zero[$2, Nz[$2]] = $0
         }        
-        else if( NF != 1 ) {
+        else if( NF != 1 && NR !=1 ) {
             if( $2 > qmax) {
             qmax = $2
             }
@@ -53,12 +57,16 @@ BEGIN{
 
 END{
     if(column != -1) {
+    
+        printf(header "\n") > "tmp.p"
+        printf(header "\n") > "tmp.m"
+    
         i = 1
         while( NP[1] + 1 > i ){
             iq = 1
             while ( iq < qmax +1){
                    printf(plus[iq,i]) >> "tmp.p"
-                   printf("\n") >> "tmp.p"
+                   printf("\n")       >> "tmp.p"
                    iq +=1
             }
             printf("*\n") >> "tmp.p"
@@ -81,6 +89,9 @@ END{
         close("tmp.m")
     }
     else {
+    
+        printf(header "\n") > "tmp.zero"
+    
         i = 1
         while( Nz[1] + 1 > i ){
             iq = 1
@@ -94,8 +105,6 @@ END{
         }
     
     }
-       
-      
 }
 
 

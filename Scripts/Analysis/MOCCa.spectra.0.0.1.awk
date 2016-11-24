@@ -231,7 +231,7 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
     # Angular momentum quantum numbers Jx, Jy, Jz and J as well as <r^2>
     k = 1
     while (k < 6){
-        sorted[5+k] = $(Eind + k)
+        sorted[5+k] = $(Eind + k +1 )
         k+=1
     }
 
@@ -250,8 +250,7 @@ BEGIN{
         
         #Only detect the first mention of HF(B)
         pairingtypeflag=1
-        
-        
+    
 }
 
 {

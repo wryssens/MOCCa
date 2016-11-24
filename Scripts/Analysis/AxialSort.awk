@@ -34,7 +34,6 @@ BEGIN{
         ind = 10
     }
     
-    
     #------------------------------------------------------
     # Determine the file-name
     if ( NR == 1 ) { 
@@ -95,18 +94,18 @@ BEGIN{
 }
 
 END{
-#    printf(" i  = %4.0f levels found \n",i);
-#    printf(" iq = %4.0f deformations \n",iqmax);
-#    printf(" k  = %4.0f largest k found \n",kmax);
+    printf(" i  = %4.0f levels found \n",i);
+    printf(" iq = %4.0f deformations \n",iqmax);
+    printf(" k  = %4.0f largest k found \n",kmax);
 
-#    k = -1;
-#    ksum = 0;
-#    while ( k < kmax+1 ) {
-#        k += 2;
-#        printf(" ik = %4.0f levels with k = %4.0f \n",kkmax[k],k);
-#        ksum += kkmax[k];
-#    }
-#    printf(" ksum = %4.0f levels found \n",ksum);
+    k = -1;
+    ksum = 0;
+    while ( k < kmax+1 ) {
+        k += 2;
+        printf(" ik = %4.0f levels with k = %4.0f \n",kkmax[k],k);
+        ksum += kkmax[k];
+    }
+    printf(" ksum = %4.0f levels found \n",ksum);
     
     k  = 1;
     while ( k < kmax+1 ) {

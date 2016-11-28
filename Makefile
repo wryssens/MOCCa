@@ -12,20 +12,36 @@ SRC    +=   Spwf.f90 SpwfStorage.f90 Damping.f90 Densities.f90
 SRC    +=   Moments.f90 SpecialMoments.f90 MultiGrid.f90 Coulomb.f90 PairingInteraction.f90 
 SRC    +=   LipkinNogami.f90 HartreeFock.f90 HFB.f90 GradientHFB.f90 BCS.f90 Pairing.f90 Cranking.f90 
 SRC    +=   MeanFields.f90 Energy.f90 ImaginaryTime.f90  DensityMixing.f90 
-SRC    +=   Transform.f90 SpwfFactory.f90 Interfaces.f90 InOut.f90 Test.f90 Main.f90 
+SRC    +=   Transform.f90 SpwfFactory.f90 Interfaces.f90 InOut.f90 Test.f90
+
+CLUSRC := $(SRC)
+CLUSRC += Clusters.f90 
+SRC    += Main.f90
+
 LIBS   :=   -llapack -lblas
 
+#Source files for the cluster program
+#CLUSRC    :=   CompilationInfo.f90 GenInfo.f90 Force.f90 OptimizedDerivatives.f90 Derivatives.f90 
+#CLUSRC    +=   CoulombDerivatives.f90 Mesh.f90 Spinor.f90 
+#CLUSRC    +=   Spwf.f90 SpwfStorage.f90 Damping.f90 Densities.f90 
+#CLUSRC    +=   Moments.f90 SpecialMoments.f90 MultiGrid.f90 Coulomb.f90 PairingInteraction.f90 
+#CLUSRC    +=   LipkinNogami.f90 HartreeFock.f90 HFB.f90 GradientHFB.f90 BCS.f90 Pairing.f90 Cranking.f90 
+#CLUSRC    +=   MeanFields.f90 Energy.f90 ImaginaryTime.f90  DensityMixing.f90 
+#CLUSRC    +=   Transform.f90 SpwfFactory.f90 Interfaces.f90 InOut.f90 Test.f90 Clusters.f90 
+
+
 #Make the lists of objects
-OBJ :=      $(patsubst %.f90,$(OBJDIR)/%.o,$(SRC))
+OBJ    :=      $(patsubst %.f90,$(OBJDIR)/%.o,$(SRC))
+CLUOBJ :=      $(patsubst %.f90,$(OBJDIR)/%.o,$(CLUSRC))
 #-------------------------------------------------------------------------------
 # Compilers and some recommended options
 
 #Default compiler is gfortran
-CXX :=      gfortran-5
+CXX :=      gfortran
 # Default behaviour is not debugging
 DEBUG := no
 
-ifeq ($(CXX),gfortran-5)
+ifeq ($(CXX),gfortran)
 
   ifeq ($(DEBUG),no)
     #Optimal flag
@@ -70,6 +86,9 @@ endif
 .PHONY: all clean
 
 $(TARGET): $(OBJ)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS)
+
+Clusters.exe : $(CLUOBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS)
 
 clean:

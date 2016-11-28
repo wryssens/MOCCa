@@ -17,9 +17,9 @@ import numpy as np
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import glob
-from cycler import cycler
+import sys
 
-def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1):
+def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1, PC=1):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled 
     # by PREFIX, onto the axes passed into the routine.
@@ -37,15 +37,52 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1):
         xlabel =r'$\langle \hat{Q}_{20} \rangle$ (fm$^2$)'
         xfname =PREFIX + '.t.qlm.tab'
         xcolumn=1
+        if(PC != 1) :
+            xcolumn = 3
+    elif(XARG=='B20') :
+        xlabel =r'$\beta_{20}$ '
+        xfname =PREFIX + '.t.qlm.tab'
+        xcolumn=2
+        
+        if(PC != 1) :
+            xcolumn = 4
+    elif(XARG=='B30') :
+        if(PC == 1) :
+            print "Can't plot Q30 when parity is conserved."
+            sys.exit()
+        
+        xlabel =r'$\beta_{30}$ '
+        xfname =PREFIX + '.t.qlm.tab'
+        xcolumn=8
+    elif(XARG=='B32') :
+        if(PC == 1) :
+            print "Can't plot Q30 when parity is conserved."
+            sys.exit()
+        xlabel =r'$\beta_{32}$ '
+        xfname =PREFIX + '.t.qlm.tab'
+        xcolumn=10
     else :
-        print 'YARG not recognized'
+        print 'XARG not recognized'
         return
         
     if(YARG=='E') :
         ylabel =r'E (MeV)'
         yfname =PREFIX + '.e.tab'
         ycolumn=1
-        normy  =1
+    elif(YARG=='B40') :
+        ylabel =r'$\beta_{40}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        if(PC == 1) :
+            ycolumn=6
+        else:
+            ycolumn=12
+    elif(YARG=='B42') :
+        ylabel =r'$\beta_{42}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        if(PC == 1) :
+            ycolumn=8
+        else:
+            ycolumn=14
     else :
         print 'YARG not recognized'
         return
@@ -63,13 +100,14 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1):
         ydata = f(interx)
         xdata = interx
     
-    if(normy == 1) :
+    if(NORMY == 1) :
         ydata = ydata - min(ydata)
     
-    AXIS.plot(xdata,ydata)
-    
+    AXIS.plot(xdata,ydata, label=LABEL)    
     AXIS.set_xlabel(xlabel)
     AXIS.set_ylabel(ylabel)
+    
+    return (xdata[np.argmin(ydata)], min(ydata))
 
 ################################################################################
 #
@@ -108,7 +146,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1):
     if(INTERPOLATE > 0):
         interx= np.arange(min(xdata), max(xdata), INTERPOLATE) 
            
-    colors   = ['b', 'r', 'c', 'g','k']  
+    colors   = ['b', 'r', 'c', 'g', 'k', 'm', 'burlywood', 'chartreuse']  
             
     for P in PAR:
         if (P == '-1'):
@@ -119,34 +157,48 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1):
         for S in SIG:
             fnametemp=PREFIX + '.' + BASIS + '.' + ISO + '.' + 'par=' + P + '.' + 'sig=' + S 
             
-            for K in range(1,KMAX+1,2):
-                
-                fname = fnametemp + '.k=%d.tab'%K
-                c = colors[(K-1)/2]
-                
-                tokens = tokenizer(fname)
-                tokens.next()
-                spwfs = [np.loadtxt(A) for A in tokens]
-                for i in range(len(spwfs)):
-                    spwf = spwfs[i]
+            if(KMAX !=0):
+                #===============================================================
+                # Axial case
+                for K in range(1,KMAX+1,2):
+                    
+                    fname = fnametemp + '.k=%d.tab'%K
+                    c = colors[(K-1)/2]
+                    
                     try:
-                        ydata = spwf[:,6]
-                    except:
-                        continue
-                    if(INTERPOLATE > 0):
+                        tokens = tokenizer(fname)
+                        tokens.next()
+                        spwfs = [np.loadtxt(A) for A in tokens]
+                    except IOError:
+                        #This happens if KMAX is too big
+                        break 
+                    
+                
+                    for i in range(len(spwfs)):
+                        spwf = spwfs[i]
                         try:
-                            f     = interp1d(dataX[:,2], ydata, kind='cubic')
+                            ydata = spwf[:,6]
                         except:
                             continue
-                        ydata = f(interx)
-                        xdata = interx
-                   
-                    try:
-                        if(i == 0 and PAR.index(P) == 0):
-                            AXIS.plot(xdata, ydata, c+linestyle, label=r'$J_z = \frac{%d}{2}$'%K)
-                        else:
-                            AXIS.plot(xdata, ydata, c+linestyle)
-                    except ValueError:
-                        continue
+                        if(INTERPOLATE > 0):
+                            try:
+                                f     = interp1d(dataX[:,2], ydata, kind='cubic')
+                            except:
+                                continue
+                            ydata = f(interx)
+                            xdata = interx
+                       
+                        try:
+                            if(i == 0 ):
+                                AXIS.plot(xdata, ydata, c+linestyle, label=r'$J_z = \frac{%d}{2}$'%K)
+                            else:
+                                AXIS.plot(xdata, ydata, c+linestyle)
+                        except ValueError:
+                            continue
+            else:
+                print 'No plotting defined for nonaxial case yet'
+                sys.exit()
+                    
+                
     AXIS.set_xlabel(r'$\beta_{20}$')
     AXIS.set_ylabel(r'E (MeV)')

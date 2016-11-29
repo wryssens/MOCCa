@@ -695,8 +695,8 @@ contains
     endif
     call constructRhoHFB(HFBColumns)
 
-    do it=1,2
-      do P=1,2
+    do it=1,Iindex
+      do P=1,Pindex
         ind(P,it) = 0
         do i=1,Blocksizes(P,it)
           if(abs(Occupations(i,P,it) - 1) .lt. 1d-10) then

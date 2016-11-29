@@ -910,17 +910,19 @@ contains
     ! Multipole constraint variables
     ! Special treatment: got to loop over the multipole moments and only write
     ! the constrained ones.
-    Current => Root
-    do while(.true.)
-      if(Current%ConstraintType.ne.0) then
-        call Current%Write(Ochan)
-      endif
-      if(associated(Current%Next)) then
-        Current => Current%Next
-      else
-         exit
-      endif
-    enddo
+    if(associated(Root)) then
+        Current => Root
+        do while(.true.)
+           if(Current%ConstraintType.ne.0) then
+                call Current%Write(Ochan)
+           endif
+           if(associated(Current%Next)) then
+                Current => Current%Next
+           else
+                exit
+           endif
+        enddo
+    endif
 
     close (OChan)
 

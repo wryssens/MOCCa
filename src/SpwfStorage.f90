@@ -148,7 +148,7 @@ contains
           DensityBasis => HFBasis
         endif
       else
-        call stp('No reliable way yet to make the size of HFBasis smaller!')
+        call stp('No reliable way yet to make the size of HFBasis smaller!', 'N', N)
       endif
       nwt = NewNumber
     else

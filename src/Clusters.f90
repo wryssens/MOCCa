@@ -65,11 +65,11 @@ program Clusters
   !-----------------------------------------------------------------------------
   ! Reading input
   call ReadGenInfo()
-
   read(NML=ClusterInfo, unit=*)
 
   allocate(ClusterLocations(3,NumberOfClusters)); ClusterLocations=0
   allocate(Symmetrised(3,NumberOfClusters))     ; Symmetrised=0
+
   do i=1,NumberOfClusters
     X = 0
     Y = 0
@@ -80,7 +80,7 @@ program Clusters
     read(NML=Cluster, unit=*,iostat=io)
     if(io.eq.0) then
       ClusterLocations(1,i) = X
-      ClusterLocations(2,Y) = i
+      ClusterLocations(2,i) = Y
       ClusterLocations(3,i) = Z
       Symmetrised(1,i)      = SymX
       Symmetrised(2,i)      = SymY

@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 import glob
 import sys
 
-def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1, PC=1):
+def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1, PC=1, LINESTYLE='-', MARKER=''):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled 
     # by PREFIX, onto the axes passed into the routine.
@@ -103,7 +103,7 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
     if(NORMY == 1) :
         ydata = ydata - min(ydata)
     
-    AXIS.plot(xdata,ydata, label=LABEL)    
+    AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER)
     AXIS.set_xlabel(xlabel)
     AXIS.set_ylabel(ylabel)
     
@@ -142,10 +142,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1):
     fermi     = fermidata[:,fermicolumn]
     
     AXIS.plot(xdata, fermi, 'k-.', label='$e_f$')
-    
-    if(INTERPOLATE > 0):
-        interx= np.arange(min(xdata), max(xdata), INTERPOLATE) 
-           
+          
     colors   = ['b', 'r', 'c', 'g', 'k', 'm', 'burlywood', 'chartreuse']  
             
     for P in PAR:
@@ -172,24 +169,30 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1):
                     except IOError:
                         #This happens if KMAX is too big
                         break 
-                    
                 
                     for i in range(len(spwfs)):
                         spwf = spwfs[i]
+                        
                         try:
                             ydata = spwf[:,6]
-                        except:
+                            indexes = [int(x)-1 for x in spwf[:,1]]
+                        except IndexError:
+                            # Just ignore spwfs that are a single point
                             continue
+                        
+                        xdata   = dataX[indexes,2]
+                        
                         if(INTERPOLATE > 0):
                             try:
-                                f     = interp1d(dataX[:,2], ydata, kind='cubic')
+                                f     = interp1d(xdata, ydata, kind='cubic')
                             except:
                                 continue
+                            interx= np.arange(min(xdata), max(xdata), INTERPOLATE) 
                             ydata = f(interx)
                             xdata = interx
                        
                         try:
-                            if(i == 0 ):
+                            if(i == 0 and P == PAR[0] ):
                                 AXIS.plot(xdata, ydata, c+linestyle, label=r'$J_z = \frac{%d}{2}$'%K)
                             else:
                                 AXIS.plot(xdata, ydata, c+linestyle)

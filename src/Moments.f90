@@ -516,25 +516,43 @@ contains
       return
     endif
 
-    if((ImPart.eq.1.).and.TSC) then
-      ! All Imaginary parts of the multipole moments are exactly zero when time
-      ! simplex is conserved. This can be seen by noting that phi = atan(X/Y)
-      ! and thus phi is odd under the action of timesimplex. Thus, everything
-      ! involving the sin of phi is odd under the action of time simplex.
-      return
-    endif
+    select case(QuantisationAxis)
+    case(1)
+        if((ImPart.eq.1.).and.TSC) then
+          return
+        endif
 
-    if((mod(m,2).ne.0).and.SC) then
-        ! Odd magnetic quantum numbers are prohibited by Signature Conservation
-        ! This can be seen as follows:
-        ! If x>0 and y>0, \Phi= atan(y/x)
-        ! Acting with R_z gives x<0 and y<0, in which case phi=atan(y/x) - \pi
-        ! Analogously,if x>0 and y<0, \Phi = atan(y/x)
-        ! Then R_z gives \phi=atan(y/x) + \pi
-        ! Thus under R_z \phi => \phi +- \pi
-        ! and thus e^{im\phi} is only invariant when m is even.
-        return
-    endif
+        if((mod(m,2).ne.0).and.SC) then
+          return
+        endif
+        if((.not.SC) .or. (.not. TSC) .or. (.not.PC)) then
+          call stp('Newmoments not correctly treated when X is the quantisation axis.')
+        endif
+    case(2)
+        if((mod(l,2) .ne. 0) .and. (mod(m,2).eq.0) .and. TSC ) then
+         return
+        endif
+        if((mod(l,2) .eq. 0) .and. (mod(m,2).ne.0) .and. TSC ) then
+          return
+        endif
+
+        if((Impart.eq.0) .and. (mod(m,2).ne.0).and.SC) then
+          return
+        endif
+        if((Impart.eq.1) .and. (mod(m,2).eq.0).and.SC) then
+          return
+        endif
+         
+    case(3)
+        if((ImPart.eq.1.).and.TSC) then
+          return
+        endif
+
+        if((mod(m,2).ne.0).and.SC) then
+          return
+        endif
+    end select 
+
     allocate(NewMoment)
     NewMoment%l=l
     NewMoment%m=m
@@ -1331,11 +1349,20 @@ subroutine PrintAllMoments()
     integer, intent(in),optional   :: old
     type(Moment), pointer :: Current
     real(KIND=dp)         :: ql(2), factorialquotient
-    integer :: q
+    integer :: q,m
 
-    ql = 0.0_dp
+    ql = 0.0_dp ; m=0
     Current => FindMoment(l,0,.false.)
-    if(.not.associated(Current)) return
+    do while(m.lt.l .and. .not.associated(Current))
+        m = m+1
+        Current => FindMoment(l,m,.false.)
+        if(.not.associated(Current)) then
+           Current => FindMoment(l,m,.true.)
+        endif
+    enddo
+    if(.not.associated(Current)) then
+         return
+    endif
 
     ql = Current%Value**2
     do while(associated(Current%Next))

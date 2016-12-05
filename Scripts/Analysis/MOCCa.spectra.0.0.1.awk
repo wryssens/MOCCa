@@ -347,6 +347,7 @@ BEGIN{
                 HFBasisflag =1
                 CanBasisflag=1
             }
+            angmomflag=1
         }
         #-----------------------------------------------------------------------
         # Reading the SPWF info
@@ -605,7 +606,8 @@ BEGIN{
                 }
                 
                 Jz[iq]     = $3
-                OmegaZ[iq] = $5               
+                OmegaZ[iq] = $5          
+                angmomflag=0     
         }
 
         if ( pairingflag && $2 == "Pairing") {

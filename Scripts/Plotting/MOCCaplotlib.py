@@ -15,6 +15,7 @@
 
 import numpy as np
 from scipy.interpolate import interp1d
+from tokenizer import *
 import matplotlib.pyplot as plt
 import glob
 import sys
@@ -61,6 +62,14 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
         xlabel =r'$\beta_{32}$ '
         xfname =PREFIX + '.t.qlm.tab'
         xcolumn=10
+    elif(XARG=='OmZ') :
+        xlabel =r'$\omega_{z}$ (MeV $\hbar^{-1}$) '
+        xfname =PREFIX + '.e.tab'
+        xcolumn=10
+    elif(XARG=='JZ') :
+        xlabel =r'$\langle \hat{J}_{z} \rangle$ ($\hbar$)'
+        xfname =PREFIX + '.e.tab'
+        xcolumn=11
     else :
         print 'XARG not recognized'
         return
@@ -69,6 +78,7 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
         ylabel =r'E (MeV)'
         yfname =PREFIX + '.e.tab'
         ycolumn=1
+        derivY = 0
     elif(YARG=='B40') :
         ylabel =r'$\beta_{40}$ '
         yfname =PREFIX + '.t.qlm.tab'
@@ -76,6 +86,7 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
             ycolumn=6
         else:
             ycolumn=12
+        derivY = 0
     elif(YARG=='B42') :
         ylabel =r'$\beta_{42}$ '
         yfname =PREFIX + '.t.qlm.tab'
@@ -83,6 +94,18 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
             ycolumn=8
         else:
             ycolumn=14
+        derivY = 0
+    elif(YARG=='JZ') :
+        ylabel =r'$\langle \hat{J}_{z} \rangle$ ($\hbar$)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn=11
+        derivY = 0
+    elif(YARG=='I2') :
+        # Dynamical moment of inertia. 
+        ylabel =r'$\mathcal{I}^{(2)}$ ($\hbar^2$ MeV$^{-1}$)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn=11
+        derivY = 1       
     else :
         print 'YARG not recognized'
         return
@@ -93,10 +116,21 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
     xdata=dataX[:,xcolumn]
     ydata=dataY[:,ycolumn]
     
+    if(derivY == 1) :
+        #=====================================================
+        #Flag that tells us to take the finite difference of Y
+        # The dynamical moment of inertia is a good example
+        deriv = np.zeros((len(ydata)-2))
+        for i in range(0,len(ydata)-2):
+            deriv[i] = ( ydata[i+1] - ydata[i])/(xdata[i+1] - xdata[i])
+        ydata = deriv
+        xdata = xdata[1:-1]
+         
     if(INTERPOLATE > 0):
         f     = interp1d(xdata, ydata,kind='cubic')
+
         interx= np.arange(min(xdata), max(xdata), INTERPOLATE) 
-        
+
         ydata = f(interx)
         xdata = interx
     
@@ -109,19 +143,6 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
     
     return (xdata[np.argmin(ydata)], min(ydata))
 
-################################################################################
-#
-# Custom tokenizer for spwf tables.
-#
-def tokenizer(fname):
-    with open(fname) as f:
-        chunk = []
-        for line in f:
-            if (line.startswith('*')):
-                yield chunk
-                chunk = []
-                continue
-            chunk.append(line)   
 ################################################################################
 def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1):
 

@@ -105,7 +105,14 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
         ylabel =r'$\mathcal{I}^{(2)}$ ($\hbar^2$ MeV$^{-1}$)'
         yfname =PREFIX + '.e.tab'
         ycolumn=11
-        derivY = 1       
+        derivY = 1 
+    elif(YARG=='B20') :
+        ylabel =r'$\beta_{20}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        ycolumn=2
+        derivY=0
+        if(PC != 1) :
+            ycolumn = 4      
     else :
         print 'YARG not recognized'
         return

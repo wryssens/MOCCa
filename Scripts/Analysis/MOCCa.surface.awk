@@ -37,5 +37,8 @@ BEGIN{
   }
 }
 END{
-   printf("  %8.3f %8.3f %12.3f \n",beta1,beta2,ee);
+   if( ee != 0) {
+    # Don't include the file if it is empty and does not contain a final energy
+    printf("  %8.3f %8.3f %12.3f \n",beta1,beta2,ee);
+   }
 }

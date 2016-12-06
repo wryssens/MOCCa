@@ -1572,12 +1572,18 @@ end subroutine TransformHFBMatrices
     ! Setting the result to the output wavefunctions, and change parity,
     ! signature and time simplex of the second wavefunction.
     call outwf1%SetGrid(Final(1))
-    if(TSC) then
-      Final(2) = TimeReverse(Final(2))
+    if(TRC) then
+      ! Final(2) has opposite the signature of the input wavefunction. 
+      ! If time-reversal is conserved, we need to store only the +1 
+      ! signature wave-functions and thus we take the time-reverse of Final(2).
+      ! This however gives us an extra factor of -i, so that Final(2) is 
+      ! no longer an invariant of y-timesimplex, and so we multiply by an extra
+      ! i.
+      Final(2) = MultiplyI(TimeReverse(Final(2)))
     else
       call outwf2%SetSignature(-inwf%GetSignature())
     endif
-    call outwf2%SetParity(- inwf%GetParity())
+    call   outwf2%SetParity(- inwf%GetParity())
     if(TSC) then
       Final(2) = - Final(2)
     endif

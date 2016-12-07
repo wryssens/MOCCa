@@ -447,8 +447,9 @@ contains
     type(Spinor)        :: Psi
     integer             :: i,j
     
-    Psi = NewSPinor()
+    Psi = NewSpinor()
 
+    if(.not.allocated(Phi%Grid)) call stp('Uninitialized.')
     if(SC) call stp('ActionOfSignature should not be used when signature is'   & 
     &               // ' conserved!')
 

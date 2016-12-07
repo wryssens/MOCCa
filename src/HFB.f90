@@ -216,6 +216,7 @@ contains
       allocate(HFBColumns(HFBSize,Pindex,Iindex))         ; HFBColumns     = 0
     endif
 
+    
   end subroutine PrepareHFBModule
 
   function HFBEnergy(Delta) result(Energy)
@@ -688,6 +689,7 @@ contains
             enddo
         enddo
     endif
+    
     !--------------------------------
     ! Block some quasiparticles
     if(allocated(qpexcitations)) then
@@ -970,6 +972,7 @@ contains
   flag = 0
   !Check were we find ourselves in the phasespace
   N = HFBNumberofParticles(Fermi, Delta, LnLambda ) - Particles
+  
   if(Lipkin) then
     LN   = LNLambda - LNCR8(Delta,DeltaLN, flag)
   else if(ConstrainDispersion) then
@@ -2093,8 +2096,18 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
             HFBHamil(j,i,P,it) = conjg(HFBHamil(i,j,P,it))
         enddo
       enddo
+!      print *
+!      print *, Lambda(it)
+!      print *
+!      do i=1,2*N
+!            print *, real(HFBHamil(i,1:2*N,P,it)) 
+!      enddo
+!      print *
+!      
+!      
     enddo
   enddo
+!  stop
 
   if(all(HFBHamil.eq.0.0_dp)) call stp('HFBHamiltonian completely zero!')
   end subroutine ConstructHFBHamiltonian
@@ -2128,6 +2141,7 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
     do it=1,Iindex
         do P=1,Pindex
             N = blocksizes(P,it)
+
             Temp(1:N,1:N)        = 0.0_dp
             Eigenvalues(1:N)     = 0.0_dp
             Eigenvectors(1:N,1:N)= 0.0_dp
@@ -2144,6 +2158,13 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
                     Temp(j+N/2,i)     = Temp(i,j+N/2)
                 enddo
             enddo
+!            print *
+!            do j=1,N
+!                print ('(100f8.3)'), Temp(j,1:N)
+!            enddo
+!            print * 
+!            print *
+!            
             !-------------------------------------------------------------------------
             ! Diagonalize
             call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work, 'DiagHamil ',ifail)
@@ -2153,6 +2174,7 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
               enddo
 
               print *
+              print *, 'Parity', P, 'Isospin', it
               do i=1,N
                 print *, DBLE(HFBHamil(i,1:2*N,P,it))
               enddo
@@ -2160,7 +2182,7 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
             endif
             U(      1:N/2,    1:N  ,P,it) = Eigenvectors(       1:N/2   ,  1:N  )
             V(  N/2+1:N  ,    1:N  ,P,it) = Eigenvectors(   N/2+1:N     ,  1:N  )
-            QuasiEnergies(1:N,P,it)       = EigenValues(1:N)
+            QuasiEnergies(1:N,P,it)       = EigenValues (1:N)
 
             if(TRC) then
                 !------------------------------------------------------------
@@ -2192,23 +2214,23 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
     ! where (abs(U) .lt. 1d-8) U = 0.0d0
     ! where (abs(V) .lt. 1d-8) V = 0.0d0
 
-  !   do it=1,2
-  !     do P=1,Pindex
-  !     do i=1,N
-  !       print *, DBLE(U(i , 1:2*N,P,it))
-  !     enddo
-  !
-  !     print *
-  !
-  !     do i=1,N
-  !       print *, DBLE(V(i,1:2*N,P,it))
-  !     enddo
-  !     print *
-  !   enddo
-  ! enddo
-  !
-  !
-  !   stop
+!     do it=1,2
+!       do P=1,Pindex
+!           N = blocksizes(P,it)
+!           print *,QuasiEnergies(1:2*N,P,it)
+!           do i=1,N
+!             print ('(100f8.3)'), DBLE(U(i , 1:2*N,P,it))
+!           enddo
+!  
+!       print *
+!  
+!!       do i=1,N
+!!         print *, DBLE(V(i,1:2*N,P,it))
+!!       enddo
+!!       print *
+!     enddo
+!   enddo
+  
 end subroutine DiagonaliseHFBHamiltonian_Signature
 
 subroutine DiagonaliseHFBHamiltonian_NoSignature
@@ -2666,6 +2688,7 @@ subroutine InsertionSortQPEnergies
   !-----------------------------------------------------------------------------
     integer, intent(in) :: Columns(HFBSize,Pindex,Iindex)
     integer             :: i,j,k,it,P
+    real :: s
     !---------------------------------------------------------------------------
     ! Actual computation
     do it=1,Iindex
@@ -2679,6 +2702,14 @@ subroutine InsertionSortQPEnergies
             enddo
           enddo
         enddo
+!        s = 0
+!        do j=1,blocksizes(P,it)
+!            print ('(100f8.3)'), real(RhoHFB(j,1:blocksizes(P,it),P,it))
+!            s = s + real(RhoHFB(j,j,P,it))
+!        enddo
+!        print *
+!        print *, s
+!        print *
       enddo
     enddo
 

@@ -12,6 +12,11 @@ use SpwfStorage
   integer                :: nwtcut=0
 
 contains
+  subroutine AddSpwfs()
+    
+  
+  end subroutine AddSpwfs
+
   subroutine DecideToCut( final , initial )
     !---------------------------------------------------------------------------
     ! Subroutine that decides whether to throw away some wavefunctions and 

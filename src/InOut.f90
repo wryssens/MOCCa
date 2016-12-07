@@ -42,14 +42,17 @@ module InOutput
   integer, allocatable          :: FileBlocksizes(:,:), FileHFBColumns(:,:,:)
   !-----------------------------------------------------------------------------
   ! Whether or not to write extra output files for various other codes.
-  logical :: PromOutput = .false.
+  logical :: PromOutput     = .false.
   logical :: AllowTransform = .false.
   !-----------------------------------------------------------------------------
   logical :: LegacyInput=.false.
+  !-----------------------------------------------------------------------------
   ! Convergence information
   real*8 :: fileE, filedE
+  !-----------------------------------------------------------------------------
   ! Force name that was used on the file
   character(len=200) :: fileforce=''
+  !-----------------------------------------------------------------------------
   ! Pairing information from file
   integer:: fileptype
   real*8 :: filegn,filegp
@@ -157,7 +160,7 @@ contains
           if(InPC.neqv.PC) call stp("Don't break parity from legacy input.")
         else
           call TransformHFBMatrices(inputU, inputV, inputRho, InputKappa,      &
-          &                             inPC,inIC,FileHFBColumns,FileBlocksizes)
+          &                     inPC,inIC,filenwt,FileHFBColumns,FileBlocksizes)
         endif
     endif
   end subroutine Input
@@ -330,6 +333,18 @@ contains
 
     !Reading the names for the in- and outputfiles.
     read (unit=*, nml=InAndOutput)
+    
+    ! Some checking of PlusSpwf
+    if(PlusSpwf.ne.0) then
+        if(.not. TRC) call stp('Cannot add spwfs with time-reversal broken.')
+        if(.not. PC) call stp('Cannot add spwfs with parity broken.')
+        if(.not. sC) call stp('Cannot add spwfs with signature broken.')
+        
+        if(PairingType.eq.2 .and. FermiSolver == 'Gradient') then
+            call stp('Adding spwfs is not compatible with gradient fermisolver.')
+        endif
+    endif
+    
     ! Force namelist
     call ReadForceInfo()
 
@@ -364,6 +379,13 @@ contains
     9 format ( '  nwt = ', i5, / &
     &          '  nwn = ', i5, / &
     &          '  nwp = ', i5 )
+    91 format ('  ATTENTION: ', / &
+    &          "  !!!!!!!!!!!!!!!!!!!!!!!")
+    92 format ('  MOCCa added ', i2 ,' spwfs to every parity-isospin block.')
+    93 format ('  They are initialized at 100 MeV energy and zero occupation.')
+    94 format ('  Old nwt = ', i3)
+    95 format ('  New nwt = ', i3,/ &
+    &          "  !!!!!!!!!!!!!!!!!!!!!!!")
     10 format ( 'Iterative process')
     11 format ( '   dt = ', f5.2 ,' (10^{-22} s) ')
     12 format ( '  Iter= ', i5)
@@ -412,6 +434,13 @@ contains
     print 8
     
     print 9 , nwt,nwn,nwp
+    if(PlusSpwf .ne. 0) then
+        print 91
+        print 92, PlusSpwf
+        print 93
+        print 94, filenwt
+        print 95, nwt
+    endif
     print 10
     print 11, dt
     print 12, MaxIter
@@ -982,7 +1011,7 @@ subroutine ReadMOCCa_v1(Ichan)
     integer, intent(in)  :: IChan
 
     logical :: exists
-    integer :: ioerror, N, Pin,Iin, M(4),it,j,P
+    integer :: ioerror, N, Pin,Iin, M(4),it,j,P,wave
 
     !File parameters to compare against
     integer       :: fileneutrons,fileprotons,i, version
@@ -1014,7 +1043,7 @@ subroutine ReadMOCCa_v1(Ichan)
     read(IChan,iostat=ioerror) filenwt,fileneutrons,fileprotons
     if(ioerror.ne.0) call stp('Input error for the wavefunction variables.',   &
     &                         'ioerror = ', ioerror)
-
+    
     !---------------------------------------------------------------------------
     ! Checking the essential variables:
     ! a) Symmetries must not be unbroken.
@@ -1070,14 +1099,16 @@ subroutine ReadMOCCa_v1(Ichan)
     !    &        'on file: ', filenz                                           &
     !    &      , 'in data: ', nz     )
     !endif
-    !if( nwt.gt.filenwt .and. TRC) then
-    !  call stp('Nwt is not compatible between file and data.',                 &
-    !  &        'In data: ', nwt, 'On file :', filenwt )
-    !endif
-    !if( nwt.ne.2*filenwt .and. .not.TRC .and. inTRC) then
-    !  call stp('Nwt should be doubled when breaking TimeReversal.',            &
-    !  &        'In data: ', nwt, 'On file :', filenwt )
-    !endif
+    if( (nwt.gt.filenwt) .and. TRC) then
+      if(4* PlusSpwf .ne. ((nwt - filenwt))) then
+          call stp('Nwt is not compatible between file and data.',             &
+          &        'In data: ', nwt, 'On file :', filenwt )
+      endif
+    endif
+    if( (nwt.ne.2*filenwt) .and. (TRC .neqv. inTRC)) then
+      call stp('Nwt should be doubled when breaking TimeReversal.',            &
+      &        'In data: ', nwt, 'On file :', filenwt )
+    endif
     !---------------------------------------------------------------------------
     ! c) There should be enough space for neutrons & protons
     N = nwt
@@ -1090,6 +1121,75 @@ subroutine ReadMOCCa_v1(Ichan)
     do i=1,filenwt
       call HFBasis(i)%Read(IChan,filenx,fileny,filenz)
     enddo
+    !---------------------------------------------------------------------------
+    ! 4b) Add some extra wavefunctions, not read from file
+    if (PlusSpwf .ne. 0) then
+        if((.not. InPC) .or. (.not. inTRC)) then
+            call stp('Cannot add wavefunctions when symmetries are broken.')
+        endif
+        
+        call ChangeNumberWaveFunctions(filenwt + 4 * PlusSpwf)
+            
+        ! Moving the proton wave-functions with negative parity
+        wave = filenwt ; 
+        it   = (HFBasis(wave)%GetIsospin()+3)/2
+        P    = (HFBasis(wave)%GetParity() +3)/2
+        do i=1,PlusSpwf
+            !print *, 'random at', wave + 3 * PlusSpwf + i
+            HFBasis(wave + 3 * PlusSpwf + i) = CopyWaveFunction(HFBasis(wave-1))
+            call random_number(HFBasis(wave + 3 * PlusSpwf + i)%Value%Grid)            
+            call HFBasis(wave + 3 * PlusSpwf + i )%SetOcc(0.0d0)
+            call HFBasis(wave + 3 * PlusSpwf + i )%SetEnergy(100.0d0)
+        enddo        
+        do while(it .eq. 2 .and. P.eq.1)
+            !print *, 'copied', wave + 3 * PlusSpwf, 'from', wave
+            HFBasis(wave + 3 * PlusSpwf) = CopyWaveFunction(HFBasis(wave))
+            wave = wave-1
+            it   = (HFBasis(wave)%GetIsospin()+3)/2
+            P    = (HFBasis(wave)%GetParity() +3)/2
+        enddo
+        do i=1,PlusSpwf
+            !print *, 'random at', wave + 2 * PlusSpwf + i
+            HFBasis(wave + 2 * PlusSpwf + i) = CopyWaveFunction(HFBasis(wave-1))
+            call random_number(HFBasis(wave + 2 * PlusSpwf + i)%Value%Grid)
+            call HFBasis(wave + 2 * PlusSpwf + i )%SetOcc(0.0d0)
+            call HFBasis(wave + 2 * PlusSpwf + i )%SetEnergy(100.0d0)            
+        enddo
+        ! Moving the proton wave-functions with positive parity
+        do while(it .eq. 2 .and. P.eq.2)
+            !print *, 'copied', wave + 2 * PlusSpwf, 'from', wave
+            HFBasis(wave + 2 * PlusSpwf) = CopyWaveFunction(HFBasis(wave))
+            wave = wave-1
+            it   = (HFBasis(wave)%GetIsospin()+3)/2
+            P    = (HFBasis(wave)%GetParity() +3)/2
+        enddo
+        do i=1,PlusSpwf
+            !print *, 'random at', wave + 1 * PlusSpwf + i
+            HFBasis(wave +     PlusSpwf + i) = CopyWaveFunction(HFBasis(wave-1))
+            call random_number(HFBasis(wave + PlusSpwf + i)%Value%Grid)
+            call HFBasis(wave + 1 * PlusSpwf + i )%SetOcc(0.0d0)
+            call HFBasis(wave + 1 * PlusSpwf + i )%SetEnergy(100.0d0)            
+        enddo
+        ! Moving the neutron wave-functions with negative parity
+        do while(it .eq. 1 .and. P.eq.1)
+            !print *, 'copied', wave + 1 * PlusSpwf, 'from', wave
+            HFBasis(wave +    PlusSpwf) = CopyWaveFunction(HFBasis(wave))
+            wave = wave-1
+            it   = (HFBasis(wave)%GetIsospin()+3)/2
+            P    = (HFBasis(wave)%GetParity() +3)/2
+        enddo
+        do i=1,PlusSpwf
+            !print *, 'random at', wave + 0 * PlusSpwf + i
+            HFBasis(wave +   0*PlusSpwf + i) = CopyWaveFunction(HFBasis(wave-1))
+            call random_number(HFBasis(wave + 0*PlusSpwf + i)%Value%Grid)
+            call HFBasis(wave + 0 * PlusSpwf + i )%SetOcc(0.0d0) 
+            call HFBasis(wave + 0 * PlusSpwf + i )%SetEnergy(100.0d0)           
+        enddo
+        ! Ortho for good measure
+        call GramSchmidt
+    endif
+    !stop
+    
     !---------------------------------------------------------------------------
     ! 5) Densities
     call ReadDensity(Density,Ichan,filenx,fileny,filenz, ioerror)
@@ -1108,7 +1208,7 @@ subroutine ReadMOCCa_v1(Ichan)
     !      a) t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,wso,wsoq
     !      b) afor,hbar,hbm,xm,njmunu,nmass,COM1Body,COM2Body
     !      c) Functional Coefficients
-    !
+    !ReadMOCCa
     ! Force name
     read(Ichan,iostat=ioerror)  fileforce
     !Straight force parameters
@@ -1204,7 +1304,7 @@ subroutine ReadMOCCa_v1(Ichan)
         endif
       enddo
     endif
-
+    
     close(Ichan)
 end subroutine ReadMOCCa_v1
 

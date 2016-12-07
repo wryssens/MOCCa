@@ -155,7 +155,7 @@ subroutine Evolve(MaxIterations, iprint)
   do i=1,nwt
     call HFBasis(i)%SymmetryOperators()
   enddo
-
+  
   if(SolvePairingStart) then
     call SolvePairing
   else
@@ -167,7 +167,7 @@ subroutine Evolve(MaxIterations, iprint)
 
   !Computing the initial densities
   call DeriveAll()
-
+    
   !Update the Angular momentum variables
   call UpdateAm(.true.)
   !Make sure that there is no improper readjusting of cranking constraints
@@ -183,7 +183,7 @@ subroutine Evolve(MaxIterations, iprint)
   if(Recalc) then
     call UpdateDensities(0)
   endif
-
+   
   ! Printing the parameters of this run.
   call PrintStartInfo
   !Loop over the iterations

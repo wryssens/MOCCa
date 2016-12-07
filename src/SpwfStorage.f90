@@ -59,6 +59,9 @@ module SpwfStorage
   !   iteration.
   real(KIND=dp), public             ::     J2total(3)    = 0.0_dp
   real(KIND=dp), public             ::  OldJ2total(3)    = 0.0_dp
+  !-----------------------------------------------------------------------------
+  ! Add this number of spwfs into every parity-isospin block
+  integer :: PlusSpwf=0
 
 contains
 
@@ -66,7 +69,7 @@ contains
     !---------------------------------------------------------------------------
     ! Subroutine that reads the necessary info on this module.
     !---------------------------------------------------------------------------
-    NameList /SpwfStorage/ nwt, AdjustNumber, PrintingWindow
+    NameList /SpwfStorage/ nwt, AdjustNumber, PrintingWindow, PlusSpwf
     read(unit=*, NML=SpwfStorage)
 
     if(nwt.le.0) call stp('Negative number of states.', 'Nwt', nwt)
@@ -106,7 +109,7 @@ contains
       !-------------------------------------------------------------------------
       !Ordering if neccessary the neutron & Proton wavefunction
       if(nwt .gt. NewNumber) then
-        OrderP = OrderSpwfsISO(1 , .false.)
+        OrderP = OrderSpwfsISO( 1, .false.)
         OrderN = OrderSpwfsISO(-1, .false.)
       endif
       !-------------------------------------------------------------------------

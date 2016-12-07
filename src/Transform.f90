@@ -988,7 +988,7 @@ contains
     Density =  NewDen
   end subroutine TransformDensities
 
-  subroutine TransformHFBMatrices(inU, inV, inRho, InKappa,inPC,inIC,          &
+  subroutine TransformHFBMatrices(inU, inV, inRho, InKappa,inPC,inIC, filenwt, &
     &                                                InColumns, InputBlocksizes)
     !---------------------------------------------------------------------------
     ! Subroutine to transform all HFB matrices.
@@ -999,20 +999,39 @@ contains
     complex(KIND=dp),intent(in)   :: InKappa(:,:,:,:), InRho(:,:,:,:)
     complex(KIND=dp),intent(in)   :: InU(:,:,:,:), InV(:,:,:,:)
     integer, intent(in)           :: InputBlockSizes(2,2), InColumns(:,:,:)
+    integer, intent(in)           :: filenwt
     logical, intent(in)           :: inPC, inIC
-    integer                       :: sizes(2),it,i,j, check
+    integer                       :: sizes(2),it,i,j, check, new,N,P
 
     if(.not. inIC) then
         call stp('No rules to transform the HFB matrices yet when breaking Isospin.')
     endif
 
     if(PC .eqv. inPC) then
-        ! File matches rundata ; no action necessary
-        KappaHFB = InKappa
-        RhoHFB   = InRho
-        U        = inU
-        V        = inV
-        HFBColumns = inColumns
+        ! File matches rundata ; 
+        ! Check if the number of wavefunctions did not change
+        if(filenwt .eq. nwt) then
+            KappaHFB = InKappa
+            RhoHFB   = InRho
+            U        = inU
+            V        = inV
+            HFBColumns = inColumns
+
+        else    
+            new = (nwt - filenwt)/4
+            do it=1,2
+                do P=1,2
+                    N  = InputBlocksizes(P,it)
+                    ! Positive signature
+                    KappaHFB(1:N/2, N/2+1+new:N+new, P,it) = InKappa(1:N/2, N/2+1:N, P,it)
+                    RhoHFB  (1:N/2, 1:N/2, P,it) = InRho  (1:N/2, 1:N/2, P,it)
+                    
+                    ! Negative signature
+                    KappaHFB(N/2+1+new:N+new, 1:N/2+1, P,it) = InKappa(N/2+1:N, 1:N/2, P,it)
+                    RhoHFB  (N/2+1+new:N+new, N/2+1+new:N+new, P,it) = InRho  (N/2+1:N, N/2+1:N, P,it)
+                enddo
+            enddo            
+        endif
     else
         !---------------------------------------------------------------------
         ! On file, we have for Kappa:

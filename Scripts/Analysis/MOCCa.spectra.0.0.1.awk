@@ -4,7 +4,7 @@
 #    8 November 2016                                                           #
 #                                                                              #
 #    Copyright W. Ryssens & M. Bender                                          #
-#    Heavily inspired on cr8.spectra.1.1.2.awk by M. Bender and engineered     # #                                                                              #
+#    Heavily inspired on cr8.spectra.1.1.2.awk by M. Bender and engineered     #                                                                              #
 #    to produce the same kind of tables, only starting from MOCCa files.       #
 #    Note that when I say 'kind', I do mean 'kind', and not 'identical'.       #
 #                                                                              #
@@ -101,7 +101,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
         if (PC == 1) {
             # Sort the spwfs according to signature
             # Positive spwf.parity
-            file = "par=+1"
+            file = "spwf.par=+1"
             command = "awk -f Spwf.sort.awk 'column=5' 'points=" iqmax "' < " file;
             system(command);
             
@@ -111,7 +111,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
             system(command)
             
             #Negative spwf.parity
-            file = "par=-1"
+            file = "spwf.par=-1"
             command = "awk -f Spwf.sort.awk 'column=5' 'points=" iqmax "' < " file;
             system(command);
             

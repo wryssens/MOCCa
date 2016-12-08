@@ -193,7 +193,7 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
     #Spenergy
     if(PairingType == "HFB" && basis =="hf")
     {
-        Eind=7
+        Eind=8
     }
     if(PairingType == "HFB" && basis =="can")
     {
@@ -359,12 +359,15 @@ BEGIN{
             getline;
             getline;
             getline;
+            if(PairingType == "HFB") {
+             getline;
+             getline;
+            }
             #----------------------------------
             # Neutron states in the HF basis
             N = 1
             if(HFBasisflag == 1){
-                while( N < nwn + 1 && NF != 1){
-                                      
+                while( NF != 1){
                      ReadSpwf("hf", PairingType, SC, TSC, PC, TRC, line)
                      i = 1
                      while( i < NF +1 ){
@@ -384,7 +387,9 @@ BEGIN{
                 getline;
                 getline;
                 getline;
-                while( N < nwn + 1 && NF != 1){
+                getline;
+                getline
+                while(  NF != 1){
                     i=1 
                     ReadSpwf("can", PairingType, SC, TSC, PC, TRC, line)
                     while ( i<NF+1 ) { 
@@ -401,12 +406,14 @@ BEGIN{
             getline;
             getline;
             getline;
-            
+            getline;
+            getline;
+
             #----------------------------------
             # Proton states in the HF basis
             P = 1
             if(HFBasisflag == 1){
-                while( P < nwp + 1 && NF != 1){
+                while( NF != 1){
                     i=1
                     ReadSpwf("hf", PairingType, SC, TSC, PC, TRC, line)
                     while ( i<NF+1 ) { 
@@ -429,9 +436,10 @@ BEGIN{
                 getline;
                 getline;
                 getline;
-                while( P < nwp + 1 && NF != 1){
+                while(  NF != 1){
                     i=1 
                     ReadSpwf("can", PairingType, SC, TSC, PC, TRC, line)
+
                     while ( i<NF+1 ) { 
                         protoncan[iq, P ,i]= line[i]
                         i+=1 
@@ -442,7 +450,7 @@ BEGIN{
             }
             CanBasisflag = 0
         }
-           
+                   
         
         #-------------------------------------------------------------------
         # read information on multipole moments

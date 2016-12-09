@@ -527,6 +527,7 @@ subroutine PrintSummary_v2(Iteration)
   3 format("Summ.   Q20=" f10.3, "  Q22=",f10.3)
   4 format("Summ.  dQ20=" e10.3, " dQ22=",e10.3)
   5 format('Summ.    Jz=',f10.3, '  OmZ=',f10.3)
+ 51 format('Summ.    Jx=',f10.3, '  OmX=',f10.3)
   6 format('Summ.   dH2=',e10.3)
   ! Printing energy
   print 1, Iteration
@@ -542,7 +543,10 @@ subroutine PrintSummary_v2(Iteration)
   print 4, dQ20, dQ22
 
   if(.not.TRC) then
-    print 5, TotalAngMom(3), Omega(3)
+    if((.not. TRC) .and. (.not.SC)) then
+        print 51, TotalAngMom(1), Omega(1)
+    endif
+    print 5, TotalAngMom(3), Omega(3)        
   endif
 
   !------------------------------------------------------------------------------

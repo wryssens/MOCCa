@@ -696,5 +696,86 @@ contains
             dw(i,1,1) = - dw(i,1,1) / xd
         enddo
     end subroutine lapla_Z_ev4
+    
+    function Lapla_EV4_nosig(Grid,Parity, Signature, TimeSimplex,Component) result(Lap)
+
+        integer,intent(in)                :: Parity,Signature,TimeSimplex,Component
+        real(KIND=dp), target, intent(in) :: Grid(:,:,:)
+        real(KIND=dp), allocatable        :: Lap(:,:,:)
+        real(KIND=dp)                     :: DerX(nx,ny,nz)
+        real(KIND=dp)                     :: DerZ(nx,ny,nz)
+        real(KIND=dp)                     :: DerY(nx,ny,nz)
+        integer                           :: xp,yp,zp
+
+        allocate(Lap(nx,ny,nz)) ; Lap = 0.0_dp
+        select case(Component)
+        case(1)
+            xp = Signature ; yp = TimeSimplex ; zp = Signature*Parity
+        case(2)
+            xp =-Signature ; yp =-TimeSimplex ; zp = Signature*Parity
+        case(3)
+            xp =-Signature ; yp = TimeSimplex ; zp =-Signature*Parity
+        case(4)
+            xp = Signature ; yp =-TimeSimplex ; zp =-Signature*Parity
+        end select 
+
+        call lapla_X_nosig(Grid,DerX)
+        call lapla_Y_ev8  (Grid,DerY,yp)
+        call lapla_Z_ev4  (Grid,DerZ)
+
+        Lap =  Derx + Dery + Derz
+    end function Lapla_EV4_nosig
+    
+    subroutine lapla_X_nosig (w,dw)
+
+      real(KIND=dp), parameter :: xxf=-8064.0d0,xxm=43050.0d0,xx2=1008.0d0 
+      real(KIND=dp), parameter :: xx3=-128.0d0,xx4=9.0d0,xxd=5040.0d0
+      real(KIND=dp), intent(in):: w(nx,ny,nz)
+      real(KIND=dp)            :: dw(nx,ny,nz)
+      real(KIND=dp)            :: xf, xm, x2,x3,x4, xd
+      integer                  :: i,j,k
+
+      xf = xxf                  ! = -8064.0d0
+      xm = xxm / (xf*3)         ! = 43050.0d0 / xf
+      x2 = xx2 / xf             ! =  1008.0d0 / xf
+      x3 = xx3 / xf             ! =  -128.0d0 / xf
+      x4 = xx4 / xf             ! =     9.0d0 / xf
+      xd = xxd / xf * (dx*dx)   ! =  5040.0d0 / xf * (dx*dx)
+      xd = 1.0/xd
+
+      do i=1,nx*ny*nz
+        dw(i,1,1) = xm * w(i,1,1)
+      enddo
+
+      do j=1,ny*nz
+        dw(1,j,1)    = dw(1,j,1)   
+        dw(2,j,1)    = dw(2,j,1)   +   w(1,j,1)   
+        dw(3,j,1)    = dw(3,j,1)   +   w(2,j,1)   +x2*w(1,j,1)    
+        dw(4,j,1)    = dw(4,j,1)   +   w(3,j,1)   +x2*w(2,j,1)    &
+     &                             +x3*w(1,j,1)   
+        dw(nx-1,j,1) = dw(nx-1,j,1)+   w(nx,j,1)
+        dw(nx-2,j,1) = dw(nx-2,j,1)+   w(nx-1,j,1)+x2*w(nx,j,1)
+        dw(nx-3,j,1) = dw(nx-3,j,1)+   w(nx-2,j,1)+x2*w(nx-1,j,1) &
+     &                             +x3*w(nx,j,1)
+      enddo
+      do j=1,ny*nz
+      do i=1,nx-4
+         dw(i,j,1) = dw(i,j,1)   +   w(i+1,j,1) +x2*w(i+2,j,1) &
+     &                           +x3*w(i+3,j,1) +x4*w(i+4,j,1)
+      enddo
+      enddo
+      do j=1,ny*nz
+      do i=5,nx
+         dw(i,j,1) = dw(i,j,1)   +   w(i-1,j,1) +x2*w(i-2,j,1) &
+     &                           +x3*w(i-3,j,1) +x4*w(i-4,j,1)
+      enddo
+      enddo
+
+      do i=1,nx*ny*nz
+        dw(i,1,1) = - dw(i,1,1) * xd
+      enddo
+
+      return
+  end subroutine lapla_X_nosig
 
   end module OptimizedDerivatives

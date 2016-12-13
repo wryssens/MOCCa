@@ -243,7 +243,7 @@ contains
               DeriveX   => Opt_X_NOSIG
               DeriveY   => Opt_Y_EV8
               DeriveZ   => OPT_Z_EV4
-              Laplacian => Laplacian_Central            
+              Laplacian => lapla_ev4_nosig         
           else
               DeriveX   => CentralX
               DeriveY   => CentralY

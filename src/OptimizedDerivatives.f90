@@ -108,6 +108,64 @@ contains
 
       return
   end subroutine derx
+  
+  function Opt_X_NOSIG(Grid,Parity,Signature, TimeSimplex,Component) result(Der)
+    
+    integer,intent(in) :: Parity,Signature,TimeSimplex,Component
+    real(KIND=dp), target, intent(in) :: Grid(:,:,:)
+    real(KIND=dp),allocatable         :: Der(:,:,:)
+    integer                           :: i,j,k, S
+    
+    allocate(Der(nx,ny,nz)) ; Der = 0.0_dp
+    call derx_nosig(Grid, der)
+
+  end function Opt_X_NOSIG
+
+  subroutine derx_nosig (w,wx)
+      integer            :: i,j,k
+      real(KIND=dp), intent(in) ::w(nx,ny,nz)
+      real(KIND=dp), intent(out)::wx(nx,ny,nz)
+      real(KIND=dp)           :: ccdx  
+      real(KIND=dp),parameter :: ca=45.0d0,cb=9.0d0,cc=60.0d0
+
+      
+        do j=1,ny*nz
+            wx(1,j,1)    = ca*(w(2,j,1)                 ) &
+            &             -cb*(w(3,j,1)                 ) &
+            &                +(w(4,j,1)                 ) 
+            wx(2,j,1)    = ca*(w(3,j,1)    - w(1,j,1)   ) &
+            &             -cb*(w(4,j,1)                 ) &
+            &                +(w(5,j,1)                 ) 
+            wx(3,j,1)    = ca*(w(4,j,1)    - w(2,j,1)   ) &
+            &             -cb*(w(5,j,1)    - w(1,j,1)   ) &
+            &                +(w(6,j,1)                 ) 
+            wx(nx-2,j,1) = ca*(w(nx-1,j,1) - w(nx-3,j,1)) &
+            &             -cb*(w(nx,j,1)   - w(nx-4,j,1)) &
+            &                +(            - w(nx-5,j,1)) 
+            wx(nx-1,j,1) = ca*(w(nx,j,1)   - w(nx-2,j,1)) &
+            &             -cb*(            - w(nx-3,j,1)) &
+            &                +(            - w(nx-4,j,1)) 
+            wx(nx,j,1)   = ca*(            - w(nx-1,j,1)) &
+            &             -cb*(            - w(nx-2,j,1)) &
+            &                +(            - w(nx-3,j,1))
+        enddo
+      
+
+      do i=4,nx-3
+      do j=1,ny*nz
+        wx(i,j,1)    = ca*(w(i+1,j,1) - w(i-1,j,1) )  &
+     &                -cb*(w(i+2,j,1) - w(i-2,j,1) )  &
+     &                   +(w(i+3,j,1) - w(i-3,j,1) )
+      enddo
+      enddo
+
+      ccdx = 1.0_dp / (cc*dx)
+      do i=1,nx*ny*nz
+        wx(i,1,1) = wx(i,1,1) * ccdx
+      enddo
+
+      return
+  end subroutine derx_nosig
 
   function Opt_Y_EV8(Grid,Parity,Signature, TimeSimplex,Component) result(Der)
     
@@ -354,7 +412,7 @@ contains
       enddo
       return
   end subroutine derz_EV4
-
+  
   function Lapla_EV8(Grid,Parity, Signature, TimeSimplex,Component) result(Lap)
 
     integer,intent(in)                :: Parity,Signature,TimeSimplex,Component

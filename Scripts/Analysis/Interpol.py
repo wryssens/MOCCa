@@ -7,12 +7,15 @@ import matplotlib.pyplot as plt
 import os
 
 
-def Inter(datafile, points, execloc='$HOME/Documents/Codes/inter/SplineInter/exe/'):
+def Inter(datafile, points, SYM=1, execloc='$HOME/Documents/Codes/inter/SplineInter/exe/'):
        
        os.system('cp %s/SplineInter.exe inter.exe'%execloc)
        num_lines = sum(1 for line in open(datafile))
 
-       os.system('./inter.exe 2 %d %d "tps" < %s > inter.out'%(num_lines, points, datafile))
+       options=""
+       if(SYM == 1) :
+        options = "+++"
+       os.system('./inter.exe 2 %d %d "tps" %s  < %s > inter.out'%(num_lines, points, options, datafile))
        
        data      = np.loadtxt(datafile)
        X = np.loadtxt('data.x', skiprows=1)
@@ -40,7 +43,7 @@ def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1):
         xmin = -xmin
     if(SYMY == 1 and ymin < 0):
         ymin = -ymin
-    
+    print xmin, ymin, coordmin
     #Plot on the axis
     if(len(LEVELS)>0):
         contour = AXIS.contourf(X,Y,Z - np.min(Z), levels=LEVELS)

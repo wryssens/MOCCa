@@ -239,6 +239,11 @@ contains
               DeriveY => Opt_Y_EV8
               DeriveZ => Opt_Z_EV4
               Laplacian => Lapla_EV4
+          elseif(TSC) then
+              DeriveX   => Opt_X_NOSIG
+              DeriveY   => Opt_Y_EV8
+              DeriveZ   => OPT_Z_EV4
+              Laplacian => Laplacian_Central            
           else
               DeriveX   => CentralX
               DeriveY   => CentralY

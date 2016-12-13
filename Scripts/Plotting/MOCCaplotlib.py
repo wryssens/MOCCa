@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import glob
 import sys
 
-def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1, PC=1, LINESTYLE='-', MARKER=''):
+def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1, PC=1, SC=1, LINESTYLE='-', MARKER=''):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled 
     # by PREFIX, onto the axes passed into the routine.
@@ -47,14 +47,20 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
         
         if(PC != 1) :
             xcolumn = 4
+        if(SC != 1) :   
+            xcolumn = 4
+        if( SC !=1 and PC != 1):
+            xcolumn = 6
+        
     elif(XARG=='B30') :
         if(PC == 1) :
             print "Can't plot Q30 when parity is conserved."
             sys.exit()
-        
         xlabel =r'$\beta_{30}$ '
         xfname =PREFIX + '.t.qlm.tab'
         xcolumn=8
+        if (SC != 1 ):
+            xcolumn=12
     elif(XARG=='B32') :
         if(PC == 1) :
             print "Can't plot Q30 when parity is conserved."
@@ -62,10 +68,16 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
         xlabel =r'$\beta_{32}$ '
         xfname =PREFIX + '.t.qlm.tab'
         xcolumn=10
+        if (SC != 1 ):
+            xcolumn=16
     elif(XARG=='OmZ') :
         xlabel =r'$\omega_{z}$ (MeV $\hbar^{-1}$) '
         xfname =PREFIX + '.e.tab'
         xcolumn=10
+    elif(XARG=='OmX') :
+        xlabel =r'$\omega_{x}$ (MeV $\hbar^{-1}$) '
+        xfname =PREFIX + '.e.tab'
+        xcolumn=6
     elif(XARG=='JZ') :
         xlabel =r'$\langle \hat{J}_{z} \rangle$ ($\hbar$)'
         xfname =PREFIX + '.e.tab'
@@ -109,10 +121,33 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
     elif(YARG=='B20') :
         ylabel =r'$\beta_{20}$ '
         yfname =PREFIX + '.t.qlm.tab'
-        ycolumn=2
-        derivY=0
         if(PC != 1) :
-            ycolumn = 4      
+            ycolumn = 4
+        if(SC != 1) :  
+            ycolumn = 4
+        if( SC !=1 and PC != 1):
+            ycolumn = 6
+        derivY=0
+    elif(YARG=='B30') :
+        if(PC == 1) :
+            print "Can't plot Q30 when parity is conserved."
+            sys.exit()
+        ylabel =r'$\beta_{30}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        ycolumn=8
+        if (SC != 1 ):
+            ycolumn=12
+        derivY=0
+    elif(YARG=='B32') :
+        if(PC == 1) :
+            print "Can't plot Q30 when parity is conserved."
+            sys.exit()
+        ylabel =r'$\beta_{32}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        ycolumn=10
+        if (SC != 1 ):
+            ycolumn=16
+        derivY=0
     else :
         print 'YARG not recognized'
         return
@@ -123,15 +158,19 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
     xdata=dataX[:,xcolumn]
     ydata=dataY[:,ycolumn]
     
+    # Sort along X-data for surety
+    xdata, ydata = zip(*sorted(zip(xdata, ydata)))
+    
+    
     if(derivY == 1) :
         #=====================================================
         #Flag that tells us to take the finite difference of Y
         # The dynamical moment of inertia is a good example
-        deriv = np.zeros((len(ydata)-2))
-        for i in range(0,len(ydata)-2):
+        deriv = np.zeros((len(ydata)-1))
+        for i in range(0,len(ydata)-1):
             deriv[i] = ( ydata[i+1] - ydata[i])/(xdata[i+1] - xdata[i])
         ydata = deriv
-        xdata = xdata[1:-1]
+        xdata = xdata[0:-1]
          
     if(INTERPOLATE > 0):
         f     = interp1d(xdata, ydata,kind='cubic')
@@ -151,7 +190,7 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
     return (xdata[np.argmin(ydata)], min(ydata))
 
 ################################################################################
-def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1):
+def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1):
 
     #Default to current axis
     if AXIS is None:
@@ -210,9 +249,11 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1):
                         
                         xdata   = dataX[indexes,2]
                         
+                        if(PLOTDATA == 1):  
+                            AXIS.plot(xdata, ydata, c +'x')
                         if(INTERPOLATE > 0):
                             try:
-                                f     = interp1d(xdata, ydata, kind='cubic')
+                                f     = interp1d(xdata, ydata, kind='linear')
                             except:
                                 continue
                             interx= np.arange(min(xdata), max(xdata), INTERPOLATE) 

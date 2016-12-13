@@ -3355,14 +3355,27 @@ subroutine InsertionSortQPEnergies
     real(KIND=dp) :: gkx(2),gky(2)
     real(KIND=dp) :: E
     complex(KIND=dp) :: x1, x2, x3,x4,x5
-    complex(KIND=dp) :: Chi(HFBSize,HFBSize,2,2), Chika(HFBSize,HFBSize,2,2)
-    complex(KIND=dp) :: Gamka(HFBSize,HFBSize,2,2)
     real(KIND=dp)    :: hl1(2) , hl2(2), deno(2), xnum(2)
+
+    complex(KIND=dp),allocatable :: Chi(:,:,:,:)
+    complex(KIND=dp),allocatable :: Chika(:,:,:,:)
+    complex(KIND=dp),allocatable :: gamka(:,:,:,:)
+
 
     c2 = 0.0_dp ; c3 =0.0_dp ; c4 = 0.0_dp
     trx= 0.0_dp ; txd=0.0_dp ; ex = 0.0_dp ; gkr = 0.0_dp ; erx = 0.0_dp
-    gkx = 0.0_dp ; gky = 0.0_dp ; Chi = 0.0_dp ; chika = 0.0_dp ; Gamka = 0.0_dp
+    gkx = 0.0_dp ; gky = 0.0_dp
 
+    allocate(Chi(HFBSize,HFBSize,2,2))
+    allocate(Chika(HFBSize,HFBSize,2,2))
+    allocate(gamka(HFBSize,HFBSize,2,2))
+    do i=1,HFBSize
+        do j=1,HFBSize
+                Chi(j,i,:,:) = 0
+                Chika(j,i,:,:) = 0
+                Gamka (j,i,:,:) = 0
+        enddo
+    enddo
     do it=1,Iindex
       do P=1,Pindex
         do i=1,blocksizes(P,it)

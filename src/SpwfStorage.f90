@@ -411,7 +411,7 @@ contains
             ! Note that the imaginary part of the inproduct only needs to be taken
             ! into account when Time Simplex is not conserved.
             !-------------------------------------------------------------------------
-            do l=l+1,size(indices)
+            do l=k+1,size(indices)
                 mw = indices(l)
                 
                 !-----------------------------------------------------------------------

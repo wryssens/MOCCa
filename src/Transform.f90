@@ -43,7 +43,7 @@ contains
   type(Spwf), allocatable   :: HFBasisTransformed(:)
   integer                   :: wave, index
   logical                   :: interpolx, interpoly, interpolz
-
+    
     !---------------------------------------------------------------------------
     ! Checking for Time Reversal breaking first!
     ! Note that we try to take the same ordering as CR8: first all the neutron
@@ -135,7 +135,6 @@ contains
     ! Make sure the densities get recalculated
     Density = NewDensityVector()
     Recalc=.true.
-  
   end subroutine TransformInput
 
   subroutine BreakParity(wf)
@@ -988,7 +987,7 @@ contains
     Density =  NewDen
   end subroutine TransformDensities
 
-  subroutine TransformHFBMatrices(inU, inV, inRho, InKappa,inPC,inIC, filenwt, &
+  subroutine TransformHFBMatrices(inU, inV, inRho, InKappa,inPC,inTRC,inIC, filenwt, &
     &                                                InColumns, InputBlocksizes)
     !---------------------------------------------------------------------------
     ! Subroutine to transform all HFB matrices.
@@ -1000,24 +999,29 @@ contains
     complex(KIND=dp),intent(in)   :: InU(:,:,:,:), InV(:,:,:,:)
     integer, intent(in)           :: InputBlockSizes(2,2), InColumns(:,:,:)
     integer, intent(in)           :: filenwt
-    logical, intent(in)           :: inPC, inIC
+    logical, intent(in)           :: inPC, inIC, inTRC
     integer                       :: sizes(2),it,i,j, check, new,N,P
 
     if(.not. inIC) then
         call stp('No rules to transform the HFB matrices yet when breaking Isospin.')
     endif
 
-    if(PC .eqv. inPC) then
+    if((PC .eqv. inPC)) then
         ! File matches rundata ; 
         ! Check if the number of wavefunctions did not change
-        if(filenwt .eq. nwt) then
+        if((filenwt .eq. nwt)) then
             KappaHFB = InKappa
             RhoHFB   = InRho
             U        = inU
             V        = inV
             HFBColumns = inColumns
-
-        else    
+        elseif((2*filenwt.eq.nwt) .and. (.not. TRC) .and. inTRC) then
+            KappaHFB = InKappa
+            RhoHFB   = InRho
+            U        = inU
+            V        = inV
+            HFBColumns = inColumns
+        else 
             new = (nwt - filenwt)/4
             do it=1,2
                 do P=1,2
@@ -1076,7 +1080,6 @@ contains
         if(.not.allocated(HFBColumns)) then
           allocate(HFBColumns(HFBSize,1,2)) ; HFBColumns = 0
         endif
-
         if(.not. SC) then
           print *, 'WARNING: TRANSFORMATION RULES FOR U AND V MIGHT NOT BE '   &
           &      //'CORRECT WHEN BREAKING PARITY FROM A SIGNATURE BROKEN '     &

@@ -697,36 +697,7 @@ contains
         enddo
     end subroutine lapla_Z_ev4
     
-    function Lapla_nosig(Grid,Parity, Signature, TimeSimplex,Component) result(Lap)
-
-        integer,intent(in)                :: Parity,Signature,TimeSimplex,Component
-        real(KIND=dp), target, intent(in) :: Grid(:,:,:)
-        real(KIND=dp), allocatable        :: Lap(:,:,:)
-        real(KIND=dp)                     :: DerX(nx,ny,nz)
-        real(KIND=dp)                     :: DerZ(nx,ny,nz)
-        real(KIND=dp)                     :: DerY(nx,ny,nz)
-        integer                           :: xp,yp,zp
-
-        allocate(Lap(nx,ny,nz)) ; Lap = 0.0_dp
-        select case(Component)
-        case(1)
-            xp = Signature ; yp = TimeSimplex ; zp = Signature*Parity
-        case(2)
-            xp =-Signature ; yp =-TimeSimplex ; zp = Signature*Parity
-        case(3)
-            xp =-Signature ; yp = TimeSimplex ; zp =-Signature*Parity
-        case(4)
-            xp = Signature ; yp =-TimeSimplex ; zp =-Signature*Parity
-        end select 
-
-        call lapla_X_nosig(Grid,DerX)
-        call lapla_Y_ev8  (Grid,DerY,yp)
-        call lapla_Z_ev8  (Grid,DerZ,zp)
-
-        Lap =  Derx + Dery + Derz
-    end function Lapla_nosig
-    
-    function Lapla_EV4_nosig(Grid,Parity, Signature, TimeSimplex,Component) result(Lap)
+   function Lapla_EV4_nosig(Grid,Parity, Signature, TimeSimplex,Component) result(Lap)
 
         integer,intent(in)                :: Parity,Signature,TimeSimplex,Component
         real(KIND=dp), target, intent(in) :: Grid(:,:,:)

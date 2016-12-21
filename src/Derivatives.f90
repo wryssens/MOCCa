@@ -243,8 +243,8 @@ contains
               ! Signature broken, parity and timesimplex conserved
               DeriveX => Opt_X_NOSIG
               DeriveY => Opt_Y_EV8
-              DeriveZ => Opt_Z_EV8
-              Laplacian => Lapla_nosig
+              DeriveZ => CentralZ
+              Laplacian => Laplacian_Central
           elseif(TSC) then
               ! Parity broken, signature broken and timesimplex conserved
               DeriveX   => Opt_X_NOSIG

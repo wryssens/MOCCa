@@ -239,7 +239,14 @@ contains
               DeriveY => Opt_Y_EV8
               DeriveZ => Opt_Z_EV4
               Laplacian => Lapla_EV4
+          elseif(PC .and. TSC) then
+              ! Signature broken, parity and timesimplex conserved
+              DeriveX => Opt_X_NOSIG
+              DeriveY => Opt_Y_EV8
+              DeriveZ => Opt_Z_EV8
+              Laplacian => Lapla_nosig
           elseif(TSC) then
+              ! Parity broken, signature broken and timesimplex conserved
               DeriveX   => Opt_X_NOSIG
               DeriveY   => Opt_Y_EV8
               DeriveZ   => OPT_Z_EV4
@@ -256,8 +263,6 @@ contains
           DeriveZ   => CentralZ
           Laplacian => Laplacian_Central
         endif
-        !Use Finite Difference Coefficients
-
       endif
 
       !Selecting the appropriate coefficients for the First Derivative

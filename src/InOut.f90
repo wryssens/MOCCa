@@ -160,7 +160,7 @@ contains
           if(InPC.neqv.PC) call stp("Don't break parity from legacy input.")
         else
           call TransformHFBMatrices(inputU, inputV, inputRho, InputKappa,      &
-          &                     inPC,inIC,filenwt,FileHFBColumns,FileBlocksizes)
+          &                     inPC,inTRC,inIC,filenwt,FileHFBColumns,FileBlocksizes)
         endif
     endif
   end subroutine Input

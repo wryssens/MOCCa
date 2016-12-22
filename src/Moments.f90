@@ -326,11 +326,13 @@ contains
     integer :: l,m,ImPart
     ! Meshes containing the values of all associated Legendre Polynomials
     ! Some dimensions start at index 0, because l and m can both be 0
-    real(KIND=dp)  :: SpherHarmMesh(nx,ny,nz,0:MaxMoment,0:MaxMoment,2)
+    real(KIND=dp),allocatable  :: SpherHarmMesh(:,:,:,:,:,:)
 
     type(Moment),pointer :: NextMoment,Current
     ! This subroutine creates all the needed multipole moment objects.
 
+    allocate(SpherHarmMesh(nx,ny,nz,0:MaxMoment,0:MaxMoment,2))
+      
     !Create the first Multipole moment: l=0, m=0
     nullify(Root) ;    allocate(Root)
     Root%l=0      ;    Root%m=0
@@ -349,7 +351,6 @@ contains
     nullify(Current%Next) ;  nullify(Current%Prev) ; nullify(NextMoment)
 
     call SphericalHarmonics(Mesh3D,nx,ny,nz, SpherHarmMesh)
-
     !Creating all the moments and assigning each moment the spherical harmonic
     do l=1, MaxMoment
       do m=0,l

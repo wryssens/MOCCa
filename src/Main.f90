@@ -516,7 +516,7 @@ subroutine PrintSummary_v2(Iteration)
 
   integer, intent(in)  :: Iteration
   type(Moment),pointer :: Current
-  real(KIND=dp):: Q20, Q22, dQ20, dQ22, Dispersion
+  real(KIND=dp):: Q20, Q22, dQ20, dQ22, Dispersion, Q30, Q32, dQ30, dQ32, Q10, dQ10
   integer      :: i
 
   1 format('----------- Iteration ', i6,'--------------')
@@ -526,6 +526,11 @@ subroutine PrintSummary_v2(Iteration)
   
   3 format("Summ.   Q20=" f10.3, "  Q22=",f10.3)
   4 format("Summ.  dQ20=" e10.3, " dQ22=",e10.3)
+ 31 format("Summ.   Q10=" f10.3)
+ 41 format("Summ.  dQ10=" e10.3)
+ 32 format("Summ.   Q30=" f10.3, "  Q32=",f10.3)
+ 42 format("Summ.  dQ30=" e10.3, " dQ32=",e10.3)
+  
   5 format('Summ.    Jz=',f10.3, '  OmZ=',f10.3)
  51 format('Summ.    Jx=',f10.3, '  OmX=',f10.3)
   6 format('Summ.   dH2=',e10.3)
@@ -539,8 +544,26 @@ subroutine PrintSummary_v2(Iteration)
   ! Rutz constraint active.
   Current => FindMoment(2,0,.false.) ; Q20 = sum(Current%Value) ; dQ20 = Q20 - sum(Current%OldValue(:,2))
   Current => FindMoment(2,2,.false.) ; Q22 = sum(Current%Value) ; dQ22 = Q22 - sum(Current%OldValue(:,2))
+
+  if(.not. PC) then
+  	Current => FindMoment(1,0,.false.) ; Q10 = sum(Current%Value) ; dQ10 = Q10 - sum(Current%OldValue(:,2))
+ 	Current => FindMoment(3,0,.false.) ; Q30 = sum(Current%Value) ; dQ30 = Q30 - sum(Current%OldValue(:,2))
+  	Current => FindMoment(3,2,.false.) ; Q32 = sum(Current%Value) ; dQ32 = Q32 - sum(Current%OldValue(:,2))
+  endif  
+
+  if(.not.PC) then
+	print 31, Q10
+        print 41, dQ10
+  endif
+
   print 3, Q20,Q22
   print 4, dQ20, dQ22
+
+  if(.not.PC) then
+	print 32,  Q30, dQ30
+        print 42, dQ30, dQ32
+  endif
+
 
   if(.not.TRC) then
     if((.not. TRC) .and. (.not.SC)) then

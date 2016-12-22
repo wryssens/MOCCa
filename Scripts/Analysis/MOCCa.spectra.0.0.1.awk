@@ -688,7 +688,7 @@ BEGIN{
                 getline;
                 
                 getline;
-                Energy[iq,2] = $2 #Finite difference energy
+                Energy[iq,2] = $3 #Finite difference energy
                 getline;
                 getline;
                 getline;

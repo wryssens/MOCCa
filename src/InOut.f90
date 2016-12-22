@@ -536,6 +536,8 @@ contains
     !---------------------------------------------------------------------------
     ! Checking the essential variables:
     ! a) Symmetries must not be unbroken.
+    !    and when symmetries are broken, MOCCa must be free to actually 
+    !    transform the spwfs.
     ! b) Mesh parameters & number of wavefunctions must correspond
     ! c) There should be enough space for neutrons & protons
     if(.not.inPC .and. PC) then
@@ -552,6 +554,12 @@ contains
       call stp(' Time Reversal broken on file,'                                &
       &      //' but Time Reversal conservation asked.')
     endif
+    if( (PC .neqv. inPC) .or. (SC .neqv. inSC) .or. (TSC .neqv. inTSC)) then
+        if(.not. AllowTransform) then
+            call stp("MOCCa needs to break symmetries, but you don't allow it.")
+        endif
+    endif 
+    
     !---------------------------------------------------------------------------
     if(filenx.ne.nx) then
       if( 2*filenx.ne.nx .or. SC ) then

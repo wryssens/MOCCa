@@ -242,6 +242,7 @@ BEGIN{
         iq = 0
         flag[multipole]=0
         energyflag     =0
+        fdenergyflag   =0
         pairingflag    =0
         angmomflag     =0
         
@@ -334,6 +335,7 @@ BEGIN{
             #Readflags
             flag[multipole]=1
             energyflag     =1
+            fdenergyflag   =1
             pairingflag    =1
             if(PairingType == "HF") {
                 HFBasisflag =1
@@ -636,6 +638,65 @@ BEGIN{
                 }
                 pairingflag=0
         }
+        if ( fdenergyflag && $2 == "Energies")  {
+                # The finite difference energy
+                getline; 
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                getline; #Kinetic energy is this line
+                getline;
+                getline;
+                
+                if( PairingType != "HF") {
+                    getline;                    
+                }   
+
+                #Check if we are dealing with a LN calculation or not
+                if($1 =="Lipkin-Nogami") {
+                        getline ;
+                        getline ;
+                        getline ;
+                }
+                else{
+                        getline ;
+                }
+                
+                if(COM1flag == 1) {
+                    getline;
+                    getline;
+                }
+                
+                getline;
+                getline;
+                getline;
+                
+                getline;
+                Energy[iq,2] = $2 #Finite difference energy
+                getline;
+                getline;
+                getline;
+                getline;
+                fdenergyflag = 0
+        }
                 
         if ( energyflag && $2 == "Lagrange")  {
                 # Get all the things related to the energy
@@ -734,14 +795,14 @@ END{
     # total energy
     # and closely related observables
     #if ( calc == "pes" ) {
-        print "!       E(func)     E(sp)  E(func)noLN      eLN(n)     eLN(p)      OmegaX      Jx        OmegaY      Jy        OmegaZ      Jz" > "tmp.e.tab";
+        print "!       E(func)     E_FD     E(sp)  E(func)noLN      eLN(n)     eLN(p)      OmegaX      Jx        OmegaY      Jy        OmegaZ      Jz" > "tmp.e.tab";
     #}
     iq=1;
     while ( iq < iqmax + 1 ) {
         enoln = Energy[iq,1] - ELN[iq,3];
 #        if ( calc == "pes" ) {
-            printf("%3.0f %10.3f %10.3f   %10.3f %10.3f   %10.6f %8.3f %12.5f %8.3f %12.5f %8.3f %12.5f \n",
-               iq,Energy[iq,1],Energy[iq,3],enoln,ELN[iq,1],ELN[iq,2],OmegaX[iq],Jx[iq],OmegaY[iq],Jy[iq],OmegaZ[iq],Jz[iq]) >> "tmp.e.tab"; 
+            printf("%3.0f %10.3f %10.3f %10.3f   %10.3f %10.3f   %10.6f %8.3f %12.5f %8.3f %12.5f %8.3f %12.5f \n",
+               iq,Energy[iq,1],Energy[iq,2],Energy[iq,3],enoln,ELN[iq,1],ELN[iq,2],OmegaX[iq],Jx[iq],OmegaY[iq],Jy[iq],OmegaZ[iq],Jz[iq]) >> "tmp.e.tab"; 
 #        }
         iq += 1;
     }

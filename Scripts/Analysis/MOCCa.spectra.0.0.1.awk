@@ -485,9 +485,9 @@ BEGIN{
                         getline;
                 }
                 # Rms radii
-                rms[iq,1] = $2
-                rms[iq,2] = $3
-                rms[iq,3] = $4
+                rms[iq,1] = $3
+                rms[iq,2] = $4
+                rms[iq,3] = $5
                 
                 getline; #separator
                 getline; #header

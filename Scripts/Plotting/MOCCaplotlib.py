@@ -73,15 +73,15 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
     elif(XARG=='OmZ') :
         xlabel =r'$\omega_{z}$ (MeV $\hbar^{-1}$) '
         xfname =PREFIX + '.e.tab'
-        xcolumn=11
+        xcolumn=14
     elif(XARG=='OmX') :
         xlabel =r'$\omega_{x}$ (MeV $\hbar^{-1}$) '
         xfname =PREFIX + '.e.tab'
-        xcolumn=7
+        xcolumn=10
     elif(XARG=='JZ') :
         xlabel =r'$\langle \hat{J}_{z} \rangle$ ($\hbar$)'
         xfname =PREFIX + '.e.tab'
-        xcolumn=12
+        xcolumn=15
     else :
         print 'XARG not recognized'
         return
@@ -115,12 +115,12 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
     elif(YARG=='JZ') :
         ylabel =r'$\langle \hat{J}_{z} \rangle$ ($\hbar$)'
         yfname =PREFIX + '.e.tab'
-        ycolumn=12
+        ycolumn=15
         derivY = 0
     elif(YARG=='JX') :
         ylabel =r'$\langle \hat{J}_{x} \rangle$ ($\hbar$)'
         yfname =PREFIX + '.e.tab'
-        ycolumn= 8
+        ycolumn= 11
         derivY = 0
     elif(YARG=='I2Z') :
         # Dynamical moment of inertia. 
@@ -164,6 +164,12 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
         if (SC != 1 ):
             ycolumn=16
         derivY=0
+    elif(YARG=='RRMS') :
+        ylabel =r'$\langle r^2 \rangle $ '
+        yfname =PREFIX + '.e.tab'
+        ycolumn=8
+        derivY=0    
+    
     else :
         print 'YARG not recognized'
         return

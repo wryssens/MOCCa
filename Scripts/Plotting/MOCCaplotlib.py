@@ -117,12 +117,23 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
         yfname =PREFIX + '.e.tab'
         ycolumn=12
         derivY = 0
-    elif(YARG=='I2') :
+    elif(YARG=='JX') :
+        ylabel =r'$\langle \hat{J}_{x} \rangle$ ($\hbar$)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn= 8
+        derivY = 0
+    elif(YARG=='I2Z') :
         # Dynamical moment of inertia. 
         ylabel =r'$\mathcal{I}^{(2)}$ ($\hbar^2$ MeV$^{-1}$)'
         yfname =PREFIX + '.e.tab'
         ycolumn=12
-        derivY = 1 
+        derivY = 1
+    elif(YARG=='I2X') :
+        # Dynamical moment of inertia. 
+        ylabel =r'$\mathcal{I}^{(2)}$ ($\hbar^2$ MeV$^{-1}$)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn= 8
+        derivY = 1
     elif(YARG=='B20') :
         ylabel =r'$\beta_{20}$ '
         yfname =PREFIX + '.t.qlm.tab'
@@ -159,14 +170,14 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
 
     dataX=np.loadtxt(xfname,skiprows=1)
     dataY=np.loadtxt(yfname,skiprows=1)
-    
+
     xdata=dataX[:,xcolumn]
     ydata=dataY[:,ycolumn]
-    
+
     # Sort along X-data for surety
     xdata, ydata = zip(*sorted(zip(xdata, ydata)))
-    
-    
+
+
     if(derivY == 1) :
         #=====================================================
         #Flag that tells us to take the finite difference of Y
@@ -176,7 +187,7 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
             deriv[i] = ( ydata[i+1] - ydata[i])/(xdata[i+1] - xdata[i])
         ydata = deriv
         xdata = xdata[0:-1]
-         
+
     if(INTERPOLATE > 0):
         f     = interp1d(xdata, ydata,kind='cubic')
 
@@ -184,14 +195,14 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
 
         ydata = f(interx)
         xdata = interx
-    
+
     if(NORMY == 1) :
         ydata = ydata - min(ydata)
-    
+
     AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER)
     AXIS.set_xlabel(xlabel)
     AXIS.set_ylabel(ylabel)
-    
+ 
     return (xdata[np.argmin(ydata)], min(ydata))
 
 ################################################################################

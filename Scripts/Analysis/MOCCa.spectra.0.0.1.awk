@@ -93,7 +93,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
     }
     
     # Remove the original file
-    system("rm " file)
+    #system("rm " file)
     
     if (TRC == 0 && SC == 1) {
         # only distinguish between positive and negative signature when 
@@ -193,7 +193,7 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
     #Spenergy
     if(PairingType == "HFB" && basis =="hf")
     {
-        Eind=8
+        Eind=7
     }
     if(PairingType == "HFB" && basis =="can")
     {
@@ -207,7 +207,7 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
     {
         Eind=5
     }
-                  
+         
     #index of the state
     sorted[1] = $2
         
@@ -227,8 +227,7 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
     }
 
     sorted[5] = $Eind
-    
-    # Angular momentum quantum numbers Jx, Jy, Jz and J as well as <r^2>
+    # Angular momentum quantum numbers Jx, Jy, Jz and J
     k = 1
     while (k < 6){
         sorted[5+k] = $(Eind + k +1 )
@@ -361,10 +360,10 @@ BEGIN{
             getline;
             getline;
             getline;
-            if(PairingType == "HFB") {
-             getline;
-             getline;
-            }
+            #if(PairingType == "HFB") {
+            # getline;
+            # getline;
+            #}
             #----------------------------------
             # Neutron states in the HF basis
             N = 1
@@ -376,7 +375,6 @@ BEGIN{
                         neutronhf[iq,N,i] = line[i]
                         i+=1
                      }
-                     
                     N +=1
                     getline;
                 }
@@ -385,8 +383,6 @@ BEGIN{
             # Neutron states in the canonical basis
             N = 1
             if(CanBasisflag == 1){
-                getline;
-                getline;
                 getline;
                 getline;
                 getline;
@@ -402,8 +398,6 @@ BEGIN{
                     getline;
                 }
             }
-            getline;
-            getline;
             getline;
             getline;
             getline;
@@ -432,8 +426,6 @@ BEGIN{
             # proton states in the canonical basis
             P = 1
             if(CanBasisflag == 1){
-                getline;
-                getline;
                 getline;
                 getline;
                 getline;
@@ -969,19 +961,18 @@ END{
         iq = 1;
         while ( iq < iqmax +1  ) {
             N = 1;
-            while ( neutroncan[1,N,1] != "" ){
+            while ( neutroncan[iq,N,1] != "" ){
 #                if ( calc == "pes" ) {
                     i = 1
                     printf("%4i %4i %4i", N, iq, 0) >> "tmp.n.can.tab"
                     while( neutroncan[iq,N,i] != "" ) {
                         printf("%10.3f", neutroncan[iq,N,i] ) >> "tmp.n.can.tab"
                         i +=1
-#                    }
-                printf("\n" ) >> "tmp.n.can.tab"
-                }
+                    }
+                    printf("\n") >> "tmp.n.can.tab"
+#                }
                 N+=1
             }
-          
             iq+=1
         }
         close("tmp.n.can.tab")

@@ -936,7 +936,7 @@ END{
     #----------------------------------------------
     # Deciding on the header for the SPWF files
     #
-    header = "* iq   N    K  index     <P>       <Rz>       v^2      Esp       <Jx>      <Jy>      <Jz>       J \n"
+    header = "* iq    N    K    index      <P>       <Rz>       v^2      Esp       <Jx>      <Jy>      <Jz>       J \n"
        
     #---------------------------------------------------------------------------
     # Neutron HF basis

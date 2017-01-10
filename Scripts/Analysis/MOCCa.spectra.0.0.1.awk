@@ -75,7 +75,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
         
     if (PC == 1) {
         # Sort the spwfs according to parity
-        command = "awk -f Spwf.sort.awk 'column=4' 'points=" iqmax "' < " file;
+        command = "awk -f Spwf.sort.awk 'column=5' 'points=" iqmax "' < " file;
         system(command);
         #exit
         # Moving 
@@ -102,7 +102,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
             # Sort the spwfs according to signature
             # Positive spwf.parity
             file = "spwf.par=+1"
-            command = "awk -f Spwf.sort.awk 'column=5' 'points=" iqmax "' < " file;
+            command = "awk -f Spwf.sort.awk 'column=6' 'points=" iqmax "' < " file;
             system(command);
             
             command = " mv tmp.p spwf.par=+1.sig=+1"
@@ -112,7 +112,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
             
             #Negative spwf.parity
             file = "spwf.par=-1"
-            command = "awk -f Spwf.sort.awk 'column=5' 'points=" iqmax "' < " file;
+            command = "awk -f Spwf.sort.awk 'column=6' 'points=" iqmax "' < " file;
             system(command);
             
             command = " mv tmp.p spwf.par=-1.sig=+1"
@@ -122,7 +122,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
         }
         else {
             file = "spwf.neutron.par=0"
-            command = "awk -f Spwf.sort.awk 'column=5' 'points=" iqmax "' < " file;
+            command = "awk -f Spwf.sort.awk 'column=6' 'points=" iqmax "' < " file;
             system(command);
             
             command = " mv tmp.p spwf.par=0.sig=+1"
@@ -972,7 +972,7 @@ END{
             while ( neutroncan[1,N,1] != "" ){
 #                if ( calc == "pes" ) {
                     i = 1
-                    printf("%4i %4i", N, iq) >> "tmp.n.can.tab"
+                    printf("%4i %4i %4i", N, iq, 0) >> "tmp.n.can.tab"
                     while( neutroncan[iq,N,i] != "" ) {
                         printf("%10.3f", neutroncan[iq,N,i] ) >> "tmp.n.can.tab"
                         i +=1
@@ -995,7 +995,7 @@ END{
         while ( protonhf[iq,P,1] != ""){
 #            if ( calc == "pes" ) {
                 i = 1
-                printf("%4i %4i", P, iq) >> "tmp.p.hf.tab"
+                printf("%4i %4i %4i", P, iq, 0) >> "tmp.p.hf.tab"
                 while( protonhf[iq,P,i] != "" ) {
                     printf("%10.3f", protonhf[iq,P,i] ) >> "tmp.p.hf.tab"
                     i +=1
@@ -1019,7 +1019,7 @@ END{
             while ( protoncan[iq,P,1] != "" ){
 #                if ( calc == "pes" ) {
                     i = 1
-                    printf("%4i %4i", P, iq) >> "tmp.p.can.tab"
+                    printf("%4i %4i %4i", P, iq, 0) >> "tmp.p.can.tab"
                     while( protoncan[iq,P,i] != "" ) {
                         printf("%10.3f", protoncan[iq,P,i] ) >> "tmp.p.can.tab"
                         i +=1

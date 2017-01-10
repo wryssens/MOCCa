@@ -20,20 +20,19 @@ import matplotlib.pyplot as plt
 import glob
 import sys
 
-def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1, PC=1, SC=1, LINESTYLE='-', MARKER=''):
+def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1, PC=1, SC=1, LINESTYLE='-', MARKER='', COLOR=''):
     #===========================================================================
-    # Function that plots two values obtained in a set of data files, labelled 
+    # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
     # Currently recognized options for XARG and YARG
-    # 
     # 'E'   the energy from functional
     # 'Q20' <Q20_t> in fm^2
     #===========================================================================
-    
+
     #Default to current axis
     if AXIS is None:
         AXIS = plt.gca()
-    
+
     if(XARG=='Q20') :
         xlabel =r'$\langle \hat{Q}_{20} \rangle$ (fm$^2$)'
         xfname =PREFIX + '.t.qlm.tab'
@@ -44,14 +43,13 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
         xlabel =r'$\beta_{20}$ '
         xfname =PREFIX + '.t.qlm.tab'
         xcolumn=2
-        
+
         if(PC != 1) :
             xcolumn = 4
-        if(SC != 1) :   
+        if(SC != 1) :
             xcolumn = 4
         if( SC !=1 and PC != 1):
             xcolumn = 6
-        
     elif(XARG=='B30') :
         if(PC == 1) :
             print "Can't plot Q30 when parity is conserved."
@@ -129,7 +127,7 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
         ycolumn=12
         derivY = 1
     elif(YARG=='I2X') :
-        # Dynamical moment of inertia. 
+        # Dynamical moment of inertia.
         ylabel =r'$\mathcal{I}^{(2)}$ ($\hbar^2$ MeV$^{-1}$)'
         yfname =PREFIX + '.e.tab'
         ycolumn= 8
@@ -139,7 +137,7 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
         yfname =PREFIX + '.t.qlm.tab'
         if(PC != 1) :
             ycolumn = 4
-        if(SC != 1) :  
+        if(SC != 1) :
             ycolumn = 4
         if( SC !=1 and PC != 1):
             ycolumn = 6
@@ -165,11 +163,10 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
             ycolumn=16
         derivY=0
     elif(YARG=='RRMS') :
-        ylabel =r'$\langle r^2 \rangle $ '
+        ylabel =r'$\langle r^2 \rangle$ (fm$^2$)'
         yfname =PREFIX + '.e.tab'
         ycolumn=8
-        derivY=0    
-    
+        derivY=0
     else :
         print 'YARG not recognized'
         return
@@ -182,7 +179,6 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
 
     # Sort along X-data for surety
     xdata, ydata = zip(*sorted(zip(xdata, ydata)))
-
 
     if(derivY == 1) :
         #=====================================================
@@ -197,7 +193,7 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
     if(INTERPOLATE > 0):
         f     = interp1d(xdata, ydata,kind='cubic')
 
-        interx= np.arange(min(xdata), max(xdata), INTERPOLATE) 
+        interx= np.arange(min(xdata), max(xdata), INTERPOLATE)
 
         ydata = f(interx)
         xdata = interx
@@ -205,23 +201,71 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
     if(NORMY == 1) :
         ydata = ydata - min(ydata)
 
-    AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER)
+    if(COLOR != ""):
+    	AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER, color=COLOR)
+    else:
+	    AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER)
     AXIS.set_xlabel(xlabel)
     AXIS.set_ylabel(ylabel)
- 
+
     return (xdata[np.argmin(ydata)], min(ydata))
 
+#################################################################################
+def mini(PREFIX, XARG, YARG, PC=1, SC=1):
+    
+    if(XARG=='Q20') :
+        xfname =PREFIX + '.t.qlm.tab'
+        xcolumn=1
+        if(PC != 1) :
+            xcolumn = 3
+    elif(XARG=='B20') :
+        xfname =PREFIX + '.t.qlm.tab'
+        xcolumn=2
+
+        if(PC != 1) :
+            xcolumn = 4
+        if(SC != 1) :
+            xcolumn = 4
+        if( SC !=1 and PC != 1):
+            xcolumn = 6
+    
+    if(YARG=='RRMS') :
+        ylabel =r'$\langle r^2 \rangle$ (fm$^2$)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn=8
+        derivY=0
+    
+    efname = PREFIX + '.e.tab'
+    
+    dataE=np.loadtxt(efname,skiprows=1)
+    dataX=np.loadtxt(xfname,skiprows=1)
+    dataY=np.loadtxt(yfname,skiprows=1)
+
+    xdata=dataX[:,xcolumn]
+    ydata=dataY[:,ycolumn]
+    edata=dataE[:,1]
+    
+    interx= np.arange(min(xdata), max(xdata), (max(xdata) - min(xdata))/100)
+    f     = interp1d(xdata, edata,kind='cubic')
+    g     = interp1d(xdata, ydata)
+    
+    E     = f(interx)
+    emin  = np.argmin(E) 
+    minx  = interx[emin]
+    miny  = g(minx)
+    
+    return (minx, miny)
 ################################################################################
 def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1):
 
     #Default to current axis
     if AXIS is None:
         AXIS = plt.gca()
-    
+
     xfname=PREFIX + '.t.qlm.tab'
     dataX=np.loadtxt(xfname,skiprows=1)
     xdata = dataX[:,2]
-    
+
     fermifname=PREFIX + '.ef.tab'
     if(ISO == 'neutron'):
         fermicolumn=1
@@ -229,49 +273,45 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, PLO
         fermicolumn=2
     fermidata = np.loadtxt(fermifname, skiprows=1)
     fermi     = fermidata[:,fermicolumn]
-    
+
     AXIS.plot(xdata, fermi, 'k-.', label='$e_f$')
-          
+
     colors   = ['b', 'r', 'c', 'g', 'k', 'm', 'burlywood', 'chartreuse']  
-            
+
     for P in PAR:
         if (P == '-1'):
             linestyle = '--'
         else:
             linestyle = '-'
-            
+
         for S in SIG:
             fnametemp=PREFIX + '.' + BASIS + '.' + ISO + '.' + 'par=' + P + '.' + 'sig=' + S 
-            
+
             if(KMAX !=0):
                 #===============================================================
                 # Axial case
                 for K in range(1,KMAX+1,2):
-                    
+
                     fname = fnametemp + '.k=%d.tab'%K
                     c = colors[(K-1)/2]
-                    
                     try:
                         tokens = tokenizer(fname)
                         tokens.next()
                         spwfs = [np.loadtxt(A) for A in tokens]
                     except IOError:
                         #This happens if KMAX is too big
-                        break 
-                
+                        break
                     for i in range(len(spwfs)):
                         spwf = spwfs[i]
-                        
+
                         try:
                             ydata = spwf[:,6]
                             indexes = [int(x)-1 for x in spwf[:,1]]
                         except IndexError:
                             # Just ignore spwfs that are a single point
                             continue
-                        
                         xdata   = dataX[indexes,2]
-                        
-                        if(PLOTDATA == 1):  
+                        if(PLOTDATA == 1):
                             AXIS.plot(xdata, ydata, c +'x')
                         if(INTERPOLATE > 0):
                             try:
@@ -281,7 +321,6 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, PLO
                             interx= np.arange(min(xdata), max(xdata), INTERPOLATE) 
                             ydata = f(interx)
                             xdata = interx
-                       
                         try:
                             if(i == 0 and P == PAR[0] ):
                                 AXIS.plot(xdata, ydata, c+linestyle, label=r'$J_z = \frac{%d}{2}$'%K)
@@ -292,7 +331,5 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, PLO
             else:
                 print 'No plotting defined for nonaxial case yet'
                 sys.exit()
-                    
-                
     AXIS.set_xlabel(r'$\beta_{20}$')
     AXIS.set_ylabel(r'E (MeV)')

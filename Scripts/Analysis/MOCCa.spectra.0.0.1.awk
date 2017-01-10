@@ -936,7 +936,7 @@ END{
     #----------------------------------------------
     # Deciding on the header for the SPWF files
     #
-    header = "*             index     <P>       <Rz>       v^2      Esp       <Jx>      <Jy>      <Jz>       J        <r^2> \n"
+    header = "* iq   N    K  index     <P>       <Rz>       v^2      Esp       <Jx>      <Jy>      <Jz>       J \n"
        
     #---------------------------------------------------------------------------
     # Neutron HF basis
@@ -948,12 +948,11 @@ END{
         while ( neutronhf[iq,N,1] != "" ){
 #            if ( calc == "pes" ) {
                 i = 1
-                printf("%4i %4i", N, iq) >> "tmp.n.hf.tab"
+                printf("%4i %4i %4i", N, iq, 0) >> "tmp.n.hf.tab"
                 while( neutronhf[iq,N,i] != "" ) {
                     printf("%10.3f", neutronhf[iq,N,i] ) >> "tmp.n.hf.tab"
                     i +=1
                 }
-                
                 printf("\n" ) >> "tmp.n.hf.tab"
 #            }
               
@@ -1025,7 +1024,6 @@ END{
                         printf("%10.3f", protoncan[iq,P,i] ) >> "tmp.p.can.tab"
                         i +=1
                     }
-                    
                     printf("\n" ) >> "tmp.p.can.tab"
 #                }
                   

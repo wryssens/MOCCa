@@ -134,8 +134,8 @@ contains
         call stp('No legacy for signature broken.')
       endif
     endif
-     !print *, HFBColumns(1:blocksizes(1,2),1,2)
-     !print *, HFBColumns(1:blocksizes(2,2),2,2)
+!     print *, HFBColumns(1:blocksizes(1,2),1,2)
+!     print *, HFBColumns(1:blocksizes(2,2),2,2)
 
     if(allocated(qpexcitations)) then
       call BlockQuasiParticles
@@ -163,56 +163,19 @@ contains
                   GradV(1:N,ind(P,it),P,it) = DBLE(V(1:N,j,P,it))
                   GradU(1:N,ind(P,it),P,it) = DBLE(U(1:N,j,P,it))
 
-                  !if(any(abs(GradU(1:N/2,ind(P,it),P,it)).gt.1.0d-12) .or. .not. SC) then
-                  !  sigblocks(P,it) = sigblocks(P,it) +1
-                  !endif
+                  if(SC) then
+                    if(any(abs(GradU(    1:N/2,ind(P,it),P,it)).gt.1.0d-10)   .or. &
+                    &  any(abs(GradV(N/2+1:N  ,ind(P,it),P,it)).gt.1.0d-10)) then
+                        sigblocks(P,it) = sigblocks(P,it) +1
+                    endif
+                  else
+                        sigblocks(P,it) = sigblocks(P,it) +1
+                  endif
                   ind(P,it) = ind(P,it)+ 1
                 endif
             enddo
         enddo
     enddo
-    sigblocks = 0
-    do i=1,nwt
-        P  =( HFBasis(i)%GetParity()    + 3)/2
-        it =( HFBasis(i)%GetIsospin()   + 3)/2
-        if( ( HFBasis(i)%GetSignature() .eq. -1) .or. (.not. SC)) then
-                sigblocks(P,it) = sigblocks(P,it) +1 
-        endif
-    enddo
-    
-    !print *, 'Negative parity'
-    !print *, HFBColumns(1:blocksizes(1,2),1,2)
-
-    !do i=1,blocksizes(1,2)
-    ! print *, DBLE(GradU(i,1:blocksizes(1,2),1,2))
-    !enddo
-    !print *
-
-    !do i=1,blocksizes(1,2)
-     !print *, DBLE(GradV(i,1:blocksizes(1,2),1,2))
-    !enddo
-    !print *
-    
-    !print *, 'Positive parity'
-    !print *, HFBColumns(1:blocksizes(2,2),2,2)
-
-    !do i=1,blocksizes(2,2)
-    ! print *, DBLE(GradU(i,1:blocksizes(2,2),2,2))
-    !enddo
-    !print *
-
-    !do i=1,blocksizes(2,2)
-    ! print *, DBLE(GradV(i,1:blocksizes(2,2),2,2))
-    !enddo
-    !print *
-    
-    !print *
-    !i = 1
-    !j = 2
-    !call checkUandV(DBLE(GRADU(1:blocksizes(j,i), 1:blocksizes(j,i),j,i)), &
-    !&               DBLE(GradV(1:blocksizes(j,i), 1:blocksizes(j,i),j,i)))
-
-    !stop
     
   end subroutine GetUandV
 
@@ -256,7 +219,6 @@ contains
           enddo
       enddo
       
-
 !    print *
 !    do j =1, blocksizes(1,2)
 !      print *, DBLE(U(j,1:2*blocksizes(1,2),1,2))
@@ -342,7 +304,7 @@ contains
     ! Initialize the module
     oldnorm = 0.0d0 ; gradientnorm = 0.0d0
     ! Step size works typically. 0.025 would be too big and smaller is slower.
-    step    = 0.020_dp ; OldFermi = 0.0d0
+    step = 0.020_dp ; OldFermi = 0.0d0
     converged = .false.
     if(.not. allocated(GradU)) then
         N = maxval(blocksizes)
@@ -378,19 +340,6 @@ contains
     !---------------------------------------------------------------------------
     ! Start of the iterative solver
     do iter=1,HFBIter
-      !if(any(isnan(gradU)) .or. any(isnan(gradV))) then
-      !  print *, iter
-      !  call stp('iter')
-      !endif
-      !do it=1,2      
-      !  do P=1,2
-      !    print *, 'P, it', P, it
-   ! call checkUandV(DBLE(GRADU(1:blocksizes(P,it), 1:blocksizes(P,it),P,it)), &
-   ! &               DBLE(GradV(1:blocksizes(P,it), 1:blocksizes(P,it),P,it)))
-   !     enddo
-   !   enddo
-
-
       !-------------------------------------------------------------------------
       ! Construct the density and anomalous density matrix.
       ! Only necessary when LN is active, since they then contribute to the
@@ -437,7 +386,7 @@ contains
       !-------------------------------------------------------------------------
       ! Readjust Fermi and L2
       succes = 0
-      if(Lipkin .and. mod(iter,1).eq.1) then
+      if(Lipkin .and. mod(iter,10).eq.1) then
          LN = Lncr8(Delta,DeltaLN,succes)
       elseif(ConstrainDispersion) then 
          Disp = Dispersion()      
@@ -456,7 +405,6 @@ contains
           ! This is why we don't include the Fermi contribution directly in the
           ! HFBHamiltonian. In this way, we get more control over the conjugate
           ! descent in the Fermi direction and (hopefully) faster convergence.
-          !print *, 'N20Norm', N20Norm
           if(abs(N20Norm(it)).gt.1d-10) then
             Fermi(it) = Fermi(it) + (Particles(it) - par(it))/N20norm(it)
           else
@@ -530,8 +478,8 @@ contains
                 !gamma(P,it) = gamma(P,it) - PR(p,it)/oldnorm(p,it)
                 !---------------------------------------------------------------
                 ! Update
-                !Direction(1:N,1:N,P,it) = Direction(1:N,1:N,P,it)  +           &
-                !&                             gamma(P,it) * OldDir(1:N,1:N,P,it)
+                Direction(1:N,1:N,P,it) = Direction(1:N,1:N,P,it)  +           &
+                &                             gamma(P,it) * OldDir(1:N,1:N,P,it)
               endif
               !-----------------------------------------------------------------
               ! Check if this direction is indeed a descent direction.
@@ -552,7 +500,7 @@ contains
               !-----------------------------------------------------------------
               oldgradU(1:N,1:N,P,it) = GradU(1:N,1:N,P,it)
               oldgradV(1:N,1:N,P,it) = GradV(1:N,1:N,P,it)
-              if(any(isnan(gradient))) call stp('grad')
+
               !-----------------------------------------------------------------
               ! Line search for a good step.
               ! In practice, this does nothing but slow the process in my
@@ -569,7 +517,6 @@ contains
       enddo
       !-------------------------------------------------------------------------
       ! Detect convergence or divergence?
-      !print *, 'gradientnorm', gradientnorm
       if(any(.not. converged) .and. iter.eq.HFBIter) then
         print 1
         print 2
@@ -736,7 +683,7 @@ contains
     enddo
     !Don't forget to orthonormalise
     call ortho(U2,V2,S)
-   
+
   end subroutine GradUpdate_nosig
 
   subroutine GradUpdate_sig(step, U1,V1,Grad,U2,V2, S)
@@ -751,7 +698,7 @@ contains
 
     N = size(U1,1)
 
-    U2(1:N/2  ,1:S)   = U1(1:N/2  ,1:S)  - step *                               &
+    U2(1:N/2  ,1:S)   = U1(1:N/2  ,1:S) - step *                               &
     &                     matmul(V1(1:N/2, S+1:N), Grad(S+1:N,1:S))
     U2(1+N/2:N,S+1:N) = U1(1+N/2:N,S+1:N) - step *                             &
     &                     matmul(V1(N/2+1:N, 1:S), Grad(1:S,S+1:N))
@@ -1082,100 +1029,5 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
         enddo
     enddo
 end subroutine CalcQPEnergies
-
-subroutine checkUandV(U,V)
-        !-----------------------------------------------------------------------
-        ! Debugging and sanity check tool. 
-        ! Check if the matrices U and V satisfy the relations to define a  
-        ! correct Bogolyubov transformation, i.e. that
-        !
-        !      ( V^* U )
-        ! W =  (       )
-        !      ( U^* V )
-        !
-        ! is a unitary matrix, or equivalently that 
-        !
-        ! U^\dagger U + V^\dagger V = 1 & U U^\dagger + V^* V^T = 1
-        ! U^T V       + V^T       U = 0 & U V^\dagger + V^* U^T = 0
-        !
-        !-----------------------------------------------------------------------
-        1 format('===============================')
-        2 format(' U^T U + V^T V = 1')
-        3 format(' U^T V + V^T U = 0')
-        4 format(' U U^T + V V^T = 1')
-        5 format(' U V^T + V U^T = 0')
-    
-        real*8, intent(in) :: U(:,:),V(:,:)
-        real*8  :: check(size(U,1),size(U,1),4)
-        integer :: i,j,N
-        
-        check(:,:,1) = matmul(transpose(U), U) + matmul(transpose(V), V)
-        check(:,:,2) = matmul(transpose(U), V) + matmul(transpose(V), U)
-        check(:,:,3) = matmul( U,transpose(U)) + matmul( V,transpose(V))
-        check(:,:,4) = matmul( U,transpose(V)) + matmul( V,transpose(U))
-        
-        print *
-        print 1
-        N = size(U,1)
-        print 2
-        !do i=1,N
-        !    print ('(150f7.3)'), check(i,:,1)
-        !enddo
-        do j=1,N
-                do i=1,N  
-                        if(i.eq.j) cycle      
-                        if(abs(check(i,j,1)).gt.1d-10) then
-                                print *, i,j, 'check1', check(i,j,1)
-                        endif
-                enddo
-        enddo
-
-        print *
-        print 3
-        !do i=1,N
-        !    print ('(150f7.3)'), check(i,:,2)
-        !enddo
-
-        do j=1,N
-                do i=1,N  
-                        if(abs(check(i,j,2)).gt.1d-10) then
-                                print *, i,j, 'check2', check(i,j,2)
-                        endif
-                enddo
-        enddo
-
-
-        print *
-        print 4
-        !do i=1,N
-        !    print ('(150f7.3)'), check(i,:,3)
-        !enddo
-        do j=1,N
-                do i=1,N  
-                        if(i.eq.j) cycle
-                        if(abs(check(i,j,3)).gt.1d-10) then
-                                print *, i,j, 'check3', check(i,j,3)
-                        endif
-                enddo
-        enddo
-
-
-        print *
-        print 5
-        !do i=1,N
-        !    print ('(150f7.3)'), check(i,:,4)
-        !enddo
-        do j=1,N
-                do i=1,N  
-                        if(abs(check(i,j,4)).gt.1d-10) then
-                                print *, i,j, 'check2', check(i,j,4)
-                        endif
-                enddo
-        enddo
-
-
-        print 1
-
-    end subroutine checkUandV
 
 end module GradientHFB

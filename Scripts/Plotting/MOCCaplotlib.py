@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import glob
 import sys
 
-def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1, PC=1, SC=1, LINESTYLE='-', MARKER='', COLOR=''):
+def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None, INTERMAX=None ,LABEL=None, NORMY=1, PC=1, SC=1, LINESTYLE='-', MARKER='', COLOR=''):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
@@ -69,7 +69,7 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
         if (SC != 1 ):
             xcolumn=16
     elif(XARG=='OmZ') :
-        xlabel =r'$\omega_{z}$ (MeV $\hbar^{-1}$) '
+        xlabel =r'$\hbar \omega_{z}$ (MeV) '
         xfname =PREFIX + '.e.tab'
         xcolumn=14
     elif(XARG=='OmX') :
@@ -118,19 +118,19 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
     elif(YARG=='JX') :
         ylabel =r'$\langle \hat{J}_{x} \rangle$ ($\hbar$)'
         yfname =PREFIX + '.e.tab'
-        ycolumn= 11
+        ycolumn= 14
         derivY = 0
     elif(YARG=='I2Z') :
         # Dynamical moment of inertia. 
         ylabel =r'$\mathcal{I}^{(2)}$ ($\hbar^2$ MeV$^{-1}$)'
         yfname =PREFIX + '.e.tab'
-        ycolumn=12
+        ycolumn=15
         derivY = 1
     elif(YARG=='I2X') :
         # Dynamical moment of inertia.
         ylabel =r'$\mathcal{I}^{(2)}$ ($\hbar^2$ MeV$^{-1}$)'
         yfname =PREFIX + '.e.tab'
-        ycolumn= 8
+        ycolumn= 11
         derivY = 1
     elif(YARG=='B20') :
         ylabel =r'$\beta_{20}$ '
@@ -193,7 +193,10 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, LABEL=None, NORMY=1
     if(INTERPOLATE > 0):
         f     = interp1d(xdata, ydata,kind='cubic')
 
-        interx= np.arange(min(xdata), max(xdata), INTERPOLATE)
+        if(INTERMIN == None and INTERMAX == None):  
+            interx= np.arange(min(xdata), max(xdata), INTERPOLATE)
+        else:
+            interx= np.arange(INTERMIN, INTERMAX, INTERPOLATE)
 
         ydata = f(interx)
         xdata = interx
@@ -245,7 +248,7 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1):
     ydata=dataY[:,ycolumn]
     edata=dataE[:,1]
     
-    interx= np.arange(min(xdata), max(xdata), (max(xdata) - min(xdata))/100)
+    interx= np.arange(min(xdata), max(xdata)- (max(xdata) - min(xdata))/100, (max(xdata) - min(xdata))/100)
     f     = interp1d(xdata, edata,kind='cubic')
     g     = interp1d(xdata, ydata)
     
@@ -256,7 +259,7 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1):
     
     return (minx, miny)
 ################################################################################
-def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1):
+def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER=''):
 
     #Default to current axis
     if AXIS is None:
@@ -276,11 +279,11 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, PLO
 
     AXIS.plot(xdata, fermi, 'k-.', label='$e_f$')
 
-    colors   = ['b', 'r', 'c', 'g', 'k', 'm', 'burlywood', 'chartreuse']  
+    colors   = ['b', 'r', 'c', 'g', 'k', 'm', 'y', 'y' ]  
 
     for P in PAR:
         if (P == '-1'):
-            linestyle = '--'
+            linestyle = '-'
         else:
             linestyle = '-'
 
@@ -305,7 +308,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, PLO
                         spwf = spwfs[i]
 
                         try:
-                            ydata = spwf[:,6]
+                            ydata = spwf[:,7]
                             indexes = [int(x)-1 for x in spwf[:,1]]
                         except IndexError:
                             # Just ignore spwfs that are a single point
@@ -315,19 +318,19 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, PLO
                             AXIS.plot(xdata, ydata, c +'x')
                         if(INTERPOLATE > 0):
                             try:
-                                f     = interp1d(xdata, ydata, kind='linear')
+                                f     = interp1d(xdata, ydata, kind='cubic')
                             except:
                                 continue
-                            interx= np.arange(min(xdata), max(xdata), INTERPOLATE) 
+                            interx= np.arange(min(xdata), max(xdata) - (max(xdata) - min(xdata))/100, INTERPOLATE) 
                             ydata = f(interx)
                             xdata = interx
-                        try:
-                            if(i == 0 and P == PAR[0] ):
-                                AXIS.plot(xdata, ydata, c+linestyle, label=r'$J_z = \frac{%d}{2}$'%K)
-                            else:
-                                AXIS.plot(xdata, ydata, c+linestyle)
-                        except ValueError:
-                            continue
+                        if(i == 0 and P == PAR[0] ):
+                            AXIS.plot(xdata, ydata, c+linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=MARKER)
+                        else:
+                            AXIS.plot(xdata, ydata, c+linestyle, marker=MARKER)
+#                        except ValueError:
+#                            print *, 'Value'
+#                            continue
             else:
                 print 'No plotting defined for nonaxial case yet'
                 sys.exit()

@@ -28,7 +28,7 @@ def Inter(datafile, points, SYM=1, execloc='$HOME/Documents/Codes/inter/SplineIn
        os.system('rm inter.exe')
        return (data, X,Y,Z)
        
-def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1):
+def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1, LABEL=''):
     
     #Default to current axis
     if AXIS is None:
@@ -53,7 +53,7 @@ def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1):
     AXIS.plot(xmin,ymin,'kd')    
     AXIS.set_xlim(min(data[:,0]),max(data[:,0]))
     AXIS.set_ylim(min(data[:,1]),max(data[:,1]))
-    cbar    = plt.colorbar(contour)
+    cbar    = plt.colorbar(contour, label=LABEL)
     
     if(PLOTDATA> 0):
         plt.plot(data[:,0],data[:,1], 'kx')

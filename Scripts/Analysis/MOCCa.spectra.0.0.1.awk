@@ -790,14 +790,14 @@ END{
     # total energy
     # and closely related observables
     #if ( calc == "pes" ) {
-        print "!       E(func)     E_FD     E(sp)     E(func)noLN    eLN(n)     eLN(p)    Rms(n)   Rms(p)     Rms(t)    OmegaX      Jx        OmegaY      Jy        OmegaZ      Jz" > "tmp.e.tab";
+        print "!       E(func)     E_FD     E(sp)     Routhian       eLN(n)     eLN(p)    Rms(n)   Rms(p)     Rms(t)    OmegaX      Jx        OmegaY      Jy        OmegaZ      Jz" > "tmp.e.tab";
     #}
     iq=1;
     while ( iq < iqmax + 1 ) {
         enoln = Energy[iq,1] - ELN[iq,3];
 #        if ( calc == "pes" ) {
             printf("%3.0f %10.3f %10.3f %10.3f   %10.3f %10.3f   %10.6f %8.3f %8.3f %8.3f %8.3f %12.5f %8.3f %12.5f %8.3f %12.5f \n",
-               iq,Energy[iq,1],Energy[iq,2],Energy[iq,3],enoln,ELN[iq,1],ELN[iq,2], rms[iq,1],rms[iq,2],rms[iq,3],OmegaX[iq],Jx[iq],OmegaY[iq],Jy[iq],OmegaZ[iq],Jz[iq]) >> "tmp.e.tab"; 
+               iq,Energy[iq,1],Energy[iq,2],Energy[iq,3],Energy[iq,4],ELN[iq,1],ELN[iq,2], rms[iq,1],rms[iq,2],rms[iq,3],OmegaX[iq],Jx[iq],OmegaY[iq],Jy[iq],OmegaZ[iq],Jz[iq]) >> "tmp.e.tab"; 
 #        }
         iq += 1;
     }

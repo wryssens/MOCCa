@@ -25,13 +25,13 @@ BEGIN{
 
 {       
     if(direction=="1"){
-        ind = 8
+        ind =  9
     }
     if(direction=="2"){
-        ind = 9
+        ind = 10
     }
     if(direction=="3" || direction==""){
-        ind = 10
+        ind = 11
     }
     
     #------------------------------------------------------
@@ -48,17 +48,24 @@ BEGIN{
         
         kkk = $ind
         if (TRC == 1){
-            if (  -0.3 < kkk && kkk <  1.2 ) { twok =  1.0 ; k =  1 ; } ;
-            if (   1.2 < kkk && kkk <  3.2 ) { twok =  5.0 ; k =  5 ; } ;
-            if (   3.4 < kkk && kkk <  5.2 ) { twok =  9.0 ; k =  9 ; } ;
-            if (   5.4 < kkk && kkk <  7.2 ) { twok = 13.0 ; k = 13 ; } ;
-            if (   7.4 < kkk && kkk <  9.2 ) { twok = 17.0 ; k = 17 ; } ;
-            if (   9.4 < kkk && kkk < 11.2 ) { twok = 21.0 ; k = 21 ; } ;
-            if (  -2.5 < kkk && kkk < -0.4 ) { twok =  3.0 ; k =  3 ; } ;
-            if (  -4.2 < kkk && kkk < -2.6 ) { twok =  7.0 ; k =  7 ; } ;
-            if (  -6.2 < kkk && kkk < -4.4 ) { twok = 11.0 ; k = 11 ; } ;
-            if (  -8.2 < kkk && kkk < -6.7 ) { twok = 15.0 ; k = 15 ; } ;
-            if ( -10.2 < kkk && kkk < -8.7 ) { twok = 19.0 ; k = 19 ; } ;
+            if ($3 == 0) {
+        
+                if (  -0.3 < kkk && kkk <  1.2 ) { twok =  1.0 ; k =  1 ; } ;
+                if (   1.2 < kkk && kkk <  3.2 ) { twok =  5.0 ; k =  5 ; } ;
+                if (   3.4 < kkk && kkk <  5.2 ) { twok =  9.0 ; k =  9 ; } ;
+                if (   5.4 < kkk && kkk <  7.2 ) { twok = 13.0 ; k = 13 ; } ;
+                if (   7.4 < kkk && kkk <  9.2 ) { twok = 17.0 ; k = 17 ; } ;
+                if (   9.4 < kkk && kkk < 11.2 ) { twok = 21.0 ; k = 21 ; } ;
+                if (  -2.5 < kkk && kkk < -0.4 ) { twok =  3.0 ; k =  3 ; } ;
+                if (  -4.2 < kkk && kkk < -2.6 ) { twok =  7.0 ; k =  7 ; } ;
+                if (  -6.2 < kkk && kkk < -4.4 ) { twok = 11.0 ; k = 11 ; } ;
+                if (  -8.2 < kkk && kkk < -6.7 ) { twok = 15.0 ; k = 15 ; } ;
+                if ( -10.2 < kkk && kkk < -8.7 ) { twok = 19.0 ; k = 19 ; } ;
+            }
+            else{
+                twok = $3
+                k    = $3
+            }
         }
         else if (TRC != 1.0) {
             print "Can't do TR breaking sortings yet'"
@@ -117,6 +124,7 @@ END{
                 if ( d[iq,k,ik] != "" ) {
                     printf(d[iq,k,ik]) > "tmp"
                     printf("\n") > "tmp"
+                
                 }
                 iq += 1;
             }

@@ -20,7 +20,9 @@ import matplotlib.pyplot as plt
 import glob
 import sys
 
-def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None, INTERMAX=None ,LABEL=None, NORMY=1, PC=1, SC=1, LINESTYLE='-', MARKER='', COLOR=''):
+def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,    
+              INTERMAX=None ,LABEL=None, NORMY=1, SPHERNORM=0, PC=1, SC=1, 
+              LINESTYLE='-', MARKER='', COLOR=''):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
@@ -203,6 +205,19 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None, INTE
 
     if(NORMY == 1) :
         ydata = ydata - min(ydata)
+    
+    if(SPHERNORM==1) :
+        spher = 1000000.0
+        loc   = 10
+        for i in range(len(xdata)):
+            if(abs(xdata[i]) < spher ):
+                spher = abs(xdata[i])
+                loc   = i
+        print loc, spher, xdata[loc]
+        spher = ydata[loc]
+        print spher
+        for i in range(len(ydata)):
+            ydata[i] = ydata[i] - spher
 
     if(COLOR != ""):
     	AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER, color=COLOR)
@@ -259,7 +274,8 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1):
     
     return (minx, miny)
 ################################################################################
-def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER=''):
+def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, 
+            PLOTDATA=-1, MARKER='', FERMIWINDOW=-1):
 
     #Default to current axis
     if AXIS is None:
@@ -278,12 +294,18 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, PLO
     fermi     = fermidata[:,fermicolumn]
 
     AXIS.plot(xdata, fermi, 'k-.', label='$e_f$')
+    
+    yplus = max(fermi)
+    ymin  = min(fermi)
+    
+    if(FERMIWINDOW > 0):
+        AXIS.set_ylim((ymin-FERMIWINDOW, yplus + FERMIWINDOW))
 
-    colors   = ['b', 'r', 'c', 'g', 'k', 'm', 'y', 'y' ]  
+    colors   = ['b', 'r', 'c', 'g', 'k', 'm', 'y', 'y', 'y' ]  
 
     for P in PAR:
         if (P == '-1'):
-            linestyle = '-'
+            linestyle = '--'
         else:
             linestyle = '-'
 

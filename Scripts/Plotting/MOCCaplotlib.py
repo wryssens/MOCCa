@@ -19,6 +19,7 @@ from tokenizer import *
 import matplotlib.pyplot as plt
 import glob
 import sys
+import math
 
 def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,    
               INTERMAX=None ,LABEL=None, NORMY=1, SPHERNORM=0, PC=1, SC=1, 
@@ -30,6 +31,9 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,
     # 'E'   the energy from functional
     # 'Q20' <Q20_t> in fm^2
     #===========================================================================
+
+    altx = 0
+    alty = 0
 
     #Default to current axis
     if AXIS is None:
@@ -78,10 +82,19 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,
         xlabel =r'$\omega_{x}$ (MeV $\hbar^{-1}$) '
         xfname =PREFIX + '.e.tab'
         xcolumn=10
+    elif(XARG=='JX') :
+        xlabel =r'$\omega_{x}$ (MeV $\hbar^{-1}$) '
+        xfname =PREFIX + '.e.tab'
+        xcolumn=11
     elif(XARG=='JZ') :
         xlabel =r'$\langle \hat{J}_{z} \rangle$ ($\hbar$)'
         xfname =PREFIX + '.e.tab'
         xcolumn=15
+    elif(XARG=='THETAZ'):
+        xlabel =r'$\theta_z$'
+        xfname =PREFIX + '.e.tab'
+        xcolumn= 14
+        altx   = 10
     else :
         print 'XARG not recognized'
         return
@@ -91,6 +104,17 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,
         yfname =PREFIX + '.e.tab'
         ycolumn=1
         derivY = 0
+    elif(YARG=='Routh') :
+        ylabel =r'Routhian (MeV)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn=4
+        derivY = 0
+    elif(YARG=='E-Routh') :
+        ylabel =r'Routh - E (MeV)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn=1
+        derivY = 0
+        alty   = 4
     elif(YARG=='EFD') :
         ylabel =r'E (MeV)'
         yfname =PREFIX + '.e.tab'
@@ -175,10 +199,17 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,
 
     dataX=np.loadtxt(xfname,skiprows=1)
     dataY=np.loadtxt(yfname,skiprows=1)
-
+    
+    
     xdata=dataX[:,xcolumn]
     ydata=dataY[:,ycolumn]
-
+    if(altx != 0):
+        altxdata = dataX[:, altx]
+        xdata = np.arctan2( xdata, altxdata)*180/np.pi
+    if(alty != 0):
+        altydata = dataY[:, alty]
+        ydata    =  altydata - ydata
+        
     # Sort along X-data for surety
     xdata, ydata = zip(*sorted(zip(xdata, ydata)))
 

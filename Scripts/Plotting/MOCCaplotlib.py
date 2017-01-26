@@ -23,7 +23,7 @@ import math
 
 def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,    
               INTERMAX=None ,LABEL=None, NORMY=1, SPHERNORM=0, PC=1, SC=1, 
-              LINESTYLE='-', MARKER='', COLOR=''):
+              LINESTYLE='-', MARKER='', COLOR='', OFFSET=None):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
@@ -83,7 +83,7 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,
         xfname =PREFIX + '.e.tab'
         xcolumn=10
     elif(XARG=='JX') :
-        xlabel =r'$\omega_{x}$ (MeV $\hbar^{-1}$) '
+        xlabel =r'$\langleJ_{x}\rangle$ ($\hbar$) '
         xfname =PREFIX + '.e.tab'
         xcolumn=11
     elif(XARG=='JZ') :
@@ -234,8 +234,12 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,
         ydata = f(interx)
         xdata = interx
 
+    ymin = min(ydata)
     if(NORMY == 1) :
         ydata = ydata - min(ydata)
+    
+    if(OFFSET != None):
+        ydata = ydata -OFFSET
     
     if(SPHERNORM==1) :
         spher = 1000000.0
@@ -244,9 +248,7 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,
             if(abs(xdata[i]) < spher ):
                 spher = abs(xdata[i])
                 loc   = i
-        print loc, spher, xdata[loc]
         spher = ydata[loc]
-        print spher
         for i in range(len(ydata)):
             ydata[i] = ydata[i] - spher
 
@@ -257,7 +259,7 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,
     AXIS.set_xlabel(xlabel)
     AXIS.set_ylabel(ylabel)
 
-    return (xdata[np.argmin(ydata)], min(ydata))
+    return (xdata[np.argmin(ydata)], ymin)
 
 #################################################################################
 def mini(PREFIX, XARG, YARG, PC=1, SC=1):

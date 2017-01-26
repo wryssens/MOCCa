@@ -21,24 +21,11 @@ import glob
 import sys
 import math
 
-def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,    
-              INTERMAX=None ,LABEL=None, NORMY=1, SPHERNORM=0, PC=1, SC=1, 
-              LINESTYLE='-', MARKER='', COLOR='', OFFSET=None):
-    #===========================================================================
-    # Function that plots two values obtained in a set of data files, labelled
-    # by PREFIX, onto the axes passed into the routine.
-    # Currently recognized options for XARG and YARG
-    # 'E'   the energy from functional
-    # 'Q20' <Q20_t> in fm^2
-    #===========================================================================
-
+def Determinedata(PREFIX, XARG, YARG,PC,SC):
+    
     altx = 0
     alty = 0
-
-    #Default to current axis
-    if AXIS is None:
-        AXIS = plt.gca()
-
+    
     if(XARG=='Q20') :
         xlabel =r'$\langle \hat{Q}_{20} \rangle$ (fm$^2$)'
         xfname =PREFIX + '.t.qlm.tab'
@@ -196,13 +183,50 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,
     else :
         print 'YARG not recognized'
         return
+        
+    return(xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty)
+
+def MOCCaPlot(XARG, YARG, PREFIX, PREFIX2=None,PC=1, SC=1, PC2=1, SC2=1, 
+              AXIS=None, INTERPOLATE=-1, INTERMIN=None,    
+              INTERMAX=None ,LABEL=None, NORMY=1, SPHERNORM=0, 
+              LINESTYLE='-', MARKER='', COLOR='', OFFSET=None, 
+              XCUT1=None, XCUT2=None, MINRANGE=None):
+    #===========================================================================
+    # Function that plots two values obtained in a set of data files, labelled
+    # by PREFIX, onto the axes passed into the routine.
+    # Currently recognized options for XARG and YARG
+    # 'E'   the energy from functional
+    # 'Q20' <Q20_t> in fm^2
+    #===========================================================================
+
+    #Default to current axis
+    if AXIS is None:
+        AXIS = plt.gca()
+
+    (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty) = Determinedata(PREFIX, XARG, YARG,PC,SC)
 
     dataX=np.loadtxt(xfname,skiprows=1)
     dataY=np.loadtxt(yfname,skiprows=1)
     
-    
     xdata=dataX[:,xcolumn]
     ydata=dataY[:,ycolumn]
+    
+    if(XCUT1 != None):
+        indices = []
+        for i in range(len(xdata)):
+            if(xdata[i] > XCUT1):
+                indices.append(i)
+        xdata = np.delete(xdata,indices)
+        ydata = np.delete(ydata,indices)
+        
+    if(PREFIX2 != None) :
+        (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty) = Determinedata(PREFIX2, XARG, YARG,PC2,SC2)
+        dataX=np.loadtxt(xfname,skiprows=1)
+        dataY=np.loadtxt(yfname,skiprows=1)
+        
+        xdata = np.append(xdata, dataX[:,xcolumn])
+        ydata = np.append(ydata, dataY[:,xcolumn])
+    
     if(altx != 0):
         altxdata = dataX[:, altx]
         xdata = np.arctan2( xdata, altxdata)*180/np.pi
@@ -234,9 +258,17 @@ def MOCCaPlot(XARG, YARG, PREFIX, AXIS=None, INTERPOLATE=-1, INTERMIN=None,
         ydata = f(interx)
         xdata = interx
 
-    ymin = min(ydata)
+    if(MINRANGE == None):
+        ymin = min(ydata)
+    else:
+        ymin = + 100000000
+        for i in range(len(ydata)):
+            if( MINRANGE[0] < xdata[i] < MINRANGE[1]):
+                if( ydata[i] < ymin):
+                    ymin = ydata[i]
+        
     if(NORMY == 1) :
-        ydata = ydata - min(ydata)
+        ydata = ydata - ymin
     
     if(OFFSET != None):
         ydata = ydata -OFFSET

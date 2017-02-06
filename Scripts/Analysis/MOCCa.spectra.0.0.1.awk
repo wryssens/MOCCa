@@ -454,23 +454,21 @@ BEGIN{
                 getline;
                 getline;
                 getline;
+                i = 1
+
                 while(  NF != 1){
-                    i = 1
                     neutronqp[iq,i,-1]=$3 
-                    neutronqp[iq,i,-1]=$3 
-                    i = i+1
-                    
+                    i = i+1                    
                     getline;
                 }
                 getline;
                 getline;
                 getline;
+                i = 1
+                getline;
                 while(  NF != 1){
-                    i = 1
-                    neutronqp[iq,i,+1]=$3 
                     neutronqp[iq,i,+1]=$3 
                     i = i+1
-                    
                     getline;
                 }
             }
@@ -959,8 +957,8 @@ END{
     #----------------------------------------------
     # Deciding on the header for the SPWF files
     #
-    header = "* iq    N    K    index      <P>       <Rz>       v^2      Esp       <Jx>      <Jy>      <Jz>       J \n"
-       
+    header   = "* iq    N    K    index      <P>       <Rz>       v^2      Esp       <Jx>      <Jy>      <Jz>       J \n"
+    qpheader = "* iq    N    K    Eqp \n"
     #---------------------------------------------------------------------------
     # Neutron HF basis
     printf(header) > "tmp.n.hf.tab"
@@ -1012,20 +1010,36 @@ END{
     #---------------------------------------------------------------------------
     # Neutron qps (if HFB is active)
     if(PairingType == "HFB") {
-        printf(header) > "tmp.n.qp.tab"
         iq = 1;
+        printf(qpheader) > "tmp.n.qp.P=-1.tab"
+
         while ( iq < iqmax +1  ) {
             N = 1;
-            while ( neutronqp[iq,N,1] != "" ){
-                    printf("%4i %4i %4i", N, iq, 0)    >> "tmp.n.qp.tab"
-                    printf("%10.3f \n", neutronqp[iq,N,1]) >> "tmp.n.qp.tab"
+            while ( neutronqp[iq,N,-1] != "" ){
+                    printf("%4i %4i %4i", N, iq, 0)         >> "tmp.n.qp.P=-1.tab"
+                    printf("%10.3f \n", neutronqp[iq,N,-1]) >> "tmp.n.qp.P=-1.tab"
                     N+=1
             }
+            printf("* \n") >> "tmp.n.qp.P=-1.tab"                
             iq+=1
         }        
-        close("tmp.n.qp.tab")
-    }
+        close("tmp.n.qp.P=-1.tab")
 
+        iq = 1;
+        printf(qpheader) > "tmp.n.qp.P=+1.tab"
+
+        while ( iq < iqmax +1  ) {
+            N = 1;
+            while ( neutronqp[iq,N,+1] != "" ){
+                    printf("%4i %4i %4i", N, iq, 0)         >> "tmp.n.qp.P=+1.tab"
+                    printf("%10.3f \n", neutronqp[iq,N,+1]) >> "tmp.n.qp.P=+1.tab"
+                    N+=1
+            }
+            printf("* \n") >> "tmp.n.qp.P=+1.tab"                
+            iq+=1
+        }        
+        close("tmp.n.qp.P=+1.tab")
+    }
 
     #---------------------------------------------------------------------------
     # Proton HF basis
@@ -1084,7 +1098,13 @@ END{
         SortSpwfs("tmp.n.can.tab", "neutron", "ca", prefix, PC, SC, TRC,iqmax) ;
         SortSpwfs("tmp.p.can.tab", "proton" , "ca", prefix, PC, SC, TRC,iqmax) ;
     }
-    
+
+    command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' <  tmp.n.qp.P=-1.tab";
+    system(command)
+    command = " mv tmp.zero tmp.n.qp.P=-1.tab"
+    system(command)
+
+
     #---------------------------------------------------------------------------
     # Move all the temporary files to correctly named ones. 
     # Do this via a temporary script in order to get the correct bash shell. 

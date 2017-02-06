@@ -1036,10 +1036,18 @@ END{
         printf(qpheader) > "tmp.n.qp.P=+1.tab"
 
         while ( iq < iqmax +1  ) {
+
+            N = 1;
+            while ( neutronqp[iq,N,-1] != "" ){
+                energy[N] = neutronqp[iq,N,-1] 
+                N+=1
+            }
+            ind = asort(energy)
+
             N = 1;
             while ( neutronqp[iq,N,+1] != "" ){
                     printf("%4i %4i %4i", N, iq, 0)         >> "tmp.n.qp.P=+1.tab"
-                    printf("%10.3f \n", neutronqp[iq,N,+1]) >> "tmp.n.qp.P=+1.tab"
+                    printf("%10.3f \n", energy[N]) >> "tmp.n.qp.P=+1.tab"
                     N+=1
             }
             printf("* \n") >> "tmp.n.qp.P=+1.tab"                

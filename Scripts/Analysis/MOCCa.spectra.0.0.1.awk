@@ -1019,12 +1019,10 @@ END{
             while ( neutronqp[iq,N,1] != "" ){
                     printf("%4i %4i %4i", N, iq, 0)    >> "tmp.n.qp.tab"
                     printf("%10.3f \n", neutronqp[iq,N,1]) >> "tmp.n.qp.tab"
+                    N+=1
             }
-  
-            N+=1
-          }
-        iq+=1
-        }
+            iq+=1
+        }        
         close("tmp.n.qp.tab")
     }
 

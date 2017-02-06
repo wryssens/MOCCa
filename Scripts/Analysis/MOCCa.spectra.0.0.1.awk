@@ -247,7 +247,7 @@ BEGIN{
         
         HFBasisflag    =0
         CanBasisflag   =0
-        
+        QPBasisflag    =0
         #Only detect the first mention of HF(B)
         pairingtypeflag=1
     
@@ -347,6 +347,7 @@ BEGIN{
             if(PairingType == "HFB") {
                 HFBasisflag =1
                 CanBasisflag=1
+                QPBasisflag =1
             }
             angmomflag=1
         }
@@ -443,9 +444,39 @@ BEGIN{
                 }
             }
             CanBasisflag = 0
+
+            #----------------------------------
+            # Neutron qps
+            N = 1
+            if(QPBasisflag == 1){
+                getline;
+                getline;
+                getline;
+                getline;
+                getline;
+                while(  NF != 1){
+                    i = 1
+                    neutronqp[iq,i,-1]=$3 
+                    neutronqp[iq,i,-1]=$3 
+                    i = i+1
+                    
+                    getline;
+                }
+                getline;
+                getline;
+                getline;
+                while(  NF != 1){
+                    i = 1
+                    neutronqp[iq,i,+1]=$3 
+                    neutronqp[iq,i,+1]=$3 
+                    i = i+1
+                    
+                    getline;
+                }
+            }
+            QPBasisflag = 0
         }
-                   
-        
+           
         #-------------------------------------------------------------------
         # read information on multipole moments
         if ( flag[multipole] && $2 == "Multipole" && $3 == "Moments")  {
@@ -977,6 +1008,27 @@ END{
         }
         close("tmp.n.can.tab")
     }
+
+    #---------------------------------------------------------------------------
+    # Neutron qps (if HFB is active)
+    if(PairingType == "HFB") {
+        printf(header) > "tmp.n.qp.tab"
+        iq = 1;
+        while ( iq < iqmax +1  ) {
+            N = 1;
+            while ( neutronqp[iq,N,1] != "" ){
+                    printf("%4i %4i %4i", N, iq, 0)    >> "tmp.n.qp.tab"
+                    printf("%10.3f \n", neutronqp[iq,N,1]) >> "tmp.n.qp.tab"
+            }
+  
+            N+=1
+          }
+        iq+=1
+        }
+        close("tmp.n.qp.tab")
+    }
+
+
     #---------------------------------------------------------------------------
     # Proton HF basis
     iq = 1;

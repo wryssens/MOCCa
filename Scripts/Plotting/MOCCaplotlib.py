@@ -43,6 +43,7 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
             xcolumn = 4
         if( SC !=1 and PC != 1):
             xcolumn = 6
+
     elif(XARG=='B30') :
         if(PC == 1) :
             print "Can't plot Q30 when parity is conserved."
@@ -131,7 +132,7 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
     elif(YARG=='JX') :
         ylabel =r'$\langle \hat{J}_{x} \rangle$ ($\hbar$)'
         yfname =PREFIX + '.e.tab'
-        ycolumn= 14
+        ycolumn= 11
         derivY = 0
     elif(YARG=='I2Z') :
         # Dynamical moment of inertia. 
@@ -155,6 +156,26 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         if( SC !=1 and PC != 1):
             ycolumn = 6
         derivY=0
+   
+    elif(YARG=='B2') :
+        ylabel =r'$\beta_{2}$ '
+        yfname =PREFIX + '.t.ql.tab'
+        ycolumn=2
+        if( PC!= 1):
+            ycolumn = 4
+        derivY=0
+    elif(YARG=='B22') :
+        yfname =PREFIX + '.t.qlm.tab'
+        ycolumn=4
+
+        if(PC != 1) :
+            ycolumn = 6
+        if(SC != 1) :
+            ycolumn = 6
+        if( SC !=1 and PC != 1):
+            ycolumn = 10
+        derivY = 0
+        ylabel=r'$\beta_{22}$'
     elif(YARG=='B30') :
         if(PC == 1) :
             print "Can't plot Q30 when parity is conserved."

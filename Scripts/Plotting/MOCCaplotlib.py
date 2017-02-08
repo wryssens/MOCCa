@@ -70,7 +70,7 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         xfname =PREFIX + '.e.tab'
         xcolumn=10
     elif(XARG=='JX') :
-        xlabel =r'$\langleJ_{x}\rangle$ ($\hbar$) '
+        xlabel =r'$\langle J_{x}\rangle$ ($\hbar$) '
         xfname =PREFIX + '.e.tab'
         xcolumn=11
     elif(XARG=='JZ') :

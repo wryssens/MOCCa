@@ -339,10 +339,12 @@ BEGIN{
             if(PairingType == "HF") {
                 HFBasisflag =1
                 CanBasisflag=0
+		QPBasisflag =0
             }
             if(PairingType == "BCS") {
                 HFBasisflag =1
                 CanBasisflag=0
+		QPBasisflag =0
             }
             if(PairingType == "HFB") {
                 HFBasisflag =1
@@ -756,7 +758,7 @@ BEGIN{
                 getline;
                 
                 if( PairingType != "HF") {
-                    Pairing[iq,1] = $3
+	   	    Pairing[iq,1] = $3
                     Pairing[iq,2] = $6
                     Pairing[iq,3] = $8
                     getline;                    
@@ -772,32 +774,31 @@ BEGIN{
                         getline ;
                 }
                 else{
-                        getline ;
+                        if( PairingType != "HF" ) {
+			 getline ;
+			}
                         ELN[iq,1] = 0.0
                         ELN[iq,2] = 0.0
                         ELN[iq,3] = 0.0
                 }
                 Coulomb[iq,direct] = $2
                 Coulomb[iq,exch]   = $4
-
                 if(COM1flag == 1) {
                     getline;
                     getline;
-                    
                     COM1[iq,1] = $3
                     COM1[iq,2] = $6
-                    COM1[iq,3] = $8
-                    
+                    COM1[iq,3] = $8        
                 }
                 
                 getline;
                 getline;
                 getline;
                 
-                Energy[iq,1] = $2 #Lagrange energy      
-                getline;
+                Energy[iq,1] = $2 #Lagrange energy
+		getline;
                 Energy[iq,2] = $2 #Finite difference energy
-                getline;
+		getline;
                 Energy[iq,3] = $3 #SPWF energy
                 getline;
                 getline;

@@ -1,7 +1,7 @@
 program MOCCa
     !---------------------------------------------------------------------------
     !            ; ,                                                           |
-    !           ) ;( (										                                     |
+    !           ) ;( (                                                         |
     !          ( (  ) ;                                                        |
     !           ,-"""-.                                                        |
     !        ,-|`-...-'|                                                       |
@@ -91,7 +91,7 @@ subroutine Evolve(MaxIterations, iprint)
   use SpwfStorage
   use Densities, only   : UpdateDensities, DampingParam, Density, Recalc
   use Moments, only     : CalculateAllMoments, ReadjustAllMoments,             &
-  &                       CheckForRutzMoments
+  &                       CheckForRutzMoments, TurnOffConstraints
   use Energy, only      : CompEnergy
   use Pairing, only     : SolvePairing, PairingType, SolvePairingStart
   use Cranking, only    : ReadjustCranking, CrankC0
@@ -288,6 +288,9 @@ subroutine Evolve(MaxIterations, iprint)
 
     !Smooth the densities!
     call MixDensities(Iteration)
+
+    !See if some moments were temporary
+    call TurnOffConstraints(iteration)
 
     !Calculating the expected values of all relevant Moments
     call CalculateAllMoments(0)

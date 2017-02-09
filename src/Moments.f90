@@ -128,6 +128,10 @@ implicit none
       !-------------------------------------------------------------------------
       integer        :: ConstraintType
       !-------------------------------------------------------------------------
+      ! Iteration number to constrain this moment for. Useful for putting 
+      ! temporary constraint in order to initialize a calculation.
+      integer        :: Iteration=-1
+      !-------------------------------------------------------------------------
       ! Calculated value of the moment with and without cutoff,
       ! for neutrons and protons.
       !-------------------------------------------------------------------------
@@ -712,6 +716,8 @@ contains
     511  format (A2, " Q_{", 2i2,"}", 1(1x,f10.2), 6x, a20)
     5111 format (A2, " Q_{",  i2,"}", 2x, 1(1x,f10.2), 6x, a20)
 
+    10   format (28x, 'Temporary for ', i4, ' iterations.')
+
     type(Moment), pointer :: Current
     character(len=2)      :: ReIm
     character(len=20)     :: ConType
@@ -770,6 +776,7 @@ contains
           if(     Current%Impart) ReIm = 'Im'
           print 5,  ReIm, Current%l, Current%m,Current%Constraint,ConType
         end select
+        if (Current%iteration .gt. 0) print 10, Current%iteration
       enddo
       nullify(Current)
     endif
@@ -804,6 +811,7 @@ contains
           if(     Current%Impart) ReIm = 'Im'
           print 51,  ReIm, Current%l, Current%m,Current%Constraint,ConType
         end select
+        if (Current%iteration .gt. 0) print 10, Current%iteration
       enddo
       nullify(Current)
     endif
@@ -839,6 +847,7 @@ contains
           if(     Current%Impart) ReIm = 'Im'
           print 511,  ReIm, Current%l, Current%m,Current%Constraint,ConType
         end select
+        if (Current%iteration .gt. 0) print 10, Current%iteration
       enddo
       nullify(Current)
     endif
@@ -2067,7 +2076,7 @@ subroutine PrintAllMoments()
 
     type (Moment), pointer :: Mom
 
-    integer                :: l,m, ConStraintType, isoswitch
+    integer                :: l,m, ConStraintType, isoswitch, iter
     real(KIND=dp)          :: Value(2), Intensity(2), Constraint(2),OldValue(2,7)
     real(KIND=dp)          :: TrueConstraint(2)
     logical                :: impart
@@ -2147,6 +2156,43 @@ subroutine PrintAllMoments()
     Mom%Beta(3)   = factor*sum(Mom%Value)
   end subroutine CalcBeta
 
+  subroutine TurnOffConstraints(iter)
+        !-----------------------------------------------------------------------
+        ! Checks all of the constraints for temporary ones and 
+        ! sees if they have reached their expiration iteration number.
+        !
+        !
+        !-----------------------------------------------------------------------
+        integer, intent(in)   :: iter
+        type(Moment), pointer :: Current
+
+        1 format ('Turning of constraint on multipole moment.')
+        2 format (' ' , a2 , ' l = ', i2, ' m = ', i2)
+        3 format ('after ', i4, ' iterations.') 
+        4 format ('------------------------------------------')
+
+        Current => root
+
+        do while(associated(Current%next))
+                Current => Current%next
+                if(Current%ConstraintType .eq. 0) cycle
+                if(Current%iteration      .le. iter) then
+                        Current%Constrainttype=0
+                        print 4
+                        print 1
+                        if(Current%Impart) then
+                                print 2, 'Im', current%l, current%m
+                        else
+                                print 2, 'Re', current%l, current%m
+                                print 3, iter
+                        endif
+                        print 4
+                endif
+        enddo
+        
+
+  end subroutine TurnOffConstraints
+
   subroutine ReadMomentData
     !---------------------------------------------------------------------------
     ! A separate subroutine that governs the input of data related to the
@@ -2155,7 +2201,7 @@ subroutine PrintAllMoments()
     ! Note that also legacy input is admitted with iq1 & iq2.
     !---------------------------------------------------------------------------
 
-    integer             :: iostat
+    integer             :: iostat, iteration
     integer             :: l,m, ConstraintType, isoswitch
     logical             :: Impart
     real(KIND=dp)       :: Intensity, ConstraintNeutrons, ConstraintProtons
@@ -2174,7 +2220,7 @@ subroutine PrintAllMoments()
     NameList /MomentConstraint/ l,m,Impart, Isoswitch, Intensity,              &
     &                           ConstraintNeutrons,ConstraintProtons,          &
     &                           Constraint, MoreConstraints, ConstraintType,   &
-    &                           iq1, iq2, Total
+    &                           iq1, iq2, Total, iteration
 
     nullify(Current)
 
@@ -2223,7 +2269,7 @@ subroutine PrintAllMoments()
         MoreConstraints=.false.; ConstraintType=2
         iq1=0.0_dp       ; iq2=0.0_dp
         iq1neutron=0.0_dp; iq2neutron=0.0_dp; iq1proton=0.0_dp;iq2proton=0.0_dp
-        Total = .false.
+        Total = .false.  ; iteration = -1
 
         read(unit=*, NML=MomentConstraint, IOSTAT=iostat)
         if(iostat .ne. 0) then
@@ -2269,6 +2315,7 @@ subroutine PrintAllMoments()
         !-----------------------------------------------------------------------
         !Setting the parameters of the moment
         Current%ConstraintType = ConstraintType
+        Current%iteration      = iteration
         !Reading the values for the constraints
         if(ConstraintType.ne.0) then
             Current%Isoswitch = Isoswitch

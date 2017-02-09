@@ -2176,7 +2176,8 @@ subroutine PrintAllMoments()
         do while(associated(Current%next))
                 Current => Current%next
                 if(Current%ConstraintType .eq. 0) cycle
-                if(Current%iteration      .le. iter) then
+		if(Current%iteration      .le. 0) cycle
+                if(iter                   .gt. Current%iteration) then
                         Current%Constrainttype=0
                         print 4
                         print 1

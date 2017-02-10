@@ -167,6 +167,10 @@ contains
     ! Subroutine that assigns the correct functions to the procedure pointers
     ! ExtX, ExtY and ExtZ, dependent on the symmetries involved.
     !---------------------------------------------------------------------------
+
+        if(SZC .and. (.not. SC)) then
+                call stp('nonoptimized derivatives cannot be used (yet).')        
+        endif
         if(SC) then
             if(TSC) then
                 ExtX => LineExtensionX_SandTS
@@ -245,6 +249,11 @@ contains
               DeriveY => Opt_Y_EV8
               DeriveZ => CentralZ
               Laplacian => Laplacian_Central
+          elseif(SZC .and. TSC) then          
+              ! parity and signature broken, simplex conserved
+              DeriveX => Opt_X_NOSIG
+              DeriveY => Opt_X_EV8
+              DeriveZ => Opt_Z_EV8
           elseif(TSC) then
               ! Parity broken, signature broken and timesimplex conserved
               DeriveX   => Opt_X_NOSIG

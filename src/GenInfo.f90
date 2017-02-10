@@ -19,8 +19,9 @@ module GenInfo
     ! PC = Parity Conservation
     ! SC = Signature Conservation
     ! IC = Isospin Conservation
+    ! SZC = z-simplex conservation
     !---------------------------------------------------------------------------
-    logical, public :: TRC,TSC,PC,SC,IC
+    logical, public :: TRC,TSC,PC,SC,IC, SZC
     !---------------------------------------------------------------------------
     ! Integer codes for conservations of these symmetries. Pretty handy for
     ! calling derivative routines.
@@ -223,7 +224,7 @@ contains
     endif
   end subroutine SetSymmetryInteger
 
-  subroutine AssignSymmetries(TimeReversal,Parity,Signature,TimeSimplex,Isospin)
+  subroutine AssignSymmetries(TimeReversal,Parity,Signature,TimeSimplex,Isospin,zsimplex)
     !---------------------------------------------------------------------------
     ! Subroutine that assigns the correct values to the following logicals:
     !       TRC,PC,SC,TSC and IC.
@@ -236,7 +237,7 @@ contains
     ! At the moment, the program also stops when T=0 pairing is indicated.
     !---------------------------------------------------------------------------
 
-    integer,intent(in) :: TimeReversal,Parity,Signature,TimeSimplex,Isospin
+    integer,intent(in) :: TimeReversal,Parity,Signature,TimeSimplex,Isospin, zsimplex
     integer            :: NumSpatSym = 0
 
     ! Converting input to logicals, and stopping if input isn't clear
@@ -270,6 +271,13 @@ contains
             &        "Signature", Signature)
     endif
 
+    if(zsimplex.eq.1) then
+            SZC = .true.
+            NumSpatSym = NumSpatSym + 1
+    elseif(zsimplex.eq.0) then
+            SZC = .false.
+    endif
+
     if(TimeSimplex.eq.1) then
             TSC = .true.
              NumSpatSym = NumSpatSym + 1
@@ -292,7 +300,7 @@ contains
     endif
 
     !Multiply dv by the appropriate power of 2
-    dv = dv* TwoR**(NumSpatSym)
+    dv = dv* 2.0_dp**(NumSpatSym)
 
     return
   end subroutine AssignSymmetries
@@ -303,9 +311,10 @@ contains
     ! module.
     !---------------------------------------------------------------------------
     integer :: Parity=1, Isospin=1, Signature=1, TimeSimplex=1,TimeReversal=1
+    integer :: zsimplex=1
 
     NameList /GenInfo/  TimeReversal, Parity, Signature, TimeSimplex, Isospin, &
-                     & MaxIter, dt, TestRun,                                   &
+                     & MaxIter, dt, TestRun, zsimplex,                         &
                      &  Neutrons, Protons, ErrorFileName, nx, ny,nz, dx,       &
                      &  PrintIter, MomentPrec, EnergyPrec, TaylorOrder,        &
                      &  InverseKineticDamping, E0, PairingPrec, CrankPrec,     &
@@ -362,7 +371,7 @@ contains
     ! Computer Physics Communications 171 (2005) 49–62
 
     ! Assigning the symmetries used.
-    call AssignSymmetries(TimeReversal,Parity,Signature,TimeSimplex,Isospin)
+    call AssignSymmetries(TimeReversal,Parity,Signature,TimeSimplex,Isospin, zsimplex)
     call SetSymmetryInteger
 
     !If printiter is not set, set it to MaxIter/10

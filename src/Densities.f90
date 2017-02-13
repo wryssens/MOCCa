@@ -57,6 +57,17 @@ module Densities
     ! J_{\mu,\nu} Tensor density and the divergence of its vector component
     real(KIND=dp), allocatable :: JMuNu(:,:,:,:,:,:),NablaJ(:,:,:,:)
     !---------------------------------------------------------------------------
+    ! N2LO densities needed.
+    !---------------------------------------------------------------------------
+    real(KIND=dp), allocatable :: RtauN2LO(:,:,:,:,:,:)
+    real(KIND=dp), allocatable :: ItauN2LO(:,:,:,:,:,:)
+    real(KIND=dp), allocatable ::  ReKN2LO(:,:,:,:,:,:,:)
+    real(KIND=dp), allocatable ::  ImKN2LO(:,:,:,:,:,:,:)
+    
+    real(KIND=dp), allocatable ::  PiN2LO(:,:,:,:,:)
+    real(KIND=dp), allocatable ::   VN2LO(:,:,:,:,:,:)
+    real(KIND=dp), allocatable ::   QN2LO(:,:,:,:)
+    real(KIND=dp), allocatable ::   SN2LO(:,:,:,:,:)
   end type DensityVector
 
   !-----------------------------------------------------------------------------
@@ -83,7 +94,7 @@ module Densities
   end interface
 contains
 
-  pure function NewDensityVector(newnx,newny,newnz) result(R)
+  pure function NewDensityVector(newnx,newny,newnz,N2LO) result(R)
     !---------------------------------------------------------------------------
     ! Constructor for the DensityVector class.
     ! The sizes are optional, if not supplied nx,ny,nz will be used.
@@ -92,6 +103,8 @@ contains
 
     integer, intent(in),optional :: newnx,newny,newnz
     integer                      :: sizex, sizey, sizez
+    logical, intent(in),optional :: N2LO 
+    
     type(DensityVector) :: R
 
     if(present(newnx)) then
@@ -99,7 +112,7 @@ contains
     else
       sizex = nx ; sizey = ny ; sizez = nz
     endif
-
+   
     ! Time-even densities!
     allocate(R%Rho(sizex,sizey,sizez,2), R%DerRho(sizex,sizey,sizez,3,2))
     allocate(R%LapRho(sizex,sizey,sizez,2))
@@ -141,6 +154,18 @@ contains
         allocate(R%VecF(sizex,sizey,sizez,3,2))
         R%VecF=0.0_dp ;
       endif
+    endif
+
+    if(present(N2LO)) then
+        allocate(R%RtauN2LO(sizex,sizey,sizez,3,3,2)); R%RtauN2LO = 0.0_dp
+        allocate(R%ItauN2LO(sizex,sizey,sizez,3,3,2)); R%ItauN2LO = 0.0_dp
+        allocate(R%ReKN2LO(sizex,sizey,sizez,3,3,3,2)) ; R%ReKN2LO   = 0.0_dp
+        allocate(R%ImKN2LO(sizex,sizey,sizez,3,3,3,2)) ; R%ImKN2LO   = 0.0_dp
+        
+        allocate(R%PiN2LO(sizex,sizey,sizez,3,2))    ; R%PiN2LO  = 0.0_dp
+        allocate(R%VN2LO(sizex,sizey,sizez,3,3,2))   ; R%VN2LO  = 0.0_dp
+        allocate(R%QN2LO(sizex,sizey,sizez,2))       ; R%QN2LO  = 0.0_dp
+        allocate(R%SN2LO(sizex,sizey,sizez,3,2))     ; R%SN2LO  = 0.0_dp
     endif
 
   end function NewDensityVector
@@ -336,12 +361,16 @@ contains
     real(KIND=dp)                      :: Occupation
     logical, intent(in)                :: OnlyRho
     logical, intent(in), optional      :: Response
-
+    
     !Reset the values of the densities.
     if(OnlyRho) then
       DenIn%Rho = 0.0_dp
     else
-      DenIn = NewDensityVector()
+      if (allocated(DenIn%RtauN2LO)) then
+        DenIn = NewDensityVector()
+      else
+      
+      endif
     endif
 
     if(.not.associated(DensityBasis)) then
@@ -397,6 +426,23 @@ contains
           &                       Occupation*DensityBasis(i)%GetVecF()
         endif
       endif
+      
+      if (allocated(DenIn%RtauN2LO)) then
+        ! calculate N2LO densities
+        DenIn%RTauN2LO(:,:,:,:,:,it) = DenIn%RTauN2LO(:,:,:,:,:,it) +          &
+        &                              Occupation * DensityBasis(i)%GetRTauN2LO()
+        DenIn%ITauN2LO(:,:,:,:,:,it) = DenIn%ITauN2LO(:,:,:,:,:,it) +          &
+        &                              Occupation * DensityBasis(i)%GetITauN2LO()
+        DenIn%ReKN2LO(:,:,:,:,:,:,it) = DenIn%ReKN2LO(:,:,:,:,:,:,it) +        &
+        &                              Occupation * DensityBasis(i)%GetreKN2LO()
+        DenIn%ImKN2LO(:,:,:,:,:,:,it) = DenIn%ReKN2LO(:,:,:,:,:,:,it) +        &
+        &                              Occupation * DensityBasis(i)%GetImKN2LO()
+        DenIn%QN2LO(:,:,:,it) = DenIn%QN2LO(:,:,:,it) +                        &
+        &                              Occupation * DensityBasis(i)%GetQN2LO()
+        DenIn%SN2LO(:,:,:,:,it) = DenIn%SN2LO(:,:,:,:,it) +                    &
+        &                              Occupation * DensityBasis(i)%GetSN2LO()
+      endif
+  
     enddo
     if(all(DenIn%Rho.eq.0.0_dp)) call stp('Rho is zero')
     if(onlyRho) return
@@ -425,6 +471,7 @@ contains
       DenIn%RotVecJ = DeriveVecJ(DenIn%VecJ)
       call DeriveVecS(DenIn)
     endif
+    
   end subroutine ComputeDensity
 
   function DeriveJmuNu(JmuNu) result(NablaJ)

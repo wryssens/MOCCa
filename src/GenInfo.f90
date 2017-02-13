@@ -86,7 +86,11 @@ module GenInfo
     !---------------------------------------------------------------------------
     ! Number of iterations after which to restart the Nesterov-memory
     integer :: Restart = 25
-
+    !---------------------------------------------------------------------------
+    ! Whether or not to recalculate the findings with the first implementation 
+    ! of the N2LO functional of Becker, Meyer & Davesne.
+    logical :: recalcN2LO = .false.
+    
     interface Stp
         module procedure StpReal
         module procedure StpInteger
@@ -318,7 +322,7 @@ contains
                      &  Neutrons, Protons, ErrorFileName, nx, ny,nz, dx,       &
                      &  PrintIter, MomentPrec, EnergyPrec, TaylorOrder,        &
                      &  InverseKineticDamping, E0, PairingPrec, CrankPrec,     &
-                     &  IterType, Restart
+                     &  IterType, Restart, recalcN2LO
 
     !Reading the symmetries that are conserved or broken.
     read (unit=*, nml=GenInfo)

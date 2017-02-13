@@ -36,7 +36,6 @@ module Force
     real(KIND=dp), public :: Cs(2), Cssat(2), Ct(2), Cf(2), Cds(2), Cnablas(2)
     !Recouplings of the tensor terms
     real(KIND=dp), public :: CJ0(2), CJ1(2), CJ2(2)
-
     ! J^2 terms and whether or not to take average nucleon masses
     logical               :: J2terms=.false., averagemass=.true.
     !.............................................................................

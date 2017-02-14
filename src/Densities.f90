@@ -367,9 +367,9 @@ contains
       DenIn%Rho = 0.0_dp
     else
       if (allocated(DenIn%RtauN2LO)) then
-        DenIn = NewDensityVector()
+        DenIn = NewDensityVector(nx,ny,nz,.true.)
       else
-      
+        DenIn = NewDensityVector()
       endif
     endif
 

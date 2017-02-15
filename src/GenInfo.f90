@@ -347,9 +347,9 @@ contains
     & call stp('Mesh distance should not be zero or negative.', 'dx', dx)
 
     !Checking the number of protons and neutrons.
-    if(Neutrons.le.0) &
+    if(Neutrons.lt.0) &
     & call stp('Number of neutrons is not valid.', 'Neutrons', Neutrons)
-    if(Protons .le.0) &
+    if(Protons .lt.0) &
     & call stp('Number of protons is not valid.', 'Protons', Protons)
 
     !Checking the Symmetry parameters

@@ -151,6 +151,8 @@ module WaveFunctions
     procedure, pass, public :: GetReKN2LO
     procedure, pass, public :: GetQN2LO
     procedure, pass, public :: GetSN2LO
+    procedure, pass, public :: GetPiN2LO
+    procedure, pass, public :: GetVN2LO
     procedure, pass, public :: GetDensity
     procedure, pass, public :: GetDerRho
     procedure, pass, public :: GetLapRho
@@ -169,6 +171,7 @@ module WaveFunctions
     procedure, pass, public :: CompNorm
     procedure, pass, public :: SetOcc
     procedure, pass, public :: CompDer
+    procedure, pass, public :: CompSecondDer
     procedure, pass, public :: CompAngMoment
     procedure, pass, public :: SymmetryOperators
     procedure, pass, public :: CalcRMSRadius
@@ -828,6 +831,33 @@ contains
     call DeriveSpinor(WF%Value,WF%Der,P,S,TS)
     WF%Lap = LapSpinor(WF%Value,P,S,TS)
   end subroutine CompDer
+  
+  subroutine CompSecondDer(WF)
+    !---------------------------------------------------------------------------
+    !This calculates the full second order derivatives of the wave-function.
+    ! We calculate them all, just for ease of coding. 
+    !---------------------------------------------------------------------------
+    integer      :: P, S, TS
+    class (Spwf) :: WF
+    integer      :: i,j
+
+    if(.not.allocated(WF%secondder(1,1)%Grid)) then
+        do i=1,3
+            do j=1,3
+                WF%Secondder(j,i) = NewSpinor()
+            enddo   
+        enddo
+    endif
+    
+    P=WF%Parity
+    S=WF%Signature
+    TS=WF%TimeSimplex
+
+    call DeriveSpinor(WF%Der(1),WF%SecondDer(1,:),-P,-S, TS)
+    call DeriveSpinor(WF%Der(2),WF%SecondDer(2,:),-P,-S,-TS)
+    call DeriveSpinor(WF%Der(3),WF%SecondDer(3,:),-P, S, TS)
+    
+  end subroutine CompSecondDer
 
  pure function GetDer(WF,Direction) result(Der)
     !---------------------------------------------------------------------------
@@ -1411,7 +1441,6 @@ contains
   function GetRTauN2LO(WaveFunction) result(tau)
     !---------------------------------------------------------------------------
     !Function that returns the kinetic energy density tensor of the spwf.
-    ! Note that this is a symmetric object, we only calculate when nu <= mu
     !---------------------------------------------------------------------------
     class (Spwf),intent(in) :: WaveFunction
     real(KIND=dp)           :: tau(nx,ny,nz,3,3)
@@ -1419,7 +1448,7 @@ contains
 
     tau = 0.0_dp
     do mu=1,3
-      do nu=1,mu
+      do nu=1,3
         tau(:,:,:,mu,nu) = RealMultiplySpinor(WaveFunction%Der(mu),            &
         &                                     WaveFunction%Der(nu))    
       enddo
@@ -1429,8 +1458,7 @@ contains
   function GetITauN2LO(WaveFunction) result(tau)
     !---------------------------------------------------------------------------
     ! Function that returns the imaginary part of the  kinetic energy density 
-    ! tensor of the spwf. Note that this is an antisymmetric object, we only 
-    ! calculate when nu < mu
+    ! tensor of the spwf.
     !---------------------------------------------------------------------------
     class (Spwf),intent(in) :: WaveFunction
     real(KIND=dp)           :: tau(nx,ny,nz,3,3)
@@ -1438,7 +1466,7 @@ contains
 
     tau = 0.0_dp
     do mu=1,3
-      do nu=1,mu-1
+      do nu=1,3
         tau(:,:,:,mu,nu) = ImagMultiplySpinor(WaveFunction%Der(mu),            &
         &                                     WaveFunction%Der(nu))    
       enddo
@@ -1459,6 +1487,36 @@ contains
     
     do mu=1,3
         S(:,:,:,mu) = RealMultiplySpinor(WaveFunction%Lap,Pauli(WaveFunction%Lap,mu))    
+    enddo   
+  end function 
+
+  function GetPiN2LO(Wavefunction) result(Pi)
+    class (Spwf),intent(in) :: WaveFunction
+    real(KIND=dp)           :: Pi(nx,ny,nz,3)
+    integer :: mu,nu
+    
+    Pi = 0.0_dp
+    do mu=1,3
+      do nu=1,3
+        Pi(:,:,:,mu) = Pi(:,:,:,mu) + &
+        & ImagMultiplySpinor(WaveFunction%Der(nu),WaveFunction%SecondDer(mu,nu))    
+      enddo
+    enddo   
+  end function 
+
+  function GetVN2LO(Wavefunction) result(V)
+    class (Spwf),intent(in) :: WaveFunction
+    real(KIND=dp)           :: V(nx,ny,nz,3,3)
+    integer :: mu,nu, ka
+    
+    V = 0.0_dp
+    do mu=1,3
+      do nu=1,3
+       do ka=1,3
+        V(:,:,:,mu,nu) = V(:,:,:,mu,nu) + &
+        & ImagMultiplySpinor(WaveFunction%Der(ka),Pauli(WaveFunction%SecondDer(mu,ka),nu))    
+       enddo
+      enddo
     enddo   
   end function 
 
@@ -1610,7 +1668,7 @@ contains
     do ka=1,3
         do mu=1,3
             Psi  = Pauli(WF%Der(mu),ka)
-            do nu=1,mu
+            do nu=1,3
                 K(:,:,:,mu,nu,ka) = RealMultiplySpinor(WF%Der(nu) , Psi)
             enddo
         enddo
@@ -1627,13 +1685,12 @@ contains
     do ka=1,3
         do mu=1,3
             Psi  = Pauli(WF%Der(mu),ka)
-            do nu=1,mu
+            do nu=1,3
                 K(:,:,:,mu,nu,ka) = ImagMultiplySpinor(WF%Der(nu) , Psi)
             enddo
         enddo
     enddo
   end function GetImKN2LO
-
 
   function GetVecF(WaveFunction) result(VecF)
     !-------------------------------------------------------

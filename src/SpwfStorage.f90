@@ -464,7 +464,6 @@ contains
     ! This subroutine derives all of the Spwf, using the subroutine CompDer.
     !---------------------------------------------------------------------------
     integer            :: i
-    INTEGER            :: NTHREADS, TID, OMP_GET_NUM_THREADS,OMP_GET_THREAD_NUM
     real(KIND=dp)      :: time(2)
 
     do i=1,nwt
@@ -477,6 +476,26 @@ contains
     endif
     return
   end subroutine DeriveAll
+  
+  subroutine N2LODerive()
+    !---------------------------------------------------------------------------
+    ! This subroutine derives all of the Spwf, using the subroutine CompDer.
+    !---------------------------------------------------------------------------
+    integer            :: i
+    real(KIND=dp)      :: time(2)
+
+    do i=1,nwt
+        call HFBasis(i)%CompDer()
+        call HFBasis(i)%CompSecondDer()
+    enddo
+    if(allocated(CanBasis)) then
+      do i=1,nwt
+        call CanBasis(i)%CompDer()
+        call CanBasis(i)%CompSecondDer()
+      enddo
+    endif
+    return
+  end subroutine N2LODerive
 
   subroutine PrintSpwf(PairingType, Fermi, PrintAllSpwf)
     !---------------------------------------------------------------------------

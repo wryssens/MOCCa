@@ -24,8 +24,10 @@ module Force
     !  P.Bonche, H.Flocard, P.H.Heenen; Nucl. Phys. A467 (1987); 115-135
     !-----------------------------------------------------------------------------
     !Skyrme Force parameters
-    real(KIND=dp), public :: t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,te,to
-    real(KIND=dp), public :: wso,wsoq
+    real(KIND=dp) :: t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,te,to
+    ! N2LO parameters
+    real(KIND=dp) :: t1n2,t2n2, x1n2, x2n2     
+    real(KIND=dp) :: wso,wsoq
     !Functional parameters in the BFH representation
     real(KIND=dp), public :: B1,B2,B3,B4,B5,B6,B7a,B7b,B8a,B8b,Byt3a,Byt3b,B9,B9q
     real(KIND=dp), public :: B10,B11,B12a,B12b,B13a,B13b,B14
@@ -38,7 +40,19 @@ module Force
     real(KIND=dp), public :: CJ0(2), CJ1(2), CJ2(2)
     ! J^2 terms and whether or not to take average nucleon masses
     logical               :: J2terms=.false., averagemass=.true.
-    !.............................................................................
+    !---------------------------------------------------------------------------
+    ! N2LO terms
+    ! Ordering 
+    ! C(1) => Delta Rho Delta Rho_0
+    ! C(2) => Delta Rho Delta Rho_1
+    ! C(3) => M(rho)_0
+    ! C(4) => M(rho)_1
+    ! C(5) => Delta s Delta s_0
+    ! C(6) => Delta s Delta s_1
+    ! C(7) => M(s)_0
+    ! C(8) => M(s)_1
+    real(KIND=dp) :: CN2LO(8), BN2LO(8)
+    !.....................................................
     !   Physical constants. They are set with an interaction, but have default
     !   values.
     !
@@ -123,7 +137,7 @@ contains
     logical            :: exists
 
     NameList /skf/ Name,t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,te,to, &
-    &                    wso,wsoq,                                         &
+    &                    wso,wsoq, t1n2,t2n2,x1n2,x2n2,                    &
     &                    hbm,e2,                                           &
     &                    COM1body, COM2body,                               &
     &                    J2Terms   ,                                       &
@@ -139,6 +153,7 @@ contains
     x3b=0.0_dp;     yt3b=0.0_dp
     te=0.0_dp;      to=0.0_dp
     wso=0.0_dp;     wsoq=0.0_dp
+    t1n2 = 0 ; t2n2 = 0 ; x1n2 = 0 ; x2n2 = 0 ;
     COM1body=0;     COM2body=0
     J2Terms=.false.
     call ResetConstants
@@ -165,6 +180,7 @@ contains
             x3b=0.0_dp;     yt3b=0.0_dp
             te=0.0_dp;      to=0.0_dp
             wso=0.0_dp;     wsoq=0.0_dp
+            t1n2 = 0 ; t2n2 = 0 ; x1n2 = 0 ; x2n2 = 0 ;
             b14=0.0_dp;     b15=0.0_dp;     b16=0.0_dp;      b17=0.0_dp
             COM1body=0;     COM2body=0
             J2Terms=.false.
@@ -201,7 +217,10 @@ contains
     &              "t3b=", f12.3 , " x3b =", f12.3 , ' yt3b=', f12.3 ,/, &
     &              "te =", f12.3 , " to  =", f12.3 ,                  /, &
     &              "wso=", f12.3 , " wsoq=", f12.3)
-
+    1011    format('N2LO parameters', /&
+    &              "t1^(4) = ", f12.3 , " x1^(4) = ", f12.3, / &
+    &              "t2^(4) = ", f12.3 , " x2^(4) = ", f12.3)
+    
     102     format('Force Options' , /  &
     &              '  COM1Body= ', i2,/ &
     &              '  COM2Body= ', i2,/ &
@@ -222,9 +241,15 @@ contains
     &' B10=',f13.6,'  B11=',f13.6,'  B12=',f13.6,/, &
     &' B13=',f13.6,'  B14=',f13.6,'  B15=',f13.6,/, &
     &' B16=',f13.6,'  B17=',f13.6,'  B18=',f13.6/, &
-    &' B19=',f13.6,'  B20=',f13.6,'  B21=',f13.6/,/)
-    112 format ('EDF Coefficients (Isospin representation)')
-    113 format (&
+    &' B19=',f13.6,'  B20=',f13.6,'  B21=',f13.6/)
+    1111    format(' N2LO coefficients (BFH representation)', / &
+    &' B5^(4) =',f13.6, ' B6^(4) =',f13.6, / &
+    &' B3^(4) =',f13.6, ' B4^(4) =',f13.6, / &
+    &' B14^(4)=',f13.6, ' B15^(4)=',f13.6, / &
+    &' BXX^(4)=',f13.6, ' BYY^(4)=',f13.6, / )
+    
+    112  format ('EDF Coefficients (Isospin representation)')
+    113  format (&
     &   ' C^rho_0[_0_] =',f13.6,' C^rho_1[_0_] =',f13.6,/, &
     &   ' C^rho_0[sat] =',f13.6,' C^rho_1[sat] =',f13.6,/, &
     &   ' C^s_0[_0_]   =',f13.6,' C^s_1[_0_]   =',f13.6,/, &
@@ -237,6 +262,12 @@ contains
     &   ' C^Ds_0       =',f13.6,' C^Ds_1       =',f13.6,/, &
     &   ' C^divs_0     =',f13.6,' C^divs_1     =',f13.6,/)
 
+    1131 format(&
+    &   ' C^(4 Drho)_0 = ', f13.6, ' C^(4 Drho)_1 = ', f13.6,/,&
+    &   ' C^(4 Mrho)_0 = ', f13.6, ' C^(4 Mrho)_1 = ', f13.6,/,&
+    &   ' C^(4 Ds  )_0 = ', f13.6, ' C^(4 Ds  )_1 = ', f13.6,/,&
+    &   ' C^(4 Ms  )_0 = ', f13.6, ' C^(4 Ms  )_1 = ', f13.6,/)
+
     print 1
     print 98, e2
     print 97, nucleonmass
@@ -246,6 +277,10 @@ contains
     print 100, adjustl(afor)
     print 101 , t0, x0, t1, x1, t2, x2, t3a, x3a, yt3a, t3b, x3b, yt3b, te, to,&
     &           wso, wsoq
+    
+    if(t1n2 .ne. 0 .or. t2n2 .ne. 0) then
+        print 1011, t1n2, x1n2, t2n2, x2n2 
+    endif
     print *
     print 102, Com1Body, Com2body, J2Terms
     select case(COM1body)
@@ -271,9 +306,16 @@ contains
     print 110
     print 111, B1,B2,B3,B4,B5,B6,B7a,B8a,B9,B9q,B10,B11,B12a,B13a,B14,B15,B16, &
     &          B17,B18,B19,B20,B21
+    if(t1n2 .ne. 0 .or. t2n2 .ne. 0) then
+        print 1111, BN2LO(1), BN2LO(2), BN2LO(3), BN2LO(4), BN2LO(7), BN2LO(8) &
+        &         , BN2LO(5), BN2LO(6)
+    endif
     print 112
     print 113, Crho,Crhosat, Cs, Cssat, Ctau, Cdrho, CnablaJ, Ct, Cf, Cds,     &
     &          Cnablas
+    if(t1n2 .ne. 0 .or. t2n2 .ne. 0) then
+        print 1131, CN2LO(1:8)
+    endif
 
   end subroutine PrintForce
 
@@ -349,6 +391,8 @@ contains
       B20 = (3.0_dp/16.0_dp) * (3*te - to)
       B21 =-(3.0_dp/16.0_dp) * (3*te + to)
     endif
+  
+
 
     !---------------------------------------------------------------------------
     !Calculating the C-s
@@ -401,6 +445,36 @@ contains
     CJ0    = -1.0_dp/3.0_dp * (Ct - 2.0_dp * Cf)
     CJ1    = -0.5_dp        * (Ct - 0.5_dp * Cf)
     CJ2    = -                (Ct + 0.5_dp * Cf)
+
+    !---------------------------------------------------------------------------
+    ! N2LO terms
+    if(t1n2 .ne. 0.0d0 .or. t2n2.ne.0.0d0) then
+        CN2LO(1) = 9/128.0d0 * t1n2   - 0.0d0    * t1n2 *x1n2                &
+        &                             + t2n2 * (-5/128.0  - 1 / 32.0d0 * x2n2)
+        CN2LO(2) =-3/128.0d0 * t1n2   - 3/64.0d0 * t1n2 *x1n2                &
+        &                             + t2n2 * (-1/128.0  - 1 / 64.0d0 * x2n2)
+        CN2LO(3) = 3/ 32.0d0 * t1n2   - 0.0d0    * t1n2 *x1n2                &
+        &                             + t2n2 * ( 5/ 32.0  + 1 /  8.0d0 * x2n2)
+        CN2LO(4) =-1/ 32.0d0 * t1n2   - 1/16.0d0 * t1n2 *x1n2                &
+        &                             + t2n2 * ( 1/ 32.0  + 1 / 16.0d0 * x2n2)
+        CN2LO(5) =-3/128.0d0 * t1n2   - 3/64.0d0 * t1n2 *x1n2                &
+        &                             + t2n2 * (-1/128.0  - 1 / 64.0d0 * x2n2)
+        CN2LO(6) =-3/128.0d0 * t1n2   - 0.0d0    * t1n2 *x1n2                &
+        &                             + t2n2 * (-1/128.0  + 0.0d0      * x2n2)
+        CN2LO(7) =-1/ 32.0d0 * t1n2   - 1/16.0d0 * t1n2 *x1n2                &
+        &                             + t2n2 * ( 1/ 32.0  + 1 / 16.0d0 * x2n2)
+        CN2LO(8) =-1/ 32.0d0 * t1n2   - 0.0d0    * t1n2 *x1n2                &
+        &                             + t2n2 * ( 1/ 32.0  + 0.0d0      * x2n2)
+    
+        BN2LO(1) =   CN2LO(1) -  CN2LO(2)
+        BN2LO(2) =             2*CN2LO(2)
+        BN2LO(3) =   CN2LO(3) -  CN2LO(4)
+        BN2LO(4) =             2*CN2LO(4)
+        BN2LO(5) =   0.0d0 ! CN2LO(5) -  CN2LO(6)
+        BN2LO(6) =   0.0d0 !          2*CN2LO(6)
+        BN2LO(7) =   CN2LO(7) -  CN2LO(8)
+        BN2LO(8) =             2*CN2LO(8)  
+    endif
 
     return
   end subroutine CalcEDFCoef

@@ -92,10 +92,10 @@ subroutine Evolve(MaxIterations, iprint)
   use Densities, only   : UpdateDensities, DampingParam, Density, Recalc
   use Moments, only     : CalculateAllMoments, ReadjustAllMoments,             &
   &                       CheckForRutzMoments, TurnOffConstraints
-  use Energy, only      : CompEnergy
   use Pairing, only     : SolvePairing, PairingType, SolvePairingStart
   use Cranking, only    : ReadjustCranking, CrankC0
   use DensityMixing,only: MixDensities
+  use Energy
   use Cranking, only    : RutzCrank, CrankType
   use HFB
 
@@ -114,6 +114,7 @@ subroutine Evolve(MaxIterations, iprint)
   end interface
 
   procedure(PrintSummary_v1), pointer :: PrintSummary
+
 
   1 format ( 20x, "Iteration ", i4, 20x,/)
   2 format ( "Total Time Elapsed:", f8.3 )
@@ -140,7 +141,7 @@ subroutine Evolve(MaxIterations, iprint)
   !--------------------------------------------------------------------------
   ! Decide which summary to print
   PrintSummary => PrintSummary_v2
-
+  
   ! Assign correct evolution operator for the iterations
   select case(IterType)
   case('IMTS')
@@ -209,7 +210,7 @@ subroutine Evolve(MaxIterations, iprint)
   endif
 
   !Calculating  The Energy
-  call CompEnergy
+  call CompEnergy()
 
   !Printing observables
   call PrintIterationInfo(0, .true.)
@@ -330,6 +331,8 @@ subroutine Evolve(MaxIterations, iprint)
 
   !Reanalysis of the result with Lagrange derivatives.
   call FinalIteration()
+
+  if(recalcN2LO) call N2LOAnalysis()
 
   if(Convergence) then
      print 5
@@ -459,10 +462,10 @@ subroutine FinalIteration()
   use Derivatives
   use Spwfstorage, only : DeriveAll, DensityBasis, nwt
   use Densities,   only : UpdateDensities
-  use Energy,      only : CompEnergy, PrintEnergy
   use Pairing,     only : SolvePairing
   use InOutput,    only : Pictures, PlotDensity
-
+  use Energy
+    
   implicit none
 
   integer               :: i
@@ -608,7 +611,7 @@ subroutine PrintSummary_v1(Iteration)
 	1 format ("Summ: dE=",  e10.3, ' ','dRho=',e10.3, ' ', a80 )
 	2 format (' ',a1, 'Q', 2i1,'=',e10.3, ' ')
 	3 format (' <',a2,'>=',e9.2, ' ')
-  4 format (' dH2=',f10.7)
+    4 format (' dH2=',f10.7)
 
 	integer, intent(in) :: Iteration
 	type(Moment), pointer :: Current
@@ -655,10 +658,183 @@ subroutine PrintSummary_v1(Iteration)
     dispersion = dispersion + HFBasis(i)%Occupation*HFBasis(i)%Dispersion
   enddo
 
-	print 1, abs((TotalEnergy - OldEnergy(1))/TotalEnergy), DensityChange,       &
-	&        adjustl(adjustr(MomString)//adjustl(CrankString))
-
-
-
+  print 1, abs((TotalEnergy - OldEnergy(1))/TotalEnergy), DensityChange,       &
+  &        adjustl(adjustr(MomString)//adjustl(CrankString))
 	nullify(Current)
 end subroutine PrintSummary_v1
+
+subroutine N2LOanalysis()
+    !--------------------------------------------------------------------------- 
+    ! Routine for analysing N2LO densities, energies etc.
+    !
+    !---------------------------------------------------------------------------
+  use Densities
+  use SpwfStorage
+  use Energy
+  
+  1 format ('------------------')
+  2 format ('N2LO recalculation')
+  3 format ('No error for test 1.', / &
+  &         ' Tau = Tr(Tau_munu)', /)
+  
+  4 format ('No error for test 2.', / &
+  &         ' Tmu = Tr(Tau_nunumu)', /)
+
+  implicit none
+
+  real(KIND=dp) :: TestTau(nx,ny,nz,2), TestT(nx,ny,nz,3,2)
+
+  integer               :: i,j,k,it,mu,nu
+  type(DensityVector)   :: N2LODen
+  logical               :: error
+
+  print 1
+  print 2
+  print 1
+
+  call N2LODerive()
+  
+  ! Make all of the densities
+  N2LODen = NewDensityVector(nx,ny,nz,.true.)
+  ! Compute all of the densities
+  call ComputeDensity(N2LODen, .false.)
+  
+  !--------------------------------
+  ! First test: tau = Tr(Tau_munu)
+  !--------------------------------
+  TestTau = 0.0_dp
+  do i=1,3
+    TestTau = TestTau + N2LODen%RTauN2LO(:,:,:,i,i,:)
+  enddo
+  
+  error = .false.
+  do it=1,2
+    do k=1,nz
+        do j=1,ny
+            do i=1,nx
+                if(abs(TestTau(i,j,k,it) - N2LODen%tau(i,j,k,it)) .gt. 1d-8) then
+                    print *, i,j,k,it, TestTau(i,j,k,it), N2LODen%tau(i,j,k,it)
+                    Error = .true.
+                endif
+            enddo
+        enddo
+    enddo
+ enddo
+ if(.not. error) print 3
+ 
+ !--------------------------------
+ !
+ !--------------------------------
+ if(.not. TRC) then
+      error = .false.
+      TestT = 0.0_dp
+      do mu=1,3
+        do nu=1,3
+            TestT(:,:,:,mu,:) = TestT(:,:,:,mu,:) + N2LODen%ReKN2LO(:,:,:,nu,nu,mu,:)
+        enddo
+      enddo
+      
+      error = .false.
+      do it=1,2
+       do mu=1,3
+        do k=1,nz
+            do j=1,ny
+                do i=1,nx
+                    if(abs(TestT(i,j,k,mu,it) - N2LODen%vecT(i,j,k,mu,it)) .gt. 1d-8) then
+                        print *, i,j,k,mu,it, TestT(i,j,k,mu, it), N2LODen%vecT(i,j,k,mu,it)
+                        Error = .true.
+                    endif
+                enddo
+            enddo
+        enddo
+       enddo
+     enddo
+     if(.not. error) print 4
+ endif
+ 
+ !----------------------------------------------
+ ! Calculate the N2LO contribution to the energy
+ ! 
+ N2LOterms= N2LO(N2LODen)
+
+ call printEnergy()
+ 
+ call writeN2LOdensities(N2LODen)
+ 
+ 
+end subroutine N2LOAnalysis
+
+subroutine writeN2LOdensities(Den)
+
+    use densities
+    use mesh
+
+    implicit none
+
+    type(DensityVector), intent(in) :: Den
+    integer :: i,mu,nu,ka
+    character(len=20) :: fname=''
+    character(len=2)  :: temp=''
+    
+    do mu=1,3    
+        do nu=1,3
+            fname='tau'
+            write(temp,'(i1)'), mu
+            fname= adjustl(trim(fname)//temp)
+            write(temp,'(i1)'), nu
+            fname= adjustl(trim(fname)//temp)
+            fname= adjustl(trim(fname)//'.dat')
+            open(unit=12, file=fname)
+            do i=1,nx
+                write(12, '(5f9.5)'), MeshX(i), &
+                &                     Den%RtauN2LO(i,1,1,mu,nu,1),Den%ItauN2LO(i,1,1,mu,nu,1),&
+                &                     Den%RtauN2LO(i,1,1,mu,nu,2),Den%ItauN2LO(i,1,1,mu,nu,2)    
+            enddo
+            close(12)
+        enddo
+    enddo
+    
+    do mu=1,3    
+        do nu=1,3
+          do ka=1,3
+            fname='T'
+            write(temp,'(i1)'), mu
+            fname= adjustl(trim(fname)//temp)
+            write(temp,'(i1)'), nu
+            fname= adjustl(trim(fname)//temp)
+            write(temp,'(i1)'), ka
+            fname= adjustl(trim(fname)//temp)
+            fname= adjustl(trim(fname)//'.dat')
+            open(unit=12, file=fname)
+            do i=1,nx
+                write(12, '(5f9.5)'), MeshX(i), &
+                &                     Den%ReKN2LO(i,1,1,mu,nu,ka,1),Den%ImKN2LO(i,1,1,mu,nu,ka,1),&
+                &                     Den%ReKN2LO(i,1,1,mu,nu,ka,2),Den%ImKN2LO(i,1,1,mu,nu,ka,2)    
+            enddo
+            close(12)
+          enddo
+        enddo
+    enddo
+    
+    
+    fname='Q'
+    fname= adjustl(trim(fname)//'.dat')
+    open(unit=12, file=fname)
+    do i=1,nx
+        write(12, '(3f9.5)'), MeshX(i), Den%QN2LO(i,1,1,1),Den%QN2LO(i,1,1,2) 
+    enddo
+    close(12)
+    
+    do mu=1,3
+        fname='S'
+        write(temp,'(i1)'), mu
+        fname= adjustl(trim(fname)//temp)
+        fname= adjustl(trim(fname)//'.dat')
+        open(unit=12, file=fname)
+        do i=1,nx
+            write(12, '(5f9.5)'), MeshX(i), Den%SN2LO(i,1,1,mu,1),Den%SN2LO(i,1,1,mu,2)
+        enddo
+    enddo
+    close(12)
+    
+end subroutine writeN2LOdensities

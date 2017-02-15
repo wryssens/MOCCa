@@ -39,7 +39,7 @@ module Densities
     real(KIND=dp), allocatable :: DerRho(:,:,:,:,:),LapRho(:,:,:,:)
     !---------------------------------------------------------------------------
     ! Current density
-    real(KIND=dp), allocatable :: Vecj(:,:,:,:,:)
+    real(KIND=dp), allocatable :: Vecj(:,:,:,:,:), divvecj(:,:,:,:)
     real(KIND=dp), allocatable :: Rotvecj(:,:,:,:,:)
     !---------------------------------------------------------------------------
     ! Spin density and its rotor, laplacian and divergence.
@@ -68,6 +68,10 @@ module Densities
     real(KIND=dp), allocatable ::   VN2LO(:,:,:,:,:,:)
     real(KIND=dp), allocatable ::   QN2LO(:,:,:,:)
     real(KIND=dp), allocatable ::   SN2LO(:,:,:,:,:)
+    real(KIND=dp), allocatable ::   D2Rho(:,:,:,:,:,:)
+    real(KIND=dp), allocatable ::   D2S(:,:,:,:,:,:,:)
+    real(KIND=dp), allocatable ::DmuJmunu(:,:,:,:,:,:)
+    
   end type DensityVector
 
   !-----------------------------------------------------------------------------
@@ -136,21 +140,20 @@ contains
       R%Vecs=0.0_dp ; R%RotVecj =0.0_dp ; R%DerS=0.0_dp ;
 
       !Derivatives of s
-      if(B18 .ne. 0.0_dp .or. B19 .ne. 0.0_dp .or. B20.ne.0.0_dp .or. B21.ne.0.0_dp) then
-        allocate(R%LapS(sizex,sizey,sizez,3,2))
-        R%LapS=0.0_dp ;
-        allocate(R%GradDivS(sizex,sizey,sizez,3,2))
-        R%GradDivS=0.0_dp
-        allocate(R%DivS(sizex,sizey,sizez,2))
-        R%DivS = 0.0_dp
+      if((B18 .ne. 0.0_dp .or. B19 .ne. 0.0_dp .or. &
+      &   B20.ne.0.0_dp .or. B21.ne.0.0_dp)    .or. &
+      &   t1n2.ne.0.0_dp) then
+        allocate(R%LapS(sizex,sizey,sizez,3,2))    ;   R%LapS=0.0_dp ;
+        allocate(R%GradDivS(sizex,sizey,sizez,3,2));   R%GradDivS=0.0_dp
+        allocate(R%DivS(sizex,sizey,sizez,2))      ;   R%DivS = 0.0_dp
       endif
 
       !F & T densities.
-      if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
+      if((B14.ne.0.0_dp .or. B15.ne.0.0_dp).or.present(N2LO)) then
         allocate(R%VecT(sizex,sizey,sizez,3,2))
         R%VecT=0.0_dp ;
       endif
-      if(B16.ne.0.0_dp .or. B17.ne.0.0_dp) then
+      if((B16.ne.0.0_dp .or. B17.ne.0.0_dp).or.present(N2LO)) then
         allocate(R%VecF(sizex,sizey,sizez,3,2))
         R%VecF=0.0_dp ;
       endif
@@ -166,6 +169,12 @@ contains
         allocate(R%VN2LO(sizex,sizey,sizez,3,3,2))   ; R%VN2LO  = 0.0_dp
         allocate(R%QN2LO(sizex,sizey,sizez,2))       ; R%QN2LO  = 0.0_dp
         allocate(R%SN2LO(sizex,sizey,sizez,3,2))     ; R%SN2LO  = 0.0_dp
+        
+        allocate(R%D2Rho   (sizex,sizey,sizez,3,3,2)) ; R%D2Rho     = 0.0_dp
+        allocate(R%D2S   (sizex,sizey,sizez,3,3,3,2)) ; R%D2S       = 0.0_dp
+        allocate(R%DmuJmunu(sizex,sizey,sizez,3,3,2)) ; R%DmuJmunu  = 0.0_dp
+        
+        allocate(R%divvecj (sizex,sizey,sizez,2))     ; R%divvecj   = 0.0_dp
     endif
 
   end function NewDensityVector
@@ -353,14 +362,16 @@ contains
     !---------------------------------------------------------------------------
 
     use SpwfStorage, only : DensityBasis, nwt
-    use Force,       only : B14, B15, B16, B17, B18
+    use Force
     use Derivatives, only : Laplacian, DeriveX,DeriveY,DeriveZ
 
     type(Densityvector), intent(inout) :: Denin
-    integer                            :: it, i
+    integer                            :: it, i,k
     real(KIND=dp)                      :: Occupation
     logical, intent(in)                :: OnlyRho
     logical, intent(in), optional      :: Response
+    logical                            :: moreders
+    real(KIND=dp) :: DerVecj(nx,ny,nz,3,3), DivS(nx,ny,nz,2)
     
     !Reset the values of the densities.
     if(OnlyRho) then
@@ -417,7 +428,7 @@ contains
         &                       Occupation*DensityBasis(i)%GetVecj()
         DenIn%Vecs(:,:,:,:,it)= DenIN%Vecs(:,:,:,:,it) +                       &
         &                       Occupation*DensityBasis(i)%GetVecs()
-        if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
+        if((B14.ne.0.0_dp .or. B15.ne.0.0_dp).or.allocated(DenIn%RtauN2LO)) then
           DenIn%VecT(:,:,:,:,it)= DenIn%VecT(:,:,:,:,it) +                     &
           &                       Occupation*DensityBasis(i)%GetVecT()
         endif
@@ -429,18 +440,22 @@ contains
       
       if (allocated(DenIn%RtauN2LO)) then
         ! calculate N2LO densities
-        DenIn%RTauN2LO(:,:,:,:,:,it) = DenIn%RTauN2LO(:,:,:,:,:,it) +          &
+        DenIn%RTauN2LO(:,:,:,:,:,it)  = DenIn%RTauN2LO(:,:,:,:,:,it) +         &
         &                              Occupation * DensityBasis(i)%GetRTauN2LO()
-        DenIn%ITauN2LO(:,:,:,:,:,it) = DenIn%ITauN2LO(:,:,:,:,:,it) +          &
+        DenIn%ITauN2LO(:,:,:,:,:,it)  = DenIn%ITauN2LO(:,:,:,:,:,it) +         &
         &                              Occupation * DensityBasis(i)%GetITauN2LO()
         DenIn%ReKN2LO(:,:,:,:,:,:,it) = DenIn%ReKN2LO(:,:,:,:,:,:,it) +        &
         &                              Occupation * DensityBasis(i)%GetreKN2LO()
         DenIn%ImKN2LO(:,:,:,:,:,:,it) = DenIn%ReKN2LO(:,:,:,:,:,:,it) +        &
         &                              Occupation * DensityBasis(i)%GetImKN2LO()
-        DenIn%QN2LO(:,:,:,it) = DenIn%QN2LO(:,:,:,it) +                        &
+        DenIn%QN2LO(:,:,:,it)         = DenIn%QN2LO(:,:,:,it) +                &
         &                              Occupation * DensityBasis(i)%GetQN2LO()
-        DenIn%SN2LO(:,:,:,:,it) = DenIn%SN2LO(:,:,:,:,it) +                    &
+        DenIn%SN2LO(:,:,:,:,it)       = DenIn%SN2LO(:,:,:,:,it) +              &
         &                              Occupation * DensityBasis(i)%GetSN2LO()
+        DenIn%VN2LO(:,:,:,:,:,it)     = DenIn%VN2LO(:,:,:,:,:,it) +            &
+        &                              Occupation * DensityBasis(i)%GetVN2LO()
+        DenIn%PiN2LO(:,:,:,:,it)      = DenIn%PiN2LO(:,:,:,:,it) +          &
+        &                              Occupation * DensityBasis(i)%GetPiN2LO()
       endif
   
     enddo
@@ -460,6 +475,55 @@ contains
         DenIn%LapRho(:,:,:,it)   = &
         & Laplacian(DenIn%Rho(:,:,:,it),ParityInt,SignatureInt,TimeSimplexInt,1)
     enddo
+    
+    if (allocated(DenIn%RtauN2LO)) then
+        do it=1,2
+            ! Full tensor of second derivatives of rho        
+            DenIn%D2Rho(:,:,:,1,1,it) = &
+            & DeriveX(DenIn%DerRho(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
+            DenIn%D2Rho(:,:,:,2,1,it) = &
+            & DeriveY(DenIn%DerRho(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
+            DenIn%D2Rho(:,:,:,3,1,it) = &
+            & DeriveZ(DenIn%DerRho(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
+            
+            DenIn%D2Rho(:,:,:,1,2,it) = &
+            & DeriveX(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt,-TimeSimplexInt,1)
+            DenIn%D2Rho(:,:,:,2,2,it) = &
+            & DeriveY(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt,-TimeSimplexInt,1)
+            DenIn%D2Rho(:,:,:,3,2,it) = &
+            & DeriveZ(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt,-TimeSimplexInt,1)
+            
+            DenIn%D2Rho(:,:,:,1,3,it) = &
+            & DeriveX(DenIn%DerRho(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
+            DenIn%D2Rho(:,:,:,2,3,it) = &
+            & DeriveY(DenIn%DerRho(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
+            DenIn%D2Rho(:,:,:,3,3,it) = &
+            & DeriveZ(DenIn%DerRho(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
+        
+            ! Derivatives of nabla_mu J_munu
+            DenIn%DmuJmunu(:,:,:,1,1,it) =                                     &
+            & DeriveX(DenIn%JMuNu(:,:,:,1,1,it),-ParityInt,+SignatureInt,-TimeSimplexInt,1)
+            DenIn%DmuJmunu(:,:,:,1,2,it) =                                     &
+            & DeriveX(DenIn%JMuNu(:,:,:,1,2,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1)
+            DenIn%DmuJmunu(:,:,:,1,3,it) =                                     &
+            & DeriveX(DenIn%JMuNu(:,:,:,1,3,it),-ParityInt,-SignatureInt,-TimeSimplexInt,1)
+            
+            DenIn%DmuJmunu(:,:,:,2,1,it) =                                     &
+            & DeriveY(DenIn%JMuNu(:,:,:,2,1,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1)
+            DenIn%DmuJmunu(:,:,:,2,2,it) =                                     &
+            & DeriveY(DenIn%JMuNu(:,:,:,2,2,it),-ParityInt,+SignatureInt,-TimeSimplexInt,1)
+            DenIn%DmuJmunu(:,:,:,2,3,it) =                                     &
+            & DeriveY(DenIn%JMuNu(:,:,:,2,3,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1)
+            
+            DenIn%DmuJmunu(:,:,:,3,1,it) =                                     &
+            & DeriveZ(DenIn%JMuNu(:,:,:,3,1,it),-ParityInt,-SignatureInt,-TimeSimplexInt,1)
+            DenIn%DmuJmunu(:,:,:,3,2,it) =                                     &
+            & DeriveZ(DenIn%JMuNu(:,:,:,3,2,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1)
+            DenIn%DmuJmunu(:,:,:,3,3,it) =                                     &
+            & DeriveZ(DenIn%JMuNu(:,:,:,3,3,it),-ParityInt,+SignatureInt,-TimeSimplexInt,1)
+        enddo
+    endif
+    
     !Computing NablaJ by derivatives in the case of tensor interactions
     if(B14.ne.0.0_dp.or.B15.ne.0.0_dp.or.B17.ne.0.0_dp.or.B16.ne.0.0_dp) then
       !Temporary
@@ -468,10 +532,177 @@ contains
 
     !Computing the derivatives of vecj & vecs
     if(.not.TRC) then
-      DenIn%RotVecJ = DeriveVecJ(DenIn%VecJ)
-      call DeriveVecS(DenIn)
-    endif
     
+        ! Derive vecj
+        do it=1,2
+          !See Table V in V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
+          DerVecJ(:,:,:,2,1)  = &
+          & DeriveY(DenIn%Vecj(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
+          DerVecJ(:,:,:,3,1)  = &
+          & DeriveZ(DenIn%Vecj(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
+          DerVecJ(:,:,:,1,2)  = &
+          & DeriveX(DenIn%Vecj(:,:,:,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
+          DerVecJ(:,:,:,3,2)  = &
+          & DeriveZ(DenIn%Vecj(:,:,:,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
+          DerVecJ(:,:,:,1,3)  = &
+          & DeriveX(DenIn%Vecj(:,:,:,3,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
+          DerVecJ(:,:,:,2,3)  = &
+          & DeriveY(DenIn%Vecj(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,2)
+
+          DenIn%RotVecJ(:,:,:,1,it) =  DerVecJ(:,:,:,2,3) - DerVecJ(:,:,:,3,2)
+          DenIn%RotVecJ(:,:,:,2,it) =  DerVecJ(:,:,:,3,1) - DerVecJ(:,:,:,1,3)
+          DenIn%RotVecJ(:,:,:,3,it) =  DerVecJ(:,:,:,1,2) - DerVecJ(:,:,:,2,1)
+          
+          if(allocated(DenIn%RtauN2LO)) then
+            DerVecJ(:,:,:,1,1)  = &
+            & DeriveX(DenIn%Vecj(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
+            DerVecJ(:,:,:,2,2)  = &
+            & DeriveY(DenIn%Vecj(:,:,:,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
+            DerVecJ(:,:,:,3,3)  = &
+            & DeriveY(DenIn%Vecj(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,2)
+            
+            DenIn%divvecj(:,:,:,it) = DerVecJ(:,:,:,1,1) + &
+                                    & DerVecJ(:,:,:,2,2) + &
+                                    & DerVecJ(:,:,:,3,3)
+          endif
+        enddo
+
+        MoreDers=.true.
+        if(B18.eq.0.0_dp.and.B19.eq.0.0_dp.and.B20.eq.0.0_dp .and. B21.eq.0.0_dp) then
+          MoreDers = .false.
+        endif
+        if(t1n2.ne.0.0_dp) then
+          MoreDers = .true.
+        endif
+
+        do it=1,2
+          !-------------------------------------------------------------------------
+          ! See for instance Table V in
+          !                      V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
+          !-------------------------------------------------------------------------
+          ! Double checked on 02/01/2016
+          !--------------------- X Components---------------------------------------
+          if(MoreDers) then
+            DenIn%LapS(:,:,:,1,it) = Laplacian(DenIn%VecS(:,:,:,1,it),             &
+            &                              ParityInt,-SignatureInt,TimeSimplexInt,1)
+          endif
+          DenIn%DerS(:,:,:,1,1,it) = &
+          & DeriveX(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)
+          DenIn%DerS(:,:,:,2,1,it) = &
+          & DeriveY(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)
+          DenIn%DerS(:,:,:,3,1,it) = &
+          & DeriveZ(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)
+
+          !--------------------- Y Components--------------------------------------
+          if(MoreDers) then
+            DenIn%LapS(:,:,:,2,it) = Laplacian(DenIn%VecS(:,:,:,2,it),             &
+            &                             ParityInt,-SignatureInt,TimeSimplexInt,2)
+          endif
+          DenIn%DerS(:,:,:,1,2,it) = &
+          &DeriveX(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)
+          DenIn%DerS(:,:,:,2,2,it) = &
+          &DeriveY(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)
+          DenIn%DerS(:,:,:,3,2,it) = &
+          &DeriveZ(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)
+          !--------------------- Z Components--------------------------------------
+          if(MoreDers) then
+            DenIn%LapS(:,:,:,3,it) = Laplacian(DenIn%VecS(:,:,:,3,it),             &
+            &                              ParityInt,SignatureInt,TimeSimplexInt,1)
+          endif
+          DenIn%DerS(:,:,:,1,3,it) = &
+          & DeriveX(DenIn%VecS(:,:,:,3,it),ParityInt,Signatureint,TimeSimplexInt,1)
+          DenIn%DerS(:,:,:,2,3,it) = &
+          & DeriveY(DenIn%VecS(:,:,:,3,it),ParityInt,Signatureint,TimeSimplexInt,1)
+          DenIn%DerS(:,:,:,3,3,it) = &
+          & DeriveZ(DenIn%VecS(:,:,:,3,it),ParityInt,Signatureint,TimeSimplexInt,1)
+          !------------------------------------------------------------------------
+          ! Rotation of S
+          DenIn%RotS(:,:,:,1,it) = DenIn%DerS(:,:,:,2,3,it)-DenIn%DerS(:,:,:,3,2,it)
+          DenIn%RotS(:,:,:,2,it) = DenIn%DerS(:,:,:,3,1,it)-DenIn%DerS(:,:,:,1,3,it)
+          DenIn%RotS(:,:,:,3,it) = DenIn%DerS(:,:,:,1,2,it)-DenIn%DerS(:,:,:,2,1,it)
+
+          if(MoreDers) then
+            DivS(:,:,:,it)=0.0_dp
+            do i=1,3
+              DivS(:,:,:,it) = DenIn%DivS(:,:,:,it) + DenIn%DerS(:,:,:,i,i,it)
+            enddo
+          endif
+          !------------------------------------------------------------------------
+          ! Second derivatives of S
+          if(allocated(DenIn%RtauN2LO)) then
+            DenIn%D2S(:,:,:,1,1,1,it) = &
+            & DeriveX(DenIn%DerS(:,:,:,1,1,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
+            DenIn%D2S(:,:,:,2,1,1,it) = &
+            & DeriveY(DenIn%DerS(:,:,:,1,1,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
+            DenIn%D2S(:,:,:,3,1,1,it) = &
+            & DeriveZ(DenIn%DerS(:,:,:,1,1,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
+            
+            DenIn%D2S(:,:,:,1,1,2,it) = &      ! ParityInt,-Signatureint, TimeSimplexInt,2
+            & DeriveX(DenIn%DerS(:,:,:,1,2,it), -ParityInt, SignatureInt, TimeSimplexInt,2)
+            DenIn%D2S(:,:,:,2,1,2,it) = &
+            & DeriveY(DenIn%DerS(:,:,:,1,2,it), -ParityInt, SignatureInt, TimeSimplexInt,2)
+            DenIn%D2S(:,:,:,3,1,2,it) = &
+            & DeriveZ(DenIn%DerS(:,:,:,1,2,it), -ParityInt, SignatureInt, TimeSimplexInt,2)
+            
+            DenIn%D2S(:,:,:,1,1,3,it) = &      ! ParityInt, Signatureint, TimeSimplexInt,1
+            & DeriveX(DenIn%DerS(:,:,:,1,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
+            DenIn%D2S(:,:,:,2,1,3,it) = &
+            & DeriveY(DenIn%DerS(:,:,:,1,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
+            DenIn%D2S(:,:,:,3,1,3,it) = &
+            & DeriveZ(DenIn%DerS(:,:,:,1,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
+            
+            DenIn%D2S(:,:,:,2,2,1,it) = &      ! ParityInt,-Signatureint, TimeSimplexInt,1
+            & DeriveY(DenIn%DerS(:,:,:,2,1,it), -ParityInt, SignatureInt, TimeSimplexInt,2)
+            DenIn%D2S(:,:,:,3,2,1,it) = &
+            & DeriveZ(DenIn%DerS(:,:,:,2,1,it), -ParityInt, SignatureInt, TimeSimplexInt,2)
+            
+            DenIn%D2S(:,:,:,2,2,2,it) = &      ! ParityInt,-Signatureint, TimeSimplexInt,2
+            & DeriveY(DenIn%DerS(:,:,:,2,2,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
+            DenIn%D2S(:,:,:,3,2,2,it) = &
+            & DeriveZ(DenIn%DerS(:,:,:,2,2,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
+          
+            DenIn%D2S(:,:,:,2,2,3,it) = &      ! ParityInt, Signatureint, TimeSimplexInt,1
+            & DeriveY(DenIn%DerS(:,:,:,2,3,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
+            DenIn%D2S(:,:,:,3,2,3,it) = &
+            & DeriveZ(DenIn%DerS(:,:,:,2,3,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
+          
+            DenIn%D2S(:,:,:,3,3,1,it) = &      ! ParityInt,-Signatureint, TimeSimplexInt,1
+            & DeriveZ(DenIn%DerS(:,:,:,3,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
+            
+            DenIn%D2S(:,:,:,3,3,2,it) = &      ! ParityInt,-Signatureint, TimeSimplexInt,2
+            & DeriveZ(DenIn%DerS(:,:,:,3,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
+            
+            DenIn%D2S(:,:,:,3,3,3,it) = &      ! ParityInt, Signatureint, TimeSimplexInt,1)
+            & DeriveZ(DenIn%DerS(:,:,:,3,3,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
+          
+            DenIn%D2S(:,:,:,1,2,1,it) = DenIn%D2S(:,:,:,2,1,1,it)
+            DenIn%D2S(:,:,:,1,3,1,it) = DenIn%D2S(:,:,:,3,1,1,it)
+            DenIn%D2S(:,:,:,2,3,1,it) = DenIn%D2S(:,:,:,3,2,1,it)
+            
+            DenIn%D2S(:,:,:,1,2,2,it) = DenIn%D2S(:,:,:,2,2,2,it)
+            DenIn%D2S(:,:,:,1,3,2,it) = DenIn%D2S(:,:,:,3,2,2,it)
+            DenIn%D2S(:,:,:,2,3,2,it) = DenIn%D2S(:,:,:,3,2,2,it)
+            
+            DenIn%D2S(:,:,:,1,2,3,it) = DenIn%D2S(:,:,:,2,3,3,it)
+            DenIn%D2S(:,:,:,1,3,3,it) = DenIn%D2S(:,:,:,3,3,3,it)
+            DenIn%D2S(:,:,:,2,3,3,it) = DenIn%D2S(:,:,:,3,2,3,it)
+            
+          endif
+        enddo
+
+        if(.not. MoreDers) return
+         !This one is dubious: several numerical derivatives are "stacked".
+            do it=1,2
+              ! See for instance Table V in
+              ! V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
+              DenIn%GradDivS(:,:,:,1,it) = DeriveX( &
+              &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
+              DenIn%GradDivS(:,:,:,2,it) = DeriveY( &
+              &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
+              DenIn%GradDivS(:,:,:,3,it) = DeriveZ( &
+              &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
+            enddo
+        endif
   end subroutine ComputeDensity
 
   function DeriveJmuNu(JmuNu) result(NablaJ)

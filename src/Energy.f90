@@ -119,7 +119,7 @@ contains
     call CompCOMCorrection
 
     !Sum of all energies (Note that the Skyrme sum already was included)
-    TotalEnergy = TotalEnergy + sum(Kinetic)  + CoulombEnergy  +               &
+    TotalEnergy = TotalEnergy        + sum(Kinetic)  + CoulombEnergy  +        &
     &             sum(CoMCorrection) + CoulombExchange + sum(PairingEnergy) +  &
     &             sum(LNEnergy) + sum(N2LOterms)
 
@@ -155,14 +155,14 @@ contains
     use force
     
     real(KIND=dp) :: terms(24)
-    real(KIND=dp) :: rhotot(nx,ny,nz), laprhotot(nx,ny,nz)
+    real(KIND=dp) :: rhotot (nx,ny,nz),     laprhotot(nx,ny,nz)
     real(KIND=dp) :: Rtauten(nx,ny,nz,3,3), Itauten(nx,ny,nz,3,3)
-    real(KIND=dp) :: Tmu(nx,ny,nz,3,2)
-    real(KIND=dp) :: D2rho(nx,ny,nz,3,3)
+    real(KIND=dp) :: Tmu    (nx,ny,nz,3,2)
+    real(KIND=dp) :: D2rho  (nx,ny,nz,3,3)
     type(densityvector), intent(in) :: Den
     integer       :: it,i,j
     
-    rhotot   = sum(Den%Rho,4)
+    rhotot   = sum(Den%Rho,   4)
     laprhotot= sum(Den%LapRho,4)
     
     terms = 0.0_dp
@@ -190,35 +190,33 @@ contains
     Rtauten = sum(den%RtauN2LO,6)
     Itauten = sum(den%ItauN2LO,6)
     D2rho   = sum(den%D2Rho,6)
-    terms(7) = sum(Rtauten * Rtauten) + sum(Itauten * Itauten) - sum(Rtauten * D2rho)
+    terms(7) =   - sum(Rtauten * D2rho)  + sum(Rtauten * Rtauten) - sum(Itauten * Itauten)
     terms(7) = 2*BN2LO(3)*terms(7)
     
     do it=1,2
         terms(8) = terms(8) + sum(Den%RTauN2LO(:,:,:,:,:,it)**2) &
-        &                   + sum(Den%ITauN2LO(:,:,:,:,:,it)**2) &
+        &                   - sum(Den%ITauN2LO(:,:,:,:,:,it)**2) &
         &                   - sum(Den%RTauN2LO(:,:,:,:,:,it)*Den%D2Rho(:,:,:,:,:,it))
     enddo
     terms(8) = 2*BN2LO(4)*terms(8)
     
-    terms(9) = sum(sum(Den%DmuJmunu,6)**2) 
-    terms(9) = terms(9)*BN2LO(7)
+    !terms(9) = sum(sum(Den%DmuJmunu,6)**2) 
+    !terms(9) = terms(9)*BN2LO(7)
     
-    do it=1,2
-        terms(10) = terms(10) + sum(Den%DmuJmunu(:,:,:,:,:,it)**2) 
-    enddo
-    terms(10) = terms(10)*BN2LO(8)
+    !do it=1,2
+    !    terms(10) = terms(10) + sum(Den%DmuJmunu(:,:,:,:,:,it)**2) 
+    !enddo
+    !terms(10) = terms(10)*BN2LO(8)
     
-    terms(11) = 4 * sum(sum(Den%JmuNu,6)*sum(Den%VN2LO,6))*BN2LO(7)
+    terms(11) =-4 * sum(sum(Den%JmuNu,6)*sum(Den%VN2LO,6))*BN2LO(7)
     do it=1,2
         terms(12) = terms(12) + &
         &               4 * sum(Den%JmuNu(:,:,:,:,:,it)*Den%VN2LO(:,:,:,:,:,it))
     enddo
-    terms(12) = terms(12)*BN2LO(8)
+    terms(12) =-terms(12)*BN2LO(8)
     !-------------------
     ! Time odd terms
     if(.not. TRC) then
-        call stp('Time-odd terms not yet implemented to N2LO level.')
-        
         terms(13) = sum(sum(Den%laps,5)**2) * BN2LO(5)
         do it=1,2
             terms(14) = terms(14) + sum(Den%laps(:,:,:,:,it)**2) * BN2LO(6)
@@ -234,7 +232,7 @@ contains
             terms(18) = terms(18) - sum(den%vecj(:,:,:,:,it)*den%PiN2LO(:,:,:,:,it)) * BN2LO(4)
         enddo
         
-        terms(19) = sum(sum(Den%vecs,5) * sum(Den%SN2LO))*BN2LO(7)
+        terms(19) = sum(sum(Den%vecs,5) * sum(Den%SN2LO,5))*BN2LO(7)
         do it=1,2
             terms(20) = terms(20) + sum(Den%vecs(:,:,:,:,it) * Den%SN2LO(:,:,:,:,it))*BN2LO(8)
         enddo
@@ -245,19 +243,23 @@ contains
                 Tmu(:,:,:,i,:) = Tmu(:,:,:,i,:) + Den%ReKN2LO(:,:,:,j,j,i,:) 
             enddo
         enddo
+        !Tmu = Den%vect
         terms(21) = sum(sum(Tmu,5)**2)*BN2LO(7)
         do it=1,2
-            terms(22) = sum(Tmu(:,:,:,:,it)**2)*BN2LO(8)
+            terms(22) = terms(22) + sum(Tmu(:,:,:,:,it)**2)*BN2LO(8)
         enddo
-        
-        terms(23) = sum(sum(Den%ReKN2LO,7)**2)-sum(sum(Den%ReKN2LO,7)*sum(Den%D2S,7))
+
+        terms(23) =   sum(sum(Den%ReKN2LO,7)**2) - sum(sum(Den%ImKN2LO,7)**2) !& 
+        !&                             -sum(sum(Den%ReKN2LO,7)*sum(Den%D2S,7))
         terms(23) = -2*BN2LO(7)*terms(23)
+
         do it=1,2
-            terms(24) = terms(24) - sum(Den%ReKN2LO(:,:,:,:,:,:,it)**2) &
-            &                     - sum(Den%ReKN2LO(:,:,:,:,:,:,it)   * &
-            &                           Den%D2S(:,:,:,:,:,:,it))   
+            terms(24) = terms(24) + sum(Den%ReKN2LO(:,:,:,:,:,:,it)**2) &
+            &                     - sum(Den%ImKN2LO(:,:,:,:,:,:,it)**2)! &
+            !&                     - sum(Den%ReKN2LO(:,:,:,:,:,:,it)   * &
+            !&                           Den%D2S(:,:,:,:,:,:,it))   
         enddo
-        terms(24)=2*BN2LO(8)*terms(24)
+        terms(24)=-2*BN2LO(8)*terms(24)
     endif
     terms = terms * dv 
   end function N2LO
@@ -804,16 +806,24 @@ contains
      27 format (2x,' (N s)^2_t   =', f12.5, 5x , ' (N s)^2_q   = ', f12.5 )
 
     300 format ('N2LO Terms')
-     31 format (2x,' DrhoDrho_t  =', f12.5, 5x ,' DrhoDrho_q  =', f12.5)
-     32 format (2x,' rhoQ_t      =', f12.5, 5x ,' rhoQ_q      =', f12.5)
-     33 format (2x,' tau^2_t     =', f12.5, 5x ,' tau^2_t     =', f12.5)
-     34 format (2x,' taumunu^2_t =', f12.5, 5x ,' taumunu^2_q =', f12.5)
-     35 format (2x,' DmuJmunu_t  =', f12.5, 5x ,' DmuJmunu_q  =', f12.5)
-     36 format (2x,' JVmunu_t    =', f12.5, 5x ,' JVmunu_q    =', f12.5)
+     31 format (2x,' DrhoDrho_t  =', e12.5, 5x ,' DrhoDrho_q  = ', e12.5, ' t', f12.5)
+     32 format (2x,' rhoQ_t      =', e12.5, 5x ,' rhoQ_q      = ', e12.5, ' t', f12.5)
+     33 format (2x,' tau^2_t     =', e12.5, 5x ,' tau^2_t     = ', e12.5, ' t', f12.5)
+     34 format (2x,' taumunu^2_t =', e12.5, 5x ,' taumunu^2_q = ', e12.5, ' t', f12.5)
+     35 format (2x,' DmuJmunu_t  =', e12.5, 5x ,' DmuJmunu_q  = ', e12.5, ' t', f12.5)
+     36 format (2x,' JVmunu_t    =', e12.5, 5x ,' JVmunu_q    = ', e12.5, ' t', f12.5)
+     
+     37 format (2x,' DsDs_t      =', e12.5, 5x ,' DsDs_q      = ', e12.5, ' t', f12.5)
+     38 format (2x,' divj^2_t    =', e12.5, 5x ,' divj^2_q    = ', e12.5, ' t', f12.5)
+     39 format (2x,' j Pi_t      =', e12.5, 5x ,' j Pi_q      = ', e12.5, ' t', f12.5)
+     40 format (2x,' s S_t       =', e12.5, 5x ,' s S_q       = ', e12.5, ' t', f12.5)
+     41 format (2x,' T^2_t       =', e12.5, 5x ,' T^2_q       = ', e12.5, ' t', f12.5)
+     42 format (2x,' T^2 - s^2_t =', e12.5, 5x ,' T^2 - s^2_q = ', e12.5, ' t', f12.5)
 
-     28 format (2x,'Time-even    =', f12.5, 5x , ' Time-odd    = ', f12.5 )
-     29 format (2x,'Total        =', f12.5)
-
+     28 format (2x,'Time-even    =', f12.5, 5x , ' Time-odd   = ', f12.5 )
+     29 format (2x,'N2LO total   =', f12.5)
+     30 format (2x,'Total        =', f12.5)
+     
     103 format (' Kinetic Energy ',/,                                          &
         &    2x,'Kin.  N', f12.5, ' Kin.  P', f12.5, ' Total ', f12.5)
     104 format (' Pairing Energy ',/,                                          &
@@ -870,12 +880,20 @@ contains
     
     if(any(N2LOterms.ne.0)) then
         print 300
-        print 31, N2LOterms(1:2)
-        print 32, N2LOterms(3:4)
-        print 33, N2LOterms(5:6)
-        print 34, N2LOterms(7:8)
-        print 35, N2LOterms(9:10)
-        print 36, N2LOterms(11:12)
+        print 31, N2LOterms(1:2), N2LOterms(1)+N2LOterms(2)
+        print 32, N2LOterms(3:4), N2LOterms(3)+N2LOterms(4)
+        print 33, N2LOterms(5:6), N2LOterms(5)+N2LOterms(6)
+        print 34, N2LOterms(7:8), N2LOterms(7)+N2LOterms(8)
+        print 35, N2LOterms(9:10), N2LOterms(9)+N2LOterms(10)
+        print 36, N2LOterms(11:12), N2LOterms(11)+N2LOterms(12)
+        if(.not. TRC) then
+            print 37, N2LOterms(13:14), N2LOterms(13)+N2LOterms(14)
+            print 38, N2LOterms(15:16), N2LOterms(15)+N2LOterms(16)
+            print 39, N2LOterms(17:18), N2LOterms(17)+N2LOterms(18)
+            print 40, N2LOterms(19:20), N2LOterms(19)+N2LOterms(20)
+            print 41, N2LOterms(21:22), N2LOterms(21)+N2LOterms(22)
+            print 42, N2LOterms(23:24), N2LOterms(23)+N2LOterms(24)
+        endif
         print *
     endif
     
@@ -885,10 +903,11 @@ contains
     &         SkyrmeTerms(17)  + SkyrmeTerms(18) + SkyrmeTerms(21)   &
     &       + SkyrmeTerms(22)  + SkyrmeTerms(27) + SkyrmeTerms(28) + &
     &         SkyrmeTerms(29)  + SkyrmeTerms(30) + SkyrmeTerms(31) + &
-    &         SkyrmeTerms(32)
+    &         SkyrmeTerms(32)  + sum(N2LOterms(13:24))
 
-    print 28, sum(SkyrmeTerms)-SkTodd+sum(N2LOTerms), SkTodd
-    print 29, sum(SkyrmeTerms)
+    print 28, sum(SkyrmeTerms)-SkTodd+sum(N2LOterms(1:12)), SkTodd
+    if(t1n2.ne.0.0) print 29, sum(N2LOterms)
+    print 30, sum(SkyrmeTerms) + sum(N2LOterms)
 
     print *
 

@@ -243,10 +243,10 @@ contains
     &' B16=',f13.6,'  B17=',f13.6,'  B18=',f13.6/, &
     &' B19=',f13.6,'  B20=',f13.6,'  B21=',f13.6/)
     1111    format(' N2LO coefficients (BFH representation)', / &
-    &' B5^(4) =',f13.6, ' B6^(4) =',f13.6, / &
-    &' B3^(4) =',f13.6, ' B4^(4) =',f13.6, / &
-    &' B14^(4)=',f13.6, ' B15^(4)=',f13.6, / &
-    &' BXX^(4)=',f13.6, ' BYY^(4)=',f13.6, / )
+    &' B5^(4) =',f13.6, ' B6^(4) =',f13.6, ' r ', f13.6,/ &
+    &' B3^(4) =',f13.6, ' B4^(4) =',f13.6, ' r ', f13.6,/ &
+    &' B14^(4)=',f13.6, ' B15^(4)=',f13.6, ' r ', f13.6,/ &
+    &' BXX^(4)=',f13.6, ' BYY^(4)=',f13.6, ' r ', f13.6/ )
     
     112  format ('EDF Coefficients (Isospin representation)')
     113  format (&
@@ -307,8 +307,9 @@ contains
     print 111, B1,B2,B3,B4,B5,B6,B7a,B8a,B9,B9q,B10,B11,B12a,B13a,B14,B15,B16, &
     &          B17,B18,B19,B20,B21
     if(t1n2 .ne. 0 .or. t2n2 .ne. 0) then
-        print 1111, BN2LO(1), BN2LO(2), BN2LO(3), BN2LO(4), BN2LO(7), BN2LO(8) &
-        &         , BN2LO(5), BN2LO(6)
+        print 1111, BN2LO(1), BN2LO(2),BN2LO(1)/BN2LO(2), BN2LO(3), BN2LO(4),  &
+        &           BN2LO(3)/BN2LO(4), BN2LO(7), BN2LO(8), BN2LO(7)/BN2LO(8) &
+        &         , BN2LO(5), BN2LO(6),BN2LO(5)/BN2LO(6)
     endif
     print 112
     print 113, Crho,Crhosat, Cs, Cssat, Ctau, Cdrho, CnablaJ, Ct, Cf, Cds,     &
@@ -450,18 +451,18 @@ contains
     ! N2LO terms
     if(t1n2 .ne. 0.0d0 .or. t2n2.ne.0.0d0) then
         CN2LO(1) = 9/128.0d0 * t1n2   - 0.0d0    * t1n2 *x1n2                &
-        &                             + t2n2 * (-5/128.0  - 1 / 32.0d0 * x2n2)
+        &                             + t2n2 * (-5/128.0  - 4 /128.0d0 * x2n2)
         CN2LO(2) =-3/128.0d0 * t1n2   - 3/64.0d0 * t1n2 *x1n2                &
         &                             + t2n2 * (-1/128.0  - 1 / 64.0d0 * x2n2)
         CN2LO(3) = 3/ 32.0d0 * t1n2   - 0.0d0    * t1n2 *x1n2                &
         &                             + t2n2 * ( 5/ 32.0  + 1 /  8.0d0 * x2n2)
         CN2LO(4) =-1/ 32.0d0 * t1n2   - 1/16.0d0 * t1n2 *x1n2                &
         &                             + t2n2 * ( 1/ 32.0  + 1 / 16.0d0 * x2n2)
-        CN2LO(5) =-3/128.0d0 * t1n2   - 3/64.0d0 * t1n2 *x1n2                &
+        CN2LO(5) =-3/128.0d0 * t1n2   + 3/64.0d0 * t1n2 *x1n2                &
         &                             + t2n2 * (-1/128.0  - 1 / 64.0d0 * x2n2)
         CN2LO(6) =-3/128.0d0 * t1n2   - 0.0d0    * t1n2 *x1n2                &
         &                             + t2n2 * (-1/128.0  + 0.0d0      * x2n2)
-        CN2LO(7) =-1/ 32.0d0 * t1n2   - 1/16.0d0 * t1n2 *x1n2                &
+        CN2LO(7) =-1/ 32.0d0 * t1n2   + 1/16.0d0 * t1n2 *x1n2                &
         &                             + t2n2 * ( 1/ 32.0  + 1 / 16.0d0 * x2n2)
         CN2LO(8) =-1/ 32.0d0 * t1n2   - 0.0d0    * t1n2 *x1n2                &
         &                             + t2n2 * ( 1/ 32.0  + 0.0d0      * x2n2)
@@ -470,8 +471,8 @@ contains
         BN2LO(2) =             2*CN2LO(2)
         BN2LO(3) =   CN2LO(3) -  CN2LO(4)
         BN2LO(4) =             2*CN2LO(4)
-        BN2LO(5) =   0.0d0 ! CN2LO(5) -  CN2LO(6)
-        BN2LO(6) =   0.0d0 !          2*CN2LO(6)
+        BN2LO(5) =   CN2LO(5) -  CN2LO(6)
+        BN2LO(6) =             2*CN2LO(6)
         BN2LO(7) =   CN2LO(7) -  CN2LO(8)
         BN2LO(8) =             2*CN2LO(8)  
     endif

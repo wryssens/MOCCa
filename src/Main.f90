@@ -755,8 +755,8 @@ subroutine N2LOanalysis()
  !----------------------------------------------
  ! Calculate the N2LO contribution to the energy
  ! 
- N2LOterms= N2LO(N2LODen)
-
+ Density = N2LODen
+ call compEnergy
  call printEnergy()
  
  call writeN2LOdensities(N2LODen)
@@ -786,9 +786,26 @@ subroutine writeN2LOdensities(Den)
             fname= adjustl(trim(fname)//'.dat')
             open(unit=12, file=fname)
             do i=1,nx
-                write(12, '(5f9.5)'), MeshX(i), &
-                &                     Den%RtauN2LO(i,1,1,mu,nu,1),Den%ItauN2LO(i,1,1,mu,nu,1),&
-                &                     Den%RtauN2LO(i,1,1,mu,nu,2),Den%ItauN2LO(i,1,1,mu,nu,2)    
+                write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+                &                     Den%RtauN2LO(i,i,i,mu,nu,1),Den%ItauN2LO(i,i,i,mu,nu,1),&
+                &                     Den%RtauN2LO(i,i,i,mu,nu,2),Den%ItauN2LO(i,i,i,mu,nu,2)    
+            enddo
+            close(12)
+        enddo
+    enddo
+    
+    do mu=1,3    
+        do nu=1,3
+            fname='Drho'
+            write(temp,'(i1)'), mu
+            fname= adjustl(trim(fname)//temp)
+            write(temp,'(i1)'), nu
+            fname= adjustl(trim(fname)//temp)
+            fname= adjustl(trim(fname)//'.dat')
+            open(unit=12, file=fname)
+            do i=1,nx
+                write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+                &                     Den%D2Rho(i,i,i,mu,nu,1), Den%D2Rho(i,i,i,mu,nu,2)   
             enddo
             close(12)
         enddo
@@ -807,12 +824,30 @@ subroutine writeN2LOdensities(Den)
             fname= adjustl(trim(fname)//'.dat')
             open(unit=12, file=fname)
             do i=1,nx
-                write(12, '(5f9.5)'), MeshX(i), &
-                &                     Den%ReKN2LO(i,1,1,mu,nu,ka,1),Den%ImKN2LO(i,1,1,mu,nu,ka,1),&
-                &                     Den%ReKN2LO(i,1,1,mu,nu,ka,2),Den%ImKN2LO(i,1,1,mu,nu,ka,2)    
+                write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+                &                     Den%ReKN2LO(i,i,i,mu,nu,ka,1),Den%ImKN2LO(i,i,i,mu,nu,ka,1),&
+                &                     Den%ReKN2LO(i,i,i,mu,nu,ka,2),Den%ImKN2LO(i,i,i,mu,nu,ka,2)    
             enddo
             close(12)
           enddo
+        enddo
+    enddo
+    
+    do mu=1,3    
+        do nu=1,3
+            fname='V'
+            write(temp,'(i1)'), mu
+            fname= adjustl(trim(fname)//temp)
+            write(temp,'(i1)'), nu
+            fname= adjustl(trim(fname)//temp)
+            fname= adjustl(trim(fname)//'.dat')
+            open(unit=12, file=fname)
+            do i=1,nx
+                write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+                &                     Den%VN2LO(i,i,i,mu,nu,1), Den%VN2LO(i,i,i,mu,nu,2)    
+            enddo
+            close(12)
+          
         enddo
     enddo
     
@@ -821,7 +856,8 @@ subroutine writeN2LOdensities(Den)
     fname= adjustl(trim(fname)//'.dat')
     open(unit=12, file=fname)
     do i=1,nx
-        write(12, '(3f9.5)'), MeshX(i), Den%QN2LO(i,1,1,1),Den%QN2LO(i,1,1,2) 
+        write(12, '(3f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+        &                     Den%QN2LO(i,i,i,1),Den%QN2LO(i,1,1,2) 
     enddo
     close(12)
     
@@ -832,9 +868,34 @@ subroutine writeN2LOdensities(Den)
         fname= adjustl(trim(fname)//'.dat')
         open(unit=12, file=fname)
         do i=1,nx
-            write(12, '(5f9.5)'), MeshX(i), Den%SN2LO(i,1,1,mu,1),Den%SN2LO(i,1,1,mu,2)
+            write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+            &                    Den%SN2LO(i,i,i,mu,1),Den%SN2LO(i,i,i,mu,2)
         enddo
     enddo
     close(12)
+    
+    fname='Rho'
+    fname= adjustl(trim(fname)//'.dat')
+    open(unit=12, file=fname)
+    do i=1,nx
+        write(12, '(3f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+        &                     Den%Rho(i,i,i,1),Den%Rho(i,1,1,2) 
+    enddo
+    close(12)
+    
+    
+    
+!    do mu=1,3
+!        fname='S'
+!        write(temp,'(i1)'), mu
+!        fname= adjustl(trim(fname)//temp)
+!        fname= adjustl(trim(fname)//'.dat')
+!        open(unit=12, file=fname)
+!        do i=1,nx
+!            write(12, '(5f9.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+!            &                    Den%SN2LO(i,i,i,mu,1),Den%S2NLO(i,i,i,mu,2)
+!        enddo
+!    enddo
+!    close(12)
     
 end subroutine writeN2LOdensities

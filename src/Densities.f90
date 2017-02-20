@@ -7,6 +7,7 @@ module Densities
 
   use CompilationInfo
   use Geninfo
+  use Derivatives
 
   implicit none
 
@@ -64,13 +65,15 @@ module Densities
     real(KIND=dp), allocatable ::  ReKN2LO(:,:,:,:,:,:,:)
     real(KIND=dp), allocatable ::  ImKN2LO(:,:,:,:,:,:,:)
     
+    real(KIND=dp), allocatable :: LapLapRho(:,:,:,:)
+    
     real(KIND=dp), allocatable ::  PiN2LO(:,:,:,:,:)
     real(KIND=dp), allocatable ::   VN2LO(:,:,:,:,:,:)
     real(KIND=dp), allocatable ::   QN2LO(:,:,:,:)
     real(KIND=dp), allocatable ::   SN2LO(:,:,:,:,:)
     real(KIND=dp), allocatable ::   D2Rho(:,:,:,:,:,:)
     real(KIND=dp), allocatable ::   D2S(:,:,:,:,:,:,:)
-    real(KIND=dp), allocatable ::DmuJmunu(:,:,:,:,:,:)
+    real(KIND=dp), allocatable ::  DJmunu(:,:,:,:,:,:,:)
     
   end type DensityVector
 
@@ -124,9 +127,9 @@ contains
     R%Rho    =0.0_dp ; R%LapRho=0.0_dp ; R%DerRho=0.0_dp
     R%Tau    =0.0_dp ; R%NablaJ =0.0_dp
 
-    !Time-even density with Jmunu!
-    if(B14.ne.0.0_dp .or. B15.ne.0.0_dp .or. B16.ne.0.0_dp .or. B17.ne.0.0_dp)&
-    & then
+    if((B14.ne.0.0_dp .or. B15.ne.0.0_dp .or. B16.ne.0.0_dp.or.B17.ne.0.0_dp)  & 
+    & .or. t1n2 .ne. 0.0_dp) then
+      !Time-even density with Jmunu!
       allocate(R%JMuNu(sizex,sizey,sizez,3,3,2))
       R%Jmunu = 0.0_dp
     endif
@@ -172,7 +175,7 @@ contains
         
         allocate(R%D2Rho   (sizex,sizey,sizez,3,3,2)) ; R%D2Rho     = 0.0_dp
         allocate(R%D2S   (sizex,sizey,sizez,3,3,3,2)) ; R%D2S       = 0.0_dp
-        allocate(R%DmuJmunu(sizex,sizey,sizez,3,3,2)) ; R%DmuJmunu  = 0.0_dp
+        allocate(R%DJmunu(sizex,sizey,sizez,3,3,3,2)) ; R%DJmunu  = 0.0_dp
         
         allocate(R%divvecj (sizex,sizey,sizez,2))     ; R%divvecj   = 0.0_dp
     endif
@@ -410,8 +413,8 @@ contains
       &                     Occupation * DensityBasis(i)%GetTau()
 
       !Decide wether we need Jmunu completely, or only NablaJ
-      if(B14.ne.0.0_dp .or. B15.ne.0.0_dp .or. B16.ne.0.0_dp .or.B17.ne.0.0_dp)&
-      & then
+      if((B14.ne.0.0_dp.or.B15.ne.0.0_dp.or.B16.ne.0.0_dp .or.B17.ne.0.0_dp)   &
+      &  .or. (t1n2 .ne. 0.0_dp)) then
         DenIn%Jmunu(:,:,:,:,:,it) = DenIn%Jmunu(:,:,:,:,:,it) +                &
         &                           Occupation * DensityBasis(i)%GetJmunu()
         !Temporary
@@ -486,12 +489,25 @@ contains
             DenIn%D2Rho(:,:,:,3,1,it) = &
             & DeriveZ(DenIn%DerRho(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
             
+!            print *, 'X'
+!            print *, CompSignExtension(1,-1,-1,1,1)
+!            print *, CompSignExtension(2,-1,-1,1,1)
+!            print *, CompSignExtension(3,-1,-1,1,1)
+!            
             DenIn%D2Rho(:,:,:,1,2,it) = &
             & DeriveX(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt,-TimeSimplexInt,1)
+
+            
             DenIn%D2Rho(:,:,:,2,2,it) = &
             & DeriveY(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt,-TimeSimplexInt,1)
             DenIn%D2Rho(:,:,:,3,2,it) = &
             & DeriveZ(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt,-TimeSimplexInt,1)
+            
+!            print *, 'Y'
+!            print *, CompSignExtension(1,-1,-1,1,2)
+!            print *, CompSignExtension(2,-1,-1,1,2)
+!            print *, CompSignExtension(3,-1,-1,1,2)
+!            
             
             DenIn%D2Rho(:,:,:,1,3,it) = &
             & DeriveX(DenIn%DerRho(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
@@ -499,31 +515,170 @@ contains
             & DeriveY(DenIn%DerRho(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
             DenIn%D2Rho(:,:,:,3,3,it) = &
             & DeriveZ(DenIn%DerRho(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
-        
+            
+!            do i=1,nx
+!                print *, DenIn%D2Rho(i,i,i,1,2,it), DenIn%D2Rho(i,i,i,2,1,it), &
+!                &        DenIn%D2Rho(i,i,i,2,1,it)-DenIn%D2Rho(i,i,i,1,2,it)
+!            enddo
+!            
+!            print *
+!            do i=1,nx
+!                print *, DenIn%D2Rho(i,i,i,1,3,it), DenIn%D2Rho(i,i,i,3,1,it),  &
+!                &        DenIn%D2Rho(i,i,i,1,3,it) - DenIn%D2Rho(i,i,i,3,1,it)
+!            enddo
+!            print *
+!            do i=1,nx
+!                print *, DenIn%D2Rho(i,i,i,2,3,it), DenIn%D2Rho(i,i,i,3,2,it),&
+!                &        DenIn%D2Rho(i,i,i,2,3,it) - DenIn%D2Rho(i,i,i,3,2,it)
+!            enddo
+!            print *
+!            
+!            do i=1,nx
+!                print *, DenIn%LapRho(i,i,i,it), DenIn%D2Rho(i,i,i,1,1,it) + &
+!                &                                DenIn%D2Rho(i,i,i,2,2,it) + &
+!                &                                DenIn%D2Rho(i,i,i,3,3,it) , &
+!                &        DenIn%LapRho(i,i,i,it)- DenIn%D2Rho(i,i,i,1,1,it) - &
+!                &                                DenIn%D2Rho(i,i,i,2,2,it) - &
+!                &                                DenIn%D2Rho(i,i,i,3,3,it)  
+!            enddo
+!            
+!            stop
+            
+!            print *, 'Z'
+!            print *, CompSignExtension(1,-1,1,1,1)
+!            print *, CompSignExtension(2,-1,1,1,1)
+!            print *, CompSignExtension(3,-1,1,1,1)
+!            stop
+            !-------------------------------------------------------------------
             ! Derivatives of nabla_mu J_munu
-            DenIn%DmuJmunu(:,:,:,1,1,it) =                                     &
-            & DeriveX(DenIn%JMuNu(:,:,:,1,1,it),-ParityInt,+SignatureInt,-TimeSimplexInt,1)
-            DenIn%DmuJmunu(:,:,:,1,2,it) =                                     &
-            & DeriveX(DenIn%JMuNu(:,:,:,1,2,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1)
-            DenIn%DmuJmunu(:,:,:,1,3,it) =                                     &
-            & DeriveX(DenIn%JMuNu(:,:,:,1,3,it),-ParityInt,-SignatureInt,-TimeSimplexInt,1)
+            !-------------------------------------------------------------------
+            ! Diagonal component D_ka J_mumu
+            !-------------------------------------------------------------------
+            DenIn%DJmunu(:,:,:,1,1,1,it) =                                     &
+            & DeriveX(DenIn%JMuNu(:,:,:,1,1,it),-ParityInt,+SignatureInt,TimeSimplexInt,2)
+            DenIn%DJmunu(:,:,:,2,1,1,it) =                                     &
+            & DeriveY(DenIn%JMuNu(:,:,:,1,1,it),-ParityInt,+SignatureInt,TimeSimplexInt,2)
+            DenIn%DJmunu(:,:,:,3,1,1,it) =                                     &
+            & DeriveZ(DenIn%JMuNu(:,:,:,1,1,it),-ParityInt,+SignatureInt,TimeSimplexInt,2)
             
-            DenIn%DmuJmunu(:,:,:,2,1,it) =                                     &
-            & DeriveY(DenIn%JMuNu(:,:,:,2,1,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1)
-            DenIn%DmuJmunu(:,:,:,2,2,it) =                                     &
-            & DeriveY(DenIn%JMuNu(:,:,:,2,2,it),-ParityInt,+SignatureInt,-TimeSimplexInt,1)
-            DenIn%DmuJmunu(:,:,:,2,3,it) =                                     &
+            DenIn%DJmunu(:,:,:,1,2,2,it) =                                     &
+            & DeriveX(DenIn%JMuNu(:,:,:,2,2,it),-ParityInt,+SignatureInt,TimeSimplexInt,2)
+            DenIn%DJmunu(:,:,:,2,2,2,it) =                                     &
+            & DeriveY(DenIn%JMuNu(:,:,:,2,2,it),-ParityInt,+SignatureInt,TimeSimplexInt,2)
+            DenIn%DJmunu(:,:,:,3,2,2,it) =                                     &
+            & DeriveZ(DenIn%JMuNu(:,:,:,2,2,it),-ParityInt,+SignatureInt,TimeSimplexInt,2)
+            
+            DenIn%DJmunu(:,:,:,1,3,3,it) =                                     &
+            & DeriveX(DenIn%JMuNu(:,:,:,3,3,it),-ParityInt,+SignatureInt,TimeSimplexInt,2)
+            DenIn%DJmunu(:,:,:,2,3,3,it) =                                     &
+            & DeriveY(DenIn%JMuNu(:,:,:,3,3,it),-ParityInt,+SignatureInt,TimeSimplexInt,2)
+            DenIn%DJmunu(:,:,:,3,3,3,it) =                                     &
+            & DeriveZ(DenIn%JMuNu(:,:,:,3,3,it),-ParityInt,+SignatureInt,TimeSimplexInt,2)
+            
+            !-------------------------------------------------------------------
+            ! Components of J_x^(1) => J_yz, J_zy
+            !-------------------------------------------------------------------
+            DenIn%DJmunu(:,:,:,1,2,3,it) =                                     &
+            & DeriveX(DenIn%JMuNu(:,:,:,2,3,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1)
+            DenIn%DJmunu(:,:,:,2,2,3,it) =                                     &
             & DeriveY(DenIn%JMuNu(:,:,:,2,3,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1)
+            DenIn%DJmunu(:,:,:,3,2,3,it) =                                     &
+            & DeriveZ(DenIn%JMuNu(:,:,:,2,3,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1)
             
-            DenIn%DmuJmunu(:,:,:,3,1,it) =                                     &
-            & DeriveZ(DenIn%JMuNu(:,:,:,3,1,it),-ParityInt,-SignatureInt,-TimeSimplexInt,1)
-            DenIn%DmuJmunu(:,:,:,3,2,it) =                                     &
+            DenIn%DJmunu(:,:,:,1,3,2,it) =                                     &
+            & DeriveX(DenIn%JMuNu(:,:,:,3,2,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1)
+            DenIn%DJmunu(:,:,:,2,3,2,it) =                                     &
+            & DeriveY(DenIn%JMuNu(:,:,:,3,2,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1)
+            DenIn%DJmunu(:,:,:,3,3,2,it) =                                     &
             & DeriveZ(DenIn%JMuNu(:,:,:,3,2,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1)
-            DenIn%DmuJmunu(:,:,:,3,3,it) =                                     &
-            & DeriveZ(DenIn%JMuNu(:,:,:,3,3,it),-ParityInt,+SignatureInt,-TimeSimplexInt,1)
+            !-------------------------------------------------------------------
+            ! Components of J_y^(1) => J_xz, J_zx
+            !-------------------------------------------------------------------
+            DenIn%DJmunu(:,:,:,1,3,1,it) =                                     &
+            & DeriveX(DenIn%JMuNu(:,:,:,3,1,it),-ParityInt,-SignatureInt, TimeSimplexInt,2)
+            DenIn%DJmunu(:,:,:,2,3,1,it) =                                     &
+            & DeriveY(DenIn%JMuNu(:,:,:,3,1,it),-ParityInt,-SignatureInt, TimeSimplexInt,2)
+            DenIn%DJmunu(:,:,:,3,3,1,it) =                                     &
+            & DeriveZ(DenIn%JMuNu(:,:,:,3,1,it),-ParityInt,-SignatureInt, TimeSimplexInt,2)
+            
+            DenIn%DJmunu(:,:,:,1,1,3,it) =                                     &
+            & DeriveX(DenIn%JMuNu(:,:,:,1,3,it),-ParityInt,-SignatureInt, TimeSimplexInt,2)
+            DenIn%DJmunu(:,:,:,2,1,3,it) =                                     &
+            & DeriveY(DenIn%JMuNu(:,:,:,1,3,it),-ParityInt,-SignatureInt, TimeSimplexInt,2)
+            DenIn%DJmunu(:,:,:,3,1,3,it) =                                     &
+            & DeriveZ(DenIn%JMuNu(:,:,:,1,3,it),-ParityInt,-SignatureInt, TimeSimplexInt,2)
+            !-------------------------------------------------------------------
+            ! Components of J_z^(1) => J_xy, J_yx
+            !-------------------------------------------------------------------            
+            DenIn%DJmunu(:,:,:,1,2,1,it) =                                     &
+            & DeriveX(DenIn%JMuNu(:,:,:,2,1,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1)
+            DenIn%DJmunu(:,:,:,2,2,1,it) =                                     &
+            & DeriveY(DenIn%JMuNu(:,:,:,2,1,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1)
+            DenIn%DJmunu(:,:,:,3,2,1,it) =                                     &
+            & DeriveZ(DenIn%JMuNu(:,:,:,2,1,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1)
+            
+            DenIn%DJmunu(:,:,:,1,1,2,it) =                                     &
+            & DeriveX(DenIn%JMuNu(:,:,:,1,2,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1)
+            DenIn%DJmunu(:,:,:,2,1,2,it) =                                     &
+            & DeriveY(DenIn%JMuNu(:,:,:,1,2,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1)
+            DenIn%DJmunu(:,:,:,3,1,2,it) =                                     &
+            & DeriveZ(DenIn%JMuNu(:,:,:,1,2,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1)
+            
+!            do i=1,nx
+!                print *, DenIn%DJmunu(i,i,i,1,2,1,it), DenIn%DJmunu(i,i,i,2,1,1,it), &
+!                &        DenIn%DJmunu(i,i,i,2,1,1,it)-DenIn%DJmunu(i,i,i,1,2,1,it)
+!            enddo
+!            
+!            print *
+!            do i=1,nx
+!                print *, DenIn%DJmunu(i,i,i,1,3,1,it), DenIn%DJmunu(i,i,i,3,1,1,it),  &
+!                &        DenIn%DJmunu(i,i,i,1,3,1,it) - DenIn%DJmunu(i,i,i,3,1,1,it)
+!            enddo
+!            print *
+!            do i=1,nx
+!                print *, DenIn%DJmunu(i,i,i,2,3,1,it), DenIn%DJmunu(i,i,i,3,2,1,it),&
+!                &        DenIn%DJmunu(i,i,i,2,3,1,it) - DenIn%DJmunu(i,i,i,3,2,1,it)
+!            enddo
+!            print *
+
+             do i=1,nx
+                print *, DenIn%DJmunu(i,i,i,1,1,1,1),  DenIn%DJmunu(i,i,i,2,2,1,1) &
+                &      , DenIn%DJmunu(i,i,i,3,3,1,1), &
+                &        DenIn%DJmunu(i,i,i,1,1,1,1) + DenIn%DJmunu(i,i,i,2,2,1,1) &
+                &      + DenIn%DJmunu(i,i,i,3,3,1,1)
+             enddo
+             print *
+             do i=1,nx   
+                print *, DenIn%DJmunu(i,i,i,1,1,2,1), DenIn%DJmunu(i,i,i,2,2,2,1) &
+                &      , DenIn%DJmunu(i,i,i,3,3,2,1), &
+                &        DenIn%DJmunu(i,i,i,1,1,2,1) + DenIn%DJmunu(i,i,i,2,2,2,1) &
+                &      + DenIn%DJmunu(i,i,i,3,3,2,1)
+            enddo
+            print *
+            do i=1,nx
+                print *, DenIn%DJmunu(i,i,i,1,1,3,1) , DenIn%DJmunu(i,i,i,2,2,3,1) &
+                &      , DenIn%DJmunu(i,i,i,3,3,3,1), & 
+                &        DenIn%DJmunu(i,i,i,1,1,3,1) + DenIn%DJmunu(i,i,i,2,2,3,1) &
+                &      + DenIn%DJmunu(i,i,i,3,3,3,1)
+                
+             enddo
+            stop
+!            
+!            do i=1,nx
+!                print *, DenIn%LapRho(i,i,i,it), DenIn%DJmunu(i,i,i,1,1,1,it) + &
+!                &                                DenIn%DJmunu(i,i,i,2,2,1,it) + &
+!                &                                DenIn%DJmunu(i,i,i,3,3,1,it) , &
+!                &        DenIn%LapRho(i,i,i,it)- DenIn%DJmunu(i,i,i,1,1,1,it) - &
+!                &                                DenIn%DJmunu(i,i,i,2,2,1,it) - &
+!                &                                DenIn%DJmunu(i,i,i,3,3,1,it)  
+!            enddo
+!            
+            stop
+            
+            
+                 
         enddo
     endif
-    
     !Computing NablaJ by derivatives in the case of tensor interactions
     if(B14.ne.0.0_dp.or.B15.ne.0.0_dp.or.B17.ne.0.0_dp.or.B16.ne.0.0_dp) then
       !Temporary

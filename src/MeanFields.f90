@@ -43,6 +43,10 @@ module MeanFields
   !-----------------------------------------------------------------------------
   !Mean Field Potentials (and some of their relevant derivatives)
   real(KIND=dp),allocatable :: BPot(:,:,:,:), NablaBPot(:,:,:,:,:)
+  real(KIND=dp),allocatable :: Bmunu(:,:,:,:,:,:), DN2LO(:,:,:,:)
+  real(KIND=dp),allocatable :: Xpot(:,:,:,:,:,:,:)
+  real(KIND=dp),allocatable :: LapDN2LO(:,:,:,:)
+  real(KIND=dp),allocatable :: DmuBmunu(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: UPot(:,:,:,:),APot(:,:,:,:,:)
   real(KIND=dp),allocatable :: SPot(:,:,:,:,:)
   real(KIND=dp),allocatable :: Cpot(:,:,:,:,:),WPot(:,:,:,:,:,:)
@@ -84,7 +88,6 @@ contains
       allocate(Cpot(nx,ny,nz,3,2),WPot(nx,ny,nz,3,3,2),DPot(nx,ny,nz,3,2))
       allocate(DerCPot(nx,ny,nz,3,3,2),DerDPot(nx,ny,nz,3,3,2))
       allocate(DivDpot(nx,ny,nz,2))
-
       BPot     =0.0_dp
       NablaBPot=0.0_dp
       UPot     =0.0_dp
@@ -96,16 +99,38 @@ contains
       DerCPot  =0.0_dp
       DerDPot  =0.0_dp
       DivDpot  =0.0_dp
+          
+      if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
+        allocate(Bmunu(nx,ny,nz,3,3,2)) ; allocate(DmuBmunu(nx,ny,nz,3,3,2))
+        allocate(DN2LO(nx,ny,nz,2)) ; allocate(LapDN2LO(nx,ny,nz,2))
+        allocate(Xpot(nx,ny,nz,3,3,3,2)) 
+    
+      endif
     endif
 
     !Done here for the ifort compiler
     if (BStack) then
-      ActionOfB=> ActionOfBOld
+      if(t1n2 .ne. 0.0_dp .or. t2n2 .ne. 0.0_dp) then
+        call stp('Cannot stack derivatives for the B-field with N2LO.')
+      else
+        ActionOfB=> ActionOfBOld
+      endif
     else
-      ActionOfB=> ActionOfBNew
+      if(t1n2 .ne. 0.0_dp .or. t2n2 .ne. 0.0_dp) then
+        ActionOfB=> ActionOfBN2LO
+      else
+        ActionOfB=> ActionOfBNew
+      endif
     endif
-
-    call CalcBPot()
+    
+    if(t1n2 .ne. 0.0_dp .or. t2n2 .ne. 0.0_dp) then
+        call CalcBPot()  
+        call CalcBMunu()
+        call CalcXpot()
+        call calcDN2LO()
+    else
+        call CalcBPot()   
+    endif
     !Calculate the Coulomb Potential
     call SolveCoulomb()
 
@@ -148,7 +173,6 @@ contains
 
     !Calculating the derivatives of the Dpotential
     do it=1,2
-
         DerDPot(:,:,:,1,1,it) = &
         & DeriveX(DPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
         DerDPot(:,:,:,2,1,it) = &
@@ -169,7 +193,6 @@ contains
         & DeriveY(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
         DerDPot(:,:,:,3,3,it) = &
         & DeriveZ(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
-
     enddo
     do it=1,2
         DivDPot(:,:,:,it) = DerDpot(:,:,:,1,1,it) + DerDpot(:,:,:,2,2,it)    &
@@ -184,6 +207,9 @@ contains
   !-----------------------------------------------------------------------------
   ! This subroutine computes the modified mass B_q(r).
   !       hbar^2/(2m_q^*) = hbar^2/(2m_q) + B_3 \rho + B_4 \rho_q
+  !
+  ! Note that this is only the diagonal component of the B_munu effective mass
+  ! when N2LO terms are present.
   !
   !-----------------------------------------------------------------------------
     integer :: it, at, i
@@ -205,6 +231,97 @@ contains
     enddo
     return
   end subroutine CalcBPot
+  
+  subroutine calcBmunu()
+  
+    use Derivatives
+    !---------------------------------------------------------------------------
+    ! Collect the diagonal elements of the B_munu tensor effective mass and add
+    ! the off-diagonal components.
+    !---------------------------------------------------------------------------
+    
+    integer :: mu,nu, it
+
+    Bmunu = 0.0_dp
+    !---------------------------
+    ! N1LO diagonal elements 
+    do mu=1,3
+        Bmunu(:,:,:,mu,mu,:) = Bpot
+    enddo
+    
+    !---------------------------
+    ! tau delta_munu terms
+    do it=1,2
+        do mu=1,3
+            Bmunu(:,:,:,mu,mu,it) = Bmunu(:,:,:,mu,mu,it)                      &
+            &                      +2*BN2LO(3)*sum(Density%tau,4)              &
+            &                      +2*BN2LO(4)*    Density%tau(:,:,:,it) 
+        enddo
+    enddo   
+        
+    !---------------------------
+    ! Off-diagonal terms
+    do it=1,2
+        do mu=1,3
+            do nu=1,3
+                Bmunu(:,:,:,mu,nu,it) = Bmunu(:,:,:,mu,nu,it)                  &
+                &      +4*BN2LO(3)*sum(Density%RTauN2LO(:,:,:,mu,nu,:),4)      &
+                &      -2*BN2LO(3)*sum(Density%D2Rho   (:,:,:,mu,nu,:),4)      &          
+                &      +4*BN2LO(4)*    Density%RTauN2LO(:,:,:,mu,nu,it)        &
+                &      -2*BN2LO(4)*    Density%D2Rho   (:,:,:,mu,nu,it)               
+                ! Imaginary parts should be here when breaking time-reversal!!
+            enddo
+        enddo
+    enddo
+    !---------------------------
+    ! Derivatives of B_munu
+    ! Note that B_munu shares all of the t_munu (at least its real part)
+    do it=1,2
+        DmuBmunu(:,:,:,1,1,it) =                                          &
+        &  DeriveX(Bmunu(:,:,:,1,1,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+        DmuBmunu(:,:,:,2,2,it) =                                          &
+        &  DeriveY(Bmunu(:,:,:,2,2,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+        DmuBmunu(:,:,:,3,3,it) =                                          &
+        &  DeriveZ(Bmunu(:,:,:,3,3,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+        ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+        DmuBmunu(:,:,:,1,2,it) =                                          &
+        &  DeriveX(Bmunu(:,:,:,1,2,it), ParityInt, SignatureInt, TimeSimplexInt,2)
+        DmuBmunu(:,:,:,2,1,it) =                                          &
+        &  DeriveY(Bmunu(:,:,:,2,1,it), ParityInt, SignatureInt, TimeSimplexInt,2)
+        ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+        DmuBmunu(:,:,:,3,1,it) =                                          &
+        &  DeriveZ(Bmunu(:,:,:,3,1,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
+        DmuBmunu(:,:,:,1,3,it) =                                          &
+        &  DeriveX(Bmunu(:,:,:,1,3,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
+        ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+        DmuBmunu(:,:,:,2,3,it) =                                          &
+        &  DeriveY(Bmunu(:,:,:,2,3,it), ParityInt,-SignatureInt, TimeSimplexInt,2 )
+        DmuBmunu(:,:,:,3,2,it) =                                          &
+        &  DeriveZ(Bmunu(:,:,:,3,2,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
+    enddo
+   
+  end subroutine calcBmunu
+
+  subroutine calcDN2LO()
+    !---------------------------------------------------------------------------
+    ! Calculates the N2LO potential D (not to be confused with the tensor
+    ! density D)
+    !---------------------------------------------------------------------------
+    
+    use Derivatives
+    use Force
+    
+    integer :: it
+    DN2LO = 0.0_dp
+    
+    do it=1,2
+        DN2LO(:,:,:,it)    = BN2LO(3)*sum(Density%Rho,4)                       &
+        &                  + BN2LO(4)*    Density%Rho(:,:,:,it) 
+    
+        LapDN2LO(:,:,:,it) =                                                   &
+        &  Laplacian(DN2LO(:,:,:,it), parityint, signatureint, timesimplexint,1)
+    enddo
+  end subroutine calcDN2LO
 
   subroutine CalcUPot()
   !-----------------------------------------------------------------------------
@@ -254,24 +371,37 @@ contains
 
     do it=1,2
             at = 3 - it
-            UPot(:,:,:,it) = UPot(:,:,:,it)                              &
-            & + (B3+B4)*Density%Tau(:,:,:,it) + B3*Density%Tau(:,:,:,at) &
-            & + 2.0_dp*((B5 + B6)*Density%LapRho(:,:,:,it)               &
-            &          + B5      *Density%LapRho(:,:,:,at))              &
-            & + (2+byt3a)*B7a*(RhoTot+eps)**(1+byt3a)                 &
-            & + B8a*(                                                 &
-            & byt3a*(RhoTot**(byt3a))/(RhoTot+eps)*                   &
-            & (Density%Rho(:,:,:,it)**2 + Density%Rho(:,:,:,at)**2)   &
-            & + 2.0_dp*(RhoTot)**(byt3a)*Density%Rho(:,:,:,it)        &
-            & )                                                       &
+            UPot(:,:,:,it) = UPot(:,:,:,it)                                    &
+            & + (B3+B4)*Density%Tau(:,:,:,it) + B3*Density%Tau(:,:,:,at)       &
+            & + 2.0_dp*((B5 + B6)*Density%LapRho(:,:,:,it)                     &
+            &          + B5      *Density%LapRho(:,:,:,at))                    &
+            & + (2+byt3a)*B7a*(RhoTot+eps)**(1+byt3a)                          &
+            & + B8a*(                                                          &
+            & byt3a*(RhoTot**(byt3a))/(RhoTot+eps)*                            &
+            & (Density%Rho(:,:,:,it)**2 + Density%Rho(:,:,:,at)**2)            &
+            & + 2.0_dp*(RhoTot)**(byt3a)*Density%Rho(:,:,:,it)                 &
+            & )                                                                &
             & + B9*NablaJTot + B9q*Density%NablaJ(:,:,:,it)
 
             if(.not.TRC) then
-              Upot(:,:,:,it) = Upot(:,:,:,it)                         &
-              & + byt3a*RhoTot**(byt3a)/(RhoTot + eps)*(                &
-              &   B12a*sum(VecSTot**2,4)                                &
-              & + B13a*(sum(Density%VecS(:,:,:,:,it)**2,4)              &
-              & +       sum(Density%VecS(:,:,:,:,at)**2,4)))
+                Upot(:,:,:,it) = Upot(:,:,:,it)                                &
+                & + byt3a*RhoTot**(byt3a)/(RhoTot + eps)*(                     &
+                &   B12a*sum(VecSTot**2,4)                                     &
+                & + B13a*(sum(Density%VecS(:,:,:,:,it)**2,4)                   &
+                & +       sum(Density%VecS(:,:,:,:,at)**2,4)))
+            endif
+            
+            if(t1n2 .ne. 0.0_dp .or. t2n2 .ne. 0.0_dp) then
+                !---------------------------------------------------------------
+                ! n2lo contribution
+                !---------------------------------------------------------------
+                upot(:,:,:,it) = upot(:,:,:,it)                                &
+                &              + 2*bn2lo(1)*sum(density%laplaprho,4)           &
+                &              + 2*bn2lo(2)*    density%laplaprho(:,:,:,it)    &
+                &              +   bn2lo(3)*sum(density%qn2lo,4)               &
+                &              - 2*bn2lo(3)*sum(density%d2rtau,4)              &
+                &              +   bn2lo(4)*    density%qn2lo(:,:,:,it)        &
+                &              - 2*bn2lo(4)*    density%d2rtau(:,:,:,it)      
             endif
     enddo
     ! Note that CoulExchange already carries a minus sign.
@@ -366,9 +496,43 @@ contains
         enddo
       enddo
     endif
+    
+    if(t1n2 .ne. 0.0_dp .or. t2n2 .ne. 0.0_dp) then
+        !-----------------------------------------------------------------------
+        ! N2LO contribution
+        do it=1,2
+            Wpot(:,:,:,:,:,it) = Wpot(:,:,:,:,:,it)                    &
+            &                  - 4 * BN2LO(5) * sum(Density%VN2LO,6)   & 
+            &                  - 4 * BN2LO(6) *     Density%VN2LO(:,:,:,:,:,it) 
+        enddo
+        !-----------------------------------------------------------------------
+        ! Note that the N2LO term proportional to B^(4)_14 and 15 is not 
+        ! implemented, since it should be zero for local interactions anyway.
+        !-----------------------------------------------------------------------
+    endif
 
     return
   end subroutine CalcWPot
+  
+  subroutine CalcXPot()
+    !-------------------------------------------------------------------------
+    ! Calculates the X_munu N2LO potential. 
+    ! X_munuka \sim Nabla_ka J_munu 
+    ! Note that is defined differently from the Meyer-Becker notes, as 
+    ! this does not include the derivative and they have a 
+    ! X_munu \sim J_munu
+    !-------------------------------------------------------------------------
+    integer :: it, mu,nu 
+
+    Xpot= 0.0_dp
+
+    do it=1,2
+        ! Note that the final derivative is first in the array
+        Xpot (:,:,:,:,:,:,it) = -4 * BN2LO(5) * sum(Density%DJmunu,7)          &
+        &                       -4 * BN2LO(6) * Density%DJmunu(:,:,:,:,:,:,it)
+    enddo
+      
+  end subroutine CalcXpot
 
   subroutine CalcSPot()
     !---------------------------------------------------------------------------
@@ -504,8 +668,6 @@ contains
   !-----------------------------------------------------------------------------
   ! Experimental way of calculating the action of B on a wavefunction.
   !-----------------------------------------------------------------------------
-  ! Don't use this, as the ActionofBOld is more consistent for the spwf energies
-  !-----------------------------------------------------------------------------
 
     type(Spwf), intent(in) :: Psi
     type(Spinor)           :: ActionOfB, Lap, Der(3), SumDer
@@ -528,6 +690,50 @@ contains
     ActionOfB = ActionOfB - SumDer
     return
   end function ActionOfBNew
+  
+  function ActionOfBN2LO(Psi,NoKinetic) result(ActionOfB)
+  !-----------------------------------------------------------------------------
+  ! Calculate the action of the effective mass potential B_munu, which is 
+  ! now a tensor in the case of N2LO terms being active.
+  !-----------------------------------------------------------------------------
+    type(Spwf), intent(in)        :: Psi
+    type(Spinor)                  :: ActionOfB, temp
+    integer                       :: it, mu,nu
+    logical, intent(in), optional :: NoKinetic
+
+    if(present(NoKinetic)) then
+      call stp('NoKinetic not implemented for N2LO yet!')
+    endif
+
+    it = (Psi%GetIsospin()+3)/2
+    ActionOfB = newspinor()
+    do mu=1,3
+        do nu=1,3  
+            ActionOfB = ActionOfB - Bmunu(:,:,:,mu,nu,it)   *Psi%SecondDer(mu,nu)
+            ActionOfB = ActionOfB - DmuBmunu(:,:,:,mu,nu,it)*Psi%Der      (mu)
+        enddo
+    enddo
+   
+    return
+  end function ActionOfBN2LO
+  
+  function ActionOfDN2LO(Psi) result(ActionOfD)
+  !-----------------------------------------------------------------------------
+  ! Calculate the action of the N2LO D potential 
+  !-----------------------------------------------------------------------------
+    type(Spwf), intent(in)        :: Psi
+    type(Spinor)                  :: ActionOfD
+    integer                       :: it, mu,nu
+
+    it = (Psi%GetIsospin()+3)/2
+    
+    ActionOfD = LapDN2LO(:,:,:,it) * Psi%Lap 
+    ActionOfD = ActionOfD + DN2LO(:,:,:,it)* &
+    &              LapSpinor(Psi%Lap, Psi%parity, Psi%Signature,Psi%TimeSimplex)
+    
+    if(all(ActionOfD%Grid .eq. 0.0)) call stp('D')
+    return
+  end function ActionOfDN2LO
 
   function ActionOfBOld(Psi, NoKinetic) result(ActionOfB)
   !-----------------------------------------------------------------------------
@@ -643,6 +849,27 @@ contains
     ActionOfW = (-1.0_dp)*ActionOfW
     return
   end function ActionOfW
+  
+  function ActionOfX(Psi) 
+    type(Spwf), intent(in) :: Psi
+    type(Spinor)           :: ActionOfX, temp
+  
+    integer :: it, mu,nu, ka
+  
+    ActionOfX = NewSpinor()
+    temp      = NewSpinor()
+    it = (Psi%GetIsospin() + 3)/2
+    
+    do ka=1,3
+        do mu=1,3
+            do nu=1,3
+                temp = Xpot(:,:,:,ka,mu,nu,it) * Pauli(Psi%SecondDer(ka,mu),nu)
+                ActionOfX = ActionOfX          + temp
+            enddo
+        enddo
+    enddo
+    ActionOfX = (-1.0_dp)*MultiplyI(ActionofX)
+  end function ActionOfX
 
   function ActionOfA(Psi)
     !---------------------------------------------------------------------------

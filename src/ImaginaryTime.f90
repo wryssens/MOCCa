@@ -27,15 +27,21 @@ contains
     use Cranking
 
     type(Spwf)  , intent(in) :: Psi
-    type(Spinor)             :: hPsi, U, B, S, A, W, C, D, Crank
+    type(Spinor)             :: hPsi, U, B, S, A, W, C, D, Crank, DN2LO, X
     integer                  :: i
 
     B = ActionOfB(Psi)
     U = ActionOfU(Psi)
     W = ActionOfW(Psi)
-
+   
     hPsi = NewSpinor()
     hPsi = B + U + W
+
+    if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
+        DN2LO = ActionOfDN2LO(Psi)
+        X     = ActionOfX(Psi)
+        hPsi = hpsi + DN2LO + X
+    endif
 
     if(.not.TRC) then
         S = ActionOfS(Psi)

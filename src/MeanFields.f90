@@ -159,6 +159,8 @@ contains
   ! when N2LO terms are present.
   !
   !-----------------------------------------------------------------------------
+    use Derivatives
+    
     integer :: it, at, i
     real(KIND=dp) :: Reducedmass(2)
 
@@ -168,13 +170,13 @@ contains
         at = 3 - it
         BPot(:,:,:,it) =B3*Density%Rho(:,:,:,at) + (B3+B4)*Density%Rho(:,:,:,it)
 
-        if(COM1body .eq. 2) then
-          !Include 1-body C.O.M. correction
-          Bpot(:,:,:,it) = Bpot(:,:,:,it) + hbm(it)/2.0_dp*Reducedmass(it)
-        else
-          !Don't include 1-body C.O.M. correction
-          Bpot(:,:,:,it) = Bpot(:,:,:,it) + hbm(it)/2.0_dp
-        endif
+!        if(COM1body .eq. 2) then
+!          !Include 1-body C.O.M. correction
+!          Bpot(:,:,:,it) = Bpot(:,:,:,it) + hbm(it)/2.0_dp*Reducedmass(it)
+!        else
+!          !Don't include 1-body C.O.M. correction
+!          Bpot(:,:,:,it) = Bpot(:,:,:,it) + hbm(it)/2.0_dp
+!        endif
     enddo
     
     do it=1,2
@@ -558,6 +560,8 @@ contains
   !   D = - 2  b16  s_mu - 2  b17 s_qmu
   ! It also calculates the divergence of D.
   !-----------------------------------------------------------------------------
+      use Derivatives
+      
       integer      :: it
 
       DPot   =0.0_dp
@@ -656,22 +660,32 @@ contains
     type(Spwf), intent(in) :: Psi
     type(Spinor)           :: ActionOfB, Lap, Der(3), SumDer
     integer                :: it, m
+    real(KIND=dp)          :: Reducedmass(2)
     logical, intent(in), optional :: NoKinetic
 
     if(present(NoKinetic)) then
       call stp('NoKinetic not implemented for this subroutine!')
     endif
 
+    if(COM1body .eq. 2) then
+        Reducedmass = (1.0_dp-nucleonmass/(neutrons*nucleonmass(1)+protons*nucleonmass(2)))
+    else
+        Reducedmass = 1.0_dp
+    endif
     it        = (Psi%GetIsospin()+3)/2
     Lap       = Psi%GetLap()
     ActionOfB = Lap
     ActionOfB = - BPot(:,:,:,it) * ActionOfB
+    
+    ActionOfB = ActionOfB - hbm(it)/2.0_dp*Reducedmass(it) * Lap
+    
     do m=1,3
-      Der(m) = Psi%GetDer(m)
-      Der(m) = NablaBPot(:,:,:,m,it) * Der(m)
+        Der(m)  = Psi%GetDer(m)
+        Der(m)  = NablaBPot(:,:,:,m,it) * Der(m)
     enddo
-    SumDer = Der(1) + Der(2) + Der(3)
+    SumDer    = Der(1) + Der(2) + Der(3)
     ActionOfB = ActionOfB - SumDer
+    
     return
   end function ActionOfBNew
   

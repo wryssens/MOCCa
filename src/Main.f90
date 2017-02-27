@@ -86,7 +86,7 @@ subroutine Evolve(MaxIterations, iprint)
   use GenInfo
   use WaveFunctions
   use Derivatives,only  : MaxFDOrder
-  use MeanFields, only  : ConstructPotentials,DerivePotentials
+  use MeanFields, only  : ConstructPotentials
   use ImaginaryTime
   use SpwfStorage
   use Densities, only   : UpdateDensities, DampingParam, Density, Recalc

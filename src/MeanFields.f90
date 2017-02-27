@@ -672,11 +672,16 @@ contains
     else
         Reducedmass = 1.0_dp
     endif
+    
     it        = (Psi%GetIsospin()+3)/2
     Lap       = Psi%GetLap()
     ActionOfB = Lap
     ActionOfB = - BPot(:,:,:,it) * ActionOfB
     
+    !---------------------------------------------------------------------------
+    ! Note that we explicitly include the action of the constant here, so that
+    ! it does not end up in the derivative of B, nablapot. Lagrangian 
+    ! derivatives cannot handle that, as the constant is not in the basis.
     ActionOfB = ActionOfB - hbm(it)/2.0_dp*Reducedmass(it) * Lap
     
     do m=1,3
@@ -697,14 +702,22 @@ contains
     type(Spwf), intent(in)        :: Psi
     type(Spinor)                  :: ActionOfB, temp
     integer                       :: it, mu,nu
+    real(KIND=dp)          :: Reducedmass(2)
     logical, intent(in), optional :: NoKinetic
 
     if(present(NoKinetic)) then
-      call stp('NoKinetic not implemented for N2LO yet!')
+      call stp('NoKinetic not implemented for this subroutine!')
+    endif
+
+    if(COM1body .eq. 2) then
+        Reducedmass = (1.0_dp-nucleonmass/(neutrons*nucleonmass(1)+protons*nucleonmass(2)))
+    else
+        Reducedmass = 1.0_dp
     endif
 
     it = (Psi%GetIsospin()+3)/2
-    ActionOfB = newspinor()
+    ActionOfB = - hbm(it)/2.0_dp*Reducedmass(it) * Psi%Lap
+    
     do mu=1,3
         do nu=1,3  
             ActionOfB = ActionOfB - Bmunu(:,:,:,mu,nu,it)   *Psi%SecondDer(mu,nu)

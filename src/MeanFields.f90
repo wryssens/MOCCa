@@ -146,60 +146,7 @@ contains
     endif
   end subroutine ConstructPotentials
 
-  subroutine DerivePotentials
-  !-----------------------------------------------------------------------------
-  ! Calculates the derivatives of several potentials we will need.
-  !
-  ! Gradient of B => NablaBPot
-  ! All derivatives of C => DerCPot
-  ! Divergence of D => DivDPot
-  !-----------------------------------------------------------------------------
-  ! Note: separate routine in case any one wants to implement mixing of
-  ! potentials.
-  !-----------------------------------------------------------------------------
-    use Derivatives
 
-    integer :: it
-
-    do it=1,2
-      !Gradient of B
-      NablaBPot(:,:,:,1,it) = &
-      & DeriveX(BPot(:,:,:,it), ParityInt,SignatureInt,TimeSimplexInt, 1)
-      NablaBPot(:,:,:,2,it) = &
-      & DeriveY(BPot(:,:,:,it), ParityInt,SignatureInt,TimeSimplexInt, 1)
-      NablaBPot(:,:,:,3,it) = &
-      & DeriveZ(BPot(:,:,:,it), ParityInt,SignatureInt,TimeSimplexInt, 1)
-    enddo
-
-    !Calculating the derivatives of the Dpotential
-    do it=1,2
-        DerDPot(:,:,:,1,1,it) = &
-        & DeriveX(DPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
-        DerDPot(:,:,:,2,1,it) = &
-        & DeriveY(DPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
-        DerDPot(:,:,:,3,1,it) = &
-        & DeriveZ(DPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
-
-        DerDPot(:,:,:,1,2,it) = &
-        & DeriveX(DPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
-        DerDPot(:,:,:,2,2,it) = &
-        & DeriveY(DPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
-        DerDPot(:,:,:,3,2,it) = &
-        & DeriveZ(DPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
-
-        DerDPot(:,:,:,1,3,it) = &
-        & DeriveX(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
-        DerDPot(:,:,:,2,3,it) = &
-        & DeriveY(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
-        DerDPot(:,:,:,3,3,it) = &
-        & DeriveZ(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
-    enddo
-    do it=1,2
-        DivDPot(:,:,:,it) = DerDpot(:,:,:,1,1,it) + DerDpot(:,:,:,2,2,it)    &
-        &                 + DerDpot(:,:,:,3,3,it)
-    enddo
-
-  end subroutine DerivePotentials
   !=============================================================================
   ! Subroutines for calculating all the different potentials.
   !=============================================================================
@@ -228,6 +175,16 @@ contains
           !Don't include 1-body C.O.M. correction
           Bpot(:,:,:,it) = Bpot(:,:,:,it) + hbm(it)/2.0_dp
         endif
+    enddo
+    
+    do it=1,2
+      !Gradient of B
+      NablaBPot(:,:,:,1,it) = &
+      & DeriveX(BPot(:,:,:,it), ParityInt,SignatureInt,TimeSimplexInt, 1)
+      NablaBPot(:,:,:,2,it) = &
+      & DeriveY(BPot(:,:,:,it), ParityInt,SignatureInt,TimeSimplexInt, 1)
+      NablaBPot(:,:,:,3,it) = &
+      & DeriveZ(BPot(:,:,:,it), ParityInt,SignatureInt,TimeSimplexInt, 1)
     enddo
     return
   end subroutine CalcBPot
@@ -614,7 +571,34 @@ contains
           &                 -2 * B17 *     Density%VecS(:,:,:,:,it)
       enddo
 
-      if(any(Dpot.eq.Dpot+1)) call stp('WTF')
+      !Calculating the derivatives of the Dpotential
+        do it=1,2
+            DerDPot(:,:,:,1,1,it) = &
+            & DeriveX(DPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
+            DerDPot(:,:,:,2,1,it) = &
+            & DeriveY(DPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
+            DerDPot(:,:,:,3,1,it) = &
+            & DeriveZ(DPot(:,:,:,1,it), ParityInt,-SignatureInt,TimeSimplexInt, 1)
+
+            DerDPot(:,:,:,1,2,it) = &
+            & DeriveX(DPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
+            DerDPot(:,:,:,2,2,it) = &
+            & DeriveY(DPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
+            DerDPot(:,:,:,3,2,it) = &
+            & DeriveZ(DPot(:,:,:,2,it), ParityInt,-SignatureInt,TimeSimplexInt, 2)
+
+            DerDPot(:,:,:,1,3,it) = &
+            & DeriveX(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
+            DerDPot(:,:,:,2,3,it) = &
+            & DeriveY(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
+            DerDPot(:,:,:,3,3,it) = &
+            & DeriveZ(DPot(:,:,:,3,it), ParityInt, SignatureInt,TimeSimplexInt, 1)
+        enddo
+        do it=1,2
+            DivDPot(:,:,:,it) = DerDpot(:,:,:,1,1,it) + DerDpot(:,:,:,2,2,it)    &
+            &                 + DerDpot(:,:,:,3,3,it)
+        enddo
+
 
       return
   end subroutine CalcDPot
@@ -678,9 +662,9 @@ contains
       call stp('NoKinetic not implemented for this subroutine!')
     endif
 
-    it = (Psi%GetIsospin()+3)/2
+    it        = (Psi%GetIsospin()+3)/2
     Lap       = Psi%GetLap()
-    ActionOfB =   Lap
+    ActionOfB = Lap
     ActionOfB = - BPot(:,:,:,it) * ActionOfB
     do m=1,3
       Der(m) = Psi%GetDer(m)

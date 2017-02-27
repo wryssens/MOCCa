@@ -207,9 +207,6 @@ subroutine Evolve(MaxIterations, iprint)
   !Construct the mean-field potentials
   call ConstructPotentials
 
-  !Derive the necessary potentials
-  call DerivePotentials
-
   if(Pairingtype.eq.2) then
     do i=1,nwt
       CanEnergy = InproductSpinorReal(CanBasis(i)%GetValue(),hPsi(Canbasis(i)))
@@ -318,9 +315,6 @@ subroutine Evolve(MaxIterations, iprint)
 
     !Construct the mean-field potentials
     call ConstructPotentials
-
-    !Derive the necessary potentials
-    call DerivePotentials
 
     !Calculating the Energy
     call CompEnergy

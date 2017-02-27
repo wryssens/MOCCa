@@ -203,12 +203,17 @@ contains
     if(allocated(Sum%RtauN2LO)) then
         Sum%RtauN2LO   = Den1%RTauN2LO     + Den2%RTauN2LO
         Sum%ItauN2LO   = Den1%ITauN2LO     + Den2%ITauN2LO
+        Sum%D2RTau     = Den1%D2RTau       + Den2%D2RTau
+        Sum%D2Rho      = Den1%D2Rho        + Den2%D2Rho
+        Sum%LapLapRho  = Den1%LapLapRho    + Den2%LapLapRho
+        Sum%DJmunu     = Den1%DJmunu       + Den2%DJmunu
         Sum%ReKN2LO    = Den1%ReKN2LO      + Den2%ReKN2LO
         Sum%ImKN2LO    = Den1%ImKN2LO      + Den2%ImKN2LO
         Sum%PiN2LO     = Den1%PiN2LO       + Den2%PiN2LO
         Sum%VN2LO      = Den1%VN2LO        + Den2%VN2LO
         Sum%QN2LO      = Den1%QN2LO        + Den2%QN2LO
         Sum%SN2LO      = Den1%SN2LO        + Den2%SN2LO
+        Sum%D2S        = Den1%D2S          + Den2%D2S
     endif
     
     if(.not.TRC) then
@@ -255,12 +260,17 @@ contains
     if(allocated(Prod%RtauN2LO)) then
         Prod%RtauN2LO   = A*Den%RTauN2LO
         Prod%ItauN2LO   = A*Den%ITauN2LO
+        Prod%D2RTau     = A*Den%D2RTau
+        Prod%LapLapRho  = A*Den%LapLapRho
+        Prod%D2Rho      = A*Den%D2Rho
         Prod%ReKN2LO    = A*Den%ReKN2LO 
         Prod%ImKN2LO    = A*Den%ImKN2LO 
         Prod%PiN2LO     = A*Den%PiN2LO  
         Prod%VN2LO      = A*Den%VN2LO   
         Prod%QN2LO      = A*Den%QN2LO   
-        Prod%SN2LO      = A*Den%SN2LO   
+        Prod%SN2LO      = A*Den%SN2LO
+        Prod%D2S        = A*Den%D2S 
+        Prod%DJmunu     = A*Den%DJmunu 
     endif
 
     if(allocated(Prod%Jmunu)) then

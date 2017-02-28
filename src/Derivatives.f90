@@ -224,11 +224,19 @@ contains
       !Allocating procedure pointers
       if(FDScheme.eq.-1) then
         !Use Lagrangian Derivatives
-        DeriveX   => DerLagX
-        DeriveY   => DerlagY
-        DeriveZ   => DerlagZ
-        Laplacian => Laplacian_Lag
-       else
+        if((OptDer) .and. (PC) .and. SC .and. TSC) then
+            DeriveX   => Opt_LAGX_EV8
+            DeriveY   => Opt_LAGY_EV8
+            DeriveZ   => Opt_LAGZ_EV8
+            Laplacian => Lapla_LAG_EV8 !Laplacian_Lag
+        else
+            DeriveX   => DerLagX
+            DeriveY   => DerlagY
+            DeriveZ   => DerlagZ
+            Laplacian => Laplacian_Lag
+        endif
+        
+      else
         !Check for optimized derivatives
         if(OptDer) then
           if(SC .and. PC .and. TSC) then
@@ -289,7 +297,8 @@ contains
                 TrueNy = ny*2**TimeSimplexInt
                 TrueNz = nz*2**ParityInt
                 call Inilag(TrueNx,TrueNy,TrueNz)
-
+                call reducelag()
+            
                 deallocate(FDCoef, FDLap)
         case default
                 call stp('This Finite Difference scheme is not supported.', &
@@ -926,7 +935,7 @@ contains
     allocate (LagLapY(YLineSize))
     allocate (LagLapZ(ZLineSize))
     allocate (LagLapDiag(3))
-
+    
     !X Type
     N=XLineSize
     Factor=pi/N
@@ -960,7 +969,113 @@ contains
         LagCoefsZ(k)=dxFactor*(-1)**k/Sine
         LagLapZ(k)=(-1)**(k+1)*TwoR*(dxFactor**2)*Cosine/(Sine**2)
     enddo
+    
   end subroutine IniLag
+  
+  subroutine reduceLag
+    !---------------------------------------------------------------------------
+    ! Calculate the (easier-to-apply) matrices to for Lagrange derivatives in 
+    ! particular combinations of symmetries.
+    !
+    ! Currently only works for the specific case of EV8/CR8 spatial symmetries
+    !---------------------------------------------------------------------------
+    integer :: i,j
+    real(KIND=dp) :: SignDistance
+    
+    if(.not.allocated(LagXmat)) then
+        allocate(LagXMat(nx,nx,2), LagYMat(ny,ny,2), LagZMat(nz,nz,2))
+        allocate(LagXXMat(nx,nx,2), LagYYMat(nx,nx,2), LagZZMat(nx,nx,2))
+    endif
+    if(.not.allocated(LagLapX)) call stp('wtf')
+    
+    LagXMat  = 0.0
+    LagXXMat = 0.0
+    
+    do i=1,nx
+        do j=1,i-1
+            LagXMat(i,j,2)  =  LagCoefsX(i-j) + LagCoefsX(i+j-1)
+            LagXMat(i,j,1)  =  LagCoefsX(i-j) - LagCoefsX(i+j-1)
+            
+            LagXXMat(i,j,2) =   LagLapX(i-j)  + LagLapX(i+j-1)
+            LagXXMat(i,j,1) =   LagLapX(i-j)  - LagLapX(i+j-1)
+        enddo
+        
+        do j=i+1,nx
+            LagXMat(i,j,2)  = - LagCoefsX(j-i) + LagCoefsX(i+j-1)
+            LagXMat(i,j,1)  = - LagCoefsX(j-i) - LagCoefsX(i+j-1)
+            
+            LagXXMat(i,j,2) =   LagLapX(j-i)  + LagLapX(i+j-1)
+            LagXXMat(i,j,1) =   LagLapX(j-i)  - LagLapX(i+j-1)
+        enddo
+
+        LagXXMat(i,i,1) = LagLapDiag(1) - LagLapX  (2*i-1)
+        LagXXMat(i,i,2) = LagLapDiag(1) + LagLapX  (2*i-1)
+        
+        LagXMat(i,i,1)  =               - LagCoefsX(2*i-1)
+        LagXMat(i,i,2)  =               + LagCoefsX(2*i-1)
+    enddo
+
+    LagYMat  = 0.0
+    LagYYMat = 0.0
+    
+    do i=1,ny
+        do j=1,i-1
+            LagYMat(i,j,2)  =   LagCoefsY(i-j) + LagCoefsY(i+j-1)
+            LagYMat(i,j,1)  =   LagCoefsY(i-j) - LagCoefsY(i+j-1)
+            
+            LagYYMat(i,j,2) =   LagLapY(i-j)   + LagLapY(i+j-1)
+            LagYYMat(i,j,1) =   LagLapY(i-j)   - LagLapY(i+j-1)
+        enddo
+        
+        LagYYMat(i,i,1) = LagLapDiag(2) - LagLapY  (2*i-1)
+        LagYYMat(i,i,2) = LagLapDiag(2) + LagLapY  (2*i-1)
+        
+        LagYMat(i,i,1)  =               - LagCoefsY(2*i-1)
+        LagYMat(i,i,2)  =               + LagCoefsY(2*i-1)
+        
+        do j=i+1,ny
+            LagYMat(i,j,2)  = - LagCoefsY(j-i) + LagCoefsY(i+j-1)
+            LagYMat(i,j,1)  = - LagCoefsY(j-i) - LagCoefsY(i+j-1)
+            
+            LagYYMat(i,j,2) =   LagLapY(j-i)   + LagLapY(i+j-1)
+            LagYYMat(i,j,1) =   LagLapY(j-i)   - LagLapY(i+j-1)
+        enddo
+    enddo
+ 
+    LagZMat  = 0.0
+    LagZZMat = 0.0
+    
+    do i=1,nz
+        do j=1,i-1
+            LagZMat(i,j,2)  =   LagCoefsZ(i-j) + LagCoefsZ(i+j-1)
+            LagZMat(i,j,1)  =   LagCoefsZ(i-j) - LagCoefsZ(i+j-1)
+            
+            LagZZMat(i,j,2) =   LagLapZ(i-j)   + LagLapZ(i+j-1)
+            LagZZMat(i,j,1) =   LagLapZ(i-j)   - LagLapZ(i+j-1)
+        enddo
+        
+        LagZZMat(i,i,1) = LagLapDiag(3) - LagLapZ  (2*i-1)
+        LagZZMat(i,i,2) = LagLapDiag(3) + LagLapZ  (2*i-1)
+        
+        LagZMat(i,i,1)  =               - LagCoefsZ(2*i-1)
+        LagZMat(i,i,2)  =               + LagCoefsZ(2*i-1)
+        
+        do j=i+1,nz
+            LagZMat(i,j,2)  = - LagCoefsZ(j-i) + LagCoefsZ(i+j-1)
+            LagZMat(i,j,1)  = - LagCoefsZ(j-i) - LagCoefsZ(i+j-1)
+            
+            LagZZMat(i,j,2) =   LagLapZ(j-i)   + LagLapZ(i+j-1)
+            LagZZMat(i,j,1) =   LagLapZ(j-i)   - LagLapZ(i+j-1)
+        enddo
+    enddo
+!    print *
+!    do i=1,1
+!        do j=1,nz
+!            print *, LagZMat(i,j,1),  LagZMat(i,j,2)
+!        enddo
+!    enddo
+!    stop    
+  end subroutine reduceLag
 
   function DerlagX(Grid, Parity, Signature, TimeSimplex,Component)result(Der)
     !---------------------------------------------------------------------------
@@ -1084,13 +1199,20 @@ contains
             ! on the coefs array when breaking symmetries.
             DerLine(i)=DerLine(i)+ SignExtension*Coefs(i+j-1)*LineExtension(j)
           endif
+          !if(signextension.eq.-1) write (*,'(f7.3)', ADVANCE='NO'), &
+          !&  signdistance*coefs((abs(i-j))) + SignExtension*Coefs(i+j-1)
         else
           if(LineExtension(j).ne.0.0_dp ) then
             DerLine(i)=DerLine(i)+ SignExtension*Coefs(i+j-1)*LineExtension(j)
           endif
+          !if(signextension.eq.-1) write (*,'(f7.3)', ADVANCE='NO'),  SignExtension*Coefs(i+j-1)
         endif
+        
       enddo
+      !print *
     enddo
+    !if(signextension.eq.-1)stop
+
     return
   end function DerLag_1D
 
@@ -1175,13 +1297,16 @@ contains
           if(LineExtension(j).ne.0.0_dp ) then
             DerLine(i)=DerLine(i)+ p*Coefficients(i+j-1)*LineExtension(j)
           endif
+     !     print *, i,j, p, Coefficients(abs(i-j)) + p*Coefficients(i+j-1)
         else
           DerLine(i)=DerLine(i)+ Diag*Line(j)
           if(LineExtension(j).ne.0.0_dp ) then
             DerLine(i)=DerLine(i) + p*Coefficients(i+j-1)*LineExtension(j)
           endif
+      !    print *, i,j, p, Diag + p*Coefficients(i+j-1)
         endif
       enddo
+      !stop
     enddo
 
   end function SecondDerLag

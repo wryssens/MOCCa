@@ -86,7 +86,7 @@ subroutine Evolve(MaxIterations, iprint)
   use GenInfo
   use WaveFunctions
   use Derivatives,only  : MaxFDOrder
-  use MeanFields, only  : ConstructPotentials,DerivePotentials
+  use MeanFields, only  : ConstructPotentials
   use ImaginaryTime
   use SpwfStorage
   use Densities, only   : UpdateDensities, DampingParam, Density, Recalc
@@ -166,9 +166,17 @@ subroutine Evolve(MaxIterations, iprint)
     endif
   endif
 
-  !Computing the initial densities
-  call DeriveAll()
+  if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp)   then
     
+    if(MAXFDORDER .ne. -1 .or. MAXFDLAPORDER .NE. -1) then
+        call stp('It is irresponsible to calculate N2LO without lag derivatives.')
+    endif
+  
+    call N2LODerive()
+  else
+    call DeriveAll()  
+  endif
+  
   !Update the Angular momentum variables
   call UpdateAm(.true.)
   !Make sure that there is no improper readjusting of cranking constraints
@@ -198,9 +206,6 @@ subroutine Evolve(MaxIterations, iprint)
 
   !Construct the mean-field potentials
   call ConstructPotentials
-
-  !Derive the necessary potentials
-  call DerivePotentials
 
   if(Pairingtype.eq.2) then
     do i=1,nwt
@@ -247,7 +252,12 @@ subroutine Evolve(MaxIterations, iprint)
     endif
     if(RutzCrank) then
         !Deriving all Spwf
-        call DeriveAll()
+        
+        if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
+            call N2LODerive()
+        else
+            call DeriveAll()
+        endif
         call updateAm(.true.)
         call ReadjustCranking(.true.)
     endif
@@ -262,8 +272,11 @@ subroutine Evolve(MaxIterations, iprint)
 
     !---------------------------------------------------------------------------
     !Deriving all Spwf
-    call DeriveAll()
-
+    if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
+      call N2LODerive()
+    else
+      call DeriveAll()
+    endif
     !Calculate the expectation values of the symmetry operators and the spwf
     !energies of the canonical basis
     do i=1,nwt
@@ -302,9 +315,6 @@ subroutine Evolve(MaxIterations, iprint)
 
     !Construct the mean-field potentials
     call ConstructPotentials
-
-    !Derive the necessary potentials
-    call DerivePotentials
 
     !Calculating the Energy
     call CompEnergy
@@ -678,13 +688,16 @@ subroutine N2LOanalysis()
   &         ' Tau = Tr(Tau_munu)', /)
   
   4 format ('No error for test 2.', / &
-  &         ' Tmu = Tr(Tau_nunumu)', /)
+  &         ' Tmu = Tr(T_nunumu)', /)
+  
+  5 format ('No error for test 3.', / &
+  &         ' Fmu = 0.5*Sum_nu T_mununu + T_numunu )', /)
 
   implicit none
 
-  real(KIND=dp) :: TestTau(nx,ny,nz,2), TestT(nx,ny,nz,3,2)
+  real(KIND=dp) :: TestTau(nx,ny,nz,2), TestT(nx,ny,nz,3,2), TestF(nx,ny,nz,3,2)
 
-  integer               :: i,j,k,it,mu,nu
+  integer               :: i,j,k,it,mu,nu,ka
   type(DensityVector)   :: N2LODen
   logical               :: error
 
@@ -695,7 +708,7 @@ subroutine N2LOanalysis()
   call N2LODerive()
   
   ! Make all of the densities
-  N2LODen = NewDensityVector(nx,ny,nz,.true.)
+  N2LODen = NewDensityVector(nx,ny,nz)
   ! Compute all of the densities
   call ComputeDensity(N2LODen, .false.)
   
@@ -713,17 +726,21 @@ subroutine N2LOanalysis()
         do j=1,ny
             do i=1,nx
                 if(abs(TestTau(i,j,k,it) - N2LODen%tau(i,j,k,it)) .gt. 1d-8) then
-                    print *, i,j,k,it, TestTau(i,j,k,it), N2LODen%tau(i,j,k,it)
+                    print *,TestTau(i,j,k,it), N2LODen%tau(i,j,k,it)
                     Error = .true.
                 endif
             enddo
         enddo
     enddo
  enddo
- if(.not. error) print 3
+ if(.not. error) then
+    print 3
+ else
+    print *, 'Test 1 failed!'
+ endif
  
  !--------------------------------
- !
+ ! Second test
  !--------------------------------
  if(.not. TRC) then
       error = .false.
@@ -737,11 +754,12 @@ subroutine N2LOanalysis()
       error = .false.
       do it=1,2
        do mu=1,3
-        do k=1,nz
-            do j=1,ny
+        do k=1,1
+            do j=1,1
                 do i=1,nx
                     if(abs(TestT(i,j,k,mu,it) - N2LODen%vecT(i,j,k,mu,it)) .gt. 1d-8) then
-                        print *, i,j,k,mu,it, TestT(i,j,k,mu, it), N2LODen%vecT(i,j,k,mu,it)
+                        print *, TestT(i,j,k,mu, it), N2LODen%vecT(i,j,k,mu,it), &
+                        &        TestT(i,j,k,mu, it)- N2LODen%vecT(i,j,k,mu,it)
                         Error = .true.
                     endif
                 enddo
@@ -749,9 +767,80 @@ subroutine N2LOanalysis()
         enddo
        enddo
      enddo
-     if(.not. error) print 4
+     if(.not. error) then
+        print 4
+     else
+        print *, 'Test 2 failed!'
+     endif
  endif
- 
+ !-------------------------------------------------
+ ! Third test: F_mu = 1/2 sum_nu T_mununu + Tnumunu
+ !
+ !-------------------------------------------------
+ if(.not. TRC) then
+      error = .false.
+      TestF = 0.0_dp
+      do mu=1,3
+        do nu=1,3
+            TestF(:,:,:,mu,:) = TestF(:,:,:,mu,:) &
+            &                    + N2LODen%ReKN2LO(:,:,:,mu,nu,nu,:) &
+            &                    + N2LODen%ReKN2LO(:,:,:,nu,mu,nu,:)
+        enddo
+      enddo
+      TestF = 0.5 * TesTF
+      error = .false.
+      do it=1,2
+       do mu=1,3
+        do k=1,1
+            do j=1,1
+                do i=1,nx
+                    if(abs(TestF(i,j,k,mu,it) - N2LODen%vecF(i,j,k,mu,it)) .gt. 1d-14) then
+                        print *, TestF(i,j,k,mu, it), N2LODen%vecF(i,j,k,mu,it), &
+                        &        TestF(i,j,k,mu, it)- N2LODen%vecF(i,j,k,mu,it)
+                        Error = .true.
+                    endif
+                enddo
+            enddo
+        enddo
+       enddo
+     enddo
+     if(.not. error) then
+        print 5
+     else
+        print *, 'Test 3 failed!'
+     endif
+ endif
+ !-----------------------------------------------
+ ! Fourth test:
+ !   T_munuka - Tnumuka = -i [ D_mu J_nuka - D_nu J_muka]
+ !-----------------------------------------------
+!  print *, '-----------------------'
+!  print *, 'Ultimate test'
+!  print *, '-----------------------'
+!  error = .false.
+!  do it=1,2
+!      do ka=1,3
+!        do nu=1,3
+!          do mu=1,3
+!            print *
+!            print *, nu, mu, ka
+!            print *
+!            do i=1,nx
+!                print *, N2LODen%DJmunu(i,i,i,mu,nu,ka,it), N2LODen%DJmunu(i,i,i,nu,mu,ka,it) , &
+!                &        N2LODen%ImKN2LO(i,i,i,mu,nu,ka,it), N2LODen%ImKN2LO(i,i,i,nu,mu,ka,it) , &
+!                !&        N2LODen%ImKN2LO(i,i,i,mu,nu,ka,it) - N2LODen%ImKN2LO(i,i,i,nu,mu,ka,it), &
+!                !&        N2LODen%DJmunu(i,i,i,mu,nu,ka,it)  - N2LODen%DJmunu(i,i,i,nu,mu,ka,it), & 
+!                &        N2LODen%ImKN2LO(i,i,i,mu,nu,ka,it) - N2LODen%ImKN2LO(i,i,i,nu,mu,ka,it) +  &
+!                &        N2LODen%DJmunu(i,i,i,mu,nu,ka,it)  - N2LODen%DJmunu(i,i,i,nu,mu,ka,it)
+!            enddo   
+!          enddo
+!        enddo
+!        print *
+!      enddo
+!      print *
+!  enddo
+! 
+! print 1
  !----------------------------------------------
  ! Calculate the N2LO contribution to the energy
  ! 

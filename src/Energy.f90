@@ -32,7 +32,7 @@ module Energy
   real(KIND=dp),public :: LNEnergy(2), Routhian, OldRouthian(7)
 
   ! Two different ways of calculating and treating Skyrme terms
-  real(KIND=dp) :: Skyrmeterms(32),BTerm(21), N2LOterms(24)
+  real(KIND=dp) :: Skyrmeterms(32),BTerm(21), N2LOterms(32)
 
   ! Signal to the Nesterov iteration whether or not the energy decreased
   integer       :: NesterovSignal=0
@@ -154,113 +154,173 @@ contains
     !---------------------------------------------------------------------------
     use force
     
-    real(KIND=dp) :: terms(24)
+    real(KIND=dp) :: terms(32)
     real(KIND=dp) :: rhotot (nx,ny,nz),     laprhotot(nx,ny,nz)
     real(KIND=dp) :: Rtauten(nx,ny,nz,3,3), Itauten(nx,ny,nz,3,3)
-    real(KIND=dp) :: Tmu    (nx,ny,nz,3,2)
+    real(KIND=dp) :: Tmu    (nx,ny,nz,3,2), dmuJmunu(nx,ny,nz,3,2)
     real(KIND=dp) :: D2rho  (nx,ny,nz,3,3)
     type(densityvector), intent(in) :: Den
     integer       :: it,i,j
     
-    rhotot   = sum(Den%Rho,   4)
-    laprhotot= sum(Den%LapRho,4)
     
     terms = 0.0_dp
     
+    !---------------------------------------------------------------------------
     ! Don't calculate anything if all of the coupling coefficients are zero
     if(.not.allocated(Den%Rtaun2lo) ) return
     
-    !-------------------
-    ! Time even terms    
-    terms(1) =  sum(laprhotot**2)*BN2LO(1)
-    do it=1,2
-        terms(2) =  terms(2) + sum(Den%LapRho(:,:,:,it)**2)*BN2LO(2)
-    enddo
-    
-    terms(3) = sum(sum(Den%rho,4) * sum(Den%QN2LO,4)) *BN2LO(3)
-    do it=1,2
-        terms(4) = terms(4) + sum(Den%rho(:,:,:,it) * Den%QN2LO(:,:,:,it)) *BN2LO(4)
-    enddo
-    
-    terms(5) = sum(sum(Den%tau,4)**2)*BN2LO(3)
-    do it=1,2
-        terms(6) = terms(6) + sum(Den%tau(:,:,:,it)**2)*BN2LO(4)
-    enddo
+    !---------------------------------------------------------------------------
+    ! Some sums for ease of coding
+    rhotot   = sum(Den%Rho,   4)
+    laprhotot= sum(Den%LapRho,4)
     
     Rtauten = sum(den%RtauN2LO,6)
     Itauten = sum(den%ItauN2LO,6)
-    D2rho   = sum(den%D2Rho,6)
-    terms(7) =   - sum(Rtauten * D2rho)  + sum(Rtauten * Rtauten) - sum(Itauten * Itauten)
-    terms(7) = 2*BN2LO(3)*terms(7)
-    
-    do it=1,2
-        terms(8) = terms(8) + sum(Den%RTauN2LO(:,:,:,:,:,it)**2) &
-        &                   - sum(Den%ITauN2LO(:,:,:,:,:,it)**2) &
-        &                   - sum(Den%RTauN2LO(:,:,:,:,:,it)*Den%D2Rho(:,:,:,:,:,it))
+    D2rho   = sum(den%D2Rho,   6)
+    DmuJmunu = 0.0
+    do i=1,3
+        do j=1,3
+            DmuJmunu(:,:,:,i,:) = DmuJmunu(:,:,:,i,:)+Den%DJmunu(:,:,:,j,j,i,:)
+        enddo
     enddo
-    terms(8) = 2*BN2LO(4)*terms(8)
+    Tmu = 0.0
+    do i = 1,3
+        do j=1,3
+            Tmu(:,:,:,i,:) = Tmu(:,:,:,i,:) + Den%ReKN2LO(:,:,:,j,j,i,:) 
+        enddo
+    enddo
+    !---------------------------------------------------------------------------
     
-    !terms(9) = sum(sum(Den%DmuJmunu,6)**2) 
-    !terms(9) = terms(9)*BN2LO(7)
-    
-    !do it=1,2
-    !    terms(10) = terms(10) + sum(Den%DmuJmunu(:,:,:,:,:,it)**2) 
-    !enddo
-    !terms(10) = terms(10)*BN2LO(8)
-    
-    terms(11) =-4 * sum(sum(Den%JmuNu,6)*sum(Den%VN2LO,6))*BN2LO(7)
+    !---------------------------------------------------------------------------
+    ! Delta rho Delta rho                              T-even
+    terms(1) = BN2LO(1)*sum(laprhotot**2)
     do it=1,2
-        terms(12) = terms(12) + &
+        terms(2) =  terms(2) + sum(Den%LapRho(:,:,:,it)**2)      * BN2LO(2) 
+    enddo
+    !----------------------------------------------------------------------------
+    !  rho Q                                           T-even 
+    terms(3) = sum(sum(Den%rho,4) * sum(Den%QN2LO,4))            * BN2LO(3)
+    do it=1,2
+        terms(4) = terms(4) + sum(Den%rho(:,:,:,it) * Den%QN2LO(:,:,:,it)) 
+    enddo
+    terms(4) = terms(4)                                          * BN2LO(4)
+    
+    !----------------------------------------------------------------------------
+    !  tau^2                                           T-even
+    terms(5) = sum(sum(Den%tau,4)**2)                            * BN2LO(3)
+    do it=1,2
+        terms(6) = terms(6) + sum(Den%tau(:,:,:,it)**2)          * BN2LO(4)
+    enddo
+    !---------------------------------------------------------------------------
+    ! Re Tau_munu * Re Tau_munu                        T_even
+    terms(7) = 2*sum(Rtauten*Rtauten)                            * BN2LO(3)
+    do it=1,2
+        terms(8) = terms(8)+2*sum(Den%RTauN2LO(:,:,:,:,:,it)**2) * BN2LO(4)
+    enddo
+    !---------------------------------------------------------------------------
+    ! - Re tau_munu * DmuDnuRho                        T_even
+    terms(9) =   -  2*sum(Rtauten * D2rho)                       * BN2LO(3)
+    do it=1,2
+        terms(10) = terms(10) &
+        &              + sum(Den%RTauN2LO(:,:,:,:,:,it)*Den%D2Rho(:,:,:,:,:,it))
+    enddo
+    terms(10) =  -  2*BN2LO(4)*terms(10)
+
+    !---------------------------------------------------------------------------
+    ! - Im Tau_munu * Im Tau_munu                            T_odd
+    if(.not.TRC) then
+        terms(11) = - 2* sum(Itauten * Itauten)                  * BN2LO(3)
+        do it=1,2
+            terms(12) = terms(12) - sum(Den%ITauN2LO(:,:,:,:,:,it)**2) 
+        enddo
+        terms(12) = 2*terms(12)                                  * BN2LO(4)
+    endif
+    !---------------------------------------------------------------------------
+    ! D_mu J_munu                                            T-even
+    terms(13) = sum(sum(DmuJmunu,5)**2)                        * BN2LO(7)
+    do it=1,2
+        terms(14) = terms(14) + sum(DmuJmunu(:,:,:,:,it)**2) 
+    enddo
+    terms(14) = terms(14)                                      * BN2LO(8)
+    !---------------------------------------------------------------------------
+    ! J_munu V_munu                                          T-even
+    terms(15) =-4*sum(sum(Den%JmuNu,6)*sum(Den%VN2LO,6))       * BN2LO(7)
+    do it=1,2
+        terms(16) = terms(16) + &
         &               4 * sum(Den%JmuNu(:,:,:,:,:,it)*Den%VN2LO(:,:,:,:,:,it))
     enddo
-    terms(12) =-terms(12)*BN2LO(8)
-    !-------------------
-    ! Time odd terms
-    if(.not. TRC) then
-        terms(13) = sum(sum(Den%laps,5)**2) * BN2LO(5)
+    terms(16) =-terms(16)                                      * BN2LO(8)
+    !---------------------------------------------------------------------------
+    ! Delta s^2                                             T-odd
+    if(.not.TRC) then
+        terms(17) = sum(sum(Den%laps,5)**2)                    * BN2LO(5)
         do it=1,2
-            terms(14) = terms(14) + sum(Den%laps(:,:,:,:,it)**2) * BN2LO(6)
+            terms(18) = terms(18)+sum(Den%laps(:,:,:,:,it)**2) * BN2LO(6)
         enddo
-        
-        terms(15) = - sum(sum(Den%divvecj,4)**2)* BN2LO(3)
-        do it=1,2
-            terms(16) = terms(16) - sum(Den%divvecj(:,:,:,it)**2)* BN2LO(4)
-        enddo
-        
-        terms(17) = - 4 * sum(sum(den%vecj,5) * sum(den%PiN2LO,5)) * BN2LO(3)
-        do it=1,2
-            terms(18) = terms(18) - sum(den%vecj(:,:,:,:,it)*den%PiN2LO(:,:,:,:,it)) * BN2LO(4)
-        enddo
-        
-        terms(19) = sum(sum(Den%vecs,5) * sum(Den%SN2LO,5))*BN2LO(7)
-        do it=1,2
-            terms(20) = terms(20) + sum(Den%vecs(:,:,:,:,it) * Den%SN2LO(:,:,:,:,it))*BN2LO(8)
-        enddo
-        
-        Tmu = 0.0
-        do i = 1,3
-            do j=1,3
-                Tmu(:,:,:,i,:) = Tmu(:,:,:,i,:) + Den%ReKN2LO(:,:,:,j,j,i,:) 
-            enddo
-        enddo
-        !Tmu = Den%vect
-        terms(21) = sum(sum(Tmu,5)**2)*BN2LO(7)
-        do it=1,2
-            terms(22) = terms(22) + sum(Tmu(:,:,:,:,it)**2)*BN2LO(8)
-        enddo
-
-        terms(23) =   sum(sum(Den%ReKN2LO,7)**2) - sum(sum(Den%ImKN2LO,7)**2) !& 
-        !&                             -sum(sum(Den%ReKN2LO,7)*sum(Den%D2S,7))
-        terms(23) = -2*BN2LO(7)*terms(23)
-
-        do it=1,2
-            terms(24) = terms(24) + sum(Den%ReKN2LO(:,:,:,:,:,:,it)**2) &
-            &                     - sum(Den%ImKN2LO(:,:,:,:,:,:,it)**2)! &
-            !&                     - sum(Den%ReKN2LO(:,:,:,:,:,:,it)   * &
-            !&                           Den%D2S(:,:,:,:,:,:,it))   
-        enddo
-        terms(24)=-2*BN2LO(8)*terms(24)
     endif
+    !---------------------------------------------------------------------------
+    ! D_mu j_mu s^2                                         T-odd
+    ! This should be zero for local interactions by the way
+    if(.not.TRC) then
+        terms(19) = - sum(sum(Den%divvecj,4)**2)               * BN2LO(3)
+        do it=1,2
+            terms(20) = terms(20)-sum(Den%divvecj(:,:,:,it)**2)* BN2LO(4)
+        enddo
+    endif
+    !---------------------------------------------------------------------------
+    ! j_mu Pi_mu                                            T-odd
+    if(.not.TRC) then
+        terms(21) = -4*sum(sum(den%vecj,5) * sum(den%PiN2LO,5))* BN2LO(3)
+        do it=1,2
+            terms(22) = terms(22) - &
+            & 4*sum(den%vecj(:,:,:,:,it)*den%PiN2LO(:,:,:,:,it))* BN2LO(4)
+        enddo
+    endif
+    !---------------------------------------------------------------------------
+    ! s_mu S_mu                                            T-odd
+    if(.not.TRC) then
+        terms(23) = sum(sum(Den%vecs,5) * sum(Den%SN2LO,5))    * BN2LO(7)
+        do it=1,2
+            terms(24) = terms(24) + &
+            & sum(Den%vecs(:,:,:,:,it) * Den%SN2LO(:,:,:,:,it))* BN2LO(8)
+        enddo
+    endif
+    !---------------------------------------------------------------------------
+    ! Tmu^2                                                T-odd
+    if(.not.TRC) then
+        terms(25) = sum(sum(Tmu,5)**2)                         * BN2LO(7)
+        do it=1,2
+            terms(26) = terms(26) + sum(Tmu(:,:,:,:,it)**2)    * BN2LO(8)
+        enddo
+    endif
+    !---------------------------------------------------------------------------
+    ! Re T_munuka^2                                        T-odd
+    if(.not.TRC) then
+        terms(27) =   2 * sum(sum(Den%ReKN2LO,7)**2)   * BN2LO(7)
+        do it=1,2
+            terms(28) = terms(28) + sum(Den%ReKN2LO(:,:,:,:,:,:,it)**2)
+        enddo
+        terms(28)= 2*terms(28)                                 * BN2LO(8)
+    endif
+    !---------------------------------------------------------------------------
+    ! DmunuS * Re T_munuka
+    if(.not.TRC) then
+        terms(29) = -2*sum(sum(Den%ReKN2LO,7)*sum(Den%D2S,7))  * BN2LO(7)
+        do it=1,2
+            terms(30) = terms(30) + &
+            &sum(Den%ReKN2LO(:,:,:,:,:,:,it)*Den%D2S(:,:,:,:,:,:,it))
+        enddo
+        terms(30) = -2*terms(30)                               * BN2LO(8)
+    endif
+    !---------------------------------------------------------------------------
+    ! Im T_munuka^2                   T-even (!!!)
+    terms(31) =   2 * sum(sum(Den%ImKN2LO,7)**2)               * BN2LO(7)
+    do it=1,2
+        terms(32) = terms(32) + &
+        &              2*sum(Den%ImKN2LO(:,:,:,:,:,:,it)**2)   * BN2LO(8)
+    enddo
+    !---------------------------------------------------------------------------
+    ! Multiply everyting by dv
     terms = terms * dv 
   end function N2LO
 
@@ -780,7 +840,7 @@ contains
     use Pairing, only : PairingType, Lipkin
 
     logical, intent(in), optional :: Lagrange
-    real*8                        :: SKTodd
+    real*8                        :: SKTodd, N2LOODD
 
       1 format (22('-'),  ' Energies (MeV) ', 22('-'))
      11 format (18('-'),  ' Lagrange Energies (MeV) ', 18('-'))
@@ -806,23 +866,35 @@ contains
      27 format (2x,' (N s)^2_t   =', f12.5, 5x , ' (N s)^2_q   = ', f12.5 )
 
     300 format ('N2LO Terms')
-     31 format (2x,' DrhoDrho_t  =', e12.5, 5x ,' DrhoDrho_q  = ', e12.5, ' t', f12.5)
-     32 format (2x,' rhoQ_t      =', e12.5, 5x ,' rhoQ_q      = ', e12.5, ' t', f12.5)
-     33 format (2x,' tau^2_t     =', e12.5, 5x ,' tau^2_t     = ', e12.5, ' t', f12.5)
-     34 format (2x,' taumunu^2_t =', e12.5, 5x ,' taumunu^2_q = ', e12.5, ' t', f12.5)
-     35 format (2x,' DmuJmunu_t  =', e12.5, 5x ,' DmuJmunu_q  = ', e12.5, ' t', f12.5)
-     36 format (2x,' JVmunu_t    =', e12.5, 5x ,' JVmunu_q    = ', e12.5, ' t', f12.5)
-     
-     37 format (2x,' DsDs_t      =', e12.5, 5x ,' DsDs_q      = ', e12.5, ' t', f12.5)
-     38 format (2x,' divj^2_t    =', e12.5, 5x ,' divj^2_q    = ', e12.5, ' t', f12.5)
-     39 format (2x,' j Pi_t      =', e12.5, 5x ,' j Pi_q      = ', e12.5, ' t', f12.5)
-     40 format (2x,' s S_t       =', e12.5, 5x ,' s S_q       = ', e12.5, ' t', f12.5)
-     41 format (2x,' T^2_t       =', e12.5, 5x ,' T^2_q       = ', e12.5, ' t', f12.5)
-     42 format (2x,' T^2 - s^2_t =', e12.5, 5x ,' T^2 - s^2_q = ', e12.5, ' t', f12.5)
-
+     31 format (2x,' DrhoDrho_t  =', f12.5, 5x ,' DrhoDrho_q  = ', f12.5, ' t', f12.5,' f', f12.5)
+     32 format (2x,' rhoQ_t      =', f12.5, 5x ,' rhoQ_q      = ', f12.5, ' t', f12.5,' f', f12.5)
+     33 format (2x,' tau^2_t     =', f12.5, 5x ,' tau^2_t     = ', f12.5, ' t', f12.5,' f', f12.5)
+     34 format (2x,' Re Tau_mn_t =', f12.5, 5x ,' Re Tau_mn_q = ', f12.5, ' t', f12.5,' f', f12.5)
+     35 format (2x,' Tau_mn rho_t=', f12.5, 5x ,' Tau_mn rho_q= ', f12.5, ' t', f12.5,' f', f12.5)
+     36 format (2x,' Im Tau_mn_t =', f12.5, 5x ,' Im Tau_mn_q = ', f12.5, ' t', f12.5,' f', f12.5)
+     37 format (2x,' DmuJmunu_t  =', f12.5, 5x ,' DmuJmunu_q  = ', f12.5, ' t', f12.5,' f', f12.5)
+     38 format (2x,' JVmunu_t    =', f12.5, 5x ,' JVmunu_q    = ', f12.5, ' t', f12.5,' f', f12.5)
+     39 format (2x,' DsDs_t      =', f12.5, 5x ,' DsDs_q      = ', f12.5, ' t', f12.5,' f', f12.5)
+     40 format (2x,' divj^2_t    =', f12.5, 5x ,' divj^2_q    = ', f12.5, ' t', f12.5,' f', f12.5)
+     41 format (2x,' j Pi_t      =', f12.5, 5x ,' j Pi_q      = ', f12.5, ' t', f12.5,' f', f12.5)
+     42 format (2x,' s S_t       =', f12.5, 5x ,' s S_q       = ', f12.5, ' t', f12.5,' f', f12.5)
+     43 format (2x,' T^2_t       =', f12.5, 5x ,' T^2_q       = ', f12.5, ' t', f12.5,' f', f12.5)
+     44 format (2x,' Re T_mn^2_t =', f12.5, 5x ,' Re T_mn^2_q = ', f12.5, ' t', f12.5,' f', f12.5)
+     45 format (2x,' T_mn Ds_t   =', f12.5, 5x ,' T_mn Ds_q   = ', f12.5, ' t', f12.5,' f', f12.5)
+     46 format (2x,' Im T_mn^2_t =', f12.5, 5x ,' Im T_mn^2_q = ', f12.5, ' t', f12.5,' f', f12.5)
+    
+    301 format (2x,' M^(Drho)    =', f12.5) 
+    302 format (2x,' M^even(rho) =', f12.5) 
+    303 format (2x,' M^even( s ) =', f12.5) 
+    304 format (2x,' M^(Ds )     =', f12.5) 
+    305 format (2x,' M^odd(rho)  =', f12.5) 
+    306 format (2x,' M^odd( s )  =', f12.5) 
+    
      28 format (2x,'Time-even    =', f12.5, 5x , ' Time-odd   = ', f12.5 )
-     29 format (2x,'N2LO total   =', f12.5)
-     30 format (2x,'Total        =', f12.5)
+     29 format (2x,'Skyrme Total =', f12.5)
+    
+    310 format (2x,'T-even N2LO  =', f12.5, 5x , 'T-odd N2LO  = ', f12.5 )
+    311 format (2x,'N2LO total   =', f12.5)
      
     103 format (' Kinetic Energy ',/,                                          &
         &    2x,'Kin.  N', f12.5, ' Kin.  P', f12.5, ' Total ', f12.5)
@@ -880,35 +952,55 @@ contains
     
     if(any(N2LOterms.ne.0)) then
         print 300
-        print 31, N2LOterms(1:2), N2LOterms(1)+N2LOterms(2)
-        print 32, N2LOterms(3:4), N2LOterms(3)+N2LOterms(4)
-        print 33, N2LOterms(5:6), N2LOterms(5)+N2LOterms(6)
-        print 34, N2LOterms(7:8), N2LOterms(7)+N2LOterms(8)
-        print 35, N2LOterms(9:10), N2LOterms(9)+N2LOterms(10)
-        print 36, N2LOterms(11:12), N2LOterms(11)+N2LOterms(12)
-        if(.not. TRC) then
-            print 37, N2LOterms(13:14), N2LOterms(13)+N2LOterms(14)
-            print 38, N2LOterms(15:16), N2LOterms(15)+N2LOterms(16)
-            print 39, N2LOterms(17:18), N2LOterms(17)+N2LOterms(18)
-            print 40, N2LOterms(19:20), N2LOterms(19)+N2LOterms(20)
-            print 41, N2LOterms(21:22), N2LOterms(21)+N2LOterms(22)
-            print 42, N2LOterms(23:24), N2LOterms(23)+N2LOterms(24)
-        endif
+        print 31, N2LOterms(1:2)  , N2LOterms(1)+N2LOterms(2)  , N2LOterms(1) /N2LOterms( 2)
+        print 32, N2LOterms(3:4)  , N2LOterms(3)+N2LOterms(4)  , N2LOterms(3) /N2LOterms( 4)
+        print 33, N2LOterms(5:6)  , N2LOterms(5)+N2LOterms(6)  , N2LOterms(5) /N2LOterms( 6)
+        print 34, N2LOterms(7:8)  , N2LOterms(7)+N2LOterms(8)  , N2LOterms(7) /N2LOterms( 8)
+        print 35, N2LOterms(9:10) , N2LOterms(9)+N2LOterms(10) , N2LOterms(9) /N2LOterms(10)
+        print 36, N2LOterms(11:12), N2LOterms(11)+N2LOterms(12), N2LOterms(11)/N2LOterms(12)
+        print 37, N2LOterms(13:14), N2LOterms(13)+N2LOterms(14), N2LOterms(13)/N2LOterms(14)
+        print 38, N2LOterms(15:16), N2LOterms(15)+N2LOterms(16), N2LOterms(15)/N2LOterms(16)
+        print 39, N2LOterms(17:18), N2LOterms(17)+N2LOterms(18), N2LOterms(17)/N2LOterms(18)
+        print 40, N2LOterms(19:20), N2LOterms(19)+N2LOterms(20), N2LOterms(19)/N2LOterms(20)
+        print 41, N2LOterms(21:22), N2LOterms(21)+N2LOterms(22), N2LOterms(21)/N2LOterms(22)
+        print 42, N2LOterms(23:24), N2LOterms(23)+N2LOterms(24), N2LOterms(23)/N2LOterms(24)
+        print 43, N2LOterms(25:26), N2LOterms(25)+N2LOterms(26), N2LOterms(25)/N2LOterms(26) 
+        print 44, N2LOterms(27:28), N2LOterms(27)+N2LOterms(28), N2LOterms(27)/N2LOterms(28)
+        print 45, N2LOterms(29:30), N2LOterms(29)+N2LOterms(30), N2LOterms(29)/N2LOterms(30) 
+        print 46, N2LOterms(31:32), N2LOterms(31)+N2LOterms(32), N2LOterms(31)/N2LOterms(32)
+        print *
+        print 301, sum(N2LOterms(1:2))
+        print 302, sum(N2LOterms(3:12))
+        print 303, sum(N2LOterms(13:16))
+        print 304, sum(N2LOterms(17:18))
+        print 305, sum(N2LOterms(19:22))
+        print 306, sum(N2LOterms(23:32))
         print *
     endif
     
     ! Time-even and odd parts
     SkTodd =  SkyrmeTerms(5)   + SkyrmeTerms(6)  + SkyrmeTerms(13) + &
     &         SkyrmeTerms(14)  + SkyrmeTerms(15) + SkyrmeTerms(16) + &
-    &         SkyrmeTerms(17)  + SkyrmeTerms(18) + SkyrmeTerms(21)   &
-    &       + SkyrmeTerms(22)  + SkyrmeTerms(27) + SkyrmeTerms(28) + &
+    &         SkyrmeTerms(17)  + SkyrmeTerms(18) + SkyrmeTerms(21) + &
+    &         SkyrmeTerms(22)  + SkyrmeTerms(27) + SkyrmeTerms(28) + &
     &         SkyrmeTerms(29)  + SkyrmeTerms(30) + SkyrmeTerms(31) + &
-    &         SkyrmeTerms(32)  + sum(N2LOterms(13:24))
+    &         SkyrmeTerms(32) 
+    
+    N2LOODD = N2LOterms(11)    + N2LOterms(12)   + &
+    &         N2LOterms(17)    + N2LOterms(18)   + N2LOterms(19)   + & 
+    &         N2LOterms(20)    + N2LOterms(21)   + N2LOterms(22)   + &
+    &         N2LOterms(23)    + N2LOterms(24)   + N2LOterms(25)   + &
+    &         N2LOterms(26)    + N2LOterms(27)   + N2LOterms(28)   + &
+    &         N2LOterms(29)    + N2LOterms(30)     
 
-    print 28, sum(SkyrmeTerms)-SkTodd+sum(N2LOterms(1:12)), SkTodd
-    if(t1n2.ne.0.0) print 29, sum(N2LOterms)
-    print 30, sum(SkyrmeTerms) + sum(N2LOterms)
+    print 28, sum(SkyrmeTerms) -  SkTodd , SkTodd
+    print 29, sum(SkyrmeTerms)
 
+    if(t1n2.ne.0.0) then
+         print 310, sum(N2LOterms) - N2LOODD, N2LOODD
+         print 311, sum(N2LOterms)
+    endif
+    
     print *
 
     print 103, Kinetic(1), Kinetic(2), sum(Kinetic)
@@ -973,7 +1065,6 @@ contains
     do l=1,nwt
         Isospin    = DensityBasis(l)%GetIsospin()
         Occupation = DensityBasis(l)%GetOcc()
-
 
         it = (IsoSpin + 3)/2
 

@@ -180,7 +180,7 @@ contains
             x3b=0.0_dp;     yt3b=0.0_dp
             te=0.0_dp;      to=0.0_dp
             wso=0.0_dp;     wsoq=0.0_dp
-            t1n2 = 0 ; t2n2 = 0 ; x1n2 = 0 ; x2n2 = 0 ;
+            t1n2 = 0 ;      t2n2 = 0 ; x1n2 = 0 ; x2n2 = 0 ;
             b14=0.0_dp;     b15=0.0_dp;     b16=0.0_dp;      b17=0.0_dp
             COM1body=0;     COM2body=0
             J2Terms=.false.

@@ -60,20 +60,19 @@ module Densities
     !---------------------------------------------------------------------------
     ! N2LO densities needed.
     !---------------------------------------------------------------------------
-    real(KIND=dp), allocatable :: RtauN2LO(:,:,:,:,:,:)
-    real(KIND=dp), allocatable :: ItauN2LO(:,:,:,:,:,:)
-    real(KIND=dp), allocatable ::  ReKN2LO(:,:,:,:,:,:,:)
-    real(KIND=dp), allocatable ::  ImKN2LO(:,:,:,:,:,:,:)
-    
+    real(KIND=dp), allocatable ::  RtauN2LO(:,:,:,:,:,:)
+    real(KIND=dp), allocatable ::  ItauN2LO(:,:,:,:,:,:)
+    real(KIND=dp), allocatable ::   ReKN2LO(:,:,:,:,:,:,:)
+    real(KIND=dp), allocatable ::   ImKN2LO(:,:,:,:,:,:,:)
     real(KIND=dp), allocatable :: LapLapRho(:,:,:,:)
-    
-    real(KIND=dp), allocatable ::  PiN2LO(:,:,:,:,:)
-    real(KIND=dp), allocatable ::   VN2LO(:,:,:,:,:,:)
-    real(KIND=dp), allocatable ::   QN2LO(:,:,:,:)
-    real(KIND=dp), allocatable ::   SN2LO(:,:,:,:,:)
-    real(KIND=dp), allocatable ::   D2Rho(:,:,:,:,:,:)
-    real(KIND=dp), allocatable ::   D2S(:,:,:,:,:,:,:)
-    real(KIND=dp), allocatable ::  DJmunu(:,:,:,:,:,:,:)
+    real(KIND=dp), allocatable ::    D2RTau(:,:,:,:)
+    real(KIND=dp), allocatable ::    PiN2LO(:,:,:,:,:)
+    real(KIND=dp), allocatable ::     VN2LO(:,:,:,:,:,:)
+    real(KIND=dp), allocatable ::     QN2LO(:,:,:,:)
+    real(KIND=dp), allocatable ::     SN2LO(:,:,:,:,:)
+    real(KIND=dp), allocatable ::     D2Rho(:,:,:,:,:,:)
+    real(KIND=dp), allocatable ::       D2S(:,:,:,:,:,:,:)
+    real(KIND=dp), allocatable ::    DJmunu(:,:,:,:,:,:,:)
     
   end type DensityVector
 
@@ -101,7 +100,7 @@ module Densities
   end interface
 contains
 
-  pure function NewDensityVector(newnx,newny,newnz,N2LO) result(R)
+  pure function NewDensityVector(newnx,newny,newnz) result(R)
     !---------------------------------------------------------------------------
     ! Constructor for the DensityVector class.
     ! The sizes are optional, if not supplied nx,ny,nz will be used.
@@ -110,7 +109,6 @@ contains
 
     integer, intent(in),optional :: newnx,newny,newnz
     integer                      :: sizex, sizey, sizez
-    logical, intent(in),optional :: N2LO 
     
     type(DensityVector) :: R
 
@@ -152,31 +150,30 @@ contains
       endif
 
       !F & T densities.
-      if((B14.ne.0.0_dp .or. B15.ne.0.0_dp).or.present(N2LO)) then
+      if((B14.ne.0.0_dp .or. B15.ne.0.0_dp).or.(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp)) then
         allocate(R%VecT(sizex,sizey,sizez,3,2))
         R%VecT=0.0_dp ;
       endif
-      if((B16.ne.0.0_dp .or. B17.ne.0.0_dp).or.present(N2LO)) then
+      if((B16.ne.0.0_dp .or. B17.ne.0.0_dp).or.(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp)) then
         allocate(R%VecF(sizex,sizey,sizez,3,2))
         R%VecF=0.0_dp ;
       endif
     endif
 
-    if(present(N2LO)) then
-        allocate(R%RtauN2LO(sizex,sizey,sizez,3,3,2)); R%RtauN2LO = 0.0_dp
-        allocate(R%ItauN2LO(sizex,sizey,sizez,3,3,2)); R%ItauN2LO = 0.0_dp
-        allocate(R%ReKN2LO(sizex,sizey,sizez,3,3,3,2)) ; R%ReKN2LO   = 0.0_dp
-        allocate(R%ImKN2LO(sizex,sizey,sizez,3,3,3,2)) ; R%ImKN2LO   = 0.0_dp
-        
-        allocate(R%PiN2LO(sizex,sizey,sizez,3,2))    ; R%PiN2LO  = 0.0_dp
-        allocate(R%VN2LO(sizex,sizey,sizez,3,3,2))   ; R%VN2LO  = 0.0_dp
-        allocate(R%QN2LO(sizex,sizey,sizez,2))       ; R%QN2LO  = 0.0_dp
-        allocate(R%SN2LO(sizex,sizey,sizez,3,2))     ; R%SN2LO  = 0.0_dp
-        
+    if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
+        allocate(R%RtauN2LO(sizex,sizey,sizez,3,3,2)) ; R%RtauN2LO = 0.0_dp
+        allocate(R%ItauN2LO(sizex,sizey,sizez,3,3,2)) ; R%ItauN2LO = 0.0_dp
+        allocate(R%ReKN2LO(sizex,sizey,sizez,3,3,3,2)); R%ReKN2LO   = 0.0_dp
+        allocate(R%ImKN2LO(sizex,sizey,sizez,3,3,3,2)); R%ImKN2LO   = 0.0_dp
+        allocate(R%PiN2LO(sizex,sizey,sizez,3,2))     ; R%PiN2LO  = 0.0_dp
+        allocate(R%VN2LO(sizex,sizey,sizez,3,3,2))    ; R%VN2LO  = 0.0_dp
+        allocate(R%QN2LO(sizex,sizey,sizez,2))        ; R%QN2LO  = 0.0_dp
+        allocate(R%SN2LO(sizex,sizey,sizez,3,2))      ; R%SN2LO  = 0.0_dp
         allocate(R%D2Rho   (sizex,sizey,sizez,3,3,2)) ; R%D2Rho     = 0.0_dp
         allocate(R%D2S   (sizex,sizey,sizez,3,3,3,2)) ; R%D2S       = 0.0_dp
         allocate(R%DJmunu(sizex,sizey,sizez,3,3,3,2)) ; R%DJmunu  = 0.0_dp
-        
+        allocate(R%LapLapRho(sizex,sizey,sizez,2))    ; R%LapLapRho = 0.0_dp
+        allocate(R%D2Rtau(sizex,sizey,sizez,2))       ; R%D2Rtau     = 0.0_dp
         allocate(R%divvecj (sizex,sizey,sizez,2))     ; R%divvecj   = 0.0_dp
     endif
 
@@ -202,6 +199,23 @@ contains
     if(allocated(Sum%Jmunu)) then
       Sum%JMuNu = Den1%Jmunu + Den2%JMunu
     endif
+    
+    if(allocated(Sum%RtauN2LO)) then
+        Sum%RtauN2LO   = Den1%RTauN2LO     + Den2%RTauN2LO
+        Sum%ItauN2LO   = Den1%ITauN2LO     + Den2%ITauN2LO
+        Sum%D2RTau     = Den1%D2RTau       + Den2%D2RTau
+        Sum%D2Rho      = Den1%D2Rho        + Den2%D2Rho
+        Sum%LapLapRho  = Den1%LapLapRho    + Den2%LapLapRho
+        Sum%DJmunu     = Den1%DJmunu       + Den2%DJmunu
+        Sum%ReKN2LO    = Den1%ReKN2LO      + Den2%ReKN2LO
+        Sum%ImKN2LO    = Den1%ImKN2LO      + Den2%ImKN2LO
+        Sum%PiN2LO     = Den1%PiN2LO       + Den2%PiN2LO
+        Sum%VN2LO      = Den1%VN2LO        + Den2%VN2LO
+        Sum%QN2LO      = Den1%QN2LO        + Den2%QN2LO
+        Sum%SN2LO      = Den1%SN2LO        + Den2%SN2LO
+        Sum%D2S        = Den1%D2S          + Den2%D2S
+    endif
+    
     if(.not.TRC) then
       Sum%Vecj   = Den1%VecJ     + Den2%VecJ
       Sum%RotVecj= Den1%RotVecJ  + Den2%RotVecJ
@@ -242,6 +256,22 @@ contains
     Prod%NablaJ= A*Den%NablaJ
     Prod%DerRho= A*Den%DerRho
     Prod%LapRho= A*Den%LapRho
+    
+    if(allocated(Prod%RtauN2LO)) then
+        Prod%RtauN2LO   = A*Den%RTauN2LO
+        Prod%ItauN2LO   = A*Den%ITauN2LO
+        Prod%D2RTau     = A*Den%D2RTau
+        Prod%LapLapRho  = A*Den%LapLapRho
+        Prod%D2Rho      = A*Den%D2Rho
+        Prod%ReKN2LO    = A*Den%ReKN2LO 
+        Prod%ImKN2LO    = A*Den%ImKN2LO 
+        Prod%PiN2LO     = A*Den%PiN2LO  
+        Prod%VN2LO      = A*Den%VN2LO   
+        Prod%QN2LO      = A*Den%QN2LO   
+        Prod%SN2LO      = A*Den%SN2LO
+        Prod%D2S        = A*Den%D2S 
+        Prod%DJmunu     = A*Den%DJmunu 
+    endif
 
     if(allocated(Prod%Jmunu)) then
       Prod%JMuNu = A*Den%Jmunu
@@ -374,17 +404,13 @@ contains
     logical, intent(in)                :: OnlyRho
     logical, intent(in), optional      :: Response
     logical                            :: moreders
-    real(KIND=dp) :: DerVecj(nx,ny,nz,3,3), DivS(nx,ny,nz,2)
+    real(KIND=dp) :: DerVecj(nx,ny,nz,3,3), DivS(nx,ny,nz,2), temp(nx,ny,nz)
     
     !Reset the values of the densities.
     if(OnlyRho) then
       DenIn%Rho = 0.0_dp
     else
-      if (allocated(DenIn%RtauN2LO)) then
-        DenIn = NewDensityVector(nx,ny,nz,.true.)
-      else
         DenIn = NewDensityVector()
-      endif
     endif
 
     if(.not.associated(DensityBasis)) then
@@ -435,7 +461,7 @@ contains
           DenIn%VecT(:,:,:,:,it)= DenIn%VecT(:,:,:,:,it) +                     &
           &                       Occupation*DensityBasis(i)%GetVecT()
         endif
-        if(B16 .ne. 0.0_dp .or. B17.ne.0.0_dp) then
+        if((B16 .ne. 0.0_dp .or. B17.ne.0.0_dp).or.allocated(DenIn%RtauN2LO)) then
           DenIn%VecF(:,:,:,:,it)= DenIn%VecF(:,:,:,:,it) +                     &
           &                       Occupation*DensityBasis(i)%GetVecF()
         endif
@@ -445,20 +471,23 @@ contains
         ! calculate N2LO densities
         DenIn%RTauN2LO(:,:,:,:,:,it)  = DenIn%RTauN2LO(:,:,:,:,:,it) +         &
         &                              Occupation * DensityBasis(i)%GetRTauN2LO()
-        DenIn%ITauN2LO(:,:,:,:,:,it)  = DenIn%ITauN2LO(:,:,:,:,:,it) +         &
-        &                              Occupation * DensityBasis(i)%GetITauN2LO()
-        DenIn%ReKN2LO(:,:,:,:,:,:,it) = DenIn%ReKN2LO(:,:,:,:,:,:,it) +        &
-        &                              Occupation * DensityBasis(i)%GetreKN2LO()
-        DenIn%ImKN2LO(:,:,:,:,:,:,it) = DenIn%ReKN2LO(:,:,:,:,:,:,it) +        &
+        DenIn%ImKN2LO(:,:,:,:,:,:,it) = DenIn%ImKN2LO(:,:,:,:,:,:,it) +        &
         &                              Occupation * DensityBasis(i)%GetImKN2LO()
         DenIn%QN2LO(:,:,:,it)         = DenIn%QN2LO(:,:,:,it) +                &
         &                              Occupation * DensityBasis(i)%GetQN2LO()
-        DenIn%SN2LO(:,:,:,:,it)       = DenIn%SN2LO(:,:,:,:,it) +              &
-        &                              Occupation * DensityBasis(i)%GetSN2LO()
         DenIn%VN2LO(:,:,:,:,:,it)     = DenIn%VN2LO(:,:,:,:,:,it) +            &
         &                              Occupation * DensityBasis(i)%GetVN2LO()
-        DenIn%PiN2LO(:,:,:,:,it)      = DenIn%PiN2LO(:,:,:,:,it) +          &
-        &                              Occupation * DensityBasis(i)%GetPiN2LO()
+        
+        if(.not. TRC) then
+            DenIn%ITauN2LO(:,:,:,:,:,it)  = DenIn%ITauN2LO(:,:,:,:,:,it) +     &
+            &                         Occupation * DensityBasis(i)%GetITauN2LO()
+            DenIn%ReKN2LO(:,:,:,:,:,:,it) = DenIn%ReKN2LO(:,:,:,:,:,:,it) +    &
+            &                         Occupation * DensityBasis(i)%GetREKN2LO()
+            DenIn%PiN2LO(:,:,:,:,it)      = DenIn%PiN2LO(:,:,:,:,it) +         &
+            &                         Occupation * DensityBasis(i)%GetPiN2LO()
+            DenIn%SN2LO(:,:,:,:,it)       = DenIn%SN2LO(:,:,:,:,it) +          &
+            &                         Occupation * DensityBasis(i)%GetSN2LO()     
+        endif
       endif
   
     enddo
@@ -481,33 +510,24 @@ contains
     
     if (allocated(DenIn%RtauN2LO)) then
         do it=1,2
+            DenIn%LapLapRho(:,:,:,it)   = &
+            & Laplacian(DenIn%LapRho(:,:,:,it),ParityInt,SignatureInt,TimeSimplexInt,1)
+        
             ! Full tensor of second derivatives of rho        
             DenIn%D2Rho(:,:,:,1,1,it) = &
             & DeriveX(DenIn%DerRho(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
-            DenIn%D2Rho(:,:,:,2,1,it) = &
+            DenIn%D2Rho(:,:,:,2,1,it) = & 
             & DeriveY(DenIn%DerRho(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
             DenIn%D2Rho(:,:,:,3,1,it) = &
             & DeriveZ(DenIn%DerRho(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
-            
-!            print *, 'X'
-!            print *, CompSignExtension(1,-1,-1,1,1)
-!            print *, CompSignExtension(2,-1,-1,1,1)
-!            print *, CompSignExtension(3,-1,-1,1,1)
-!            
+
             DenIn%D2Rho(:,:,:,1,2,it) = &
             & DeriveX(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt,-TimeSimplexInt,1)
-
             
             DenIn%D2Rho(:,:,:,2,2,it) = &
             & DeriveY(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt,-TimeSimplexInt,1)
             DenIn%D2Rho(:,:,:,3,2,it) = &
             & DeriveZ(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt,-TimeSimplexInt,1)
-            
-!            print *, 'Y'
-!            print *, CompSignExtension(1,-1,-1,1,2)
-!            print *, CompSignExtension(2,-1,-1,1,2)
-!            print *, CompSignExtension(3,-1,-1,1,2)
-!            
             
             DenIn%D2Rho(:,:,:,1,3,it) = &
             & DeriveX(DenIn%DerRho(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
@@ -515,40 +535,46 @@ contains
             & DeriveY(DenIn%DerRho(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
             DenIn%D2Rho(:,:,:,3,3,it) = &
             & DeriveZ(DenIn%DerRho(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,1)
+            !-------------------------------------------------------------------
+            ! Sum of derivatives of Tau_munu
+            !  D2Rtau = sum_{mu nu} D_mu D_nu Re tau_mu_nu
+            !  Note that the similar quantity of the imaginary part of tau is 
+            !  never needed.
+            DenIn%D2RTau(:,:,:,it) = 0.0_dp
+            !-------------------------------------------------------------------
+            ! Real part of tau, which is the only part that contributes to the
+            ! fields
+            temp =          &
+            &      DeriveX(DenIn%RTauN2LO(:,:,:,1,1,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+            temp = temp   + &
+            &      DeriveY(DenIn%RTauN2LO(:,:,:,1,2,it), ParityInt, SignatureInt, TimeSimplexInt,2)
+            temp = temp   + &
+            &      DeriveZ(DenIn%RTauN2LO(:,:,:,1,3,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
             
-!            do i=1,nx
-!                print *, DenIn%D2Rho(i,i,i,1,2,it), DenIn%D2Rho(i,i,i,2,1,it), &
-!                &        DenIn%D2Rho(i,i,i,2,1,it)-DenIn%D2Rho(i,i,i,1,2,it)
-!            enddo
-!            
-!            print *
-!            do i=1,nx
-!                print *, DenIn%D2Rho(i,i,i,1,3,it), DenIn%D2Rho(i,i,i,3,1,it),  &
-!                &        DenIn%D2Rho(i,i,i,1,3,it) - DenIn%D2Rho(i,i,i,3,1,it)
-!            enddo
-!            print *
-!            do i=1,nx
-!                print *, DenIn%D2Rho(i,i,i,2,3,it), DenIn%D2Rho(i,i,i,3,2,it),&
-!                &        DenIn%D2Rho(i,i,i,2,3,it) - DenIn%D2Rho(i,i,i,3,2,it)
-!            enddo
-!            print *
-!            
-!            do i=1,nx
-!                print *, DenIn%LapRho(i,i,i,it), DenIn%D2Rho(i,i,i,1,1,it) + &
-!                &                                DenIn%D2Rho(i,i,i,2,2,it) + &
-!                &                                DenIn%D2Rho(i,i,i,3,3,it) , &
-!                &        DenIn%LapRho(i,i,i,it)- DenIn%D2Rho(i,i,i,1,1,it) - &
-!                &                                DenIn%D2Rho(i,i,i,2,2,it) - &
-!                &                                DenIn%D2Rho(i,i,i,3,3,it)  
-!            enddo
-!            
-!            stop
+            DenIn%D2RTau(:,:,:,it) =                                           &
+            &           DeriveX(temp,-ParityInt,-SignatureInt, TimeSimplexInt,1)
             
-!            print *, 'Z'
-!            print *, CompSignExtension(1,-1,1,1,1)
-!            print *, CompSignExtension(2,-1,1,1,1)
-!            print *, CompSignExtension(3,-1,1,1,1)
-!            stop
+            ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+            temp =          &
+            &      DeriveX(DenIn%RTauN2LO(:,:,:,2,1,it), ParityInt, SignatureInt, TimeSimplexInt,2)
+            temp = temp   + &
+            &      DeriveY(DenIn%RTauN2LO(:,:,:,2,2,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+            temp = temp   + &
+            &      DeriveZ(DenIn%RTauN2LO(:,:,:,2,3,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
+            
+            DenIn%D2RTau(:,:,:,it) =  DenIn%D2RTau(:,:,:,it) +                 &
+            &           DeriveY(temp,-ParityInt,-SignatureInt, TimeSimplexInt,2)
+            
+            ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+            temp =                                                             &
+            &      DeriveX(DenIn%RTauN2LO(:,:,:,3,1,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
+            temp = temp +                                                      &
+            &      DeriveY(DenIn%RTauN2LO(:,:,:,3,2,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
+            temp = temp +                                                      &
+            &      DeriveZ(DenIn%RTauN2LO(:,:,:,3,3,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+            
+            DenIn%D2RTau(:,:,:,it) =  DenIn%D2RTau(:,:,:,it) +                 &
+            &           DeriveZ(temp,-ParityInt, SignatureInt, TimeSimplexInt,1)
             !-------------------------------------------------------------------
             ! Derivatives of nabla_mu J_munu
             !-------------------------------------------------------------------
@@ -623,60 +649,6 @@ contains
             & DeriveY(DenIn%JMuNu(:,:,:,1,2,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1)
             DenIn%DJmunu(:,:,:,3,1,2,it) =                                     &
             & DeriveZ(DenIn%JMuNu(:,:,:,1,2,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1)
-            
-!            do i=1,nx
-!                print *, DenIn%DJmunu(i,i,i,1,2,1,it), DenIn%DJmunu(i,i,i,2,1,1,it), &
-!                &        DenIn%DJmunu(i,i,i,2,1,1,it)-DenIn%DJmunu(i,i,i,1,2,1,it)
-!            enddo
-!            
-!            print *
-!            do i=1,nx
-!                print *, DenIn%DJmunu(i,i,i,1,3,1,it), DenIn%DJmunu(i,i,i,3,1,1,it),  &
-!                &        DenIn%DJmunu(i,i,i,1,3,1,it) - DenIn%DJmunu(i,i,i,3,1,1,it)
-!            enddo
-!            print *
-!            do i=1,nx
-!                print *, DenIn%DJmunu(i,i,i,2,3,1,it), DenIn%DJmunu(i,i,i,3,2,1,it),&
-!                &        DenIn%DJmunu(i,i,i,2,3,1,it) - DenIn%DJmunu(i,i,i,3,2,1,it)
-!            enddo
-!            print *
-
-             do i=1,nx
-                print *, DenIn%DJmunu(i,i,i,1,1,1,1),  DenIn%DJmunu(i,i,i,2,2,1,1) &
-                &      , DenIn%DJmunu(i,i,i,3,3,1,1), &
-                &        DenIn%DJmunu(i,i,i,1,1,1,1) + DenIn%DJmunu(i,i,i,2,2,1,1) &
-                &      + DenIn%DJmunu(i,i,i,3,3,1,1)
-             enddo
-             print *
-             do i=1,nx   
-                print *, DenIn%DJmunu(i,i,i,1,1,2,1), DenIn%DJmunu(i,i,i,2,2,2,1) &
-                &      , DenIn%DJmunu(i,i,i,3,3,2,1), &
-                &        DenIn%DJmunu(i,i,i,1,1,2,1) + DenIn%DJmunu(i,i,i,2,2,2,1) &
-                &      + DenIn%DJmunu(i,i,i,3,3,2,1)
-            enddo
-            print *
-            do i=1,nx
-                print *, DenIn%DJmunu(i,i,i,1,1,3,1) , DenIn%DJmunu(i,i,i,2,2,3,1) &
-                &      , DenIn%DJmunu(i,i,i,3,3,3,1), & 
-                &        DenIn%DJmunu(i,i,i,1,1,3,1) + DenIn%DJmunu(i,i,i,2,2,3,1) &
-                &      + DenIn%DJmunu(i,i,i,3,3,3,1)
-                
-             enddo
-            stop
-!            
-!            do i=1,nx
-!                print *, DenIn%LapRho(i,i,i,it), DenIn%DJmunu(i,i,i,1,1,1,it) + &
-!                &                                DenIn%DJmunu(i,i,i,2,2,1,it) + &
-!                &                                DenIn%DJmunu(i,i,i,3,3,1,it) , &
-!                &        DenIn%LapRho(i,i,i,it)- DenIn%DJmunu(i,i,i,1,1,1,it) - &
-!                &                                DenIn%DJmunu(i,i,i,2,2,1,it) - &
-!                &                                DenIn%DJmunu(i,i,i,3,3,1,it)  
-!            enddo
-!            
-            stop
-            
-            
-                 
         enddo
     endif
     !Computing NablaJ by derivatives in the case of tensor interactions
@@ -687,7 +659,6 @@ contains
 
     !Computing the derivatives of vecj & vecs
     if(.not.TRC) then
-    
         ! Derive vecj
         do it=1,2
           !See Table V in V. Hellemans et al., Phys. Rev. C 85 (2012), 014326

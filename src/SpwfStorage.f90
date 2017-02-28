@@ -463,12 +463,38 @@ contains
     !---------------------------------------------------------------------------
     ! This subroutine derives all of the Spwf, using the subroutine CompDer.
     !---------------------------------------------------------------------------
+    use Derivatives
     integer            :: i
-    real(KIND=dp)      :: time(2)
+    real(KIND=dp)      :: time(2), temp(nx), temp2(nx)
 
     do i=1,nwt
         call HFBasis(i)%CompDer()
     enddo
+!    temp2=  HFBasis(1)%Der(1)%Grid(1:nx,1,1,1,1)
+!    temp = HFBasis(10)%Der(1)%Grid(1:nx,1,1,1,1)
+!    
+!    OptDer=.false.
+!    
+!    call AssignFDCoefs(-1, -1, 1)
+!    do i=1,nwt
+!        call HFBasis(i)%CompDer()
+!    enddo
+!    
+!    do i=1,nx
+!        print *, HFBasis(10)%Der(1)%Grid(i,1,1,1,1), temp(i)
+!    enddo
+!    print*
+!    print *, HFBasis(10)%signature, HFBasis(10)%parity
+!    print *
+!    
+!    do i=1,nx
+!        print *, HFBasis(1)%Der(1)%Grid(i,1,1,1,1), temp2(i)
+!    enddo
+!    print*
+!    print *, HFBasis(1)%signature, HFBasis(1)%parity
+!    print *
+!    
+!    stop
     if(allocated(CanBasis)) then
       do i=1,nwt
         call CanBasis(i)%CompDer()

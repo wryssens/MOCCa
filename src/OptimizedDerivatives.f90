@@ -120,60 +120,30 @@ contains
 
     allocate(Der(nx,ny,nz)) ; Der = 0.0_dp
     
-    if(Signature.eq.1) then
-        select case (Component)
-        case(1)
-            do k=1,nz
-                do j=1,ny
-                    Der(:,j,k) = matmul(LagXMat(:,:,2), Grid(:,j,k))
-                enddo
+    select case(Component)
+    case(1)
+        S = Signature*TimeSimplex 
+    case(2)
+        S =-Signature*TimeSimplex 
+    case(3)
+        S =-Signature*TimeSimplex 
+    case(4)
+        S = Signature*TimeSimplex 
+    end select 
+
+    
+    if(S.eq.1) then
+        do k=1,nz
+            do j=1,ny
+                Der(:,j,k) = matmul(LagXMat(:,:,2), Grid(:,j,k))
             enddo
-        case(2)
-            do k=1,nz
-                do j=1,ny
-                    Der(:,j,k) = matmul(LagXMat(:,:,1), Grid(:,j,k))
-                enddo
+        enddo
+   else
+        do k=1,nz
+            do j=1,ny
+                Der(:,j,k) = matmul(LagXMat(:,:,2), Grid(:,j,k))
             enddo
-        case(3)
-            do k=1,nz
-                do j=1,ny
-                    Der(:,j,k) = matmul(LagXMat(:,:,1), Grid(:,j,k))
-                enddo
-            enddo
-        case(4)
-            do k=1,nz
-                do j=1,ny
-                    Der(:,j,k) = matmul(LagXMat(:,:,2), Grid(:,j,k))
-                enddo
-            enddo
-        end select
-    else
-        select case (Component)
-        case(1)
-            do k=1,nz
-                do j=1,ny
-                    Der(:,j,k) = matmul(LagXMat(:,:,1), Grid(:,j,k))
-                enddo
-            enddo
-        case(2)
-            do k=1,nz
-                do j=1,ny
-                    Der(:,j,k) = matmul(LagXMat(:,:,2), Grid(:,j,k))
-                enddo
-            enddo
-        case(3)
-            do k=1,nz
-                do j=1,ny
-                    Der(:,j,k) = matmul(LagXMat(:,:,2), Grid(:,j,k))
-                enddo
-            enddo
-        case(4)
-            do k=1,nz
-                do j=1,ny
-                    Der(:,j,k) = matmul(LagXMat(:,:,1), Grid(:,j,k))
-                enddo
-            enddo
-        end select
+        enddo
     endif
   end function Opt_LAGX_EV8
   

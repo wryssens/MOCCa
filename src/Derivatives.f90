@@ -1000,6 +1000,12 @@ contains
             LagXXMat(i,j,1) =   LagLapX(i-j)  - LagLapX(i+j-1)
         enddo
         
+        LagXXMat(i,i,1) = LagLapDiag(1) - LagLapX  (2*i-1)
+        LagXXMat(i,i,2) = LagLapDiag(1) + LagLapX  (2*i-1)
+        
+        LagXMat(i,i,1)  =               - LagCoefsX(2*i-1)
+        LagXMat(i,i,2)  =               + LagCoefsX(2*i-1)
+        
         do j=i+1,nx
             LagXMat(i,j,2)  = - LagCoefsX(j-i) + LagCoefsX(i+j-1)
             LagXMat(i,j,1)  = - LagCoefsX(j-i) - LagCoefsX(i+j-1)
@@ -1007,14 +1013,8 @@ contains
             LagXXMat(i,j,2) =   LagLapX(j-i)  + LagLapX(i+j-1)
             LagXXMat(i,j,1) =   LagLapX(j-i)  - LagLapX(i+j-1)
         enddo
-
-        LagXXMat(i,i,1) = LagLapDiag(1) - LagLapX  (2*i-1)
-        LagXXMat(i,i,2) = LagLapDiag(1) + LagLapX  (2*i-1)
-        
-        LagXMat(i,i,1)  =               - LagCoefsX(2*i-1)
-        LagXMat(i,i,2)  =               + LagCoefsX(2*i-1)
     enddo
-
+    
     LagYMat  = 0.0
     LagYYMat = 0.0
     

@@ -11,6 +11,9 @@ module OptimizedDerivatives
 
     implicit none
 
+    real(KIND=dp),allocatable :: LagXMat(:,:,:), LagYMat(:,:,:), LagZMat(:,:,:)
+    real(KIND=dp),allocatable :: LagXXMat(:,:,:),LagYYMat(:,:,:),LagZZMat(:,:,:)
+
 contains
 !----------------------------------------------------------------------------
 ! EV8 mode: all symmetries conserved and no negative signature.
@@ -108,6 +111,71 @@ contains
 
       return
   end subroutine derx
+  
+  function Opt_LAGX_EV8(Grid,Parity,Signature, TimeSimplex,Component) result(Der)
+    integer,intent(in) :: Parity,Signature,TimeSimplex,Component
+    real(KIND=dp), target, intent(in) :: Grid(:,:,:)
+    real(KIND=dp),allocatable         :: Der(:,:,:)
+    integer                           :: i,j,k, S
+
+    allocate(Der(nx,ny,nz)) ; Der = 0.0_dp
+    
+    if(Signature.eq.1) then
+        select case (Component)
+        case(1)
+            do k=1,nz
+                do j=1,ny
+                    Der(:,j,k) = matmul(LagXMat(:,:,2), Grid(:,j,k))
+                enddo
+            enddo
+        case(2)
+            do k=1,nz
+                do j=1,ny
+                    Der(:,j,k) = matmul(LagXMat(:,:,1), Grid(:,j,k))
+                enddo
+            enddo
+        case(3)
+            do k=1,nz
+                do j=1,ny
+                    Der(:,j,k) = matmul(LagXMat(:,:,1), Grid(:,j,k))
+                enddo
+            enddo
+        case(4)
+            do k=1,nz
+                do j=1,ny
+                    Der(:,j,k) = matmul(LagXMat(:,:,2), Grid(:,j,k))
+                enddo
+            enddo
+        end select
+    else
+        select case (Component)
+        case(1)
+            do k=1,nz
+                do j=1,ny
+                    Der(:,j,k) = matmul(LagXMat(:,:,1), Grid(:,j,k))
+                enddo
+            enddo
+        case(2)
+            do k=1,nz
+                do j=1,ny
+                    Der(:,j,k) = matmul(LagXMat(:,:,2), Grid(:,j,k))
+                enddo
+            enddo
+        case(3)
+            do k=1,nz
+                do j=1,ny
+                    Der(:,j,k) = matmul(LagXMat(:,:,2), Grid(:,j,k))
+                enddo
+            enddo
+        case(4)
+            do k=1,nz
+                do j=1,ny
+                    Der(:,j,k) = matmul(LagXMat(:,:,1), Grid(:,j,k))
+                enddo
+            enddo
+        end select
+    endif
+  end function Opt_LAGX_EV8
   
   function Opt_X_NOSIG(Grid,Parity,Signature, TimeSimplex,Component) result(Der)
     
@@ -264,6 +332,40 @@ contains
 
       return
   end subroutine dery
+  
+  function Opt_LAGY_EV8(Grid,Parity,Signature, TimeSimplex,Component)result(Der)
+    
+    integer,intent(in) :: Parity,Signature,TimeSimplex,Component
+    real(KIND=dp), target, intent(in) :: Grid(:,:,:)
+    real(KIND=dp),allocatable         :: Der(:,:,:)
+    integer                           :: i,j,k, S
+
+    allocate(Der(nx,ny,nz)) ; Der = 0.0_dp
+    select case (Component)
+    case(1)
+        S =  TimeSimplex
+    case(2)
+        S = -TimeSimplex
+    case(3)
+        S =  TimeSimplex
+    case(4)
+        S = -TimeSimplex
+    end select
+    if(S.gt.0) then
+        do k=1,nz
+            do i=1,nx
+                Der(i,:,k) = matmul(LagYMat(:,:,2), Grid(i,:,k))
+            enddo
+        enddo
+    else
+        do k=1,nz
+            do i=1,nx
+                Der(i,:,k) = matmul(LagYMat(:,:,1), Grid(i,:,k))
+            enddo
+        enddo
+    endif
+
+  end function Opt_LAGY_EV8
 
   function Opt_Z_EV8(Grid,Parity,Signature,TimeSimplex,Component) result(Der)
     
@@ -356,6 +458,40 @@ contains
       enddo
       return
   end subroutine derz
+  
+  function Opt_LAGZ_EV8(Grid,Parity,Signature,TimeSimplex,Component) result(Der)
+    
+    integer,intent(in) :: Parity,Signature,TimeSimplex,Component
+    real(KIND=dp), target, intent(in) :: Grid(:,:,:)
+    real(KIND=dp),allocatable         :: Der(:,:,:)
+    integer                           :: i,j,k, S
+
+    allocate(Der(nx,ny,nz)) ; Der = 0.0_dp
+    select case (Component)
+    case(1)
+        S =  Signature*Parity
+    case(2)
+        S =  Signature*Parity
+    case(3)
+        S = -Signature*Parity
+    case(4)
+        S = -Signature*Parity
+    end select
+    if(S.gt.0) then
+        do j=1,ny
+            do i=1,nx
+                Der(i,j,:) = matmul(LagZMat(:,:,2), Grid(i,j,:))
+            enddo
+        enddo
+    else
+        do j=1,ny
+            do i=1,nx
+                Der(i,j,:) = matmul(LagZMat(:,:,1), Grid(i,j,:))
+            enddo
+        enddo
+    endif
+
+  end function Opt_LAGZ_EV8
 
   function Opt_Z_EV4(Grid,Parity,Signature, TimeSimplex,Component) result(Der)
     
@@ -441,6 +577,72 @@ contains
 
     Lap =  Derx + Dery + Derz
   end function Lapla_EV8
+  
+  function Lapla_LAG_EV8(Grid,Parity, Signature, TimeSimplex,Component) result(Lap)
+
+    integer,intent(in)                :: Parity,Signature,TimeSimplex,Component
+    real(KIND=dp), target, intent(in) :: Grid(:,:,:)
+    real(KIND=dp), allocatable        :: Lap(:,:,:)
+    real(KIND=dp)                     :: DerX(nx,ny,nz)
+    real(KIND=dp)                     :: DerZ(nx,ny,nz)
+    real(KIND=dp)                     :: DerY(nx,ny,nz)
+    integer                           :: xp,yp,zp,i,j,k
+
+    allocate(Lap(nx,ny,nz)) ; Lap = 0.0_dp
+    select case(Component)
+    case(1)
+        xp = Signature ; yp = TimeSimplex ; zp = Signature*Parity
+    case(2)
+        xp =-Signature ; yp =-TimeSimplex ; zp = Signature*Parity
+    case(3)
+        xp =-Signature ; yp = TimeSimplex ; zp =-Signature*Parity
+    case(4)
+        xp = Signature ; yp =-TimeSimplex ; zp =-Signature*Parity
+    end select 
+
+    if(xp .eq. 1) then
+        do k=1,nz
+            do j=1,ny
+                DerX(:,j,k) = matmul(LagXXMat(:,:,2), Grid(:,j,k)) 
+            enddo
+        enddo
+    else
+        do k=1,nz
+            do j=1,ny
+                DerX(:,j,k) = matmul(LagXXMat(:,:,1), Grid(:,j,k)) 
+            enddo
+        enddo
+    endif
+    
+    if(yp .eq. 1) then
+        do k=1,nz
+            do i=1,nx
+                DerY(i,:,k) = matmul(LagYYMat(:,:,2), Grid(i,:,k)) 
+            enddo
+        enddo
+    else
+        do k=1,nz
+            do i=1,nx
+                DerY(i,:,k) = matmul(LagYYMat(:,:,1), Grid(i,:,k)) 
+            enddo
+        enddo
+    endif
+    
+    if(zp .eq. 1) then
+        do j=1,ny
+            do i=1,nx
+                DerZ(i,j,:) = matmul(LagZZMat(:,:,2), Grid(i,j,:)) 
+            enddo
+        enddo
+    else
+        do j=1,ny
+            do i=1,nx
+                DerZ(i,j,:) = matmul(LagZZMat(:,:,1), Grid(i,j,:)) 
+            enddo
+        enddo
+    endif
+    Lap =  Derx + Dery + Derz
+  end function Lapla_LAG_EV8
   
   subroutine lapla_X_ev8 (w,dw,xp)
 

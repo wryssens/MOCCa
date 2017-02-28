@@ -141,7 +141,7 @@ contains
    else
         do k=1,nz
             do j=1,ny
-                Der(:,j,k) = matmul(LagXMat(:,:,2), Grid(:,j,k))
+                Der(:,j,k) = matmul(LagXMat(:,:,1), Grid(:,j,k))
             enddo
         enddo
     endif

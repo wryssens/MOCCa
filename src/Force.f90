@@ -52,6 +52,9 @@ module Force
     ! C(7) => M(s)_0
     ! C(8) => M(s)_1
     real(KIND=dp) :: CN2LO(8), BN2LO(8)
+    !---------------------------------------------------------------------------
+    ! Temporary flag that determines whether to include Tmunuka selfconsistently
+    logical       :: Tmunuka=.true.
     !.....................................................
     !   Physical constants. They are set with an interaction, but have default
     !   values.
@@ -137,7 +140,7 @@ contains
     logical            :: exists
 
     NameList /skf/ Name,t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,te,to, &
-    &                    wso,wsoq, t1n2,t2n2,x1n2,x2n2,                    &
+    &                    wso,wsoq, t1n2,t2n2,x1n2,x2n2,  Tmunuka,          &
     &                    hbm,e2,                                           &
     &                    COM1body, COM2body,                               &
     &                    J2Terms   ,                                       &
@@ -155,7 +158,7 @@ contains
     wso=0.0_dp;     wsoq=0.0_dp
     t1n2 = 0 ; t2n2 = 0 ; x1n2 = 0 ; x2n2 = 0 ;
     COM1body=0;     COM2body=0
-    J2Terms=.false.
+    J2Terms=.false. ; Tmunuka = .true.
     call ResetConstants
 
     call get_unit(inunit)
@@ -183,7 +186,7 @@ contains
             t1n2 = 0 ;      t2n2 = 0 ; x1n2 = 0 ; x2n2 = 0 ;
             b14=0.0_dp;     b15=0.0_dp;     b16=0.0_dp;      b17=0.0_dp
             COM1body=0;     COM2body=0
-            J2Terms=.false.
+            J2Terms=.false. ; Tmunuka = .true.
             call ResetConstants
         endif
     enddo

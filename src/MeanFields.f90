@@ -45,7 +45,7 @@ module MeanFields
   real(KIND=dp),allocatable :: BPot(:,:,:,:), NablaBPot(:,:,:,:,:)
   real(KIND=dp),allocatable :: Bmunu(:,:,:,:,:,:), DN2LO(:,:,:,:)
   real(KIND=dp),allocatable :: Xpot(:,:,:,:,:,:,:)
-  real(KIND=dp),allocatable :: LapDN2LO(:,:,:,:)
+  real(KIND=dp),allocatable :: LapDN2LO(:,:,:,:), Tfield(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: DmuBmunu(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: UPot(:,:,:,:),APot(:,:,:,:,:)
   real(KIND=dp),allocatable :: SPot(:,:,:,:,:)
@@ -103,8 +103,7 @@ contains
       if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
         allocate(Bmunu(nx,ny,nz,3,3,2)) ; allocate(DmuBmunu(nx,ny,nz,3,3,2))
         allocate(DN2LO(nx,ny,nz,2)) ; allocate(LapDN2LO(nx,ny,nz,2))
-        allocate(Xpot(nx,ny,nz,3,3,3,2)) 
-    
+        allocate(Xpot(nx,ny,nz,3,3,3,2)) ; allocate(Tfield(nx,ny,nz,3,3,2))
       endif
     endif
 
@@ -128,6 +127,7 @@ contains
         call CalcBMunu()
         call CalcXpot()
         call calcDN2LO()
+        call calcTfield()
     else
         call CalcBPot()   
     endif
@@ -169,14 +169,6 @@ contains
     do it=1,2
         at = 3 - it
         BPot(:,:,:,it) =B3*Density%Rho(:,:,:,at) + (B3+B4)*Density%Rho(:,:,:,it)
-
-!        if(COM1body .eq. 2) then
-!          !Include 1-body C.O.M. correction
-!          Bpot(:,:,:,it) = Bpot(:,:,:,it) + hbm(it)/2.0_dp*Reducedmass(it)
-!        else
-!          !Don't include 1-body C.O.M. correction
-!          Bpot(:,:,:,it) = Bpot(:,:,:,it) + hbm(it)/2.0_dp
-!        endif
     enddo
     
     do it=1,2
@@ -1062,5 +1054,39 @@ contains
     ActionOfC = ActionOfC + Temp(1) + Temp(2) + Temp(3)
 
    end function ActionOfC
+   
+   subroutine calcTfield()
+        !
+        ! Calculates the field associated with the imaginary part of the Tmunuka 
+        ! density.
+        !
+    
+        integer :: it
+        
+        do it=1,2
+            Tfield(:,:,:,:,:,it) = BN2LO(7) * sum(Density%ImDTN2LO,6)          &
+            &                    + BN2LO(8) * Density%ImDTN2LO(:,:,:,:,:,it)
+        enddo
+   end subroutine calcTfield
+   
+   function ActionOfTField(Psi) result(ActionOfT)
+        !
+        !
+        !
+        type(Spwf), intent(in) :: Psi
+        type(Spinor)           :: ActionOfT
+        integer :: nu, kappa, it
+        
+        it    = (Psi%GetIsospin() + 3)/2
+        ActionOfT = newspinor()
+        
+        do kappa=1,3
+            do nu=1,3
+                ActionOfT = ActionofT +                                        &
+                &            Tfield(:,:,:,nu,kappa,it)*Pauli(Psi%Der(nu), kappa)
+            enddo
+        enddo
+        ActionOfT = -4.0d0*MultiplyI(ActionOfT) 
+   end function ActionOfTField
 
 end module MeanFields

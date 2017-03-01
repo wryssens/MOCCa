@@ -23,11 +23,11 @@ contains
     ! Calculate the action of \hat{h} on a wavefunction.
     !---------------------------------------------------------------------------
     use WaveFunctions
-    use Force, only : B14, B15, B16, B17
+    use Force 
     use Cranking
 
     type(Spwf)  , intent(in) :: Psi
-    type(Spinor)             :: hPsi, U, B, S, A, W, C, D, Crank, DN2LO, X
+    type(Spinor)             :: hPsi, U, B, S, A, W, C, D, Crank, DN2LO, X, T
     integer                  :: i
 
     B = ActionOfB(Psi)
@@ -41,6 +41,11 @@ contains
         DN2LO = ActionOfDN2LO(Psi)
         X     = ActionOfX(Psi)
         hPsi = hpsi + DN2LO + X
+        
+        if(TmunuKa) then
+            T = ActionOfTField(Psi)
+            hPsi = hPsi + T
+        endif
     endif
 
     if(.not.TRC) then

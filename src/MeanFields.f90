@@ -448,7 +448,7 @@ contains
       enddo
     endif
     
-    if(t1n2 .ne. 0.0_dp .or. t2n2 .ne. 0.0_dp) then
+    if(BN2LO(5).ne.0.0_dp .or. BN2LO(6).ne.0.0_dp) then
         !-----------------------------------------------------------------------
         ! N2LO contribution
         do it=1,2
@@ -694,7 +694,7 @@ contains
     type(Spwf), intent(in)        :: Psi
     type(Spinor)                  :: ActionOfB, temp
     integer                       :: it, mu,nu
-    real(KIND=dp)          :: Reducedmass(2)
+    real(KIND=dp)                 :: Reducedmass(2)
     logical, intent(in), optional :: NoKinetic
 
     if(present(NoKinetic)) then
@@ -708,12 +708,12 @@ contains
     endif
 
     it = (Psi%GetIsospin()+3)/2
-    ActionOfB = - hbm(it)/2.0_dp*Reducedmass(it) * Psi%Lap
+    ActionOfB = - (hbm(it)/2.0_dp*Reducedmass(it)) * Psi%Lap
     
     do mu=1,3
         do nu=1,3  
             ActionOfB = ActionOfB - Bmunu(:,:,:,mu,nu,it)   *Psi%SecondDer(mu,nu)
-            ActionOfB = ActionOfB - DmuBmunu(:,:,:,mu,nu,it)*Psi%Der      (mu)
+            ActionOfB = ActionOfB - DmuBmunu(:,:,:,mu,nu,it)*Psi%Der      (nu)
         enddo
     enddo
    

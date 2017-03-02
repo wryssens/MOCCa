@@ -220,7 +220,7 @@ contains
                 &      +4*(BN2LO(3) + BN2LO(4))* Density%RTauN2LO(:,:,:,mu,nu,it) &
                 &      -2*(BN2LO(3) + BN2LO(4))* Density%D2Rho   (:,:,:,mu,nu,it) & 
                 &      +4*(BN2LO(3))           * Density%RTauN2LO(:,:,:,mu,nu,at) &
-                &      -2*(BN2LO(3))           * Density%D2Rho   (:,:,:,mu,nu,at) &      
+                &      -2*(BN2LO(3))           * Density%D2Rho   (:,:,:,mu,nu,at)       
                 ! Imaginary parts should be here when breaking time-reversal!!
             enddo
         enddo

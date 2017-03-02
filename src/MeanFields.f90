@@ -191,16 +191,16 @@ contains
     ! the off-diagonal components.
     !---------------------------------------------------------------------------
     
-    integer :: mu,nu, it
+    integer :: mu,nu, it, at
 
     Bmunu = 0.0_dp
-    !---------------------------
+    !---------------------------------------------------------------------------
     ! N1LO diagonal elements 
     do mu=1,3
         Bmunu(:,:,:,mu,mu,:) = Bpot
     enddo
     
-    !---------------------------
+    !---------------------------------------------------------------------------
     ! tau delta_munu terms
     do it=1,2
         do mu=1,3
@@ -210,21 +210,22 @@ contains
         enddo
     enddo   
         
-    !---------------------------
+    !---------------------------------------------------------------------------
     ! Off-diagonal terms
     do it=1,2
+        at = 3 - it
         do mu=1,3
             do nu=1,3
-                Bmunu(:,:,:,mu,nu,it) = Bmunu(:,:,:,mu,nu,it)                  &
-                &      +4*BN2LO(3)*sum(Density%RTauN2LO(:,:,:,mu,nu,:),4)      &
-                &      -2*BN2LO(3)*sum(Density%D2Rho   (:,:,:,mu,nu,:),4)      &          
-                &      +4*BN2LO(4)*    Density%RTauN2LO(:,:,:,mu,nu,it)        &
-                &      -2*BN2LO(4)*    Density%D2Rho   (:,:,:,mu,nu,it)               
+                Bmunu(:,:,:,mu,nu,it) = Bmunu(:,:,:,mu,nu,it)                     &
+                &      +4*(BN2LO(3) + BN2LO(4))* Density%RTauN2LO(:,:,:,mu,nu,it) &
+                &      -2*(BN2LO(3) + BN2LO(4))* Density%D2Rho   (:,:,:,mu,nu,it) & 
+                &      +4*(BN2LO(3))           * Density%RTauN2LO(:,:,:,mu,nu,at) &
+                &      -2*(BN2LO(3))           * Density%D2Rho   (:,:,:,mu,nu,at) &      
                 ! Imaginary parts should be here when breaking time-reversal!!
             enddo
         enddo
     enddo
-    !---------------------------
+    !---------------------------------------------------------------------------
     ! Derivatives of B_munu
     ! Note that B_munu shares all of the t_munu (at least its real part)
     do it=1,2
@@ -246,7 +247,7 @@ contains
         &  DeriveX(Bmunu(:,:,:,1,3,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
         ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
         DmuBmunu(:,:,:,2,3,it) =                                          &
-        &  DeriveY(Bmunu(:,:,:,2,3,it), ParityInt,-SignatureInt, TimeSimplexInt,2 )
+        &  DeriveY(Bmunu(:,:,:,2,3,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
         DmuBmunu(:,:,:,3,2,it) =                                          &
         &  DeriveZ(Bmunu(:,:,:,3,2,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
     enddo
@@ -448,13 +449,13 @@ contains
       enddo
     endif
     
-    if(BN2LO(5).ne.0.0_dp .or. BN2LO(6).ne.0.0_dp) then
+    if(BN2LO(7).ne.0.0_dp .or. BN2LO(8).ne.0.0_dp) then
         !-----------------------------------------------------------------------
         ! N2LO contribution
         do it=1,2
             Wpot(:,:,:,:,:,it) = Wpot(:,:,:,:,:,it)                    &
-            &                  - 4 * BN2LO(5) * sum(Density%VN2LO,6)   & 
-            &                  - 4 * BN2LO(6) *     Density%VN2LO(:,:,:,:,:,it) 
+            &                  - 4 * BN2LO(7) * sum(Density%VN2LO,6)   & 
+            &                  - 4 * BN2LO(8) *     Density%VN2LO(:,:,:,:,:,it) 
         enddo
         !-----------------------------------------------------------------------
         ! Note that the N2LO term proportional to B^(4)_14 and 15 is not 
@@ -734,7 +735,6 @@ contains
     ActionOfD = ActionOfD + DN2LO(:,:,:,it)* &
     &              LapSpinor(Psi%Lap, Psi%parity, Psi%Signature,Psi%TimeSimplex)
     
-    if(all(ActionOfD%Grid .eq. 0.0)) call stp('D')
     return
   end function ActionOfDN2LO
 

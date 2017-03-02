@@ -527,12 +527,12 @@ contains
             & DeriveZ(DenIn%DerRho(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
 
             DenIn%D2Rho(:,:,:,1,2,it) = &
-            & DeriveX(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt,-TimeSimplexInt,1)
+            & DeriveX(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
             
             DenIn%D2Rho(:,:,:,2,2,it) = &
-            & DeriveY(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt,-TimeSimplexInt,1)
+            & DeriveY(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
             DenIn%D2Rho(:,:,:,3,2,it) = &
-            & DeriveZ(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt,-TimeSimplexInt,1)
+            & DeriveZ(DenIn%DerRho(:,:,:,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
             
             DenIn%D2Rho(:,:,:,1,3,it) = &
             & DeriveX(DenIn%DerRho(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,1)

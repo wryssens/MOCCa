@@ -221,7 +221,6 @@ contains
                 &      -2*(BN2LO(3) + BN2LO(4))* Density%D2Rho   (:,:,:,mu,nu,it) & 
                 &      +4*(BN2LO(3))           * Density%RTauN2LO(:,:,:,mu,nu,at) &
                 &      -2*(BN2LO(3))           * Density%D2Rho   (:,:,:,mu,nu,at)       
-                ! Imaginary parts should be here when breaking time-reversal!!
             enddo
         enddo
     enddo
@@ -713,7 +712,7 @@ contains
     
     do mu=1,3
         do nu=1,3  
-            ActionOfB = ActionOfB - Bmunu(:,:,:,mu,nu,it)   *Psi%SecondDer(mu,nu)
+            ActionOfB = ActionOfB -    Bmunu(:,:,:,mu,nu,it)*Psi%SecondDer(mu,nu)
             ActionOfB = ActionOfB - DmuBmunu(:,:,:,mu,nu,it)*Psi%Der      (nu)
         enddo
     enddo

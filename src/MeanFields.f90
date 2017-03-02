@@ -45,7 +45,7 @@ module MeanFields
   real(KIND=dp),allocatable :: BPot(:,:,:,:), NablaBPot(:,:,:,:,:)
   real(KIND=dp),allocatable :: Bmunu(:,:,:,:,:,:), DN2LO(:,:,:,:)
   real(KIND=dp),allocatable :: Xpot(:,:,:,:,:,:,:)
-  real(KIND=dp),allocatable :: LapDN2LO(:,:,:,:), Tfield(:,:,:,:,:,:)
+  real(KIND=dp),allocatable :: Tfield(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: DmuBmunu(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: UPot(:,:,:,:),APot(:,:,:,:,:)
   real(KIND=dp),allocatable :: SPot(:,:,:,:,:)
@@ -102,7 +102,7 @@ contains
           
       if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
         allocate(Bmunu(nx,ny,nz,3,3,2)) ; allocate(DmuBmunu(nx,ny,nz,3,3,2))
-        allocate(DN2LO(nx,ny,nz,2)) ; allocate(LapDN2LO(nx,ny,nz,2))
+        allocate(DN2LO(nx,ny,nz,2)) 
         allocate(Xpot(nx,ny,nz,3,3,3,2)) ; allocate(Tfield(nx,ny,nz,3,3,2))
       endif
     endif
@@ -268,9 +268,6 @@ contains
     do it=1,2
         DN2LO(:,:,:,it)    = BN2LO(3)*sum(Density%Rho,4)                       &
         &                  + BN2LO(4)*    Density%Rho(:,:,:,it) 
-    
-        LapDN2LO(:,:,:,it) =                                                   &
-        &  Laplacian(DN2LO(:,:,:,it), parityint, signatureint, timesimplexint,1)
     enddo
   end subroutine calcDN2LO
 
@@ -730,9 +727,16 @@ contains
 
     it = (Psi%GetIsospin()+3)/2
     
-    ActionOfD = LapDN2LO(:,:,:,it) * Psi%Lap 
-    ActionOfD = ActionOfD + DN2LO(:,:,:,it)* &
-    &              LapSpinor(Psi%Lap, Psi%parity, Psi%Signature,Psi%TimeSimplex)
+    !---------------------------------------------------------------------------
+    !Note that I have chosen to 'stack' derivatives here, since I've spent a 
+    ! day on this, only to realize that 
+    !  
+    !  Lap ( D Lap ) != Lap (D) Lap + D Lap Lap
+    !
+    ! Only Lagrange derivatives are responsible anyway, and this is no problem
+    ! for them. 
+    !---------------------------------------------------------------------------
+    ActionOfD =  LapSpinor(DN2LO(:,:,:,it)* Psi%Lap, Psi%parity, psi%signature, psi%timesimplex)
     
     return
   end function ActionOfDN2LO

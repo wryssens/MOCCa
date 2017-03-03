@@ -476,8 +476,8 @@ contains
 
     do it=1,2
         ! Note that the final derivative is first in the array
-        Xpot (:,:,:,:,:,:,it) = -4 * BN2LO(5) * sum(Density%DJmunu,7)          &
-        &                       -4 * BN2LO(6) * Density%DJmunu(:,:,:,:,:,:,it)
+        Xpot (:,:,:,:,:,:,it) = -4 * BN2LO(7) * sum(Density%DJmunu,7)          &
+        &                       -4 * BN2LO(8) * Density%DJmunu(:,:,:,:,:,:,it)
     enddo
       
   end subroutine CalcXpot

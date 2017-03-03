@@ -69,6 +69,7 @@ module Densities
     real(KIND=dp), allocatable :: ImDTN2LO(:,:,:,:,:,:)
     real(KIND=dp), allocatable :: LapLapRho(:,:,:,:)
     real(KIND=dp), allocatable ::    D2RTau(:,:,:,:)
+    real(KIND=dp), allocatable ::    DmuITau(:,:,:,:,:)
     real(KIND=dp), allocatable ::    PiN2LO(:,:,:,:,:)
     real(KIND=dp), allocatable ::     VN2LO(:,:,:,:,:,:)
     real(KIND=dp), allocatable ::     QN2LO(:,:,:,:)
@@ -178,6 +179,7 @@ contains
         allocate(R%DJmunu(sizex,sizey,sizez,3,3,3,2)) ; R%DJmunu  = 0.0_dp
         allocate(R%LapLapRho(sizex,sizey,sizez,2))    ; R%LapLapRho = 0.0_dp
         allocate(R%D2Rtau(sizex,sizey,sizez,2))       ; R%D2Rtau     = 0.0_dp
+        allocate(R%DmuItau(sizex,sizey,sizez,3,2))      ; R%DmuItau    = 0.0_dp
         allocate(R%divvecj (sizex,sizey,sizez,2))     ; R%divvecj   = 0.0_dp
         allocate(R%LapLaps(sizex,sizey,sizez,3,2))    ; R%laplaps   = 0.0_dp
     endif
@@ -209,6 +211,8 @@ contains
         Sum%RtauN2LO   = Den1%RTauN2LO     + Den2%RTauN2LO
         Sum%ItauN2LO   = Den1%ITauN2LO     + Den2%ITauN2LO
         Sum%D2RTau     = Den1%D2RTau       + Den2%D2RTau
+        Sum%DmuITau    = Den1%DmuITau      + Den2%DmuITau
+        
         Sum%D2Rho      = Den1%D2Rho        + Den2%D2Rho
         Sum%LapLapRho  = Den1%LapLapRho    + Den2%LapLapRho
         Sum%DJmunu     = Den1%DJmunu       + Den2%DJmunu
@@ -221,6 +225,7 @@ contains
         Sum%SN2LO      = Den1%SN2LO        + Den2%SN2LO
         Sum%D2S        = Den1%D2S          + Den2%D2S
         Sum%LapLapS    = Den1%LapLapS      + Den2%LapLapS
+       
     endif
     
     if(.not.TRC) then
@@ -268,6 +273,7 @@ contains
         Prod%RtauN2LO   = A*Den%RTauN2LO
         Prod%ItauN2LO   = A*Den%ITauN2LO
         Prod%D2RTau     = A*Den%D2RTau
+        Prod%DmuITau    = A*Den%DmuITau
         Prod%LapLapRho  = A*Den%LapLapRho
         Prod%D2Rho      = A*Den%D2Rho
         Prod%ReKN2LO    = A*Den%ReKN2LO 
@@ -547,12 +553,7 @@ contains
             !-------------------------------------------------------------------
             ! Sum of derivatives of Tau_munu
             !  D2Rtau = sum_{mu nu} D_mu D_nu Re tau_mu_nu
-            !  Note that the similar quantity of the imaginary part of tau is 
-            !  never needed.
             DenIn%D2RTau(:,:,:,it) = 0.0_dp
-            !-------------------------------------------------------------------
-            ! Real part of tau, which is the only part that contributes to the
-            ! fields (is this weird?)
             temp =          &
             &      DeriveX(DenIn%RTauN2LO(:,:,:,1,1,it), ParityInt, SignatureInt, TimeSimplexInt,1)
             temp = temp   + &
@@ -579,6 +580,30 @@ contains
             &      DeriveZ(DenIn%RTauN2LO(:,:,:,3,3,it), ParityInt, SignatureInt, TimeSimplexInt,1)
             DenIn%D2RTau(:,:,:,it) =  DenIn%D2RTau(:,:,:,it) +                 &
             &           DeriveZ(temp,-ParityInt, SignatureInt, TimeSimplexInt,1)
+            !-------------------------------------------------------------------
+            ! Different sum of derivatives for the imaginary part of tau
+            ! Sum_mu \nabla_\mu Im tau_munu
+            DenIn%DmuITau(:,:,:,:,it) = 0.0_dp
+            DenIn%DmuItau(:,:,:,1,it) = DenIn%DmuItau(:,:,:,1,it) +                    &
+            &      DeriveX(DenIn%ITauN2LO(:,:,:,1,1,it), ParityInt, SignatureInt, TimeSimplexInt,2)
+            DenIn%DmuItau(:,:,:,1,it) = DenIn%DmuItau(:,:,:,1,it) + &
+            &      DeriveY(DenIn%ITauN2LO(:,:,:,2,1,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+            DenIn%DmuItau(:,:,:,1,it) = DenIn%DmuItau(:,:,:,1,it) + &
+            &      DeriveZ(DenIn%ITauN2LO(:,:,:,3,1,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
+            ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+            DenIn%DmuItau(:,:,:,2,it) = DenIn%DmuItau(:,:,:,2,it) + &
+            &      DeriveX(DenIn%ITauN2LO(:,:,:,1,2,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+            DenIn%DmuItau(:,:,:,2,it) = DenIn%DmuItau(:,:,:,2,it) + &
+            &      DeriveY(DenIn%ITauN2LO(:,:,:,2,2,it), ParityInt, SignatureInt, TimeSimplexInt,2)
+            DenIn%DmuItau(:,:,:,2,it) = DenIn%DmuItau(:,:,:,2,it) + &
+            &      DeriveZ(DenIn%ITauN2LO(:,:,:,3,2,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
+            ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+            DenIn%DmuItau(:,:,:,3,it) = DenIn%DmuItau(:,:,:,2,it) + &
+            &      DeriveX(DenIn%ITauN2LO(:,:,:,1,3,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
+            DenIn%DmuItau(:,:,:,3,it) = DenIn%DmuItau(:,:,:,2,it) + &
+            &      DeriveY(DenIn%ITauN2LO(:,:,:,2,3,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
+            DenIn%DmuItau(:,:,:,3,it) = DenIn%DmuItau(:,:,:,3,it) + &
+            &      DeriveZ(DenIn%ITauN2LO(:,:,:,3,3,it), ParityInt, SignatureInt, TimeSimplexInt,2)
             !-------------------------------------------------------------------
             ! Derivatives of nabla_mu J_munu
             !-------------------------------------------------------------------

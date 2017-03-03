@@ -185,7 +185,8 @@ contains
   end subroutine CalcBPot
   
   subroutine calcBmunu()
-  
+    !---------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
     use Derivatives
     !---------------------------------------------------------------------------
     ! Collect the diagonal elements of the B_munu tensor effective mass and add
@@ -474,10 +475,10 @@ contains
 
     do it=1,2
         ! Note that the final derivative is first in the array
-        Xpot (:,:,:,:,:,it)  = -4 * BN2LO(7) * sum(Density%Jmunu,6)          &
-        &                      -4 * BN2LO(8) * Density%Jmunu(:,:,:,:,:,it)
-        DXpot(:,:,:,:,:,:,it)= -4 * BN2LO(7) * sum(Density%DJmunu,7)         &
-        &                      -4 * BN2LO(8) * Density%DJmunu(:,:,:,:,:,:,it)
+        Xpot (:,:,:,:,:,it)  = -2 * BN2LO(7) * sum(Density%Jmunu,6)          &
+        &                      -2 * BN2LO(8) * Density%Jmunu(:,:,:,:,:,it)
+        DXpot(:,:,:,:,:,:,it)= -2 * BN2LO(7) * sum(Density%DJmunu,7)         &
+        &                      -2 * BN2LO(8) * Density%DJmunu(:,:,:,:,:,:,it)
     enddo
       
   end subroutine CalcXpot
@@ -894,7 +895,7 @@ contains
         enddo
     enddo
     
-    ActionOfX = (-1.0_dp)*MultiplyI(ActionofX)
+    ActionOfX = MultiplyI(ActionofX)
   end function ActionOfX
 
   function ActionOfA(Psi)
@@ -1079,10 +1080,10 @@ contains
    end function ActionOfC
    
    subroutine calcTfield()
-        !
+        !-----------------------------------------------------------------------
         ! Calculates the field associated with the imaginary part of the Tmunuka 
         ! density.
-        !
+        !-----------------------------------------------------------------------
     
         integer :: it
         

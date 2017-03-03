@@ -874,6 +874,9 @@ contains
             enddo
         enddo
     enddo
+    do mu=1,3
+        Temp(mu) = newspinor()
+    enddo
     call DeriveSpinor(Psi%Lap, temp, Psi%Parity, Psi%Signature, Psi%TimeSimplex)
     do mu = 1,3
         do nu=1,3

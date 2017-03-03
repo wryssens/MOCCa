@@ -538,6 +538,16 @@ contains
        endif
     enddo
 
+    if( BN2LO(5).ne.0.0_dp .or. BN2LO(6) .ne. 0.0_dp) then
+        !
+        ! N2LO contribution
+        !
+        do it=1,2
+            at = 3 - it
+            Spot(:,:,:,:,it) = Spot(:,:,:,:,it) + 2 * (BN2LO(5)+BN2LO(6))
+        enddo
+    endif
+
     !Add the contribution from cranking
     SPot = SPot + CrankSPot()
     return
@@ -1095,7 +1105,7 @@ contains
         
         do kappa=1,3
             do nu=1,3
-                ActionOfT = ActionofT +                                        &
+                ActionOfT = ActionofT -                                        &
                 &            Tfield(:,:,:,nu,kappa,it)*Pauli(Psi%Der(nu), kappa)
             enddo
         enddo

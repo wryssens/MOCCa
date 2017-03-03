@@ -6,24 +6,24 @@ module HartreeFock
 !
 !
 
-use CompilationInfo
-use GenInfo
-use SpwfStorage
+    use CompilationInfo
+    use GenInfo
+    use SpwfStorage
 
-implicit none
+    implicit none
 
-!----------------------------------------------------------
-! Integers that describe the demanded HF-configuration.
-! First index
-! P (1,2) = (-,+)
-! Second index
-! Rz(1,2) = (-,+)
-! Third index
-! Isospin(1,2) = (N,P)
-integer :: HFConfiguration(2,2,2) = 0
+    !----------------------------------------------------------
+    ! Integers that describe the demanded HF-configuration.
+    ! First index
+    ! P (1,2) = (-,+)
+    ! Second index
+    ! Rz(1,2) = (-,+)
+    ! Third index
+    ! Isospin(1,2) = (N,P)
+    integer :: HFConfiguration(2,2,2) = 0
+    procedure(PickHFConfig),pointer :: HFFill !=> NaiveFill
 
-procedure(PickHFConfig),pointer :: HFFill !=> NaiveFill
-
+    integer :: HFBlock=0
 contains
 
     subroutine PickHFConfig(Configuration)
@@ -145,7 +145,6 @@ contains
     integer :: i, n,p, ProtonUpperBound, NeutronUpperBound, order(nwt),j
     integer, intent(in) :: Configuration(2,2,2)
 
-
     n=0; p=0
     !---------------------------------------------------------------------------
     !Setting all occupation numbers to Zero
@@ -161,6 +160,9 @@ contains
     else
       ProtonUpperBound  = floor(Protons)
       NeutronUpperBound = floor(Neutrons)
+      if(HFBlock .ne. 0 ) then
+        NeutronUpperBound = NeutronUpperBound -1
+      endif
     endif
     !---------------------------------------------------------------------------
     !Finding the order of the spwfs, in terms of energy
@@ -192,6 +194,11 @@ contains
       endif
       i = i + 1
     enddo
+    ! Blocking a certain state
+    if(HFBlock.ne.0) then
+        call HFBasis(HFBlock)%SetOcc(1.0_dp)
+    endif
+    
     !---------------------------------------------------------------------------
     !Double all occupation Numbers in the case of Time Reversal Symmetry
     if(TRC) then
@@ -207,6 +214,7 @@ contains
 
       if(HfBasis(j)%GetOcc().ne.0.0_dp) exit
     enddo
+
     return
   end subroutine NaiveFill
 

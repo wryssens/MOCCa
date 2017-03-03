@@ -46,6 +46,7 @@ module Densities
     ! Spin density and its rotor, laplacian and divergence.
     real(KIND=dp), allocatable :: Vecs(:,:,:,:,:), RotS(:,:,:,:,:)
     real(KIND=dp), allocatable :: LapS(:,:,:,:,:), DivS(:,:,:,:)
+    real(KIND=dp), allocatable :: LapLapS(:,:,:,:,:)
     real(KIND=dp), allocatable :: GradDivS(:,:,:,:,:)
     real(KIND=dp), allocatable :: DerS(:,:,:,:,:,:)
     !---------------------------------------------------------------------------
@@ -178,6 +179,7 @@ contains
         allocate(R%LapLapRho(sizex,sizey,sizez,2))    ; R%LapLapRho = 0.0_dp
         allocate(R%D2Rtau(sizex,sizey,sizez,2))       ; R%D2Rtau     = 0.0_dp
         allocate(R%divvecj (sizex,sizey,sizez,2))     ; R%divvecj   = 0.0_dp
+        allocate(R%LapLaps(sizex,sizey,sizez,3,2))    ; R%laplaps   = 0.0_dp
     endif
 
   end function NewDensityVector
@@ -218,6 +220,7 @@ contains
         Sum%QN2LO      = Den1%QN2LO        + Den2%QN2LO
         Sum%SN2LO      = Den1%SN2LO        + Den2%SN2LO
         Sum%D2S        = Den1%D2S          + Den2%D2S
+        Sum%LapLapS    = Den1%LapLapS      + Den2%LapLapS
     endif
     
     if(.not.TRC) then
@@ -275,6 +278,7 @@ contains
         Prod%QN2LO      = A*Den%QN2LO   
         Prod%SN2LO      = A*Den%SN2LO
         Prod%D2S        = A*Den%D2S 
+        Prod%LapLapS    = A*Den%LapLapS 
         Prod%DJmunu     = A*Den%DJmunu 
     endif
 
@@ -789,6 +793,8 @@ contains
           if(MoreDers) then
             DenIn%LapS(:,:,:,1,it) = Laplacian(DenIn%VecS(:,:,:,1,it),             &
             &                              ParityInt,-SignatureInt,TimeSimplexInt,1)
+            DenIn%LapLapS(:,:,:,1,it) = Laplacian(DenIn%LapS(:,:,:,1,it),          &
+            &                              ParityInt,-SignatureInt,TimeSimplexInt,1)
           endif
           DenIn%DerS(:,:,:,1,1,it) = &
           & DeriveX(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)
@@ -801,6 +807,8 @@ contains
           if(MoreDers) then
             DenIn%LapS(:,:,:,2,it) = Laplacian(DenIn%VecS(:,:,:,2,it),             &
             &                             ParityInt,-SignatureInt,TimeSimplexInt,2)
+            DenIn%LapLapS(:,:,:,2,it) = Laplacian(DenIn%LapS(:,:,:,2,it),          &
+            &                             ParityInt,-SignatureInt,TimeSimplexInt,2)
           endif
           DenIn%DerS(:,:,:,1,2,it) = &
           &DeriveX(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)
@@ -810,7 +818,9 @@ contains
           &DeriveZ(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)
           !--------------------- Z Components--------------------------------------
           if(MoreDers) then
-            DenIn%LapS(:,:,:,3,it) = Laplacian(DenIn%VecS(:,:,:,3,it),             &
+            DenIn%LapS(:,:,:,3,it)    = Laplacian(DenIn%VecS(:,:,:,3,it),      &
+            &                              ParityInt,SignatureInt,TimeSimplexInt,1)
+            DenIn%LapLapS(:,:,:,3,it) = Laplacian(DenIn%LapS(:,:,:,3,it),      &
             &                              ParityInt,SignatureInt,TimeSimplexInt,1)
           endif
           DenIn%DerS(:,:,:,1,3,it) = &

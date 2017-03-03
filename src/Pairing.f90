@@ -155,7 +155,7 @@ contains
      &                  SemiBCS, SemiBCSNeutron, SemiBCSProton,                &
      &                  QPinHFBasis, SolvePairingStart,QPPrintWindow, Block,   &
      &                  FermiSolver, HFBIter,HFBgauge,HFConfig, LNFixN, LNFixP,&
-     &                  DN2P, DN2N, ConstrainDispersion
+     &                  DN2P, DN2N, ConstrainDispersion, HFBlock
 
      read(unit=*, NML=Pairing)
 

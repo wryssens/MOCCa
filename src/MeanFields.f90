@@ -44,7 +44,7 @@ module MeanFields
   !Mean Field Potentials (and some of their relevant derivatives)
   real(KIND=dp),allocatable :: BPot(:,:,:,:), NablaBPot(:,:,:,:,:)
   real(KIND=dp),allocatable :: Bmunu(:,:,:,:,:,:), DN2LO(:,:,:,:)
-  real(KIND=dp),allocatable :: Xpot(:,:,:,:,:,:,:)
+  real(KIND=dp),allocatable :: Xpot(:,:,:,:,:,:), DXpot(:,:,:,:,:,:,:)
   real(KIND=dp),allocatable :: Tfield(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: DmuBmunu(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: UPot(:,:,:,:),APot(:,:,:,:,:)
@@ -103,7 +103,8 @@ contains
       if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
         allocate(Bmunu(nx,ny,nz,3,3,2)) ; allocate(DmuBmunu(nx,ny,nz,3,3,2))
         allocate(DN2LO(nx,ny,nz,2)) 
-        allocate(Xpot(nx,ny,nz,3,3,3,2)) ; allocate(Tfield(nx,ny,nz,3,3,2))
+        allocate(Xpot(nx,ny,nz,3,3,2)); allocate(DXpot(nx,ny,nz,3,3,3,2))
+        allocate(Tfield(nx,ny,nz,3,3,2))
       endif
     endif
 
@@ -465,9 +466,6 @@ contains
   subroutine CalcXPot()
     !-------------------------------------------------------------------------
     ! Calculates the X_munu N2LO potential. 
-    ! X_munuka \sim Nabla_ka J_munu 
-    ! Note that is defined differently from the Meyer-Becker notes, as 
-    ! this does not include the derivative and they have a 
     ! X_munu \sim J_munu
     !-------------------------------------------------------------------------
     integer :: it, mu,nu 
@@ -476,8 +474,10 @@ contains
 
     do it=1,2
         ! Note that the final derivative is first in the array
-        Xpot (:,:,:,:,:,:,it) = -4 * BN2LO(7) * sum(Density%DJmunu,7)          &
-        &                       -4 * BN2LO(8) * Density%DJmunu(:,:,:,:,:,:,it)
+        Xpot (:,:,:,:,:,it)  = -4 * BN2LO(7) * sum(Density%Jmunu,6)          &
+        &                      -4 * BN2LO(8) * Density%Jmunu(:,:,:,:,:,it)
+        DXpot(:,:,:,:,:,:,it)= -4 * BN2LO(7) * sum(Density%DJmunu,7)         &
+        &                      -4 * BN2LO(8) * Density%DJmunu(:,:,:,:,:,:,it)
     enddo
       
   end subroutine CalcXpot
@@ -858,22 +858,30 @@ contains
   
   function ActionOfX(Psi) 
     type(Spwf), intent(in) :: Psi
-    type(Spinor)           :: ActionOfX, temp
+    type(Spinor)           :: ActionOfX, temp(3)
   
     integer :: it, mu,nu, ka
   
     ActionOfX = NewSpinor()
-    temp      = NewSpinor()
+    temp = NewSpinor()
     it = (Psi%GetIsospin() + 3)/2
     
     do ka=1,3
         do mu=1,3
             do nu=1,3
-                temp = Xpot(:,:,:,ka,mu,nu,it) * Pauli(Psi%SecondDer(ka,mu),nu)
-                ActionOfX = ActionOfX          + temp
+                ActionOfX = ActionOfX + &
+                &      DXpot(:,:,:,ka,mu,nu,it) * Pauli(Psi%SecondDer(ka,mu),nu)
             enddo
         enddo
     enddo
+    call DeriveSpinor(Psi%Lap, temp, Psi%Parity, Psi%Signature, Psi%TimeSimplex)
+    do mu = 1,3
+        do nu=1,3
+            ActionOfX = ActionOfX + &
+            &          Xpot(:,:,:,mu,nu,it) * Pauli(temp(mu),nu)
+        enddo
+    enddo
+    
     ActionOfX = (-1.0_dp)*MultiplyI(ActionofX)
   end function ActionOfX
 

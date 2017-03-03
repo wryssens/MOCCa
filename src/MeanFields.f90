@@ -862,8 +862,8 @@ contains
   
     integer :: it, mu,nu, ka
   
+    stop
     ActionOfX = NewSpinor()
-    temp = NewSpinor()
     it = (Psi%GetIsospin() + 3)/2
     
     do ka=1,3
@@ -1078,8 +1078,8 @@ contains
         integer :: it
         
         do it=1,2
-            Tfield(:,:,:,:,:,it) = BN2LO(7) * sum(Density%ImDTN2LO,6)          &
-            &                    + BN2LO(8) * Density%ImDTN2LO(:,:,:,:,:,it)
+            Tfield(:,:,:,:,:,it) = 4*BN2LO(7) * sum(Density%ImDTN2LO,6)        &
+            &                    + 4*BN2LO(8) * Density%ImDTN2LO(:,:,:,:,:,it)
         enddo
    end subroutine calcTfield
    
@@ -1100,7 +1100,7 @@ contains
                 &            Tfield(:,:,:,nu,kappa,it)*Pauli(Psi%Der(nu), kappa)
             enddo
         enddo
-        ActionOfT = -4.0d0*MultiplyI(ActionOfT) 
+        ActionOfT = MultiplyI(ActionOfT) 
    end function ActionOfTField
 
 end module MeanFields

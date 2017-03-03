@@ -352,6 +352,8 @@ subroutine Evolve(MaxIterations, iprint)
      print 9, TotalDispersion/nwt
      print 4
   endif
+  
+  call testT
 end subroutine Evolve
 
 logical function ConvergenceCheck() result(Converged)
@@ -852,6 +854,28 @@ subroutine N2LOanalysis()
  
  
 end subroutine N2LOAnalysis
+
+subroutine TestT
+    
+    use Spinors 
+    use SpwfStorage
+    use MeanFields
+    
+    integer :: i
+    real*8 :: E
+    type(Spinor)  :: temp
+    
+    temp = newspinor()
+    E = 0
+    do i=1,nwt
+            if (HFBasis(i)%getOcc() .eq. 0.0_dp) cycle
+            temp = actionofTfield(HFBasis(i))
+            E = E + InproductSpinorReal(HFBasis(i)%value, temp)
+    enddo
+    
+    print *, 'Energy from T', E
+    stop
+end subroutine TestT
 
 subroutine writeN2LOdensities(Den)
 

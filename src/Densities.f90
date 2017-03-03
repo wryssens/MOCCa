@@ -179,7 +179,7 @@ contains
         allocate(R%DJmunu(sizex,sizey,sizez,3,3,3,2)) ; R%DJmunu  = 0.0_dp
         allocate(R%LapLapRho(sizex,sizey,sizez,2))    ; R%LapLapRho = 0.0_dp
         allocate(R%D2Rtau(sizex,sizey,sizez,2))       ; R%D2Rtau     = 0.0_dp
-        allocate(R%DmuItau(sizex,sizey,sizez,3,2))      ; R%DmuItau    = 0.0_dp
+        allocate(R%DmuItau(sizex,sizey,sizez,3,2))    ; R%DmuItau    = 0.0_dp
         allocate(R%divvecj (sizex,sizey,sizez,2))     ; R%divvecj   = 0.0_dp
         allocate(R%LapLaps(sizex,sizey,sizez,3,2))    ; R%laplaps   = 0.0_dp
     endif
@@ -212,7 +212,6 @@ contains
         Sum%ItauN2LO   = Den1%ITauN2LO     + Den2%ITauN2LO
         Sum%D2RTau     = Den1%D2RTau       + Den2%D2RTau
         Sum%DmuITau    = Den1%DmuITau      + Den2%DmuITau
-        
         Sum%D2Rho      = Den1%D2Rho        + Den2%D2Rho
         Sum%LapLapRho  = Den1%LapLapRho    + Den2%LapLapRho
         Sum%DJmunu     = Den1%DJmunu       + Den2%DJmunu

@@ -388,6 +388,20 @@ contains
       &                + ((B9+B9q)*Density%RotS(:,:,:,:,it)                    &
       &                +      B9  *Density%RotS(:,:,:,:,at))
     enddo
+    
+    if(t1n2 .ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
+        !-----------------------------------------------------------------------
+        ! Note that this in fact a field related to tau_munu, but that we can 
+        ! easily put into the action of A.
+        !
+        do it=1,2
+            at = 3 - it
+            Apot(:,:,:,:,it) = Apot(:,:,:,:,it) &
+            &                - 4*(BN2LO(3)+BN2LO(4))*Density%DmuItau(:,:,:,:,it)          &
+            &                - 4* BN2LO(3)          *Density%DmuItau(:,:,:,:,at)
+        enddo
+    endif
+    
     !Add a cranking contribution
     APot = APot + CrankAPot()
     return
@@ -475,10 +489,10 @@ contains
 
     do it=1,2
         ! Note that the final derivative is first in the array
-        Xpot (:,:,:,:,:,it)  = -2 * BN2LO(7) * sum(Density%Jmunu,6)          &
-        &                      -2 * BN2LO(8) * Density%Jmunu(:,:,:,:,:,it)
-        DXpot(:,:,:,:,:,:,it)= -2 * BN2LO(7) * sum(Density%DJmunu,7)         &
-        &                      -2 * BN2LO(8) * Density%DJmunu(:,:,:,:,:,:,it)
+        Xpot (:,:,:,:,:,it)  = -4 * BN2LO(7) * sum(Density%Jmunu,6)          &
+        &                      -4 * BN2LO(8) * Density%Jmunu(:,:,:,:,:,it)
+        DXpot(:,:,:,:,:,:,it)= -4 * BN2LO(7) * sum(Density%DJmunu,7)         &
+        &                      -4 * BN2LO(8) * Density%DJmunu(:,:,:,:,:,:,it)
     enddo
       
   end subroutine CalcXpot
@@ -724,7 +738,6 @@ contains
             ActionOfB = ActionOfB - DmuBmunu(:,:,:,mu,nu,it)*Psi%Der      (nu)
         enddo
     enddo
-   
     return
   end function ActionOfBN2LO
   

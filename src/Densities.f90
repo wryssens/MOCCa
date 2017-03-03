@@ -723,9 +723,9 @@ contains
             ! (nu,ka) = (3,3)
             DenIn%ImDTN2LO(:,:,:,3,3,it) =                                     &
             & DeriveX(DenIn%ImKN2LO(:,:,:,1,3,3,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
-            DenIn%ImDTN2LO(:,:,:,3,3,it) = DenIn%ImDTN2LO(:,:,:,3,1,it) +      &
+            DenIn%ImDTN2LO(:,:,:,3,3,it) = DenIn%ImDTN2LO(:,:,:,3,3,it) +      &
             & DeriveY(DenIn%ImKN2LO(:,:,:,2,3,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
-            DenIn%ImDTN2LO(:,:,:,3,3,it) = DenIn%ImDTN2LO(:,:,:,3,1,it) +      &
+            DenIn%ImDTN2LO(:,:,:,3,3,it) = DenIn%ImDTN2LO(:,:,:,3,3,it) +      &
             & DeriveZ(DenIn%ImKN2LO(:,:,:,3,3,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
         enddo
     endif

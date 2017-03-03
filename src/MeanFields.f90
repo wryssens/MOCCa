@@ -862,7 +862,6 @@ contains
   
     integer :: it, mu,nu, ka
   
-    stop
     ActionOfX = NewSpinor()
     it = (Psi%GetIsospin() + 3)/2
     

@@ -314,7 +314,7 @@ contains
     endif
     !---------------------------------------------------------------------------
     ! Im T_munuka^2                   T-even (!!!)
-    terms(31) = - 2 * sum(sum(Den%ImKN2LO,7)**2)               * BN2LO(7)
+    terms(31)     = - 2 * sum(sum(Den%ImKN2LO,7)**2)           * BN2LO(7)
     do it=1,2
         terms(32) = terms(32) - &
         &              2*sum(Den%ImKN2LO(:,:,:,:,:,:,it)**2)   * BN2LO(8)

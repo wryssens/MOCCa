@@ -862,7 +862,7 @@ subroutine TestT
     use MeanFields
     
     integer :: i
-    real*8 :: E
+    real*8 :: E, EX
     type(Spinor)  :: temp
     
     temp = newspinor()
@@ -871,10 +871,11 @@ subroutine TestT
             if (HFBasis(i)%getOcc() .eq. 0.0_dp) cycle
             temp = actionofTfield(HFBasis(i))
             E = E + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = actionofX(HFBasis(i))
+            Ex = Ex + InproductSpinorReal(HFBasis(i)%value, temp)
     enddo
     
-    print *, 'Energy from T', E
-    stop
+    print *, 'Energy from T, X', E, Ex
 end subroutine TestT
 
 subroutine writeN2LOdensities(Den)

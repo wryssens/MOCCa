@@ -489,10 +489,10 @@ contains
 
     do it=1,2
         ! Note that the final derivative is first in the array
-        Xpot (:,:,:,:,:,it)  = -4 * BN2LO(7) * sum(Density%Jmunu,6)          &
-        &                      -4 * BN2LO(8) * Density%Jmunu(:,:,:,:,:,it)
-        DXpot(:,:,:,:,:,:,it)= -4 * BN2LO(7) * sum(Density%DJmunu,7)         &
-        &                      -4 * BN2LO(8) * Density%DJmunu(:,:,:,:,:,:,it)
+        Xpot (:,:,:,:,:,it)  = - 4 * BN2LO(7) * sum(Density%Jmunu,6)          &
+        &                      - 4 * BN2LO(8) * Density%Jmunu(:,:,:,:,:,it)
+        DXpot(:,:,:,:,:,:,it)= - 4 * BN2LO(7) * sum(Density%DJmunu,7)         &
+        &                      - 4 * BN2LO(8) * Density%DJmunu(:,:,:,:,:,:,it)
     enddo
       
   end subroutine CalcXpot
@@ -1101,8 +1101,8 @@ contains
         integer :: it
         
         do it=1,2
-            Tfield(:,:,:,:,:,it) = 4*BN2LO(7) * sum(Density%ImDTN2LO,6)        &
-            &                    + 4*BN2LO(8) * Density%ImDTN2LO(:,:,:,:,:,it)
+            Tfield(:,:,:,:,:,it) = - 4*BN2LO(7) * sum(Density%ImDTN2LO,6)        &
+            &                      - 4*BN2LO(8) * Density%ImDTN2LO(:,:,:,:,:,it)
         enddo
    end subroutine calcTfield
    

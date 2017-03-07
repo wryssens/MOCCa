@@ -321,6 +321,14 @@ contains
         print 1131, CN2LO(1:8)
     endif
 
+    if(Tmunuka) then
+        print *, '!!!!!!!!'
+        print *, 'Selfconsistent TMUNUKA'
+    else
+        print *, '!!!!!!!!'
+        print *, 'NONSELFCONSISTENT TMUNUKA'
+    endif
+
   end subroutine PrintForce
 
   subroutine CalcEDFCoef()

@@ -207,11 +207,11 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         
     return(xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty)
 
-def MOCCaPlot(XARG, YARG, PREFIX, PREFIX2=None,PC=1, SC=1, PC2=1, SC2=1, 
-              AXIS=None, INTERPOLATE=-1, INTERMIN=None,    
-              INTERMAX=None ,LABEL=None, NORMY=1, SPHERNORM=0, 
-              LINESTYLE='-', MARKER='', COLOR='', OFFSET=None, 
-              XCUT1=None, XCUT2=None, MINRANGE=None):
+def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1, 
+              AXIS     =None,  INTERPOLATE=-1, INTERMIN=None,    
+              INTERMAX =None,  LABEL=None, NORMY=1, SPHERNORM=0, 
+              LINESTYLE='-' ,  MARKER='', COLOR='', OFFSET=None, 
+              XMIN     =None,  XMAX=None, MINRANGE=None):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
@@ -224,36 +224,56 @@ def MOCCaPlot(XARG, YARG, PREFIX, PREFIX2=None,PC=1, SC=1, PC2=1, SC2=1,
     if AXIS is None:
         AXIS = plt.gca()
 
-    (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty) = Determinedata(PREFIX, XARG, YARG,PC,SC)
-
-    dataX=np.loadtxt(xfname,skiprows=1)
-    dataY=np.loadtxt(yfname,skiprows=1)
-    
-    xdata=dataX[:,xcolumn]
-    ydata=dataY[:,ycolumn]
-    
-    if(XCUT1 != None):
-        indices = []
-        for i in range(len(xdata)):
-            if(xdata[i] > XCUT1):
-                indices.append(i)
-        xdata = np.delete(xdata,indices)
-        ydata = np.delete(ydata,indices)
+    if(isinstance(PREFIX, list)):
         
-    if(PREFIX2 != None) :
-        (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty) = Determinedata(PREFIX2, XARG, YARG,PC2,SC2)
+    
+        for i in range(len(PREFIX)):
+            (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty) = Determinedata(PREFIX[i], XARG, YARG,PC[i],SC[i])
+    
+            dataX=np.loadtxt(xfname,skiprows=1)
+            dataY=np.loadtxt(yfname,skiprows=1)
+            
+            tempx=dataX[:,xcolumn]
+            tempy=dataY[:,ycolumn]
+            
+            if(XMIN != None):
+                indices = []
+                for j in range(len(tempx)):
+                    if(tempx[j] < XMIN[i]):
+                        indices.append(j)
+                tempx = np.delete(tempx,indices)
+                tempy = np.delete(tempy,indices)
+            if(XMAX != None):
+                indices = []
+                for j in range(len(tempx)):
+                    if(tempx[j] > XMAX[i]):
+                        indices.append(j)
+                tempx = np.delete(tempx,indices)
+                tempy = np.delete(tempy,indices)
+            
+            
+            if(i==0) :
+                xdata=tempx
+                ydata=tempy
+            else:
+                xdata = np.append(xdata, tempx)
+                ydata = np.append(ydata, tempy)
+            
+    else:
+        (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty) = Determinedata(PREFIX, XARG, YARG,PC,SC)
+    
         dataX=np.loadtxt(xfname,skiprows=1)
         dataY=np.loadtxt(yfname,skiprows=1)
         
-        xdata = np.append(xdata, dataX[:,xcolumn])
-        ydata = np.append(ydata, dataY[:,xcolumn])
+        xdata=dataX[:,xcolumn]
+        ydata=dataY[:,ycolumn]
     
-    if(altx != 0):
-        altxdata = dataX[:, altx]
-        xdata = np.arctan2( xdata, altxdata)*180/np.pi
-    if(alty != 0):
-        altydata = dataY[:, alty]
-        ydata    =  altydata - ydata
+        if(altx != 0):
+            altxdata = dataX[:, altx]
+            xdata = np.arctan2( xdata, altxdata)*180/np.pi
+        if(alty != 0):
+            altydata = dataY[:, alty]
+            ydata    =  altydata - ydata
         
     # Sort along X-data for surety
     xdata, ydata = zip(*sorted(zip(xdata, ydata)))

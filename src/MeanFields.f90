@@ -45,7 +45,7 @@ module MeanFields
   real(KIND=dp),allocatable :: BPot(:,:,:,:), NablaBPot(:,:,:,:,:)
   real(KIND=dp),allocatable :: Bmunu(:,:,:,:,:,:), DN2LO(:,:,:,:)
   real(KIND=dp),allocatable :: Xpot(:,:,:,:,:,:), DXpot(:,:,:,:,:,:,:)
-  real(KIND=dp),allocatable :: Tfield(:,:,:,:,:,:)
+  real(KIND=dp),allocatable :: ReTfield(:,:,:,:,:,:,:), ImTfield(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: DmuBmunu(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: UPot(:,:,:,:),APot(:,:,:,:,:)
   real(KIND=dp),allocatable :: SPot(:,:,:,:,:)
@@ -104,7 +104,7 @@ contains
         allocate(Bmunu(nx,ny,nz,3,3,2)) ; allocate(DmuBmunu(nx,ny,nz,3,3,2))
         allocate(DN2LO(nx,ny,nz,2)) 
         allocate(Xpot(nx,ny,nz,3,3,2)); allocate(DXpot(nx,ny,nz,3,3,3,2))
-        allocate(Tfield(nx,ny,nz,3,3,2))
+        allocate(ReTfield(nx,ny,nz,3,3,3,2)) ; allocate(ImTfield(nx,ny,nz,3,3,2))
       endif
     endif
 
@@ -252,7 +252,18 @@ contains
         DmuBmunu(:,:,:,3,2,it) =                                          &
         &  DeriveZ(Bmunu(:,:,:,3,2,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
     enddo
-   
+    
+!    !-----------------------------------------------------------------------
+!    ! Note that this in fact a field related to tau_munu, but that we can 
+!    ! easily put into the action of A.
+!    !
+!    do it=1,2
+!        at = 3 - it
+!        Apot(:,:,:,:,it) = Apot(:,:,:,:,it) &
+!        &                - 4*(BN2LO(3)+BN2LO(4))*Density%DmuItau(:,:,:,:,it) &
+!        &                - 4* BN2LO(3)          *Density%DmuItau(:,:,:,:,at)
+!    enddo
+!        
   end subroutine calcBmunu
 
   subroutine calcDN2LO()
@@ -391,14 +402,13 @@ contains
     
     if(t1n2 .ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
         !-----------------------------------------------------------------------
-        ! Note that this in fact a field related to tau_munu, but that we can 
-        ! easily put into the action of A.
-        !
+        ! Pi_mu term
+        ! 
         do it=1,2
             at = 3 - it
             Apot(:,:,:,:,it) = Apot(:,:,:,:,it) &
-            &                - 4*(BN2LO(3)+BN2LO(4))*Density%DmuItau(:,:,:,:,it)          &
-            &                - 4* BN2LO(3)          *Density%DmuItau(:,:,:,:,at)
+            &                - (BN2LO(3) + BN2LO(4))*Density%PiN2LO(:,:,:,:,it) &
+            &                -  BN2LO(4)            *Density%PiN2LO(:,:,:,:,at) 
         enddo
     endif
     
@@ -554,12 +564,16 @@ contains
     enddo
 
     if( BN2LO(5).ne.0.0_dp .or. BN2LO(6) .ne. 0.0_dp) then
-        !
+        !-----------------------------------------------------------------------
         ! N2LO contribution
-        !
+        !-----------------------------------------------------------------------
         do it=1,2
             at = 3 - it
-            Spot(:,:,:,:,it) = Spot(:,:,:,:,it) + 2 * (BN2LO(5)+BN2LO(6))
+            Spot(:,:,:,:,it)= Spot(:,:,:,:,it)   &
+            &             + 2*(BN2LO(7)+BN2LO(8))*Density%SN2LO(:,:,:,:,it)    &
+            &             + 2* BN2LO(8)          *Density%SN2LO(:,:,:,:,at)    &
+            &             + 2*(BN2LO(7)+BN2LO(8))*Density%ReDTN2LO(:,:,:,:,it) &
+            &             + 2* BN2LO(8)          *Density%ReDTN2LO(:,:,:,:,at)
         enddo
     endif
 
@@ -1098,18 +1112,32 @@ contains
         ! density.
         !-----------------------------------------------------------------------
     
-        integer :: it
+        integer :: it, mu
         
         do it=1,2
-            Tfield(:,:,:,:,:,it) = - 4*BN2LO(7) * sum(Density%ImDTN2LO,6)        &
-            &                      - 4*BN2LO(8) * Density%ImDTN2LO(:,:,:,:,:,it)
+            ImTfield(:,:,:,:,:,it) = - 4*BN2LO(7)*sum(Density%ImDTN2LO,6)    &
+            &                        - 4*BN2LO(8)*Density%ImDTN2LO(:,:,:,:,:,it)
         enddo
+
+        if(TRC) return
+        
+!        do it=1,2
+!            ReTfield(:,:,:,:,:,it)=- 4*BN2LO(7)*sum(Density%ReKN2LO,7)         &
+!            &                      - 4*BN2LO(8)*Density%ReKN2LO(:,:,:,:,:,:,it)&
+!            &                      + 2*BN2LO(7)*sum(Density%D2S,7)             &
+!            &                      + 2*BN2LO(8)*Density%D2S(:,:,:,:,:,:,it)     
+!            do mu=1,3
+!                ReTField(:,:,:,mu,mu,:,it) = -2*BN2LO(7)*sum(Density%VecT,4)   &
+!                &                            -2*BN2LO(8)*Density%VecT(:,:,:,it)
+!            enddo
+!        enddo
+! 
    end subroutine calcTfield
    
-   function ActionOfTField(Psi) result(ActionOfT)
-        !
-        !
-        !
+   function ActionOfImTField(Psi) result(ActionOfT)
+        !-----------------------------------------------------------------------
+        ! Action of the imaginary T-field.
+        !-----------------------------------------------------------------------
         type(Spwf), intent(in) :: Psi
         type(Spinor)           :: ActionOfT
         integer :: nu, kappa, it
@@ -1120,10 +1148,28 @@ contains
         do kappa=1,3
             do nu=1,3
                 ActionOfT = ActionofT -                                        &
-                &            Tfield(:,:,:,nu,kappa,it)*Pauli(Psi%Der(nu), kappa)
+                &          ImTfield(:,:,:,nu,kappa,it)*Pauli(Psi%Der(nu), kappa)
             enddo
         enddo
         ActionOfT = MultiplyI(ActionOfT) 
-   end function ActionOfTField
+   end function ActionOfImTField
+
+   function ActionOfReTField(Psi) result(ActionOfT)
+        !-----------------------------------------------------------------------
+        ! Action of the imaginary T-field.
+        !-----------------------------------------------------------------------
+        type(Spwf), intent(in) :: Psi
+        type(Spinor)           :: ActionOfT
+        integer :: nu, kappa, it
+        
+        it    = (Psi%GetIsospin() + 3)/2
+        ActionOfT = newspinor()
+        
+        do kappa=1,3
+            do nu=1,3
+            enddo
+        enddo
+        
+   end function ActionOfReTField
 
 end module MeanFields

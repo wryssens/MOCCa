@@ -984,7 +984,7 @@ contains
     
     if(.not.allocated(LagXmat)) then
         allocate(LagXMat(nx,nx,2), LagYMat(ny,ny,2), LagZMat(nz,nz,2))
-        allocate(LagXXMat(nx,nx,2), LagYYMat(nx,nx,2), LagZZMat(nx,nx,2))
+        allocate(LagXXMat(nx,nx,2), LagYYMat(ny,ny,2), LagZZMat(nz,nz,2))
     endif
     if(.not.allocated(LagLapX)) call stp('wtf')
     

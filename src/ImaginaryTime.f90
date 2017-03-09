@@ -43,7 +43,7 @@ contains
         hPsi = hpsi + DN2LO + X
         
         if(TmunuKa) then
-            T = ActionOfTField(Psi)
+            T = ActionOfImTField(Psi)
             hPsi = hPsi + T
         endif
     endif

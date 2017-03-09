@@ -869,7 +869,7 @@ subroutine TestT
     E = 0
     do i=1,nwt
             if (HFBasis(i)%getOcc() .eq. 0.0_dp) cycle
-            temp = actionofTfield(HFBasis(i))
+            temp = actionofImTfield(HFBasis(i))
             E = E + InproductSpinorReal(HFBasis(i)%value, temp)
             temp = actionofX(HFBasis(i))
             Ex = Ex + InproductSpinorReal(HFBasis(i)%value, temp)

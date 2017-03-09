@@ -65,7 +65,7 @@ module Densities
     real(KIND=dp), allocatable ::  ItauN2LO(:,:,:,:,:,:)
     real(KIND=dp), allocatable ::   ReKN2LO(:,:,:,:,:,:,:)
     real(KIND=dp), allocatable ::   ImKN2LO(:,:,:,:,:,:,:)
-    real(KIND=dp), allocatable :: ReDTN2LO(:,:,:,:,:,:)
+    real(KIND=dp), allocatable :: ReDTN2LO(:,:,:,:,:)
     real(KIND=dp), allocatable :: ImDTN2LO(:,:,:,:,:,:)
     real(KIND=dp), allocatable :: LapLapRho(:,:,:,:)
     real(KIND=dp), allocatable ::    D2RTau(:,:,:,:)
@@ -169,6 +169,7 @@ contains
         allocate(R%ItauN2LO(sizex,sizey,sizez,3,3,2)) ; R%ItauN2LO = 0.0_dp
         allocate(R%ReKN2LO(sizex,sizey,sizez,3,3,3,2)); R%ReKN2LO   = 0.0_dp
         allocate(R%ImKN2LO(sizex,sizey,sizez,3,3,3,2)); R%ImKN2LO   = 0.0_dp
+        allocate(R%ReDTN2LO(sizex,sizey,sizez,3,2))   ; R%ReDTN2LO   = 0.0_dp
         allocate(R%ImDTN2LO(sizex,sizey,sizez,3,3,2)) ; R%ImDTN2LO   = 0.0_dp
         allocate(R%PiN2LO(sizex,sizey,sizez,3,2))     ; R%PiN2LO  = 0.0_dp
         allocate(R%VN2LO(sizex,sizey,sizez,3,3,2))    ; R%VN2LO  = 0.0_dp
@@ -679,9 +680,7 @@ contains
             & DeriveZ(DenIn%JMuNu(:,:,:,1,2,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1)
         
             !-------------------------------------------------------------------
-            ! Derivatives of T_mnk, for now the imaginary parts. 
-            ! Note that the array has a special structure.
-            ! 
+            ! Derivatives of T_mnk
             ! ImDTN2LO(:,:,:,nu,ka,:) = sum_mu Nabla_mu Im T_munuka
             !-------------------------------------------------------------------
             ! (nu,ka) = (1,1)
@@ -726,11 +725,11 @@ contains
             !-------------------------------------------------------------------
             ! (nu,ka) = (2,3)
             DenIn%ImDTN2LO(:,:,:,2,3,it) =                                     &
-            & DeriveX(DenIn%ImKN2LO(:,:,:,1,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            & DeriveX(DenIn%ImKN2LO(:,:,:,1,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
             DenIn%ImDTN2LO(:,:,:,2,3,it) = DenIn%ImDTN2LO(:,:,:,2,3,it) +      &
-            & DeriveY(DenIn%ImKN2LO(:,:,:,2,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            & DeriveY(DenIn%ImKN2LO(:,:,:,2,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
             DenIn%ImDTN2LO(:,:,:,2,3,it) = DenIn%ImDTN2LO(:,:,:,2,3,it) +      &
-            & DeriveZ(DenIn%ImKN2LO(:,:,:,3,2,3,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            & DeriveZ(DenIn%ImKN2LO(:,:,:,3,2,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
             !-------------------------------------------------------------------
             ! (nu,ka) = (3,1)
             DenIn%ImDTN2LO(:,:,:,3,1,it) =                                     &
@@ -754,8 +753,111 @@ contains
             DenIn%ImDTN2LO(:,:,:,3,3,it) = DenIn%ImDTN2LO(:,:,:,3,3,it) +      &
             & DeriveY(DenIn%ImKN2LO(:,:,:,2,3,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
             DenIn%ImDTN2LO(:,:,:,3,3,it) = DenIn%ImDTN2LO(:,:,:,3,3,it) +      &
-            & DeriveZ(DenIn%ImKN2LO(:,:,:,3,3,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
-        enddo
+            & DeriveZ(DenIn%ImKN2LO(:,:,:,3,3,3,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            !-------------------------------------------------------------------
+            ! Derivatives of T_mnk
+            ! ReDTN2LO(:,:,:,ka,:) = sum_munu Nabla_mu Nabla_nu Re T_munuka
+            !-------------------------------------------------------------------
+            ! kappa = 1, nu = 1, sum over mu
+            temp =                                                             &
+            & DeriveX(DenIn%ReKN2LO(:,:,:,1,1,1,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            temp = temp +                                                      &
+            & DeriveY(DenIn%ReKN2LO(:,:,:,2,1,1,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            temp = temp +                                                      &
+            & DeriveZ(DenIn%ReKN2LO(:,:,:,3,1,1,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            
+            DenIn%ReDTN2LO(:,:,:,1,it) = &
+            & DeriveX(                         temp,-ParityInt,  SignatureInt, TimeSimplexInt,1)
+            !-------------------------------------------------------------------
+            ! kappa = 2, nu = 1, sum over mu
+            temp =                                     &
+            & DeriveX(DenIn%ReKN2LO(:,:,:,1,1,2,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            temp = temp +                                                      &
+            & DeriveY(DenIn%ReKN2LO(:,:,:,2,1,2,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            temp = temp +                                                      &
+            & DeriveZ(DenIn%ReKN2LO(:,:,:,3,1,2,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            
+            DenIn%ReDTN2LO(:,:,:,2,it) = &
+            & DeriveX(                         temp,-ParityInt,  SignatureInt, TimeSimplexInt,2)
+            !-------------------------------------------------------------------
+            ! kappa = 3, nu = 1, sum over mu
+            temp =                                     &
+            & DeriveX(DenIn%ReKN2LO(:,:,:,1,1,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            temp = temp +                                                      &
+            & DeriveY(DenIn%ReKN2LO(:,:,:,2,1,3,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            temp = temp +                                                      &
+            & DeriveZ(DenIn%ReKN2LO(:,:,:,3,1,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            
+            DenIn%ReDTN2LO(:,:,:,3,it) = &
+            & DeriveX(                         temp,-ParityInt, -SignatureInt, TimeSimplexInt,1)
+            !-------------------------------------------------------------------
+            ! kappa = 1, nu = 2, sum over mu
+            temp =                                     &
+            & DeriveX(DenIn%ReKN2LO(:,:,:,1,2,1,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            temp = temp +                                                      &
+            & DeriveY(DenIn%ReKN2LO(:,:,:,2,2,1,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            temp = temp +                                                      &
+            & DeriveZ(DenIn%ReKN2LO(:,:,:,3,2,1,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            
+            DenIn%ReDTN2LO(:,:,:,1,it) = DenIn%ReDTN2LO(:,:,:,1,it) +          &
+            & DeriveY(                         temp,-ParityInt,  SignatureInt, TimeSimplexInt,2)
+            !-------------------------------------------------------------------
+            ! kappa = 2, nu = 2, sum over mu
+            temp =                                     &
+            & DeriveX(DenIn%ReKN2LO(:,:,:,1,2,2,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            temp = temp +                                                      &
+            & DeriveY(DenIn%ReKN2LO(:,:,:,2,2,2,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            temp = temp +                                                      &
+            & DeriveZ(DenIn%ReKN2LO(:,:,:,3,2,2,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            
+            DenIn%ReDTN2LO(:,:,:,2,it) = DenIn%ReDTN2LO(:,:,:,2,it) +          &
+            & DeriveY(                         temp,-ParityInt,  SignatureInt, TimeSimplexInt,1)
+            !-------------------------------------------------------------------
+            ! kappa = 3, nu = 2, sum over mu
+            temp =                                     &
+            & DeriveX(DenIn%ReKN2LO(:,:,:,1,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            temp = temp +                                                      &
+            & DeriveY(DenIn%ReKN2LO(:,:,:,2,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            temp = temp +                                                      &
+            & DeriveZ(DenIn%ReKN2LO(:,:,:,3,2,3,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            
+            DenIn%ReDTN2LO(:,:,:,3,it) = DenIn%ReDTN2LO(:,:,:,3,it) +          &
+            & DeriveY(                         temp,-ParityInt,  SignatureInt, TimeSimplexInt,2)
+            !-------------------------------------------------------------------
+            ! kappa= 1, nu = 3, sum over mu
+            temp =                                     &
+            & DeriveX(DenIn%ReKN2LO(:,:,:,1,3,1,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            temp = temp +                                                      &
+            & DeriveY(DenIn%ReKN2LO(:,:,:,2,3,1,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            temp = temp +                                                      &
+            & DeriveZ(DenIn%ReKN2LO(:,:,:,3,3,1,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            
+            DenIn%ReDTN2LO(:,:,:,1,it) = DenIn%ReDTN2LO(:,:,:,1,it) +          &
+            & DeriveZ(                         temp,-ParityInt, -SignatureInt, TimeSimplexInt,1)
+            !-------------------------------------------------------------------
+            ! kappa = 2, nu = 3
+            temp =                                     &
+            & DeriveX(DenIn%ReKN2LO(:,:,:,1,3,2,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            temp = temp +                                                      &
+            & DeriveY(DenIn%ReKN2LO(:,:,:,2,3,2,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            temp = temp +                                                      &
+            & DeriveZ(DenIn%ReKN2LO(:,:,:,3,3,2,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            
+            DenIn%ReDTN2LO(:,:,:,2,it) = DenIn%ReDTN2LO(:,:,:,2,it) +          &
+            & DeriveZ(                         temp,-ParityInt, -SignatureInt, TimeSimplexInt,2)
+            !-------------------------------------------------------------------
+            ! (nu,ka) = (3,3)
+            temp =                                     &
+            & DeriveX(DenIn%ReKN2LO(:,:,:,1,3,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            temp = temp +                                                      &
+            & DeriveY(DenIn%ReKN2LO(:,:,:,2,3,3,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            temp = temp +                                                      &
+            & DeriveZ(DenIn%ReKN2LO(:,:,:,3,3,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            
+            DenIn%ReDTN2LO(:,:,:,3,it) = DenIn%ReDTN2LO(:,:,:,3,it) +          &
+            & DeriveZ(                         temp,-ParityInt, -SignatureInt, TimeSimplexInt,1)
+            
+       enddo
     endif
     !Computing NablaJ by derivatives in the case of tensor interactions
     if(B14.ne.0.0_dp.or.B15.ne.0.0_dp.or.B17.ne.0.0_dp.or.B16.ne.0.0_dp) then

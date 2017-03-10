@@ -591,8 +591,8 @@ contains
         do it=1,2
             at = 3 - it
             Spot(:,:,:,:,it)= Spot(:,:,:,:,it)   &
-            &             + 2*(BN2LO(7)+BN2LO(8))*Density%SN2LO(:,:,:,:,it)    &
-            &             + 2* BN2LO(8)          *Density%SN2LO(:,:,:,:,at)    &
+            &             +   (BN2LO(7)+BN2LO(8))*Density%SN2LO(:,:,:,:,it)    &
+            &             +    BN2LO(8)          *Density%SN2LO(:,:,:,:,at)    &
             &             + 2*(BN2LO(7)+BN2LO(8))*Density%ReD2TN2LO(:,:,:,:,it)&
             &             + 2* BN2LO(8)          *Density%ReD2TN2LO(:,:,:,:,at)
         enddo

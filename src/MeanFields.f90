@@ -949,6 +949,15 @@ contains
   end function ActionOfW
   
   function ActionOfX(Psi) 
+    !---------------------------------------------------------------------------
+    ! Part of the single-particle hamiltonian, field X in the Meyer-Becker notes
+    ! and F^{V} in my notation.
+    !
+    ! D_ka F^V_{mn} D_k D_m sigma_nu = [ D_ka F^V_{mn} ] D_ka D_m sigma_nu  + 
+    !                                         F^V_{mn}   Lap  D_m sigma_nu
+    !
+    ! and in the end we add an extra factor i!
+    !---------------------------------------------------------------------------
     type(Spwf), intent(in) :: Psi
     type(Spinor)           :: ActionOfX, temp(3)
   
@@ -957,20 +966,21 @@ contains
     ActionOfX = NewSpinor()
     it = (Psi%GetIsospin() + 3)/2
     
-    do ka=1,3
+    do mu=1,3
+        Temp(mu) = newspinor()
+    enddo
+    ! D_m Lap Psi
+    call DeriveSpinor(Psi%Lap, temp, Psi%Parity, Psi%Signature, Psi%TimeSimplex)
+        
+    
+    do nu=1,3
         do mu=1,3
-            do nu=1,3
+            do ka=1,3
                 ActionOfX = ActionOfX + &
                 &      DXpot(:,:,:,ka,mu,nu,it) * Pauli(Psi%SecondDer(ka,mu),nu)
             enddo
         enddo
-    enddo
-    do mu=1,3
-        Temp(mu) = newspinor()
-    enddo
-    call DeriveSpinor(Psi%Lap, temp, Psi%Parity, Psi%Signature, Psi%TimeSimplex)
-    do mu = 1,3
-        do nu=1,3
+        do mu=1,3
             ActionOfX = ActionOfX + &
             &          Xpot(:,:,:,mu,nu,it) * Pauli(temp(mu),nu)
         enddo

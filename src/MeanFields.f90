@@ -42,17 +42,20 @@ module MeanFields
 
   !-----------------------------------------------------------------------------
   !Mean Field Potentials (and some of their relevant derivatives)
-  real(KIND=dp),allocatable :: BPot(:,:,:,:), NablaBPot(:,:,:,:,:)
-  real(KIND=dp),allocatable :: Bmunu(:,:,:,:,:,:), DN2LO(:,:,:,:)
-  real(KIND=dp),allocatable :: Xpot(:,:,:,:,:,:), DXpot(:,:,:,:,:,:,:)
-  real(KIND=dp),allocatable :: ReTfield(:,:,:,:,:,:,:), ImTfield(:,:,:,:,:,:)
-  real(KIND=dp),allocatable :: DmuBmunu(:,:,:,:,:,:)
-  real(KIND=dp),allocatable :: UPot(:,:,:,:),APot(:,:,:,:,:)
+  real(KIND=dp),allocatable :: BPot(:,:,:,:)          , NablaBPot(:,:,:,:,:)
+  real(KIND=dp),allocatable :: UPot(:,:,:,:)          , APot(:,:,:,:,:)
   real(KIND=dp),allocatable :: SPot(:,:,:,:,:)
-  real(KIND=dp),allocatable :: Cpot(:,:,:,:,:),WPot(:,:,:,:,:,:)
+  real(KIND=dp),allocatable :: Cpot(:,:,:,:,:)        , WPot(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: DPot(:,:,:,:,:)
-  real(KIND=dp),allocatable :: DerCPot(:,:,:,:,:,:),DerDPot(:,:,:,:,:,:)
+  real(KIND=dp),allocatable :: DerCPot(:,:,:,:,:,:)   ,DerDPot(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: DivDpot(:,:,:,:)
+  !------------------------------------------------------------------------------
+  ! N2LO potentials
+  real(KIND=dp),allocatable :: Bmunu(:,:,:,:,:,:)     , DN2LO(:,:,:,:)
+  real(KIND=dp),allocatable :: Xpot(:,:,:,:,:,:)      , DXpot(:,:,:,:,:,:,:)
+  real(KIND=dp),allocatable :: ReTfield(:,:,:,:,:,:,:), ImTfield(:,:,:,:,:,:)
+  real(KIND=dp),allocatable :: ReDTfield(:,:,:,:,:,:) , PiField(:,:,:,:,:)
+  real(KIND=dp),allocatable :: DmuBmunu(:,:,:,:,:,:)
   !-----------------------------------------------------------------------------
   !For experimentally calculating B in a more logical way.
   ! And including an astract interface for the PGI compilers (sigh....)
@@ -101,10 +104,11 @@ contains
       DivDpot  =0.0_dp
           
       if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
-        allocate(Bmunu(nx,ny,nz,3,3,2)) ; allocate(DmuBmunu(nx,ny,nz,3,3,2))
+        allocate(Bmunu(nx,ny,nz,3,3,2))      ; allocate(DmuBmunu(nx,ny,nz,3,3,2))
         allocate(DN2LO(nx,ny,nz,2)) 
-        allocate(Xpot(nx,ny,nz,3,3,2)); allocate(DXpot(nx,ny,nz,3,3,3,2))
+        allocate(Xpot(nx,ny,nz,3,3,2))       ; allocate(DXpot(nx,ny,nz,3,3,3,2))
         allocate(ReTfield(nx,ny,nz,3,3,3,2)) ; allocate(ImTfield(nx,ny,nz,3,3,2))
+        allocate(ReDTfield(nx,ny,nz,3,3,2))  ; allocate(PiField(nx,ny,nz,3,2))
       endif
     endif
 
@@ -129,6 +133,7 @@ contains
         call CalcXpot()
         call calcDN2LO()
         call calcTfield()
+        call calcPifield()
     else
         call CalcBPot()   
     endif
@@ -146,7 +151,6 @@ contains
         call CalcDPot()
     endif
   end subroutine ConstructPotentials
-
 
   !=============================================================================
   ! Subroutines for calculating all the different potentials.
@@ -572,8 +576,8 @@ contains
             Spot(:,:,:,:,it)= Spot(:,:,:,:,it)   &
             &             + 2*(BN2LO(7)+BN2LO(8))*Density%SN2LO(:,:,:,:,it)    &
             &             + 2* BN2LO(8)          *Density%SN2LO(:,:,:,:,at)    &
-            &             + 2*(BN2LO(7)+BN2LO(8))*Density%ReDTN2LO(:,:,:,:,it) &
-            &             + 2* BN2LO(8)          *Density%ReDTN2LO(:,:,:,:,at)
+            &             + 2*(BN2LO(7)+BN2LO(8))*Density%ReD2TN2LO(:,:,:,:,it)&
+            &             + 2* BN2LO(8)          *Density%ReD2TN2LO(:,:,:,:,at)
         enddo
     endif
 
@@ -728,8 +732,8 @@ contains
   ! now a tensor in the case of N2LO terms being active.
   !-----------------------------------------------------------------------------
     type(Spwf), intent(in)        :: Psi
-    type(Spinor)                  :: ActionOfB, temp
-    integer                       :: it, mu,nu
+    type(Spinor)                  :: ActionOfB, temp, ImAction
+    integer                       :: it, mu,nu, at
     real(KIND=dp)                 :: Reducedmass(2)
     logical, intent(in), optional :: NoKinetic
 
@@ -752,7 +756,24 @@ contains
             ActionOfB = ActionOfB - DmuBmunu(:,:,:,mu,nu,it)*Psi%Der      (nu)
         enddo
     enddo
-    return
+    
+    if(TRC) return
+    
+    !---------------------------------------------------------------------------
+    ! time-odd contribution to the action. Note that we have not calculated a 
+    ! separate potential for this, as this field is essentially a scaled density
+    !
+    ! Note that Im Tau_munu is antisymmetric so,
+    !
+    ! nabla_mu tau_munu nabla_nu = [ nabla_mu tau_munu ] nabla_nu
+    ImAction = NewSpinor()
+    at = 3 - it
+    do nu=1,3
+        ImAction = ImAction - (4*(BN2LO(5) + BN2LO(6))*Density%DmuItau(:,:,:,nu,it)  &
+        &                   +  4* BN2LO(5) *           Density%DmuItau(:,:,:,nu,at)) &
+        &                   *Psi%Der(nu)
+    enddo
+    
   end function ActionOfBN2LO
   
   function ActionOfDN2LO(Psi) result(ActionOfD)
@@ -1111,7 +1132,7 @@ contains
         ! Calculates the field associated with the imaginary part of the Tmunuka 
         ! density.
         !-----------------------------------------------------------------------
-    
+        use Derivatives
         integer :: it, mu
         
         do it=1,2
@@ -1121,17 +1142,91 @@ contains
 
         if(TRC) return
         
-!        do it=1,2
-!            ReTfield(:,:,:,:,:,it)=- 4*BN2LO(7)*sum(Density%ReKN2LO,7)         &
-!            &                      - 4*BN2LO(8)*Density%ReKN2LO(:,:,:,:,:,:,it)&
-!            &                      + 2*BN2LO(7)*sum(Density%D2S,7)             &
-!            &                      + 2*BN2LO(8)*Density%D2S(:,:,:,:,:,:,it)     
-!            do mu=1,3
-!                ReTField(:,:,:,mu,mu,:,it) = -2*BN2LO(7)*sum(Density%VecT,4)   &
-!                &                            -2*BN2LO(8)*Density%VecT(:,:,:,it)
-!            enddo
-!        enddo
-! 
+        do it=1,2
+            ReTfield(:,:,:,:,:,:,it) =- 4*BN2LO(7)*sum(Density%ReKN2LO,7)      &
+            &                      - 4*BN2LO(8)*Density%ReKN2LO(:,:,:,:,:,:,it)&
+            &                      + 2*BN2LO(7)*sum(Density%D2S,7)             &
+            &                      + 2*BN2LO(8)*Density%D2S(:,:,:,:,:,:,it)     
+            do mu=1,3
+                ReTField(:,:,:,mu,mu,:,it)= -2*BN2LO(7)*sum(Density%VecT,5)   &
+                &                           -2*BN2LO(8)*Density%VecT(:,:,:,:,it)
+            enddo
+            !-------------------------------------------------------------------
+            ! Deriving the T-field
+            ! ReDTField = sum_mu D_mu F_munuka
+            !-------------------------------------------------------------------
+            ! kappa = 1, nu = 1, sum over mu
+            ReDTField(:,:,:,1,1,it) =                                          &
+            & DeriveX(ReTfield(:,:,:,1,1,1,it), parityint, -signatureint, timesimplexint,1)
+            ReDTField(:,:,:,1,1,it) = ReDTField(:,:,:,1,1,it) +                &
+            & DeriveY(ReTfield(:,:,:,2,1,1,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            ReDTField(:,:,:,1,1,it) = ReDTField(:,:,:,1,1,it) +                &
+            & DeriveX(ReTfield(:,:,:,3,1,1,it),-ParityInt,  SignatureInt, TimeSimplexInt,1)
+            !-------------------------------------------------------------------
+            ! kappa = 2, nu = 1, sum over mu
+            ReDTField(:,:,:,1,2,it) =                                     &
+            & DeriveX(ReTField(:,:,:,1,1,2,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            ReDTField(:,:,:,1,2,it) = ReDTField(:,:,:,1,2,it) +                                                      &
+            & DeriveY(ReTField(:,:,:,2,1,2,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            ReDTField(:,:,:,1,2,it) = ReDTField(:,:,:,1,2,it) +                                                      &
+            & DeriveZ(ReTField(:,:,:,3,1,2,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            !-------------------------------------------------------------------
+            ! kappa = 3, nu = 1, sum over mu
+            ReDTField(:,:,:,1,3,it) =                                     &
+            & DeriveX(ReTfield(:,:,:,1,1,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            ReDTField(:,:,:,1,3,it) = ReDTField(:,:,:,1,3,it) +                                                      &
+            & DeriveY(ReTfield(:,:,:,2,1,3,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            ReDTField(:,:,:,1,3,it) = ReDTField(:,:,:,1,3,it) +                                                      &
+            & DeriveZ(ReTfield(:,:,:,3,1,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            !-------------------------------------------------------------------
+            ! kappa = 1, nu = 2, sum over mu
+            ReDTField(:,:,:,2,1,it)  =                                         &
+            & DeriveX(ReTfield(:,:,:,1,2,1,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            ReDTField(:,:,:,2,1,it)  = ReDTField(:,:,:,2,1,it) +               &
+            & DeriveY(ReTfield(:,:,:,2,2,1,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            ReDTField(:,:,:,2,1,it) = ReDTField(:,:,:,2,1,it) +                &
+            & DeriveZ(ReTfield(:,:,:,3,2,1,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            !-------------------------------------------------------------------
+            ! kappa = 2, nu = 2, sum over mu
+            ReDTField(:,:,:,2,2,it)  =                                         &
+            & DeriveX(ReTfield(:,:,:,1,2,2,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            ReDTField(:,:,:,2,2,it) = ReDTField(:,:,:,2,2,it) +                &
+            & DeriveY(ReTfield(:,:,:,2,2,2,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            ReDTField(:,:,:,2,2,it) = ReDTField(:,:,:,2,2,it) +                &
+            & DeriveZ(ReTfield(:,:,:,3,2,2,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            !-------------------------------------------------------------------
+            ! kappa = 3, nu = 2, sum over mu 
+            ReDTField(:,:,:,2,3,it) =                                          &
+            & DeriveX(ReTfield(:,:,:,1,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            ReDTField(:,:,:,2,3,it) = ReDTField(:,:,:,2,3,it) +                &
+            & DeriveY(ReTfield(:,:,:,2,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            ReDTField(:,:,:,2,3,it) = ReDTField(:,:,:,2,3,it) +                &
+            & DeriveZ(ReTfield(:,:,:,3,2,3,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            !-------------------------------------------------------------------
+            ! kappa= 1, nu = 3, sum over mu
+            ReDTField(:,:,:,3,1,it) =                                          &
+            & DeriveX(ReTfield(:,:,:,1,3,1,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            ReDTField(:,:,:,3,1,it) = ReDTField(:,:,:,3,1,it) +                &
+            & DeriveY(ReTfield(:,:,:,2,3,1,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            ReDTField(:,:,:,3,1,it) = ReDTField(:,:,:,3,1,it) +                &
+            & DeriveZ(ReTfield(:,:,:,3,3,1,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            !-------------------------------------------------------------------
+            ! kappa = 2, nu = 3
+            ReDTField(:,:,:,3,2,it) =                                          &
+            & DeriveX(ReTfield(:,:,:,1,3,2,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            ReDTField(:,:,:,3,2,it) = ReDTField(:,:,:,3,2,it) +                &
+            & DeriveY(ReTfield(:,:,:,2,3,2,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            ReDTField(:,:,:,3,2,it) = ReDTField(:,:,:,3,2,it) +                &
+            & DeriveZ(ReTfield(:,:,:,3,3,2,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            !-------------------------------------------------------------------
+            ! (nu,ka) = (3,3)
+            ReDTField(:,:,:,3,3,it) =                                          &
+            & DeriveX(ReTfield(:,:,:,1,3,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            ReDTField(:,:,:,3,3,it) = ReDTField(:,:,:,3,3,it) +                &
+            & DeriveY(ReTfield(:,:,:,2,3,3,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            ReDTField(:,:,:,3,3,it) = ReDTField(:,:,:,3,3,it) +                &
+            & DeriveZ(ReTfield(:,:,:,3,3,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+        enddo
    end subroutine calcTfield
    
    function ActionOfImTField(Psi) result(ActionOfT)
@@ -1156,20 +1251,71 @@ contains
 
    function ActionOfReTField(Psi) result(ActionOfT)
         !-----------------------------------------------------------------------
-        ! Action of the imaginary T-field.
+        ! Action of the real part of the T-field.
         !-----------------------------------------------------------------------
         type(Spwf), intent(in) :: Psi
         type(Spinor)           :: ActionOfT
-        integer :: nu, kappa, it
+        integer :: nu, kappa, it, mu
         
         it    = (Psi%GetIsospin() + 3)/2
         ActionOfT = newspinor()
         
         do kappa=1,3
             do nu=1,3
+                do mu=1,3
+                    ActionOfT = ActionOfT + ReTfield(:,:,:,mu,nu,kappa,it) *   &
+                    &                       Pauli(Psi%SecondDer(mu,nu), kappa)
+                enddo
+                ActionOfT = ActionOfT + ReDTfield(:,:,:,nu,kappa,it) * Pauli(Psi%Der(nu), kappa) 
             enddo
         enddo
         
    end function ActionOfReTField
 
+   subroutine CalcPiField()
+    !---------------------------------------------------------------------------
+    ! Calculate the field associated with the N2LO density Pi
+    !---------------------------------------------------------------------------
+    
+    integer :: mu, it, at
+    
+    do it=1,2
+        at = 3 - it
+        PiField(:,:,:,:,it) = 4*(BN2LO(5)+BN2LO(6))*Density%vecj(:,:,:,:,it)   &
+        &                   + 4*BN2LO(5)           *Density%vecj(:,:,:,:,at) 
+    enddo
+   end subroutine CalcPiField
+
+   function ActionOfPi(Psi)
+     !-----------------------------------------------------------------------
+     ! Action of the Pi field
+     !-----------------------------------------------------------------------
+     type(Spwf), intent(in) :: Psi
+     type(Spinor)           :: ActionOfPi, temp, ActionofPiX, ActionOfPiY, ActionOfPiZ
+     integer                :: nu, kappa, it, mu
+   
+     it = (Psi%GetIsospin() + 3)/2
+     
+     ActionOfPi = NewSpinor()
+     
+     temp=NewSpinor()
+     do mu=1,3
+        temp = temp + PiField(:,:,:,mu,it) * Psi%SecondDer(mu, 1)
+     enddo  
+     call DeriveSpinor_X(temp, ActionofPiX,-Psi%Parity,-Psi%Signature, Psi%TimeSimplex)
+     
+     temp=NewSpinor()
+     do mu=1,3
+        temp = temp + PiField(:,:,:,mu,it) * Psi%SecondDer(mu, 2)
+     enddo  
+     call DeriveSpinor_Y(temp, ActionofPiY,-Psi%Parity,-Psi%Signature,-Psi%TimeSimplex)
+     
+     temp=NewSpinor()
+     do mu=1,3
+        temp = temp + PiField(:,:,:,mu,it) * Psi%SecondDer(mu, 3)
+     enddo  
+     call DeriveSpinor_Z(temp, ActionOfPiZ,-Psi%Parity, Psi%Signature, Psi%TimeSimplex)
+         
+     ActionOfPi = ActionOfPiX + ActionOfPiY + ActionOfPiZ
+   end function ActionofPi
 end module MeanFields

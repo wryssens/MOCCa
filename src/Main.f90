@@ -9,7 +9,6 @@ program MOCCa
     !        `-\       /                                                       |
     !           `.___.'                                                        |
     ! Creation: 8th of April   , 2013.                                         |
-    ! Update  : 8th of November, 2016.                                         |
     ! Wouter Ryssens                                                           |
     !---------------------------------------------------------------------------
 
@@ -353,7 +352,7 @@ subroutine Evolve(MaxIterations, iprint)
      print 4
   endif
   
-  call testT
+  call testN2LOsph
 end subroutine Evolve
 
 logical function ConvergenceCheck() result(Converged)
@@ -852,31 +851,68 @@ subroutine N2LOanalysis()
  
  call writeN2LOdensities(N2LODen)
  
- 
 end subroutine N2LOAnalysis
 
-subroutine TestT
-    
+subroutine TestN2LOspH
+    !
+    !
+    !
+    !
     use Spinors 
     use SpwfStorage
     use MeanFields
     
+    1 format ('-------------------')
+    2 format (' Spwf contributions')
+    3 format (' ', a2, 2x, f12.7   )
+    
+    
+    
     integer :: i
-    real*8 :: E, EX
+    real*8  :: E(11)
     type(Spinor)  :: temp
     
     temp = newspinor()
     E = 0
     do i=1,nwt
             if (HFBasis(i)%getOcc() .eq. 0.0_dp) cycle
-            temp = actionofImTfield(HFBasis(i))
-            E = E + InproductSpinorReal(HFBasis(i)%value, temp)
-            temp = actionofX(HFBasis(i))
-            Ex = Ex + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofB(HFBasis(i))
+            E(1) = E(1) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofS(HFBasis(i))
+            E(2) = E(2) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofA(HFBasis(i))
+            E(3) = E(3) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofW(HFBasis(i))
+            E(4) = E(4) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofX(HFBasis(i))
+            E(5) = E(5) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofDN2LO(HFBasis(i))
+            E(6) = E(6) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofReTField(HFBasis(i))
+            E(7) = E(7) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofImTField(HFBasis(i))
+            E(8) = E(8) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofPi(HFBasis(i))
+            E(9) = E(9) + InproductSpinorReal(HFBasis(i)%value, temp)
     enddo
     
+    print 1
+    print 2
+    print 3, 'B', E(1)
+    print 3, 'S', E(2)
+    print 3, 'A', E(3)
+    print 3, 'W', E(4)
+    print 3, 'X', E(5)
+    print 3, 'D', E(6)
+    print 3, 'RT', E(7)
+    print 3, 'IT', E(8)
+    print 3, 'Pi', E(9)
+    
+    print 1
+    
+    
     print *, 'Energy from T, X', E, Ex
-end subroutine TestT
+end subroutine TestN2LOspH
 
 subroutine writeN2LOdensities(Den)
 
@@ -996,20 +1032,5 @@ subroutine writeN2LOdensities(Den)
         &                     Den%Rho(i,i,i,1),Den%Rho(i,1,1,2) 
     enddo
     close(12)
-    
-    
-    
-!    do mu=1,3
-!        fname='S'
-!        write(temp,'(i1)'), mu
-!        fname= adjustl(trim(fname)//temp)
-!        fname= adjustl(trim(fname)//'.dat')
-!        open(unit=12, file=fname)
-!        do i=1,nx
-!            write(12, '(5f9.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
-!            &                    Den%SN2LO(i,i,i,mu,1),Den%S2NLO(i,i,i,mu,2)
-!        enddo
-!    enddo
-!    close(12)
-    
+   
 end subroutine writeN2LOdensities

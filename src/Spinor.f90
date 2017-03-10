@@ -531,6 +531,92 @@ contains
     return    
   end subroutine DeriveSpinor
   
+  subroutine  DeriveSpinor_X(Psi, dPsi, Parity,Signature,TimeSimplex) 
+    !-------------------------------------------------------------------------
+    ! This function uses the derivatives module to calculate the derivative of 
+    ! the spinor Psi.
+    !-------------------------------------------------------------------------
+    ! This function has become a subroutine to deal with the various memory
+    ! leaks by the ifort compiler.
+    !-------------------------------------------------------------------------
+    use Derivatives
+
+    class(Spinor), intent(in) :: Psi
+    type(Spinor)              :: dPsi
+    integer, intent(in)       :: Parity,Signature,TimeSimplex
+    real(KIND=dp)             :: DerivResult(nx,ny,nz), GridPsi(nx,ny,nz,4,1)
+    integer                   :: i,l,k,n
+    
+    if(.not.allocated(DPsi%Grid)) then
+        allocate(DPsi%Grid(nx,ny,nz,4,1))
+    endif
+    do k=1, size(Psi%Grid,5)
+      do l=1,4
+        dPsi%Grid(:,:,:,l,k) = &
+        & DeriveX(Psi%Grid(:,:,:,l,k),Parity,Signature,TimeSimplex,l)
+      enddo
+    enddo
+    return    
+  end subroutine DeriveSpinor_X
+  
+  subroutine  DeriveSpinor_Y(Psi, dPsi, Parity,Signature,TimeSimplex) 
+    !-------------------------------------------------------------------------
+    ! This function uses the derivatives module to calculate the derivative of 
+    ! the spinor Psi.
+    !
+    !-------------------------------------------------------------------------
+    ! This function has become a subroutine to deal with the various memory
+    ! leaks by the ifort compiler.
+    !-------------------------------------------------------------------------
+    use Derivatives
+
+    class(Spinor), intent(in) :: Psi
+    type(Spinor)              :: dPsi
+    integer, intent(in)       :: Parity,Signature,TimeSimplex
+    real(KIND=dp)             :: DerivResult(nx,ny,nz), GridPsi(nx,ny,nz,4,1)
+    integer                   :: i,l,k,n
+    
+    if(.not.allocated(DPsi%Grid)) then
+        allocate(DPsi%Grid(nx,ny,nz,4,1))
+    endif
+    do k=1, size(Psi%Grid,5)
+      do l=1,4
+        dPsi%Grid(:,:,:,l,k) = &
+        & DeriveY(Psi%Grid(:,:,:,l,k),Parity,Signature,TimeSimplex,l)
+      enddo
+    enddo
+    return    
+  end subroutine DeriveSpinor_Y
+  
+  subroutine DeriveSpinor_Z(Psi, dPsi, Parity,Signature,TimeSimplex) 
+    !-------------------------------------------------------------------------
+    ! This function uses the derivatives module to calculate the derivative of 
+    ! the spinor Psi.
+    !
+    !-------------------------------------------------------------------------
+    ! This function has become a subroutine to deal with the various memory
+    ! leaks by the ifort compiler.
+    !-------------------------------------------------------------------------
+    use Derivatives
+
+    class(Spinor), intent(in) :: Psi
+    type(Spinor)              :: dPsi
+    integer, intent(in)       :: Parity,Signature,TimeSimplex
+    real(KIND=dp)             :: DerivResult(nx,ny,nz), GridPsi(nx,ny,nz,4,1)
+    integer                   :: i,l,k,n
+    
+    if(.not.allocated(DPsi%Grid)) then
+        allocate(DPsi%Grid(nx,ny,nz,4,1))
+    endif
+    do k=1, size(Psi%Grid,5)
+      do l=1,4
+        dPsi%Grid(:,:,:,l,k) = &
+        & DeriveZ(Psi%Grid(:,:,:,l,k),Parity,Signature,TimeSimplex,l)
+      enddo
+    enddo
+    return    
+  end subroutine DeriveSpinor_Z
+  
   function SecondDerivativeSpinor(Psi,Direction,Parity,Signature,TimeSimplex)  &
   &                              result(dPsi)
   

@@ -27,7 +27,7 @@ contains
     use Cranking
 
     type(Spwf)  , intent(in) :: Psi
-    type(Spinor)             :: hPsi, U, B, S, A, W, C, D, Crank, DN2LO, X, T
+    type(Spinor)             :: hPsi, U, B, S, A, W, C, D, Crank, DN2LO, X, T, P
     integer                  :: i
 
     B = ActionOfB(Psi)
@@ -54,6 +54,12 @@ contains
 
         hPsi = hPsi + S
         hPsi = hPsi + A
+        
+        if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
+            T  = ActionOfReTField(Psi)
+            P  = ActionOfPi(Psi)
+            hPsi = hPsi + T + P            
+        endif
 
         if(B14.ne.0.0_dp .or. B15 .ne. 0.0_dp) then
             C = ActionOfC(Psi)
@@ -64,6 +70,7 @@ contains
             D = ActionOfD(Psi)
             hPsi = hPsi + D
         endif
+        
     endif
   end function hPsi
 

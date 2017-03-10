@@ -65,7 +65,7 @@ module Densities
     real(KIND=dp), allocatable ::  ItauN2LO(:,:,:,:,:,:)
     real(KIND=dp), allocatable ::   ReKN2LO(:,:,:,:,:,:,:)
     real(KIND=dp), allocatable ::   ImKN2LO(:,:,:,:,:,:,:)
-    real(KIND=dp), allocatable :: ReDTN2LO(:,:,:,:,:)
+    real(KIND=dp), allocatable :: ReD2TN2LO(:,:,:,:,:)
     real(KIND=dp), allocatable :: ImDTN2LO(:,:,:,:,:,:)
     real(KIND=dp), allocatable :: LapLapRho(:,:,:,:)
     real(KIND=dp), allocatable ::    D2RTau(:,:,:,:)
@@ -165,22 +165,22 @@ contains
     endif
 
     if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
-        allocate(R%RtauN2LO(sizex,sizey,sizez,3,3,2)) ; R%RtauN2LO = 0.0_dp
-        allocate(R%ItauN2LO(sizex,sizey,sizez,3,3,2)) ; R%ItauN2LO = 0.0_dp
+        allocate(R%RtauN2LO(sizex,sizey,sizez,3,3,2)) ; R%RtauN2LO  = 0.0_dp
+        allocate(R%ItauN2LO(sizex,sizey,sizez,3,3,2)) ; R%ItauN2LO  = 0.0_dp
         allocate(R%ReKN2LO(sizex,sizey,sizez,3,3,3,2)); R%ReKN2LO   = 0.0_dp
         allocate(R%ImKN2LO(sizex,sizey,sizez,3,3,3,2)); R%ImKN2LO   = 0.0_dp
-        allocate(R%ReDTN2LO(sizex,sizey,sizez,3,2))   ; R%ReDTN2LO   = 0.0_dp
-        allocate(R%ImDTN2LO(sizex,sizey,sizez,3,3,2)) ; R%ImDTN2LO   = 0.0_dp
-        allocate(R%PiN2LO(sizex,sizey,sizez,3,2))     ; R%PiN2LO  = 0.0_dp
-        allocate(R%VN2LO(sizex,sizey,sizez,3,3,2))    ; R%VN2LO  = 0.0_dp
-        allocate(R%QN2LO(sizex,sizey,sizez,2))        ; R%QN2LO  = 0.0_dp
-        allocate(R%SN2LO(sizex,sizey,sizez,3,2))      ; R%SN2LO  = 0.0_dp
+        allocate(R%ReD2TN2LO(sizex,sizey,sizez,3,2))  ; R%ReD2TN2LO = 0.0_dp
+        allocate(R%ImDTN2LO(sizex,sizey,sizez,3,3,2)) ; R%ImDTN2LO  = 0.0_dp
+        allocate(R%PiN2LO(sizex,sizey,sizez,3,2))     ; R%PiN2LO    = 0.0_dp
+        allocate(R%VN2LO(sizex,sizey,sizez,3,3,2))    ; R%VN2LO     = 0.0_dp
+        allocate(R%QN2LO(sizex,sizey,sizez,2))        ; R%QN2LO     = 0.0_dp
+        allocate(R%SN2LO(sizex,sizey,sizez,3,2))      ; R%SN2LO     = 0.0_dp
         allocate(R%D2Rho   (sizex,sizey,sizez,3,3,2)) ; R%D2Rho     = 0.0_dp
         allocate(R%D2S   (sizex,sizey,sizez,3,3,3,2)) ; R%D2S       = 0.0_dp
-        allocate(R%DJmunu(sizex,sizey,sizez,3,3,3,2)) ; R%DJmunu  = 0.0_dp
+        allocate(R%DJmunu(sizex,sizey,sizez,3,3,3,2)) ; R%DJmunu    = 0.0_dp
         allocate(R%LapLapRho(sizex,sizey,sizez,2))    ; R%LapLapRho = 0.0_dp
-        allocate(R%D2Rtau(sizex,sizey,sizez,2))       ; R%D2Rtau     = 0.0_dp
-        allocate(R%DmuItau(sizex,sizey,sizez,3,2))    ; R%DmuItau    = 0.0_dp
+        allocate(R%D2Rtau(sizex,sizey,sizez,2))       ; R%D2Rtau    = 0.0_dp
+        allocate(R%DmuItau(sizex,sizey,sizez,3,2))    ; R%DmuItau   = 0.0_dp
         allocate(R%divvecj (sizex,sizey,sizez,2))     ; R%divvecj   = 0.0_dp
         allocate(R%LapLaps(sizex,sizey,sizez,3,2))    ; R%laplaps   = 0.0_dp
     endif
@@ -225,7 +225,6 @@ contains
         Sum%SN2LO      = Den1%SN2LO        + Den2%SN2LO
         Sum%D2S        = Den1%D2S          + Den2%D2S
         Sum%LapLapS    = Den1%LapLapS      + Den2%LapLapS
-       
     endif
     
     if(.not.TRC) then
@@ -756,7 +755,7 @@ contains
             & DeriveZ(DenIn%ImKN2LO(:,:,:,3,3,3,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
             !-------------------------------------------------------------------
             ! Derivatives of T_mnk
-            ! ReDTN2LO(:,:,:,ka,:) = sum_munu Nabla_mu Nabla_nu Re T_munuka
+            ! ReD2TN2LO(:,:,:,ka,:) = sum_munu Nabla_mu Nabla_nu Re T_munuka
             !-------------------------------------------------------------------
             ! kappa = 1, nu = 1, sum over mu
             temp =                                                             &
@@ -765,8 +764,7 @@ contains
             & DeriveY(DenIn%ReKN2LO(:,:,:,2,1,1,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
             temp = temp +                                                      &
             & DeriveZ(DenIn%ReKN2LO(:,:,:,3,1,1,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
-            
-            DenIn%ReDTN2LO(:,:,:,1,it) = &
+            DenIn%ReD2TN2LO(:,:,:,1,it)  = &
             & DeriveX(                         temp,-ParityInt,  SignatureInt, TimeSimplexInt,1)
             !-------------------------------------------------------------------
             ! kappa = 2, nu = 1, sum over mu
@@ -776,8 +774,7 @@ contains
             & DeriveY(DenIn%ReKN2LO(:,:,:,2,1,2,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
             temp = temp +                                                      &
             & DeriveZ(DenIn%ReKN2LO(:,:,:,3,1,2,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
-            
-            DenIn%ReDTN2LO(:,:,:,2,it) = &
+            DenIn%ReD2TN2LO(:,:,:,2,it) = &
             & DeriveX(                         temp,-ParityInt,  SignatureInt, TimeSimplexInt,2)
             !-------------------------------------------------------------------
             ! kappa = 3, nu = 1, sum over mu
@@ -788,7 +785,7 @@ contains
             temp = temp +                                                      &
             & DeriveZ(DenIn%ReKN2LO(:,:,:,3,1,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
             
-            DenIn%ReDTN2LO(:,:,:,3,it) = &
+            DenIn%ReD2TN2LO(:,:,:,3,it) = &
             & DeriveX(                         temp,-ParityInt, -SignatureInt, TimeSimplexInt,1)
             !-------------------------------------------------------------------
             ! kappa = 1, nu = 2, sum over mu
@@ -799,7 +796,7 @@ contains
             temp = temp +                                                      &
             & DeriveZ(DenIn%ReKN2LO(:,:,:,3,2,1,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
             
-            DenIn%ReDTN2LO(:,:,:,1,it) = DenIn%ReDTN2LO(:,:,:,1,it) +          &
+            DenIn%ReD2TN2LO(:,:,:,1,it) = DenIn%ReD2TN2LO(:,:,:,1,it) +          &
             & DeriveY(                         temp,-ParityInt,  SignatureInt, TimeSimplexInt,2)
             !-------------------------------------------------------------------
             ! kappa = 2, nu = 2, sum over mu
@@ -810,7 +807,7 @@ contains
             temp = temp +                                                      &
             & DeriveZ(DenIn%ReKN2LO(:,:,:,3,2,2,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
             
-            DenIn%ReDTN2LO(:,:,:,2,it) = DenIn%ReDTN2LO(:,:,:,2,it) +          &
+            DenIn%ReD2TN2LO(:,:,:,2,it) = DenIn%ReD2TN2LO(:,:,:,2,it) +          &
             & DeriveY(                         temp,-ParityInt,  SignatureInt, TimeSimplexInt,1)
             !-------------------------------------------------------------------
             ! kappa = 3, nu = 2, sum over mu
@@ -821,7 +818,7 @@ contains
             temp = temp +                                                      &
             & DeriveZ(DenIn%ReKN2LO(:,:,:,3,2,3,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
             
-            DenIn%ReDTN2LO(:,:,:,3,it) = DenIn%ReDTN2LO(:,:,:,3,it) +          &
+            DenIn%ReD2TN2LO(:,:,:,3,it) = DenIn%ReD2TN2LO(:,:,:,3,it) +          &
             & DeriveY(                         temp,-ParityInt,  SignatureInt, TimeSimplexInt,2)
             !-------------------------------------------------------------------
             ! kappa= 1, nu = 3, sum over mu
@@ -832,7 +829,7 @@ contains
             temp = temp +                                                      &
             & DeriveZ(DenIn%ReKN2LO(:,:,:,3,3,1,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
             
-            DenIn%ReDTN2LO(:,:,:,1,it) = DenIn%ReDTN2LO(:,:,:,1,it) +          &
+            DenIn%ReD2TN2LO(:,:,:,1,it) = DenIn%ReD2TN2LO(:,:,:,1,it) +          &
             & DeriveZ(                         temp,-ParityInt, -SignatureInt, TimeSimplexInt,1)
             !-------------------------------------------------------------------
             ! kappa = 2, nu = 3
@@ -843,7 +840,7 @@ contains
             temp = temp +                                                      &
             & DeriveZ(DenIn%ReKN2LO(:,:,:,3,3,2,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
             
-            DenIn%ReDTN2LO(:,:,:,2,it) = DenIn%ReDTN2LO(:,:,:,2,it) +          &
+            DenIn%ReD2TN2LO(:,:,:,2,it) = DenIn%ReD2TN2LO(:,:,:,2,it) +          &
             & DeriveZ(                         temp,-ParityInt, -SignatureInt, TimeSimplexInt,2)
             !-------------------------------------------------------------------
             ! (nu,ka) = (3,3)
@@ -854,9 +851,8 @@ contains
             temp = temp +                                                      &
             & DeriveZ(DenIn%ReKN2LO(:,:,:,3,3,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
             
-            DenIn%ReDTN2LO(:,:,:,3,it) = DenIn%ReDTN2LO(:,:,:,3,it) +          &
+            DenIn%ReD2TN2LO(:,:,:,3,it) = DenIn%ReD2TN2LO(:,:,:,3,it) +          &
             & DeriveZ(                         temp,-ParityInt, -SignatureInt, TimeSimplexInt,1)
-            
        enddo
     endif
     !Computing NablaJ by derivatives in the case of tensor interactions

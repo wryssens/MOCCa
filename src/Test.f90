@@ -3448,7 +3448,367 @@ module Testing
 
 ! end subroutine TestParity
 
+subroutine N2LOanalysis()
+    !--------------------------------------------------------------------------- 
+    ! Routine for analysing N2LO densities, energies etc.
+    !
+    !---------------------------------------------------------------------------
+  use Densities
+  use SpwfStorage
+  use Energy
+  
+  1 format ('------------------')
+  2 format ('N2LO recalculation')
+  3 format ('No error for test 1.', / &
+  &         ' Tau = Tr(Tau_munu)', /)
+  
+  4 format ('No error for test 2.', / &
+  &         ' Tmu = Tr(T_nunumu)', /)
+  
+  5 format ('No error for test 3.', / &
+  &         ' Fmu = 0.5*Sum_nu T_mununu + T_numunu )', /)
 
+  implicit none
+
+  real(KIND=dp) :: TestTau(nx,ny,nz,2), TestT(nx,ny,nz,3,2), TestF(nx,ny,nz,3,2)
+
+  integer               :: i,j,k,it,mu,nu,ka
+  type(DensityVector)   :: N2LODen
+  logical               :: error
+
+  print 1
+  print 2
+  print 1
+
+  call N2LODerive()
+  
+  ! Make all of the densities
+  N2LODen = NewDensityVector(nx,ny,nz)
+  ! Compute all of the densities
+  call ComputeDensity(N2LODen, .false.)
+  
+  !--------------------------------
+  ! First test: tau = Tr(Tau_munu)
+  !--------------------------------
+  TestTau = 0.0_dp
+  do i=1,3
+    TestTau = TestTau + N2LODen%RTauN2LO(:,:,:,i,i,:)
+  enddo
+  
+  error = .false.
+  do it=1,2
+    do k=1,nz
+        do j=1,ny
+            do i=1,nx
+                if(abs(TestTau(i,j,k,it) - N2LODen%tau(i,j,k,it)) .gt. 1d-8) then
+                    print *,TestTau(i,j,k,it), N2LODen%tau(i,j,k,it)
+                    Error = .true.
+                endif
+            enddo
+        enddo
+    enddo
+ enddo
+ if(.not. error) then
+    print 3
+ else
+    print *, 'Test 1 failed!'
+ endif
+ 
+ !--------------------------------
+ ! Second test
+ !--------------------------------
+ if(.not. TRC) then
+      error = .false.
+      TestT = 0.0_dp
+      do mu=1,3
+        do nu=1,3
+            TestT(:,:,:,mu,:) = TestT(:,:,:,mu,:) + N2LODen%ReKN2LO(:,:,:,nu,nu,mu,:)
+        enddo
+      enddo
+      
+      error = .false.
+      do it=1,2
+       do mu=1,3
+        do k=1,1
+            do j=1,1
+                do i=1,nx
+                    if(abs(TestT(i,j,k,mu,it) - N2LODen%vecT(i,j,k,mu,it)) .gt. 1d-8) then
+                        print *, TestT(i,j,k,mu, it), N2LODen%vecT(i,j,k,mu,it), &
+                        &        TestT(i,j,k,mu, it)- N2LODen%vecT(i,j,k,mu,it)
+                        Error = .true.
+                    endif
+                enddo
+            enddo
+        enddo
+       enddo
+     enddo
+     if(.not. error) then
+        print 4
+     else
+        print *, 'Test 2 failed!'
+     endif
+ endif
+ !-------------------------------------------------
+ ! Third test: F_mu = 1/2 sum_nu T_mununu + Tnumunu
+ !
+ !-------------------------------------------------
+ if(.not. TRC) then
+      error = .false.
+      TestF = 0.0_dp
+      do mu=1,3
+        do nu=1,3
+            TestF(:,:,:,mu,:) = TestF(:,:,:,mu,:) &
+            &                    + N2LODen%ReKN2LO(:,:,:,mu,nu,nu,:) &
+            &                    + N2LODen%ReKN2LO(:,:,:,nu,mu,nu,:)
+        enddo
+      enddo
+      TestF = 0.5 * TesTF
+      error = .false.
+      do it=1,2
+       do mu=1,3
+        do k=1,1
+            do j=1,1
+                do i=1,nx
+                    if(abs(TestF(i,j,k,mu,it) - N2LODen%vecF(i,j,k,mu,it)) .gt. 1d-14) then
+                        print *, TestF(i,j,k,mu, it), N2LODen%vecF(i,j,k,mu,it), &
+                        &        TestF(i,j,k,mu, it)- N2LODen%vecF(i,j,k,mu,it)
+                        Error = .true.
+                    endif
+                enddo
+            enddo
+        enddo
+       enddo
+     enddo
+     if(.not. error) then
+        print 5
+     else
+        print *, 'Test 3 failed!'
+     endif
+ endif
+ !-----------------------------------------------
+ ! Fourth test:
+ !   T_munuka - Tnumuka = -i [ D_mu J_nuka - D_nu J_muka]
+ !-----------------------------------------------
+!  print *, '-----------------------'
+!  print *, 'Ultimate test'
+!  print *, '-----------------------'
+!  error = .false.
+!  do it=1,2
+!      do ka=1,3
+!        do nu=1,3
+!          do mu=1,3
+!            print *
+!            print *, nu, mu, ka
+!            print *
+!            do i=1,nx
+!                print *, N2LODen%DJmunu(i,i,i,mu,nu,ka,it), N2LODen%DJmunu(i,i,i,nu,mu,ka,it) , &
+!                &        N2LODen%ImKN2LO(i,i,i,mu,nu,ka,it), N2LODen%ImKN2LO(i,i,i,nu,mu,ka,it) , &
+!                !&        N2LODen%ImKN2LO(i,i,i,mu,nu,ka,it) - N2LODen%ImKN2LO(i,i,i,nu,mu,ka,it), &
+!                !&        N2LODen%DJmunu(i,i,i,mu,nu,ka,it)  - N2LODen%DJmunu(i,i,i,nu,mu,ka,it), & 
+!                &        N2LODen%ImKN2LO(i,i,i,mu,nu,ka,it) - N2LODen%ImKN2LO(i,i,i,nu,mu,ka,it) +  &
+!                &        N2LODen%DJmunu(i,i,i,mu,nu,ka,it)  - N2LODen%DJmunu(i,i,i,nu,mu,ka,it)
+!            enddo   
+!          enddo
+!        enddo
+!        print *
+!      enddo
+!      print *
+!  enddo
+! 
+! print 1
+ !----------------------------------------------
+ ! Calculate the N2LO contribution to the energy
+ ! 
+ Density = N2LODen
+ call compEnergy
+ call printEnergy()
+ 
+ call writeN2LOdensities(N2LODen)
+ 
+end subroutine N2LOAnalysis
+
+subroutine TestN2LOspH
+    !
+    !
+    !
+    !
+    use Spinors 
+    use SpwfStorage
+    use MeanFields
+    
+    1 format ('-------------------')
+    2 format (' Spwf contributions')
+    3 format (' ', a2, 2x, f12.7   )
+    
+    
+    
+    integer :: i
+    real*8  :: E(11)
+    type(Spinor)  :: temp
+    
+    temp = newspinor()
+    E = 0
+    do i=1,nwt
+            if (HFBasis(i)%getOcc() .eq. 0.0_dp) cycle
+            temp = ActionofB(HFBasis(i))
+            E(1) = E(1) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofS(HFBasis(i))
+            E(2) = E(2) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofA(HFBasis(i))
+            E(3) = E(3) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofW(HFBasis(i))
+            E(4) = E(4) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofX(HFBasis(i))
+            E(5) = E(5) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofDN2LO(HFBasis(i))
+            E(6) = E(6) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofReTField(HFBasis(i))
+            E(7) = E(7) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofImTField(HFBasis(i))
+            E(8) = E(8) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofPi(HFBasis(i))
+            E(9) = E(9) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofU(HFBasis(i))
+            E(10) = E(10) + InproductSpinorReal(HFBasis(i)%value, temp)
+    enddo
+    
+    print 1
+    print 2
+    print 3, 'U', E(10)
+    print 3, 'B', E(1)
+    print 3, 'S', E(2)
+    print 3, 'A', E(3)
+    print 3, 'W', E(4)
+    print 3, 'X', E(5)
+    print 3, 'D', E(6)
+    print 3, 'RT', E(7)
+    print 3, 'IT', E(8)
+    print 3, 'Pi', E(9)
+    
+    print 1
+
+end subroutine TestN2LOspH
+
+subroutine writeN2LOdensities(Den)
+
+    use densities
+    use mesh
+
+    implicit none
+
+    type(DensityVector), intent(in) :: Den
+    integer :: i,mu,nu,ka
+    character(len=20) :: fname=''
+    character(len=2)  :: temp=''
+    
+    do mu=1,3    
+        do nu=1,3
+            fname='tau'
+            write(temp,'(i1)'), mu
+            fname= adjustl(trim(fname)//temp)
+            write(temp,'(i1)'), nu
+            fname= adjustl(trim(fname)//temp)
+            fname= adjustl(trim(fname)//'.dat')
+            open(unit=12, file=fname)
+            do i=1,nx
+                write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+                &                     Den%RtauN2LO(i,i,i,mu,nu,1),Den%ItauN2LO(i,i,i,mu,nu,1),&
+                &                     Den%RtauN2LO(i,i,i,mu,nu,2),Den%ItauN2LO(i,i,i,mu,nu,2)    
+            enddo
+            close(12)
+        enddo
+    enddo
+    
+    do mu=1,3    
+        do nu=1,3
+            fname='Drho'
+            write(temp,'(i1)'), mu
+            fname= adjustl(trim(fname)//temp)
+            write(temp,'(i1)'), nu
+            fname= adjustl(trim(fname)//temp)
+            fname= adjustl(trim(fname)//'.dat')
+            open(unit=12, file=fname)
+            do i=1,nx
+                write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+                &                     Den%D2Rho(i,i,i,mu,nu,1), Den%D2Rho(i,i,i,mu,nu,2)   
+            enddo
+            close(12)
+        enddo
+    enddo
+    
+    do mu=1,3    
+        do nu=1,3
+          do ka=1,3
+            fname='T'
+            write(temp,'(i1)'), mu
+            fname= adjustl(trim(fname)//temp)
+            write(temp,'(i1)'), nu
+            fname= adjustl(trim(fname)//temp)
+            write(temp,'(i1)'), ka
+            fname= adjustl(trim(fname)//temp)
+            fname= adjustl(trim(fname)//'.dat')
+            open(unit=12, file=fname)
+            do i=1,nx
+                write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+                &                     Den%ReKN2LO(i,i,i,mu,nu,ka,1),Den%ImKN2LO(i,i,i,mu,nu,ka,1),&
+                &                     Den%ReKN2LO(i,i,i,mu,nu,ka,2),Den%ImKN2LO(i,i,i,mu,nu,ka,2)    
+            enddo
+            close(12)
+          enddo
+        enddo
+    enddo
+    
+    do mu=1,3    
+        do nu=1,3
+            fname='V'
+            write(temp,'(i1)'), mu
+            fname= adjustl(trim(fname)//temp)
+            write(temp,'(i1)'), nu
+            fname= adjustl(trim(fname)//temp)
+            fname= adjustl(trim(fname)//'.dat')
+            open(unit=12, file=fname)
+            do i=1,nx
+                write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+                &                     Den%VN2LO(i,i,i,mu,nu,1), Den%VN2LO(i,i,i,mu,nu,2)    
+            enddo
+            close(12)
+          
+        enddo
+    enddo
+    
+    
+    fname='Q'
+    fname= adjustl(trim(fname)//'.dat')
+    open(unit=12, file=fname)
+    do i=1,nx
+        write(12, '(3f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+        &                     Den%QN2LO(i,i,i,1),Den%QN2LO(i,1,1,2) 
+    enddo
+    close(12)
+    
+    do mu=1,3
+        fname='S'
+        write(temp,'(i1)'), mu
+        fname= adjustl(trim(fname)//temp)
+        fname= adjustl(trim(fname)//'.dat')
+        open(unit=12, file=fname)
+        do i=1,nx
+            write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+            &                    Den%SN2LO(i,i,i,mu,1),Den%SN2LO(i,i,i,mu,2)
+        enddo
+    enddo
+    close(12)
+    
+    fname='Rho'
+    fname= adjustl(trim(fname)//'.dat')
+    open(unit=12, file=fname)
+    do i=1,nx
+        write(12, '(3f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+        &                     Den%Rho(i,i,i,1),Den%Rho(i,1,1,2) 
+    enddo
+    close(12)
+   
+end subroutine writeN2LOdensities
 
     
  end module Testing

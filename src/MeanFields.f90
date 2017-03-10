@@ -47,7 +47,7 @@ module MeanFields
   real(KIND=dp),allocatable :: SPot(:,:,:,:,:)
   real(KIND=dp),allocatable :: Cpot(:,:,:,:,:)        , WPot(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: DPot(:,:,:,:,:)
-  real(KIND=dp),allocatable :: DerCPot(:,:,:,:,:,:)   ,DerDPot(:,:,:,:,:,:)
+  real(KIND=dp),allocatable :: DerCPot(:,:,:,:,:,:)   , DerDPot(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: DivDpot(:,:,:,:)
   !------------------------------------------------------------------------------
   ! N2LO potentials
@@ -55,7 +55,7 @@ module MeanFields
   real(KIND=dp),allocatable :: Xpot(:,:,:,:,:,:)      , DXpot(:,:,:,:,:,:,:)
   real(KIND=dp),allocatable :: ReTfield(:,:,:,:,:,:,:), ImTfield(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: ReDTfield(:,:,:,:,:,:) , PiField(:,:,:,:,:)
-  real(KIND=dp),allocatable :: DmuBmunu(:,:,:,:,:,:)
+  real(KIND=dp),allocatable :: DmuBmunu(:,:,:,:,:,:)  , SN2LOField(:,:,:,:,:)
   !-----------------------------------------------------------------------------
   !For experimentally calculating B in a more logical way.
   ! And including an astract interface for the PGI compilers (sigh....)
@@ -105,7 +105,7 @@ contains
           
       if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
         allocate(Bmunu(nx,ny,nz,3,3,2))      ; allocate(DmuBmunu(nx,ny,nz,3,3,2))
-        allocate(DN2LO(nx,ny,nz,2)) 
+        allocate(DN2LO(nx,ny,nz,2))          ; allocate(SN2LOField(nx,ny,nz,3,2))
         allocate(Xpot(nx,ny,nz,3,3,2))       ; allocate(DXpot(nx,ny,nz,3,3,3,2))
         allocate(ReTfield(nx,ny,nz,3,3,3,2)) ; allocate(ImTfield(nx,ny,nz,3,3,2))
         allocate(ReDTfield(nx,ny,nz,3,3,2))  ; allocate(PiField(nx,ny,nz,3,2))
@@ -133,7 +133,10 @@ contains
         call CalcXpot()
         call calcDN2LO()
         call calcTfield()
-        call calcPifield()
+        if(.not. TRC) then
+            call calcPifield()
+            call calcSN2LOField()
+        endif
     else
         call CalcBPot()   
     endif
@@ -287,6 +290,20 @@ contains
         &                  + BN2LO(4)*    Density%Rho(:,:,:,it) 
     enddo
   end subroutine calcDN2LO
+  
+  subroutine calcSN2LOField()
+
+    use Derivatives
+    use Force
+    
+    integer :: it
+    SN2LOField = 0.0_dp
+    
+    do it=1,2
+        SN2LOField(:,:,:,:,it) = BN2LO(7)*sum(Density%vecs,5)                    &
+        &                      + BN2LO(8)*    Density%vecs(:,:,:,:,it) 
+    enddo
+  end subroutine calcSN2LOField
 
   subroutine CalcUPot()
   !-----------------------------------------------------------------------------
@@ -799,6 +816,22 @@ contains
     
     return
   end function ActionOfDN2LO
+  
+  function ActionOfSN2LO(Psi) result(ActionOfS)
+    type(Spwf), intent(in)        :: Psi
+    type(Spinor)                  :: ActionOfS
+    integer                       :: it, mu
+
+    it = (Psi%GetIsospin()+3)/2
+    ActionofS = NewSpinor()
+    do mu=1,3
+        ActionOfS = ActionOfS +                                                &
+        & Pauli(LapSpinor(SN2LOField(:,:,:,mu,it)*Psi%Lap,                     &
+        &       Psi%parity, psi%signature, psi%timesimplex), mu)    
+    enddo
+    
+    return
+  end function ActionOfSN2LO
 
   function ActionOfBOld(Psi, NoKinetic) result(ActionOfB)
   !-----------------------------------------------------------------------------

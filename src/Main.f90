@@ -353,7 +353,7 @@ subroutine Evolve(MaxIterations, iprint)
      print 4
   endif
   
-  call testN2LOsph
+  if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) call testN2LOsph
 end subroutine Evolve
 
 logical function ConvergenceCheck() result(Converged)

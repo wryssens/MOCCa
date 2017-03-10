@@ -58,7 +58,8 @@ contains
         if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
             T  = ActionOfReTField(Psi)
             P  = ActionOfPi(Psi)
-            hPsi = hPsi + T + P            
+            S  = ActionOfSN2LO(Psi)
+            hPsi = hPsi + T + P + S         
         endif
 
         if(B14.ne.0.0_dp .or. B15 .ne. 0.0_dp) then

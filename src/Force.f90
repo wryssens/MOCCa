@@ -53,6 +53,13 @@ module Force
     ! C(8) => M(s)_1
     real(KIND=dp) :: CN2LO(8), BN2LO(8)
     !---------------------------------------------------------------------------
+    ! Coupling constants that are in principle calculated from the BN2LO, but 
+    ! are pretty useful for debugging.
+    real(KIND=dp) :: N2D2rho(2), N2D2s(2), N2rhoQ(2), N2tau(2), N2rtmn(2)
+    real(KIND=dp) :: N2itmn(2), N2tddr(2), N2Dvecj(2), N2jpi(2), N2DJ(2)
+    real(KIND=dp) :: N2JV(2), N2sS(2), N2vecT(2), N2ReTmn(2), N2ImTmn(2)
+    real(KIND=dp) :: N2TmnD2s(2) 
+    !---------------------------------------------------------------------------
     ! Temporary flag that determines whether to include Tmunuka selfconsistently
     logical       :: Tmunuka=.true.
     !.....................................................
@@ -403,8 +410,6 @@ contains
       B20 = (3.0_dp/16.0_dp) * (3*te - to)
       B21 =-(3.0_dp/16.0_dp) * (3*te + to)
     endif
-  
-
 
     !---------------------------------------------------------------------------
     !Calculating the C-s
@@ -486,6 +491,22 @@ contains
         BN2LO(6) =             2*CN2LO(6)
         BN2LO(7) =   CN2LO(7) -  CN2LO(8)
         BN2LO(8) =             2*CN2LO(8)  
+        
+        N2D2rho(1) = BN2LO(1) ; N2D2rho(2) = BN2LO(2)
+        
+        N2D2s(1)   = BN2LO(5) ; N2D2s(2)   = BN2LO(6)
+        
+        N2rhoQ(1)  = BN2LO(3) ; N2rhoQ(2)  = BN2LO(4)
+        N2tau(1)   = BN2LO(3) ; N2tau(2)   = BN2LO(4)
+        N2rtm(1)   = BN2LO(3) ; N2rtm(2)   = BN2LO(4)
+        N2itm(1)   = BN2LO(3) ; N2itm(2)   = BN2LO(4)
+        N2tddr(1)  = BN2LO(3) ; N2tddr(2)  = BN2LO(4)
+        N2Dvecj(1) = BN2LO(3) ; N2Dvecj(2) = BN2LO(4)
+        N2jpi(1)   = BN2LO(3) ; N2jpi(2)   = BN2LO(4)
+        
+    real(KIND=dp) :: N2itmn(2), N2tddr(2), N2Dvecj(2), N2jpi(2), N2DJ(2)
+    real(KIND=dp) :: N2JV(2), N2sS(2), N2vecT(2), N2ReTmn(2), N2ImTmn(2)
+    real(KIND=dp) :: N2TmnD2s(2) 
     endif
 
     return

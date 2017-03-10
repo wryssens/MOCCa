@@ -60,10 +60,11 @@ contains
     ! Note that the TotalEnergy would give a slightly different result, due to
     ! the different computation of the kinetic energy
     !---------------------------------------------------------------------------
-    use Coulomb, only : CompCoulombEnergy,CompCoulombExchange
-    use Pairing, only : CompPairingEnergy, Fermi, Delta,LNLambda,PairingDisp,Lipkin
-    use Cranking, only: CrankEnergy
-    use Moments, only : ConstraintEnergy
+    use Coulomb
+    use Pairing
+    use Cranking
+    use Moments
+    
     integer :: i
     
     ! Making sure the PrintEnergy routine is associated

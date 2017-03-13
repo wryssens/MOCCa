@@ -319,7 +319,7 @@ BEGIN{
         # Some information that might seem basic, but is allowed to change over
         # files in the analyzed output.
         # Mesh parameters
-        if ( $1 == "Mesh") {
+        if ( $1 == "Mesh" && nx == "") {
                 getline ;
                 nx = $3
                 ny = $6
@@ -369,14 +369,16 @@ BEGIN{
             #-------------------------------------------------------------------
             # Add current loaded value of mesh parameters and neutron & proton 
             # numbers to file.
-            nxarray[iq] = nx
-            nyarray[iq] = ny
-            nzarray[iq] = nz
-            dxarray[iq] = dx    
+            nxarray[iq]     = nx
+            nyarray[iq]     = ny
+            nzarray[iq]     = nz
+            dxarray[iq]     = dx    
             protonarray[iq] = protons
             neutronarray[iq]= neutrons
             massarray[iq]   = mass
-        }
+            #Reset nx to zero to indicate that next time it can be overwritten
+            nx = ""
+	}
         #-----------------------------------------------------------------------
         # Reading the SPWF info
         if( $2 == "Sp" && (CanBasisflag || HFBasisflag) ){
@@ -850,7 +852,7 @@ END{
     iq=1;
     print "! N Z A nx ny nz dx " > "tmp.calc.tab";  
     while ( iq < iqmax + 1 ) {
-        printf("%4.1f %4.1f %4.1f %2.0f %2.0f %2.0f %4.3f", neutronarray[iq], protonarray[iq], massarray[iq], nxarray[nx], nyarray[iq],nzarray[iq], dxarray[iq]) >> "tmp.calc.tab"
+        printf("%4.1f %4.1f %4.1f %2.0f %2.0f %2.0f %4.3f \n", neutronarray[iq], protonarray[iq], massarray[iq], nxarray[iq], nyarray[iq],nzarray[iq], dxarray[iq]) >> "tmp.calc.tab"
         iq += 1;
     }
     close("tmp.calc.tab");

@@ -25,6 +25,8 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
     
     altx = 0
     alty = 0
+    absy = 0
+    fac  = 1
     
     if(XARG=='Q20') :
         xlabel =r'$\langle \hat{Q}_{20} \rangle$ (fm$^2$)'
@@ -83,6 +85,14 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         xfname =PREFIX + '.e.tab'
         xcolumn= 14
         altx   = 10
+    elif(XARG=='NX'):   
+        xlabel =r'$nx$'
+        xfname =PREFIX + '.calc.tab'
+        xcolumn=3
+    elif(XARG=='DX'):   
+        xlabel =r'$dx$ (fm)'
+        xfname =PREFIX + '.calc.tab'
+        xcolumn=6
     else :
         print 'XARG not recognized'
         return
@@ -103,6 +113,13 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         ycolumn=1
         derivY = 0
         alty   = 4
+    elif(YARG=='MAGIC') :
+        ylabel =r'$|E - E_{spwf}|$ (MeV)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn=1
+        alty   =3
+        derivY =0
+        absy   =1
     elif(YARG=='EFD') :
         ylabel =r'E (MeV)'
         yfname =PREFIX + '.e.tab'
@@ -149,14 +166,10 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
     elif(YARG=='B20') :
         ylabel =r'$\beta_{20}$ '
         yfname =PREFIX + '.t.qlm.tab'
+        ycolumn=2
         if(PC != 1) :
             ycolumn = 4
-        if(SC != 1) :
-            ycolumn = 4
-        if( SC !=1 and PC != 1):
-            ycolumn = 6
         derivY=0
-   
     elif(YARG=='B2') :
         ylabel =r'$\beta_{2}$ '
         yfname =PREFIX + '.t.ql.tab'
@@ -164,6 +177,9 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         if( PC!= 1):
             ycolumn = 4
         derivY=0
+        
+        fac = np.sqrt(5/( 16 * np.pi))
+        
     elif(YARG=='B22') :
         yfname =PREFIX + '.t.qlm.tab'
         ycolumn=4
@@ -205,7 +221,7 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         print 'YARG not recognized'
         return
         
-    return(xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty)
+    return(xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty, absy, fac)
 
 def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1, 
               AXIS     =None,  INTERPOLATE=-1, INTERMIN=None,    
@@ -225,10 +241,8 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         AXIS = plt.gca()
 
     if(isinstance(PREFIX, list)):
-        
-    
         for i in range(len(PREFIX)):
-            (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty) = Determinedata(PREFIX[i], XARG, YARG,PC[i],SC[i])
+            (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty, absy, fac) = Determinedata(PREFIX[i], XARG, YARG,PC[i],SC[i])
     
             dataX=np.loadtxt(xfname,skiprows=1)
             dataY=np.loadtxt(yfname,skiprows=1)
@@ -259,14 +273,31 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
                 xdata = np.append(xdata, tempx)
                 ydata = np.append(ydata, tempy)
             
+            ydata= fac * ydata
+            
     else:
-        (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty) = Determinedata(PREFIX, XARG, YARG,PC,SC)
+        (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty, absy,fac) = Determinedata(PREFIX, XARG, YARG,PC,SC)
     
         dataX=np.loadtxt(xfname,skiprows=1)
         dataY=np.loadtxt(yfname,skiprows=1)
         
         xdata=dataX[:,xcolumn]
         ydata=dataY[:,ycolumn]
+
+        if(XMIN != None):
+            indices = []
+            for j in range(len(xdata)):
+                if(tempx[j] < XMIN):
+                    indices.append(j)
+            xdata= np.delete(xdata,indices)
+            ydata = np.delete(ydata,indices)
+        if(XMAX != None):
+            indices = []
+            for j in range(len(xdata)):
+                if(xdata[j] > XMAX):
+                    indices.append(j)
+            xdata = np.delete(xdata,indices)
+            ydata = np.delete(ydata,indices)
     
         if(altx != 0):
             altxdata = dataX[:, altx]
@@ -274,7 +305,12 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         if(alty != 0):
             altydata = dataY[:, alty]
             ydata    =  altydata - ydata
+            
+        if(absy == 1):
+            ydata = abs(ydata)
         
+        ydata = fac * ydata
+    
     # Sort along X-data for surety
     xdata, ydata = zip(*sorted(zip(xdata, ydata)))
 

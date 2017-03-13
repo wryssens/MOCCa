@@ -1,19 +1,18 @@
 #==============================================================================#
 #                                                                              #
 #    MOCCa.spectra.awk     release 0.0.1                                       #
-#    8 November 2016                                                           #
+#    13 March 2016                                                             #
 #                                                                              #
 #    Copyright W. Ryssens & M. Bender                                          #
 #    Heavily inspired on cr8.spectra.1.1.2.awk by M. Bender and engineered     #                                                                              #
 #    to produce the same kind of tables, only starting from MOCCa files.       #
-#    Note that when I say 'kind', I do mean 'kind', and not 'identical'.       #
+#    Note that when I say 'kind', it does not mean 'identical'.                #
 #                                                                              #
 #    Note that Spwf.sort.awk is also required in order for this script to      #
 #    function.                                                                 # 
 #                                                                              #
 #==============================================================================#
 # TODO                                                                         #
-# + implement quasiparticle basis reading & writing                            #
 # + Add detection of quadrupole orientation                                    #
 # + Add blocking information                                                   #
 # + Add convergence info                                                       #
@@ -25,7 +24,6 @@
 #                                                                              #
 #    where PREFIX.out is a collection of MOCCa outputs, arranged in the desired#
 #    order. (For instance by cat'ing the different files one after another).   #
-#                                                                              #
 #                                                                              #
 #    Note that it is VERY important that the different MOCCa runs match in type#
 #    DO NOT TRY TO MIX with one awk call:                                      #
@@ -40,7 +38,8 @@
 #                           neutrons (n), protons(p) and total(t).             #
 # - PREFIX.[iso].ql.tab     Total multipole moments <Q_l>  and related \beta_l #
 #                           for neutrons (n), protons(p) and total(t).         #
-#                                                                              #
+# - PREFIX.calc.tab         Details of the calculation: neutron & proton       #
+#                           numbers, mesh parameters, force name               #
 # - PREFIX.[base].[iso].par=[par].sig=[sig].tab                                #   
 #                                                                              #
 #  where                                                                       #
@@ -265,18 +264,11 @@ BEGIN{
                 lengthfilename = length(FILENAME);
                 prefix = substr(FILENAME,1,lengthfilename-4);
         }
-        
-        #  Take some parameters from the start of the calculations. 
-        #  a) number of protons & neutrons
-        if ( $1 == "Nucleus") {
-                getline;
-                neutrons=$3
-                protons =$6
-                mass    =neutrons+protons
-                R       =1.2 * xa^(1.0/3.0)
-                #print "(A,N,Z)", mass,neutrons,protons       
-        }
-        #  b) number of neutron & proton wave-functions
+        #-----------------------------------------------------------------------
+        # Some parameters to get from the start of the files, that are necessary
+        # for the script to function.
+        #
+        #  a) number of neutron & proton wave-functions
         if ( $1 == "Wavefunctions") {
                 getline;
                 nwt = $3
@@ -286,7 +278,7 @@ BEGIN{
                 nwp = $3
                 #print "nwt,nwn,nwp", nwt,nwn,nwp
         }
-        #   c) symmetries 
+        #  b) symmetries 
         if ( $1 == "Symmetries") {
                PC = 1
                SC = 1
@@ -302,11 +294,11 @@ BEGIN{
                if ($3 != "Conserved") {TSC = 0}
                #print "P,Rz,TR,TS", PC, SC, TRC, TSC
         }
-        #   d) number of multipole moments to consider
+        #  c) number of multipole moments to consider
         if ( $1 == "Maximum" && $2 == "l" ) {
                 maxmultipole=$4     
         }
-        #   e) type of pairing to deal with
+        #  e) type of pairing to deal with
         if ( (pairingtypeflag == 1)  && ($1 == "BCS" || $1 == "HFB" || $1 == "Hartree-Fock;")) {
             PairingType = $1
             pairingtypeflag = 0
@@ -314,7 +306,7 @@ BEGIN{
                 PairingType = "HF"
             }
         }
-        #   f) dealing with one-body correction or not?
+        #  f) dealing with one-body correction or not?
         if ($1 == "COM1Body=") {
             if($2 == 0) {
                 COM1flag = 0
@@ -323,9 +315,30 @@ BEGIN{
                 COM1flag = 1
             }
         }
+        #-----------------------------------------------------------------------
+        # Some information that might seem basic, but is allowed to change over
+        # files in the analyzed output.
+        # Mesh parameters
+        if ( $1 == "Mesh") {
+                getline ;
+                nx = $3
+                ny = $6
+                nz = $9
+                getline;
+                dx = $3
+        }
+        #  Neutron & proton numbers
+        if ( $1 == "Nucleus") {
+                getline;
+                neutrons=$3
+                protons =$6
+                mass    =neutrons+protons
+                R       =1.2 * xa^(1.0/3.0)
+        }
        
         #------------------------------------------------------------------------
         # This flag marks the end of a MOCCa calculation in the file
+        # All more serious information is obtained here.
         #------------------------------------------------------------------------
         if ( $1 == "**FINAL**" ) {
             # Increment calculation counter
@@ -339,12 +352,12 @@ BEGIN{
             if(PairingType == "HF") {
                 HFBasisflag =1
                 CanBasisflag=0
-		QPBasisflag =0
+		        QPBasisflag =0
             }
             if(PairingType == "BCS") {
                 HFBasisflag =1
                 CanBasisflag=0
-		QPBasisflag =0
+		        QPBasisflag =0
             }
             if(PairingType == "HFB") {
                 HFBasisflag =1
@@ -352,6 +365,17 @@ BEGIN{
                 QPBasisflag =1
             }
             angmomflag=1
+            
+            #-------------------------------------------------------------------
+            # Add current loaded value of mesh parameters and neutron & proton 
+            # numbers to file.
+            nxarray[iq] = nx
+            nyarray[iq] = ny
+            nzarray[iq] = nz
+            dxarray[iq] = dx    
+            protonarray[iq] = protons
+            neutronarray[iq]= neutrons
+            massarray[iq]   = mass
         }
         #-----------------------------------------------------------------------
         # Reading the SPWF info
@@ -363,10 +387,7 @@ BEGIN{
             getline;
             getline;
             getline;
-            #if(PairingType == "HFB") {
-            # getline;
-            # getline;
-            #}
+
             #----------------------------------
             # Neutron states in the HF basis
             N = 1
@@ -591,8 +612,6 @@ BEGIN{
                 QuadCart[iq,Y,3] = $4
                 QuadCart[iq,Z,3] = $5
                 
-                #print QuadCart[iq,X,1],QuadCart[iq,X,2],QuadCart[iq,X,3]
-                
                 # (Q,Gamma representation)
                 Q0[iq,1]     = $3
                 Gamma[iq,1]  = $4
@@ -811,82 +830,78 @@ BEGIN{
 #-------------------------------------------------------------------------------
 #    All MOCCa files have been read. 
 #    Now the collected data can be printed into tables
-#
 END{
-  nn = savenn;
-  np = savenp;
+    nn = savenn;
+    np = savenp;
     
     #---------------------------------------------------------------------------
-    # total energy
-    # and closely related observables
-    #if ( calc == "pes" ) {
-        print "!       E(func)     E_FD     E(sp)     Routhian       eLN(n)     eLN(p)    Rms(n)   Rms(p)     Rms(t)    OmegaX      Jx        OmegaY      Jy        OmegaZ      Jz" > "tmp.e.tab";
-    #}
+    # total energy and closely related observables
+    print "!       E(func)     E_FD     E(sp)     Routhian       eLN(n)     eLN(p)    Rms(n)   Rms(p)     Rms(t)    OmegaX      Jx        OmegaY      Jy        OmegaZ      Jz" > "tmp.e.tab";
     iq=1;
     while ( iq < iqmax + 1 ) {
         enoln = Energy[iq,1] - ELN[iq,3];
-#        if ( calc == "pes" ) {
-            printf("%3.0f %10.3f %10.3f %10.3f   %10.3f %10.3f   %10.6f %8.3f %8.3f %8.3f %8.3f %12.5f %8.3f %12.5f %8.3f %12.5f \n",
-               iq,Energy[iq,1],Energy[iq,2],Energy[iq,3],Energy[iq,4],ELN[iq,1],ELN[iq,2], rms[iq,1],rms[iq,2],rms[iq,3],OmegaX[iq],Jx[iq],OmegaY[iq],Jy[iq],OmegaZ[iq],Jz[iq]) >> "tmp.e.tab"; 
-#        }
+        printf("%3.0f %10.3f %10.3f %10.3f   %10.3f %10.3f   %10.6f %8.3f %8.3f %8.3f %8.3f %12.5f %8.3f %12.5f %8.3f %12.5f \n",
+           iq,Energy[iq,1],Energy[iq,2],Energy[iq,3],Energy[iq,4],ELN[iq,1],ELN[iq,2], rms[iq,1],rms[iq,2],rms[iq,3],OmegaX[iq],Jx[iq],OmegaY[iq],Jy[iq],OmegaZ[iq],Jz[iq]) >> "tmp.e.tab"; 
         iq += 1;
     }
     close("tmp.e.tab");
     #---------------------------------------------------------------------------
+    # Calculation details
+    iq=1;
+    print "! N Z A nx ny nz dx " > "tmp.calc.tab";  
+    while ( iq < iqmax + 1 ) {
+        printf("%4.1f %4.1f %4.1f %2.0f %2.0f %2.0f %4.3f", neutronarray[iq], protonarray[iq], massarray[iq], nxarray[nx], nyarray[iq],nzarray[iq], dxarray[iq]) >> "tmp.calc.tab"
+        iq += 1;
+    }
+    close("tmp.calc.tab");
     #---------------------------------------------------------------------------
     # Deformations of all the Re/Im Qlm detected for neutrons, protons and total 
     iq = 1;
-#    if ( calc == "pes" ) {
-        printf("!    ") > "tmp.n.qlm.tab";
-        printf("!    ") > "tmp.p.qlm.tab";
-        printf("!    ") > "tmp.t.qlm.tab";
-        #Make the header by looking which Qlm entries are initialised
-#        if ( calc == "pes" ) {
-            l = 1
-            while ( l < maxmultipole +1) {
-                m = 0
-                while ( m < l+1 ) {
-                    if( Qlm[iq,"Re",l,m,3] != "" ) {
-                        printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.n.qlm.tab";
-                        printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.p.qlm.tab";
-                        printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.t.qlm.tab";
-                    }
-                    m+=1
-                }
-                l+=1 
+    printf("!    ") > "tmp.n.qlm.tab";
+    printf("!    ") > "tmp.p.qlm.tab";
+    printf("!    ") > "tmp.t.qlm.tab";
+    #Make the header by looking which Qlm entries are initialised
+    l = 1
+    while ( l < maxmultipole +1) {
+        m = 0
+        while ( m < l+1 ) {
+            if( Qlm[iq,"Re",l,m,3] != "" ) {
+                printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.n.qlm.tab";
+                printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.p.qlm.tab";
+                printf("   ReQ%1.0f%1.0f       Beta%1.0f%1.0f  ",l,m,l,m)> "tmp.t.qlm.tab";
             }
-            printf("\n")>>"tmp.n.qlm.tab"
-            printf("\n")>>"tmp.p.qlm.tab"  
-            printf("\n")>>"tmp.t.qlm.tab"     
-#        }
-#    }
+            m+=1
+        }
+        l+=1 
+    }
+    printf("\n")>>"tmp.n.qlm.tab"
+    printf("\n")>>"tmp.p.qlm.tab"  
+    printf("\n")>>"tmp.t.qlm.tab"     
     while ( iq < iqmax + 1 ) {
-#        if ( calc == "pes" ) {
-            printf("%3.0f", iq) >> "tmp.n.qlm.tab"
-            printf("%3.0f", iq) >> "tmp.p.qlm.tab" 
-            printf("%3.0f", iq) >> "tmp.t.qlm.tab"  
-            l = 1
-            while ( l < maxmultipole +1) {
-                m = 0
-                while ( m < l+1 ) {
-                    if( Qlm[iq,"Re",l,m,3] != "" ) {
-                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.qlm.tab"
-                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.qlm.tab"
-                        printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.qlm.tab"
-                    }
-                    if( Qlm[iq,"Im",l,m,3] != "" ) {
-                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.qlm.tab"
-                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.qlm.tab"
-                        printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.qlm.tab"
-                    }
-                    m +=1
+        printf("%3.0f", iq) >> "tmp.n.qlm.tab"
+        printf("%3.0f", iq) >> "tmp.p.qlm.tab" 
+        printf("%3.0f", iq) >> "tmp.t.qlm.tab"  
+        l = 1
+        while ( l < maxmultipole +1) {
+            m = 0
+            while ( m < l+1 ) {
+                if( Qlm[iq,"Re",l,m,3] != "" ) {
+                    printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.qlm.tab"
+                    printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.qlm.tab"
+                    printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.qlm.tab"
                 }
-                l+=1 
+                if( Qlm[iq,"Im",l,m,3] != "" ) {
+                    printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.qlm.tab"
+                    printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.qlm.tab"
+                    printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.qlm.tab"
+                }
+                m +=1
             }
-            printf("\n")>>"tmp.n.qlm.tab"
-            printf("\n")>>"tmp.p.qlm.tab"  
-            printf("\n")>>"tmp.t.qlm.tab"   
-#        }    
+            l+=1 
+        }
+        printf("\n")>>"tmp.n.qlm.tab"
+        printf("\n")>>"tmp.p.qlm.tab"  
+        printf("\n")>>"tmp.t.qlm.tab"   
         iq += 1;
     }
     close("tmp.n.qlm.tab");
@@ -895,29 +910,24 @@ END{
     #---------------------------------------------------------------------------
     # Deformations of all the Ql detected for neutrons, protons and total 
     iq = 1;
-#    if ( calc == "pes" ) {
-        printf("!     ") > "tmp.n.ql.tab";
-        printf("!     ") > "tmp.p.ql.tab";
-        printf("!     ") > "tmp.t.ql.tab";
-        #Make the header by looking which Qlm entries are initialised
-#        if ( calc == "pes" ) {
-            l = 1
-            while ( l < maxmultipole +1) {
-                
-                if( Ql[iq,l,3] != "" ) {
-                    printf("  ReQ%1.0f         Beta%1.0f   ",l,l)> "tmp.n.ql.tab";
-                    printf("  ReQ%1.0f         Beta%1.0f   ",l,l)> "tmp.p.ql.tab";
-                    printf("  ReQ%1.0f         Beta%1.0f   ",l,l)> "tmp.t.ql.tab";
-                }
-                l+=1 
-            }
-            printf("\n")>>"tmp.n.ql.tab"
-            printf("\n")>>"tmp.p.ql.tab"  
-            printf("\n")>>"tmp.t.ql.tab"     
-#        }
-#    }
+    printf("!     ") > "tmp.n.ql.tab";
+    printf("!     ") > "tmp.p.ql.tab";
+    printf("!     ") > "tmp.t.ql.tab";
+    #Make the header by looking which Qlm entries are initialised
+    l = 1
+    while ( l < maxmultipole +1) {
+        
+        if( Ql[iq,l,3] != "" ) {
+            printf("  ReQ%1.0f         Beta%1.0f   ",l,l)> "tmp.n.ql.tab";
+            printf("  ReQ%1.0f         Beta%1.0f   ",l,l)> "tmp.p.ql.tab";
+            printf("  ReQ%1.0f         Beta%1.0f   ",l,l)> "tmp.t.ql.tab";
+        }
+        l+=1 
+    }
+    printf("\n")>>"tmp.n.ql.tab"
+    printf("\n")>>"tmp.p.ql.tab"  
+    printf("\n")>>"tmp.t.ql.tab"     
     while ( iq < iqmax + 1 ) {
-#        if ( calc == "pes" ) {
             printf("%3.0f", iq) >> "tmp.n.ql.tab"
             printf("%3.0f", iq) >> "tmp.p.ql.tab" 
             printf("%3.0f", iq) >> "tmp.t.ql.tab"  
@@ -934,7 +944,6 @@ END{
             printf("\n")>>"tmp.n.ql.tab"
             printf("\n")>>"tmp.p.ql.tab"  
             printf("\n")>>"tmp.t.ql.tab"   
-#        }    
         iq += 1;
     }
     close("tmp.n.ql.tab");
@@ -942,15 +951,11 @@ END{
     close("tmp.t.ql.tab");
     #---------------------------------------------------------------------------
     #------------ Fermi energies and information on Lipkin-Nogami scheme--------
-#    if ( calc == "pes" ) {
-        print "!      eF_n     eF_p   lambda_2n lambda_2p  eLN(n)   eLN(p) <DeltaN^2> <DeltaZ^2>" > "tmp.ef.tab";
-#    }
+    print "!      eF_n     eF_p   lambda_2n lambda_2p  eLN(n)   eLN(p) <DeltaN^2> <DeltaZ^2>" > "tmp.ef.tab";
     iq = 1;
     while ( iq < iqmax + 1 ) {
-#        if ( calc == "pes" ) {
           printf("%3.0f %8.3f %8.3f  %8.3f %8.3f  %8.3f %8.3f   %8.3f  %8.3f\n",
                iq,Fermi[iq,1],Fermi[iq,2],Lambda2[iq,1],Lambda2[iq,2],ELN[iq,1], ELN[iq,2], Dispersion[iq,1], Dispersion[iq,2]) >> "tmp.ef.tab"; 
-#        }
         iq += 1;
     }
     close("tmp.ef.tab")
@@ -963,12 +968,10 @@ END{
     #---------------------------------------------------------------------------
     # Neutron HF basis
     printf(header) > "tmp.n.hf.tab"
-    
     iq = 1;
     while ( iq < iqmax +1  ) {
         N = 1;
         while ( neutronhf[iq,N,1] != "" ){
-#            if ( calc == "pes" ) {
                 i = 1
                 printf("%4i %4i %4i", N, iq, 0) >> "tmp.n.hf.tab"
                 while( neutronhf[iq,N,i] != "" ) {
@@ -976,8 +979,6 @@ END{
                     i +=1
                 }
                 printf("\n" ) >> "tmp.n.hf.tab"
-#            }
-              
             N+=1
         }
         iq+=1
@@ -992,7 +993,6 @@ END{
         while ( iq < iqmax +1  ) {
             N = 1;
             while ( neutroncan[iq,N,1] != "" ){
-#                if ( calc == "pes" ) {
                     i = 1
                     printf("%4i %4i %4i", N, iq, 0) >> "tmp.n.can.tab"
                     while( neutroncan[iq,N,i] != "" ) {
@@ -1000,7 +1000,6 @@ END{
                         i +=1
                     }
                     printf("\n") >> "tmp.n.can.tab"
-#                }
                 N+=1
             }
             iq+=1
@@ -1064,7 +1063,6 @@ END{
     while ( iq < iqmax +1 ) {
         P = 1;
         while ( protonhf[iq,P,1] != ""){
-#            if ( calc == "pes" ) {
                 i = 1
                 printf("%4i %4i %4i", P, iq, 0) >> "tmp.p.hf.tab"
                 while( protonhf[iq,P,i] != "" ) {
@@ -1073,7 +1071,6 @@ END{
                 }
                 
                 printf("\n" ) >> "tmp.p.hf.tab"
-#            }
             P+=1
         }
         iq+=1
@@ -1088,7 +1085,6 @@ END{
         while ( iq < iqmax +1 ) {
             P = 1;
             while ( protoncan[iq,P,1] != "" ){
-#                if ( calc == "pes" ) {
                     i = 1
                     printf("%4i %4i %4i", P, iq, 0) >> "tmp.p.can.tab"
                     while( protoncan[iq,P,i] != "" ) {
@@ -1096,18 +1092,14 @@ END{
                         i +=1
                     }
                     printf("\n" ) >> "tmp.p.can.tab"
-#                }
-                  
                 P+=1
             }
             iq+=1
         }
     close("tmp.p.can.tab")    
     }
-#    exit
-#    
-#    #---------------------------------------------------------------------------
-#    #Sort all of the SPWFs into blocks by their quantum number
+    #---------------------------------------------------------------------------
+    #Sort all of the SPWFs into blocks by their quantum number
     SortSpwfs("tmp.n.hf.tab", "neutron", "hf", prefix, PC, SC, TRC,iqmax) ;
     SortSpwfs("tmp.p.hf.tab", "proton" , "hf", prefix, PC, SC, TRC,iqmax) ;
     if(PairingType == "HFB") {

@@ -7,8 +7,12 @@
 #    Copyright W. Ryssens & M. Bender                                          #
 #    Heavily inspired on cr8.spectra.1.1.2.awk by M. Bender and engineered     #                                                   #
 #    to produce the same kind of tables, only starting from MOCCa files.       #
+#------------------------------------------------------------------------------#
 #                                                                              #
 #                                                                              #
+#    Gets called by MOCCa.spectra.awk to sort the single-particle              #
+#    wave-functions by a specified quantum number, determined by the index     #
+#    of a column on which to sort.                                             #
 #===============================================================================
 BEGIN{
 

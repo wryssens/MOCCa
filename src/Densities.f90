@@ -129,7 +129,8 @@ contains
     R%Rho    =0.0_dp ; R%LapRho=0.0_dp ; R%DerRho=0.0_dp
     R%Tau    =0.0_dp ; R%NablaJ =0.0_dp
 
-    if((B14.ne.0.0_dp .or. B15.ne.0.0_dp .or. B16.ne.0.0_dp.or.B17.ne.0.0_dp)) then
+    if((B14.ne.0.0_dp .or. B15.ne.0.0_dp .or. B16.ne.0.0_dp.or.B17.ne.0.0_dp)  &
+    &  .or. (t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp)) then
       !Time-even density with Jmunu!
       allocate(R%JMuNu(sizex,sizey,sizez,3,3,2))
       R%Jmunu = 0.0_dp

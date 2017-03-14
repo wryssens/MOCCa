@@ -265,8 +265,8 @@ contains
     &' rho Q_t   ', f13.6, ' rho Q_q   ', f13.6                        , /, & 
     &' D2 rho^2_t', f13.6, ' D2 rho^2_q', f13.6                        , /, &  
     &' tau^2_t   ', f13.6, ' tau^2_q   ', f13.6                        , /, &  
-    &' Retmn^2_t ', f13.6, ' Retmn^2_t ', f13.6                        , /, &  
-    &' Imtmn^2_t ', f13.6, ' Imtmn^2_t ', f13.6                        , /, &  
+    &' Retmn^2_t ', f13.6, ' Retmn^2_q ', f13.6                        , /, &  
+    &' Imtmn^2_t ', f13.6, ' Imtmn^2_q ', f13.6                        , /, &  
     &' tmnd2rho_t', f13.6, ' tmnd2rho_q', f13.6                        , /, &  
     &' dmujmu    ', f13.6, ' dmujmu    ', f13.6                        , /, &  
     &' j Pi_t    ', f13.6, ' j Pi_q    ', f13.6                        , /, &  
@@ -276,7 +276,7 @@ contains
     &' T^2_t     ', f13.6, ' T^2_t     ', f13.6                        , /, &  
     &' ReTmnk^2_t', f13.6, ' ReTmnk^2_q', f13.6                        , /, &  
     &' ImTmnk^2_t', f13.6, ' ImTmnk^2_q', f13.6                        , /, &  
-    &' Tmnk D2s_t', f13.6, ' Tmnk D2s_q', f13.6)  
+    &' Tmnk D2s_t', f13.6, ' Tmnk D2s_q', f13.6, /)  
     
     
     112  format ('EDF Coefficients (Isospin representation)')
@@ -341,10 +341,10 @@ contains
         print 1111, BN2LO(1), BN2LO(2),BN2LO(1)/BN2LO(2), BN2LO(3), BN2LO(4),  &
         &           BN2LO(3)/BN2LO(4), BN2LO(7), BN2LO(8), BN2LO(7)/BN2LO(8) &
         &         , BN2LO(5), BN2LO(6),BN2LO(5)/BN2LO(6)
-        print 1112, N2D2rho(2), N2D2s(2), N2rhoQ(2), N2tau(2), N2rtmn(2),      &
-        &           N2itmn(2), N2tddr(2), N2Dvecj(2), N2jpi(2), N2DJ(2),       &
-        &           N2JV(2), N2sS(2), N2vecT(2), N2ReTmn(2), N2ImTmn(2),       &
-        &           N2TmnD2s(2) 
+        print 1112, N2D2rho, N2D2s, N2rhoQ, N2tau, N2rtmn,      &
+        &           N2itmn, N2tddr, N2Dvecj, N2jpi, N2DJ,       &
+        &           N2JV, N2sS, N2vecT, N2ReTmn, N2ImTmn,       &
+        &           N2TmnD2s 
     endif
     print 112
     print 113, Crho,Crhosat, Cs, Cssat, Ctau, Cdrho, CnablaJ, Ct, Cf, Cds,     &
@@ -530,6 +530,7 @@ contains
         N2jpi(1)   = BN2LO(3) ; N2jpi(2)   = BN2LO(4)
         
         N2DJ(1)    = BN2LO(7) ; N2DJ(2)    = BN2LO(8)
+        N2JV(1)    = BN2LO(7) ; N2JV(2)    = BN2LO(8)
         N2sS(1)    = BN2LO(7) ; N2sS(2)    = BN2LO(8)
         N2vecT(1)  = BN2LO(7) ; N2vecT(2)  = BN2LO(8)
         N2ReTmn(1) = BN2LO(7) ; N2reTmn(2) = BN2LO(8)

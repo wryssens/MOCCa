@@ -365,14 +365,6 @@ contains
             & )                                                                &
             & + B9*NablaJTot + B9q*Density%NablaJ(:,:,:,it)
 
-            if(.not.TRC) then
-                Upot(:,:,:,it) = Upot(:,:,:,it)                                &
-                & + byt3a*RhoTot**(byt3a)/(RhoTot + eps)*(                     &
-                &   B12a*sum(VecSTot**2,4)                                     &
-                & + B13a*(sum(Density%VecS(:,:,:,:,it)**2,4)                   &
-                & +       sum(Density%VecS(:,:,:,:,at)**2,4)))
-            endif
-            
             if(t1n2 .ne. 0.0_dp .or. t2n2 .ne. 0.0_dp) then
                 !---------------------------------------------------------------
                 ! n2lo contribution
@@ -386,6 +378,16 @@ contains
                 &              - 2*bn2lo(4)*    density%d2rtau(:,:,:,it)      
             endif
     enddo
+
+    if(.not. TRC) then
+       do it=1,2
+          at = 3- it
+          Upot(:,:,:,it) = Upot(:,:,:,it) + byt3a*RhoTot**(byt3a)/(RhoTot + eps) &
+          & * ( B12a*sum(VecSTot**2,4) + B13a*sum(Density%VecS(:,:,:,:,it)**2,4) &
+          &                            + B13a*sum(Density%VecS(:,:,:,:,at)**2,4))
+       enddo
+    endif
+
     ! Note that CoulExchange already carries a minus sign.
     UPot(:,:,:,2)= UPot(:,:,:,2) + CoulombPotential(:,:,:) + CoulExchange(:,:,:)
 
@@ -544,7 +546,7 @@ contains
     !---------------------------------------------------------------------------
     use Cranking, only : CrankSPot
 
-    integer :: it,at,l,i,j,k
+    integer        :: it,at,l,i,j,k
     real(KIND=dp)  :: RhoT(nx,ny,nz), RhoVecS(nx,ny,nz,3,2)
 
     Spot = 0.0_dp
@@ -552,7 +554,7 @@ contains
 
     do it=1,2
       do l=1,3
-        RhoVecS(:,:,:,l,it) = RhoT**(byt3a)*Density%VecS(:,:,:,l,it)
+        RhoVecS(:,:,:,l,it) = (RhoT**(byt3a))*Density%VecS(:,:,:,l,it)
       enddo
     enddo
     do it=1,2
@@ -561,9 +563,9 @@ contains
        &          + (B9 + B9q)         *Density%RotVecJ(:,:,:,:,it)   &
        &          +  B9                *Density%RotVecJ(:,:,:,:,at)   &
        &          + 2.0_dp*((B10+B11)  *Density%Vecs(:,:,:,:,it)      &
-       &          + B10                *Density%VecS(:,:,:,:,at))     &
+       &          +          B10       *Density%VecS(:,:,:,:,at))     &
        &          + 2.0_dp*((B12a+B13a)*        RhoVecS(:,:,:,:,it)   &
-       &          + B12a               *        RhoVecS(:,:,:,:,at))
+       &          +          B12a      *        RhoVecS(:,:,:,:,at))
 
        if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
         SPot(:,:,:,:,it) = SPot(:,:,:,:,it) &

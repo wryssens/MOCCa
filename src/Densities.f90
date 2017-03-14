@@ -866,16 +866,19 @@ contains
         ! Derive vecj
         do it=1,2
           !See Table V in V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
+          
           DerVecJ(:,:,:,2,1)  = &
           & DeriveY(DenIn%Vecj(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
           DerVecJ(:,:,:,3,1)  = &
           & DeriveZ(DenIn%Vecj(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
+          
           DerVecJ(:,:,:,1,2)  = &
           & DeriveX(DenIn%Vecj(:,:,:,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
           DerVecJ(:,:,:,3,2)  = &
-          & DeriveZ(DenIn%Vecj(:,:,:,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
+          & DeriveZ(DenIn%Vecj(:,:,:,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
+          
           DerVecJ(:,:,:,1,3)  = &
-          & DeriveX(DenIn%Vecj(:,:,:,3,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
+          & DeriveX(DenIn%Vecj(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,2)
           DerVecJ(:,:,:,2,3)  = &
           & DeriveY(DenIn%Vecj(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,2)
 

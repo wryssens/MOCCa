@@ -1133,11 +1133,13 @@ contains
     ! Adding the kinetic energy and the rearrangement term due to the density
     ! dependence and Coulomb Exchange.
     if(trim(SkyrmeTreatment).eq.'TERMBYTERM') then
-        SpwfEnergy = 0.5_dp*(SpwfEnergy + sum(Kinetic)-byt3a*(sum(SkyrmeTerms(9:10))))&
-        &            + CoulombExchange/3.d0
+        SpwfEnergy = 0.5_dp*      (SpwfEnergy + sum(Kinetic))                       &
+        &          - 0.5_dp*byt3a*(sum(SkyrmeTerms(9:10)) + sum(SkyrmeTerms(17:18)))& 
+        &          + CoulombExchange/3.d0
     elseif(trim(SkyrmeTreatment).eq.'BTERMS') then
-        SpwfEnergy = 0.5_dp*(SpwfEnergy + sum(Kinetic)-byt3a*(Bterm(7) + BTerm(8)))&
-        &            + CoulombExchange/3.d0
+        SpwfEnergy = 0.5_dp*(SpwfEnergy + sum(Kinetic))                   &
+        &          - 0.5_dp*byt3a*(sum(Bterm(7:8)) + sum(Bterm(12:13)))   &
+        &          + CoulombExchange/3.d0
     endif
     !Remove the contribution from the multipole constraints
     SpwfEnergy = SpwfEnergy - sum(ConstraintEnergy*Density%Rho)*dv/2.0_dp

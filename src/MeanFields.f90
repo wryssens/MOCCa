@@ -581,6 +581,8 @@ contains
         do it=1,2
             at = 3 - it
             Spot(:,:,:,:,it)= Spot(:,:,:,:,it)   &
+            &             +   (N2D2S(1)+N2D2S(2))*Density%LapLapS(:,:,:,:,it)&
+            &             +    N2D2S(1)          *Density%LapLapS(:,:,:,:,at)&
             &             +   (N2sS(1)+N2sS(2))*Density%SN2LO(:,:,:,:,it)    &
             &             +    N2sS(1)         *Density%SN2LO(:,:,:,:,at)    &
             &   + 2*(N2TmnD2S(1) + N2TmnD2S(2))*Density%ReD2TN2LO(:,:,:,:,it)&

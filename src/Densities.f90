@@ -129,8 +129,7 @@ contains
     R%Rho    =0.0_dp ; R%LapRho=0.0_dp ; R%DerRho=0.0_dp
     R%Tau    =0.0_dp ; R%NablaJ =0.0_dp
 
-    if((B14.ne.0.0_dp .or. B15.ne.0.0_dp .or. B16.ne.0.0_dp.or.B17.ne.0.0_dp)  & 
-    & .or. t1n2 .ne. 0.0_dp) then
+    if((B14.ne.0.0_dp .or. B15.ne.0.0_dp .or. B16.ne.0.0_dp.or.B17.ne.0.0_dp)) then
       !Time-even density with Jmunu!
       allocate(R%JMuNu(sizex,sizey,sizez,3,3,2))
       R%Jmunu = 0.0_dp
@@ -464,7 +463,6 @@ contains
         DenIn%NablaJ(:,:,:,it)    = DenIn%NablaJ(:,:,:,it) +                   &
         &                           Occupation * DensityBasis(i)%GetNablaJ()
       endif
-
       !Only compute time-odd densities when Time Reversal is broken
       if(.not.TRC) then
         DenIn%Vecj(:,:,:,:,it)= DenIn%Vecj(:,:,:,:,it) +                       &
@@ -480,7 +478,6 @@ contains
           &                       Occupation*DensityBasis(i)%GetVecF()
         endif
       endif
-      
       if (allocated(DenIn%RtauN2LO)) then
         ! calculate N2LO densities
         DenIn%RTauN2LO(:,:,:,:,:,it)  = DenIn%RTauN2LO(:,:,:,:,:,it) +         &
@@ -502,8 +499,7 @@ contains
             DenIn%SN2LO(:,:,:,:,it)       = DenIn%SN2LO(:,:,:,:,it) +          &
             &                         Occupation * DensityBasis(i)%GetSN2LO()     
         endif
-      endif
-  
+      endif  
     enddo
     if(all(DenIn%Rho.eq.0.0_dp)) call stp('Rho is zero')
     if(onlyRho) return
@@ -521,7 +517,6 @@ contains
         DenIn%LapRho(:,:,:,it)   = &
         & Laplacian(DenIn%Rho(:,:,:,it),ParityInt,SignatureInt,TimeSimplexInt,1)
     enddo
-    
     if (allocated(DenIn%RtauN2LO)) then
         do it=1,2
             DenIn%LapLapRho(:,:,:,it)   = &
@@ -860,7 +855,6 @@ contains
       !Temporary
       !DenIn%NablaJ = DeriveJMunu(Denin%JMuNu)
     endif
-
     !Computing the derivatives of vecj & vecs
     if(.not.TRC) then
         ! Derive vecj
@@ -904,7 +898,7 @@ contains
         if(B18.eq.0.0_dp.and.B19.eq.0.0_dp.and.B20.eq.0.0_dp .and. B21.eq.0.0_dp) then
           MoreDers = .false.
         endif
-        if(t1n2.ne.0.0_dp) then
+        if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
           MoreDers = .true.
         endif
 
@@ -918,8 +912,10 @@ contains
           if(MoreDers) then
             DenIn%LapS(:,:,:,1,it) = Laplacian(DenIn%VecS(:,:,:,1,it),             &
             &                              ParityInt,-SignatureInt,TimeSimplexInt,1)
-            DenIn%LapLapS(:,:,:,1,it) = Laplacian(DenIn%LapS(:,:,:,1,it),          &
-            &                              ParityInt,-SignatureInt,TimeSimplexInt,1)
+            if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
+                DenIn%LapLapS(:,:,:,1,it) = Laplacian(DenIn%LapS(:,:,:,1,it),      &
+                &                          ParityInt,-SignatureInt,TimeSimplexInt,1)
+            endif
           endif
           DenIn%DerS(:,:,:,1,1,it) = &
           & DeriveX(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)
@@ -932,8 +928,10 @@ contains
           if(MoreDers) then
             DenIn%LapS(:,:,:,2,it) = Laplacian(DenIn%VecS(:,:,:,2,it),             &
             &                             ParityInt,-SignatureInt,TimeSimplexInt,2)
-            DenIn%LapLapS(:,:,:,2,it) = Laplacian(DenIn%LapS(:,:,:,2,it),          &
-            &                             ParityInt,-SignatureInt,TimeSimplexInt,2)
+            if(t1n2.ne.0 .or. t2n2.ne.0) then
+                DenIn%LapLapS(:,:,:,2,it) = Laplacian(DenIn%LapS(:,:,:,2,it),      &
+                &                         ParityInt,-SignatureInt,TimeSimplexInt,2)
+            endif
           endif
           DenIn%DerS(:,:,:,1,2,it) = &
           &DeriveX(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)
@@ -943,10 +941,12 @@ contains
           &DeriveZ(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)
           !--------------------- Z Components--------------------------------------
           if(MoreDers) then
-            DenIn%LapS(:,:,:,3,it)    = Laplacian(DenIn%VecS(:,:,:,3,it),      &
+            DenIn%LapS(:,:,:,3,it)    = Laplacian(DenIn%VecS(:,:,:,3,it),         &
             &                              ParityInt,SignatureInt,TimeSimplexInt,1)
-            DenIn%LapLapS(:,:,:,3,it) = Laplacian(DenIn%LapS(:,:,:,3,it),      &
-            &                              ParityInt,SignatureInt,TimeSimplexInt,1)
+            if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
+                DenIn%LapLapS(:,:,:,3,it) = Laplacian(DenIn%LapS(:,:,:,3,it),     &
+                &                          ParityInt,SignatureInt,TimeSimplexInt,1)
+            endif         
           endif
           DenIn%DerS(:,:,:,1,3,it) = &
           & DeriveX(DenIn%VecS(:,:,:,3,it),ParityInt,Signatureint,TimeSimplexInt,1)

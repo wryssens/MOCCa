@@ -163,7 +163,6 @@ contains
     type(densityvector), intent(in) :: Den
     integer       :: it,i,j
     
-    
     terms = 0.0_dp
     
     !---------------------------------------------------------------------------
@@ -194,131 +193,131 @@ contains
     
     !---------------------------------------------------------------------------
     ! Delta rho Delta rho                              T-even
-    terms(1) = BN2LO(1)*sum(laprhotot**2)
+    terms(1) = sum(laprhotot**2)                                 * N2D2rho(1)
     do it=1,2
-        terms(2) =  terms(2) + sum(Den%LapRho(:,:,:,it)**2)      * BN2LO(2) 
+        terms(2) =  terms(2) + sum(Den%LapRho(:,:,:,it)**2)      * N2D2rho(2) 
     enddo
     !----------------------------------------------------------------------------
     !  rho Q                                           T-even 
-    terms(3) = sum(sum(Den%rho,4) * sum(Den%QN2LO,4))            * BN2LO(3)
+    terms(3) = sum(sum(Den%rho,4) * sum(Den%QN2LO,4))            * N2rhoQ(1)
     do it=1,2
         terms(4) = terms(4) + sum(Den%rho(:,:,:,it) * Den%QN2LO(:,:,:,it)) 
     enddo
-    terms(4) = terms(4)                                          * BN2LO(4)
+    terms(4) = terms(4)                                          * N2rhoQ(2)
     
     !----------------------------------------------------------------------------
     !  tau^2                                           T-even
-    terms(5) = sum(sum(Den%tau,4)**2)                            * BN2LO(3)
+    terms(5) = sum(sum(Den%tau,4)**2)                            * N2tau(1)
     do it=1,2
-        terms(6) = terms(6) + sum(Den%tau(:,:,:,it)**2)          * BN2LO(4)
+        terms(6) = terms(6) + sum(Den%tau(:,:,:,it)**2)          * N2tau(2)
     enddo
     !---------------------------------------------------------------------------
     ! Re Tau_munu * Re Tau_munu                        T_even
-    terms(7) = 2*sum(Rtauten*Rtauten)                            * BN2LO(3)
+    terms(7) = 2*sum(Rtauten*Rtauten)                            * N2rtmn(1)
     do it=1,2
-        terms(8) = terms(8)+2*sum(Den%RTauN2LO(:,:,:,:,:,it)**2) * BN2LO(4)
+        terms(8) = terms(8)+2*sum(Den%RTauN2LO(:,:,:,:,:,it)**2) * N2rtmn(2)
     enddo
     !---------------------------------------------------------------------------
     ! - Re tau_munu * DmuDnuRho                        T_even
-    terms(9) =   -  2*sum(Rtauten * D2rho)                       * BN2LO(3)
+    terms(9) =   -  2*sum(Rtauten * D2rho)                       * N2tddr(1)
     do it=1,2
         terms(10) = terms(10) &
         &              + sum(Den%RTauN2LO(:,:,:,:,:,it)*Den%D2Rho(:,:,:,:,:,it))
     enddo
-    terms(10) =  -  2*BN2LO(4)*terms(10)
+    terms(10) =  -  2*terms(10)                                  * N2tddr(2)
 
     !---------------------------------------------------------------------------
     ! - Im Tau_munu * Im Tau_munu                            T_odd
     if(.not.TRC) then
-        terms(11) = - 2* sum(Itauten * Itauten)                  * BN2LO(3)
+        terms(11) = - 2* sum(Itauten * Itauten)                  * N2itmn(1)
         do it=1,2
             terms(12) = terms(12) - sum(Den%ITauN2LO(:,:,:,:,:,it)**2) 
         enddo
-        terms(12) = 2*terms(12)                                  * BN2LO(4)
+        terms(12) = 2*terms(12)                                  * N2itmn(2)
     endif
     !---------------------------------------------------------------------------
     ! D_mu J_munu                                            T-even
-    terms(13) = sum(sum(DmuJmunu,5)**2)                        * BN2LO(7)
+    terms(13) = sum(sum(DmuJmunu,5)**2)                          * N2DJ(1)
     do it=1,2
         terms(14) = terms(14) + sum(DmuJmunu(:,:,:,:,it)**2) 
     enddo
-    terms(14) = terms(14)                                      * BN2LO(8)
+    terms(14) = terms(14)                                        * N2DJ(2)
     !---------------------------------------------------------------------------
     ! J_munu V_munu                                          T-even
-    terms(15) =-4*sum(sum(Den%JmuNu,6)*sum(Den%VN2LO,6))       * BN2LO(7)
+    terms(15) =-4*sum(sum(Den%JmuNu,6)*sum(Den%VN2LO,6))         * N2JV(1)
     do it=1,2
         terms(16) = terms(16) + &
         &               4 * sum(Den%JmuNu(:,:,:,:,:,it)*Den%VN2LO(:,:,:,:,:,it))
     enddo
-    terms(16) =-terms(16)                                      * BN2LO(8)
+    terms(16) =-terms(16)                                        * N2JV(2)
     !---------------------------------------------------------------------------
     ! Delta s^2                                             T-odd
     if(.not.TRC) then
-        terms(17) = sum(sum(Den%laps,5)**2)                    * BN2LO(5)
+        terms(17) = sum(sum(Den%laps,5)**2)                      * N2D2s(1)
         do it=1,2
-            terms(18) = terms(18)+sum(Den%laps(:,:,:,:,it)**2) * BN2LO(6)
+            terms(18) = terms(18)+sum(Den%laps(:,:,:,:,it)**2)   * N2D2s(2)
         enddo
     endif
     !---------------------------------------------------------------------------
     ! D_mu j_mu s^2                                         T-odd
     ! This should be zero for local interactions by the way
     if(.not.TRC) then
-        terms(19) = - sum(sum(Den%divvecj,4)**2)               * BN2LO(3)
+        terms(19) = - sum(sum(Den%divvecj,4)**2)                 * N2Dvecj(1)
         do it=1,2
-            terms(20) = terms(20)-sum(Den%divvecj(:,:,:,it)**2)* BN2LO(4)
+            terms(20) = terms(20)-sum(Den%divvecj(:,:,:,it)**2)  * N2Dvecj(2)
         enddo
     endif
     !---------------------------------------------------------------------------
     ! j_mu Pi_mu                                            T-odd
     if(.not.TRC) then
-        terms(21) = -4*sum(sum(den%vecj,5) * sum(den%PiN2LO,5))* BN2LO(3)
+        terms(21) = -4*sum(sum(den%vecj,5) * sum(den%PiN2LO,5))  * N2jpi(1)
         do it=1,2
             terms(22) = terms(22) - &
-            & 4*sum(den%vecj(:,:,:,:,it)*den%PiN2LO(:,:,:,:,it))* BN2LO(4)
+            & 4*sum(den%vecj(:,:,:,:,it)*den%PiN2LO(:,:,:,:,it)) * N2jpi(2)
         enddo
     endif
     !---------------------------------------------------------------------------
     ! s_mu S_mu                                            T-odd
     if(.not.TRC) then
-        terms(23) = sum(sum(Den%vecs,5) * sum(Den%SN2LO,5))    * BN2LO(7)
+        terms(23) = sum(sum(Den%vecs,5) * sum(Den%SN2LO,5))      * N2sS(1)
         do it=1,2
             terms(24) = terms(24) + &
-            & sum(Den%vecs(:,:,:,:,it) * Den%SN2LO(:,:,:,:,it))* BN2LO(8)
+            & sum(Den%vecs(:,:,:,:,it) * Den%SN2LO(:,:,:,:,it))  * N2sS(2)
         enddo
     endif
     !---------------------------------------------------------------------------
     ! Tmu^2                                                T-odd
     if(.not.TRC) then
-        terms(25) = sum(sum(Tmu,5)**2)                         * BN2LO(7)
+        terms(25) = sum(sum(Tmu,5)**2)                           * N2vecT(1)
         do it=1,2
-            terms(26) = terms(26) + sum(Tmu(:,:,:,:,it)**2)    * BN2LO(8)
+            terms(26) = terms(26) + sum(Tmu(:,:,:,:,it)**2)      * N2vecT(2)
         enddo
     endif
     !---------------------------------------------------------------------------
     ! Re T_munuka^2                                        T-odd
     if(.not.TRC) then
-        terms(27) =   2 * sum(sum(Den%ReKN2LO,7)**2)   * BN2LO(7)
+        terms(27) =   2 * sum(sum(Den%ReKN2LO,7)**2)             * N2ReTmn(1)
         do it=1,2
             terms(28) = terms(28) + sum(Den%ReKN2LO(:,:,:,:,:,:,it)**2)
         enddo
-        terms(28)= 2*terms(28)                                 * BN2LO(8)
+        terms(28)= 2*terms(28)                                   * N2ReTmn(2)
     endif
     !---------------------------------------------------------------------------
     ! DmunuS * Re T_munuka
     if(.not.TRC) then
-        terms(29) = -2*sum(sum(Den%ReKN2LO,7)*sum(Den%D2S,7))  * BN2LO(7)
+        terms(29) = -2*sum(sum(Den%ReKN2LO,7)*sum(Den%D2S,7))  * N2TmnD2s(1)
         do it=1,2
             terms(30) = terms(30) + &
             &sum(Den%ReKN2LO(:,:,:,:,:,:,it)*Den%D2S(:,:,:,:,:,:,it))
         enddo
-        terms(30) = -2*terms(30)                               * BN2LO(8)
+        terms(30) = -2*terms(30)                               * N2TmnD2s(2)
     endif
     !---------------------------------------------------------------------------
     ! Im T_munuka^2                   T-even (!!!)
-    terms(31)     = - 2 * sum(sum(Den%ImKN2LO,7)**2)           * BN2LO(7)
+    terms(31)     = - 2 * sum(sum(Den%ImKN2LO,7)**2)           * N2ImTmn(1)
     do it=1,2
         terms(32) = terms(32) - &
-        &              2*sum(Den%ImKN2LO(:,:,:,:,:,:,it)**2)   * BN2LO(8)
+        &              2*sum(Den%ImKN2LO(:,:,:,:,:,:,it)**2)   * N2ImTmn(2)
     enddo
     !---------------------------------------------------------------------------
     ! Multiply everyting by dv

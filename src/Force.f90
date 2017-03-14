@@ -252,11 +252,32 @@ contains
     &' B13=',f13.6,'  B14=',f13.6,'  B15=',f13.6,/, &
     &' B16=',f13.6,'  B17=',f13.6,'  B18=',f13.6/, &
     &' B19=',f13.6,'  B20=',f13.6,'  B21=',f13.6/)
+    
     1111    format(' N2LO coefficients (BFH representation)', / &
     &' B5^(4) =',f13.6, ' B6^(4) =',f13.6, ' r ', f13.6,/ &
     &' B3^(4) =',f13.6, ' B4^(4) =',f13.6, ' r ', f13.6,/ &
     &' B14^(4)=',f13.6, ' B15^(4)=',f13.6, ' r ', f13.6,/ &
     &' BXX^(4)=',f13.6, ' BYY^(4)=',f13.6, ' r ', f13.6/ )
+    
+    1112    format(' Independent term parameters (BFH representation)' , /, & 
+    &' D2 rho^2_t', f13.6, ' D2 rho^2_q', f13.6                        , /, &  
+    &' D2   s^2_t', f13.6, ' D2   s^2_q', f13.6                        , /, &  
+    &' rho Q_t   ', f13.6, ' rho Q_q   ', f13.6                        , /, & 
+    &' D2 rho^2_t', f13.6, ' D2 rho^2_q', f13.6                        , /, &  
+    &' tau^2_t   ', f13.6, ' tau^2_q   ', f13.6                        , /, &  
+    &' Retmn^2_t ', f13.6, ' Retmn^2_t ', f13.6                        , /, &  
+    &' Imtmn^2_t ', f13.6, ' Imtmn^2_t ', f13.6                        , /, &  
+    &' tmnd2rho_t', f13.6, ' tmnd2rho_q', f13.6                        , /, &  
+    &' dmujmu    ', f13.6, ' dmujmu    ', f13.6                        , /, &  
+    &' j Pi_t    ', f13.6, ' j Pi_q    ', f13.6                        , /, &  
+    &' DJmnDJmn_t', f13.6, ' DJmnDJmn_q', f13.6                        , /, &  
+    &' JmnVmn_t  ', f13.6, ' JmnVmn_q  ', f13.6                        , /, &  
+    &' s S_t     ', f13.6, ' s S_t     ', f13.6                        , /, &  
+    &' T^2_t     ', f13.6, ' T^2_t     ', f13.6                        , /, &  
+    &' ReTmnk^2_t', f13.6, ' ReTmnk^2_q', f13.6                        , /, &  
+    &' ImTmnk^2_t', f13.6, ' ImTmnk^2_q', f13.6                        , /, &  
+    &' Tmnk D2s_t', f13.6, ' Tmnk D2s_q', f13.6)  
+    
     
     112  format ('EDF Coefficients (Isospin representation)')
     113  format (&
@@ -320,6 +341,10 @@ contains
         print 1111, BN2LO(1), BN2LO(2),BN2LO(1)/BN2LO(2), BN2LO(3), BN2LO(4),  &
         &           BN2LO(3)/BN2LO(4), BN2LO(7), BN2LO(8), BN2LO(7)/BN2LO(8) &
         &         , BN2LO(5), BN2LO(6),BN2LO(5)/BN2LO(6)
+        print 1112, N2D2rho(2), N2D2s(2), N2rhoQ(2), N2tau(2), N2rtmn(2),      &
+        &           N2itmn(2), N2tddr(2), N2Dvecj(2), N2jpi(2), N2DJ(2),       &
+        &           N2JV(2), N2sS(2), N2vecT(2), N2ReTmn(2), N2ImTmn(2),       &
+        &           N2TmnD2s(2) 
     endif
     print 112
     print 113, Crho,Crhosat, Cs, Cssat, Ctau, Cdrho, CnablaJ, Ct, Cf, Cds,     &
@@ -498,15 +523,18 @@ contains
         
         N2rhoQ(1)  = BN2LO(3) ; N2rhoQ(2)  = BN2LO(4)
         N2tau(1)   = BN2LO(3) ; N2tau(2)   = BN2LO(4)
-        N2rtm(1)   = BN2LO(3) ; N2rtm(2)   = BN2LO(4)
-        N2itm(1)   = BN2LO(3) ; N2itm(2)   = BN2LO(4)
+        N2rtmn(1)  = BN2LO(3) ; N2rtmn(2)  = BN2LO(4)
+        N2itmn(1)  = BN2LO(3) ; N2itmn(2)  = BN2LO(4)
         N2tddr(1)  = BN2LO(3) ; N2tddr(2)  = BN2LO(4)
         N2Dvecj(1) = BN2LO(3) ; N2Dvecj(2) = BN2LO(4)
         N2jpi(1)   = BN2LO(3) ; N2jpi(2)   = BN2LO(4)
         
-    real(KIND=dp) :: N2itmn(2), N2tddr(2), N2Dvecj(2), N2jpi(2), N2DJ(2)
-    real(KIND=dp) :: N2JV(2), N2sS(2), N2vecT(2), N2ReTmn(2), N2ImTmn(2)
-    real(KIND=dp) :: N2TmnD2s(2) 
+        N2DJ(1)    = BN2LO(7) ; N2DJ(2)    = BN2LO(8)
+        N2sS(1)    = BN2LO(7) ; N2sS(2)    = BN2LO(8)
+        N2vecT(1)  = BN2LO(7) ; N2vecT(2)  = BN2LO(8)
+        N2ReTmn(1) = BN2LO(7) ; N2reTmn(2) = BN2LO(8)
+        N2ImTmn(1) = BN2LO(7) ; N2ImTmn(2) = BN2LO(8)
+        N2TmnD2s(1)= BN2LO(7) ; N2TmnD2s(2)= BN2LO(8)
     endif
 
     return

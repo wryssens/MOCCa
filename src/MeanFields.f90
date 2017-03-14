@@ -1169,8 +1169,8 @@ contains
         integer :: it, mu
         
         do it=1,2
-            ImTfield(:,:,:,:,:,it)=- 4*N2ImTmn(1)*sum(Density%ImDTN2LO,6)      &
-            &                      - 4*N2ImTmn(2)*Density%ImDTN2LO(:,:,:,:,:,it)
+            ImTfield(:,:,:,:,:,it)=  4*N2ImTmn(1)*sum(Density%ImDTN2LO,6)      &
+            &                       +4*N2ImTmn(2)*Density%ImDTN2LO(:,:,:,:,:,it)
         enddo
 
         if(TRC) return

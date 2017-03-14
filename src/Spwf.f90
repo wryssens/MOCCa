@@ -1666,10 +1666,10 @@ contains
 
     K=0.0_dp
     do ka=1,3
-        do mu=1,3
-            Psi  = Pauli(WF%Der(mu),ka)
-            do nu=1,3
-                K(:,:,:,mu,nu,ka) = RealMultiplySpinor(WF%Der(nu) , Psi)
+        do nu=1,3
+            Psi  = Pauli(WF%Der(nu),ka)
+            do mu=1,3
+                K(:,:,:,mu,nu,ka) = RealMultiplySpinor(WF%Der(mu) , Psi)
             enddo
         enddo
     enddo
@@ -1683,10 +1683,10 @@ contains
 
     K=0.0_dp
     do ka=1,3
-        do mu=1,3
-            Psi  = Pauli(WF%Der(mu),ka)
-            do nu=1,3
-                K(:,:,:,mu,nu,ka) = ImagMultiplySpinor(WF%Der(nu) , Psi)
+        do nu=1,3
+            Psi  = Pauli(WF%Der(nu),ka)
+            do mu=1,3
+                K(:,:,:,mu,nu,ka) = ImagMultiplySpinor(WF%Der(mu) , Psi)
             enddo
         enddo
     enddo

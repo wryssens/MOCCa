@@ -776,10 +776,11 @@ contains
     ImAction = NewSpinor()
     at = 3 - it
     do nu=1,3
-        ImAction = ImAction - (4*(BN2LO(5) + BN2LO(6))*Density%DmuItau(:,:,:,nu,it)  &
+        ImAction = ImAction + (4*(BN2LO(5) + BN2LO(6))*Density%DmuItau(:,:,:,nu,it)  &
         &                   +  4* BN2LO(5) *           Density%DmuItau(:,:,:,nu,at)) &
         &                   *Psi%Der(nu)
     enddo
+    ActionofB = ActionOfB - MultiplyI(ImAction)
     
   end function ActionOfBN2LO
   

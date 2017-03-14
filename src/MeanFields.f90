@@ -214,8 +214,8 @@ contains
     do it=1,2
         do mu=1,3
             Bmunu(:,:,:,mu,mu,it) = Bmunu(:,:,:,mu,mu,it)                      &
-            &                      +2*BN2LO(3)*sum(Density%tau,4)              &
-            &                      +2*BN2LO(4)*    Density%tau(:,:,:,it) 
+            &                      +2*N2tau(1)*sum(Density%tau,4)              &
+            &                      +2*N2tau(2)*    Density%tau(:,:,:,it) 
         enddo
     enddo   
         
@@ -226,10 +226,10 @@ contains
         do mu=1,3
             do nu=1,3
                 Bmunu(:,:,:,mu,nu,it) = Bmunu(:,:,:,mu,nu,it)                     &
-                &      +4*(BN2LO(3) + BN2LO(4))* Density%RTauN2LO(:,:,:,mu,nu,it) &
-                &      -2*(BN2LO(3) + BN2LO(4))* Density%D2Rho   (:,:,:,mu,nu,it) & 
-                &      +4*(BN2LO(3))           * Density%RTauN2LO(:,:,:,mu,nu,at) &
-                &      -2*(BN2LO(3))           * Density%D2Rho   (:,:,:,mu,nu,at)       
+                &    +4*(N2rtmn(1) + N2rtmn(2))* Density%RTauN2LO(:,:,:,mu,nu,it) &
+                &    -2*(N2tddr(1) + N2tddr(2))* Density%D2Rho   (:,:,:,mu,nu,it) & 
+                &    +4*(N2rtmn(1))            * Density%RTauN2LO(:,:,:,mu,nu,at) &
+                &    -2*(N2tddr(1))            * Density%D2Rho   (:,:,:,mu,nu,at)       
             enddo
         enddo
     enddo
@@ -259,18 +259,6 @@ contains
         DmuBmunu(:,:,:,3,2,it) =                                          &
         &  DeriveZ(Bmunu(:,:,:,3,2,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
     enddo
-    
-!    !-----------------------------------------------------------------------
-!    ! Note that this in fact a field related to tau_munu, but that we can 
-!    ! easily put into the action of A.
-!    !
-!    do it=1,2
-!        at = 3 - it
-!        Apot(:,:,:,:,it) = Apot(:,:,:,:,it) &
-!        &                - 4*(BN2LO(3)+BN2LO(4))*Density%DmuItau(:,:,:,:,it) &
-!        &                - 4* BN2LO(3)          *Density%DmuItau(:,:,:,:,at)
-!    enddo
-!        
   end subroutine calcBmunu
 
   subroutine calcDN2LO()
@@ -286,8 +274,8 @@ contains
     DN2LO = 0.0_dp
     
     do it=1,2
-        DN2LO(:,:,:,it)    = BN2LO(3)*sum(Density%Rho,4)                       &
-        &                  + BN2LO(4)*    Density%Rho(:,:,:,it) 
+        DN2LO(:,:,:,it)    = N2rhoQ(1)*sum(Density%Rho,4)                      &
+        &                  + N2rhoQ(2)*    Density%Rho(:,:,:,it) 
     enddo
   end subroutine calcDN2LO
   
@@ -300,8 +288,8 @@ contains
     SN2LOField = 0.0_dp
     
     do it=1,2
-        SN2LOField(:,:,:,:,it) = BN2LO(7)*sum(Density%vecs,5)                    &
-        &                      + BN2LO(8)*    Density%vecs(:,:,:,:,it) 
+        SN2LOField(:,:,:,:,it) = N2sS(1)*sum(Density%vecs,5)                   &
+        &                      + N2sS(2)*    Density%vecs(:,:,:,:,it) 
     enddo
   end subroutine calcSN2LOField
 
@@ -370,12 +358,12 @@ contains
                 ! n2lo contribution
                 !---------------------------------------------------------------
                 upot(:,:,:,it) = upot(:,:,:,it)                                &
-                &              + 2*bn2lo(1)*sum(density%laplaprho,4)           &
-                &              + 2*bn2lo(2)*    density%laplaprho(:,:,:,it)    &
-                &              +   bn2lo(3)*sum(density%qn2lo,4)               &
-                &              - 2*bn2lo(3)*sum(density%d2rtau,4)              &
-                &              +   bn2lo(4)*    density%qn2lo(:,:,:,it)        &
-                &              - 2*bn2lo(4)*    density%d2rtau(:,:,:,it)      
+                &              + 2*N2D2rho(1)*sum(density%laplaprho,4)         &
+                &              + 2*N2D2rho(2)*    density%laplaprho(:,:,:,it)  &
+                &              +   N2rhoQ(1) *sum(density%qn2lo,4)             &
+                &              - 2*N2tddr(1) *sum(density%d2rtau,4)            &
+                &              +   N2rhoQ(2)*    density%qn2lo(:,:,:,it)       &
+                &              - 2*N2tddr(2)*    density%d2rtau(:,:,:,it)      
             endif
     enddo
 
@@ -430,8 +418,8 @@ contains
         do it=1,2
             at = 3 - it
             Apot(:,:,:,:,it) = Apot(:,:,:,:,it) &
-            &                - (BN2LO(3) + BN2LO(4))*Density%PiN2LO(:,:,:,:,it) &
-            &                -  BN2LO(4)            *Density%PiN2LO(:,:,:,:,at) 
+            &                - (N2jpi(1) + N2jpi(2))*Density%PiN2LO(:,:,:,:,it) &
+            &                -  N2jpi(1)            *Density%PiN2LO(:,:,:,:,at) 
         enddo
     endif
     
@@ -499,8 +487,8 @@ contains
         ! N2LO contribution
         do it=1,2
             Wpot(:,:,:,:,:,it) = Wpot(:,:,:,:,:,it)                    &
-            &                  - 4 * BN2LO(7) * sum(Density%VN2LO,6)   & 
-            &                  - 4 * BN2LO(8) *     Density%VN2LO(:,:,:,:,:,it) 
+            &                  - 4 * N2JV(1) * sum(Density%VN2LO,6)    & 
+            &                  - 4 * N2JV(2) *     Density%VN2LO(:,:,:,:,:,it) 
         enddo
         !-----------------------------------------------------------------------
         ! Note that the N2LO term proportional to B^(4)_14 and 15 is not 
@@ -522,10 +510,10 @@ contains
 
     do it=1,2
         ! Note that the final derivative is first in the array
-        Xpot (:,:,:,:,:,it)  = - 4 * BN2LO(7) * sum(Density%Jmunu,6)          &
-        &                      - 4 * BN2LO(8) * Density%Jmunu(:,:,:,:,:,it)
-        DXpot(:,:,:,:,:,:,it)= - 4 * BN2LO(7) * sum(Density%DJmunu,7)         &
-        &                      - 4 * BN2LO(8) * Density%DJmunu(:,:,:,:,:,:,it)
+        Xpot (:,:,:,:,:,it)  = - 4 * N2JV(1) * sum(Density%Jmunu,6)          &
+        &                      - 4 * N2JV(2) * Density%Jmunu(:,:,:,:,:,it)
+        DXpot(:,:,:,:,:,:,it)= - 4 * N2JV(1) * sum(Density%DJmunu,7)         &
+        &                      - 4 * N2JV(2) * Density%DJmunu(:,:,:,:,:,:,it)
     enddo
       
   end subroutine CalcXpot
@@ -593,10 +581,10 @@ contains
         do it=1,2
             at = 3 - it
             Spot(:,:,:,:,it)= Spot(:,:,:,:,it)   &
-            &             +   (BN2LO(7)+BN2LO(8))*Density%SN2LO(:,:,:,:,it)    &
-            &             +    BN2LO(8)          *Density%SN2LO(:,:,:,:,at)    &
-            &             + 2*(BN2LO(7)+BN2LO(8))*Density%ReD2TN2LO(:,:,:,:,it)&
-            &             + 2* BN2LO(8)          *Density%ReD2TN2LO(:,:,:,:,at)
+            &             +   (N2sS(1)+N2sS(2))*Density%SN2LO(:,:,:,:,it)    &
+            &             +    N2sS(1)         *Density%SN2LO(:,:,:,:,at)    &
+            &   + 2*(N2TmnD2S(1) + N2TmnD2S(2))*Density%ReD2TN2LO(:,:,:,:,it)&
+            &   + 2* N2TmnD2S(1)               *Density%ReD2TN2LO(:,:,:,:,at)
         enddo
     endif
 
@@ -653,8 +641,6 @@ contains
             DivDPot(:,:,:,it) = DerDpot(:,:,:,1,1,it) + DerDpot(:,:,:,2,2,it)    &
             &                 + DerDpot(:,:,:,3,3,it)
         enddo
-
-
       return
   end subroutine CalcDPot
 
@@ -1181,20 +1167,21 @@ contains
         integer :: it, mu
         
         do it=1,2
-            ImTfield(:,:,:,:,:,it) = - 4*BN2LO(7)*sum(Density%ImDTN2LO,6)    &
-            &                        - 4*BN2LO(8)*Density%ImDTN2LO(:,:,:,:,:,it)
+            ImTfield(:,:,:,:,:,it)=- 4*N2ImTmn(1)*sum(Density%ImDTN2LO,6)      &
+            &                      - 4*N2ImTmn(2)*Density%ImDTN2LO(:,:,:,:,:,it)
         enddo
 
         if(TRC) return
         
         do it=1,2
-            ReTfield(:,:,:,:,:,:,it) =- 4*BN2LO(7)*sum(Density%ReKN2LO,7)      &
-            &                      - 4*BN2LO(8)*Density%ReKN2LO(:,:,:,:,:,:,it)&
-            &                      + 2*BN2LO(7)*sum(Density%D2S,7)             &
-            &                      + 2*BN2LO(8)*Density%D2S(:,:,:,:,:,:,it)     
+            ReTfield(:,:,:,:,:,:,it) = &
+            &                    - 4*N2ReTmn(1)*sum(Density%ReKN2LO,7)         &
+            &                    - 4*N2ReTmn(2)*Density%ReKN2LO(:,:,:,:,:,:,it)&
+            &                    + 2*N2TmnD2S(1)*sum(Density%D2S,7)            &
+            &                    + 2*N2TmnD2S(2)*Density%D2S(:,:,:,:,:,:,it)     
             do mu=1,3
-                ReTField(:,:,:,mu,mu,:,it)= -2*BN2LO(7)*sum(Density%VecT,5)   &
-                &                           -2*BN2LO(8)*Density%VecT(:,:,:,:,it)
+                ReTField(:,:,:,mu,mu,:,it)=-2*N2vecT(1)*sum(Density%VecT,5)    &
+                &                          -2*N2vecT(2)*Density%VecT(:,:,:,:,it)
             enddo
             !-------------------------------------------------------------------
             ! Deriving the T-field
@@ -1326,8 +1313,8 @@ contains
     
     do it=1,2
         at = 3 - it
-        PiField(:,:,:,:,it) = 4*(BN2LO(5)+BN2LO(6))*Density%vecj(:,:,:,:,it)   &
-        &                   + 4*BN2LO(5)           *Density%vecj(:,:,:,:,at) 
+        PiField(:,:,:,:,it) = 4*(N2jpi(1)+N2jpi(2))*Density%vecj(:,:,:,:,it)   &
+        &                   + 4*N2jpi(1)           *Density%vecj(:,:,:,:,at) 
     enddo
    end subroutine CalcPiField
 

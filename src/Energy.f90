@@ -213,9 +213,9 @@ contains
     enddo
     !---------------------------------------------------------------------------
     ! Re Tau_munu * Re Tau_munu                        T_even
-    terms(7) = 2*sum(Rtauten*Rtauten)                            * N2rtmn(1)
+    terms(7) = 2*sum(Rtauten*Rtauten)                            * N2rtaumn(1)
     do it=1,2
-        terms(8) = terms(8)+2*sum(Den%RTauN2LO(:,:,:,:,:,it)**2) * N2rtmn(2)
+        terms(8) = terms(8)+2*sum(Den%RTauN2LO(:,:,:,:,:,it)**2) * N2rtaumn(2)
     enddo
     !---------------------------------------------------------------------------
     ! - Re tau_munu * DmuDnuRho                        T_even
@@ -229,11 +229,11 @@ contains
     !---------------------------------------------------------------------------
     ! - Im Tau_munu * Im Tau_munu                            T_odd
     if(.not.TRC) then
-        terms(11) = - 2* sum(Itauten * Itauten)                  * N2itmn(1)
+        terms(11) = - 2* sum(Itauten * Itauten)                  * N2itaumn(1)
         do it=1,2
             terms(12) = terms(12) - sum(Den%ITauN2LO(:,:,:,:,:,it)**2) 
         enddo
-        terms(12) = 2*terms(12)                                  * N2itmn(2)
+        terms(12) = 2*terms(12)                                  * N2itaumn(2)
     endif
     !---------------------------------------------------------------------------
     ! D_mu J_munu                                            T-even

@@ -292,10 +292,10 @@ contains
         do mu=1,3
             do nu=1,3
                 Bmunu(:,:,:,mu,nu,it) = Bmunu(:,:,:,mu,nu,it)                     &
-                &    +4*(N2rtmn(1) + N2rtmn(2))* Density%RTauN2LO(:,:,:,mu,nu,it) &
-                &    -2*(N2tddr(1) + N2tddr(2))* Density%D2Rho   (:,:,:,mu,nu,it) & 
-                &    +4*(N2rtmn(1))            * Density%RTauN2LO(:,:,:,mu,nu,at) &
-                &    -2*(N2tddr(1))            * Density%D2Rho   (:,:,:,mu,nu,at)       
+                &    +4*(N2rtaumn(1) + N2rtaumn(2))* Density%RTauN2LO(:,:,:,mu,nu,it) &
+                &    -2*(N2tddr(1) + N2tddr(2))    * Density%D2Rho   (:,:,:,mu,nu,it) & 
+                &    +4*(N2rtaumn(1))              * Density%RTauN2LO(:,:,:,mu,nu,at) &
+                &    -2*(N2tddr(1))                * Density%D2Rho   (:,:,:,mu,nu,at)       
             enddo
         enddo
     enddo

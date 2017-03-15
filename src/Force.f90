@@ -60,9 +60,9 @@ module Force
     ! Coupling constants that are in principle calculated from the BN2LO, but 
     ! allow for independently determining the contribution of all the terms.
     !               (Delta rho)^2 (Delta s)^2 rho Q      tau^2     (Re tmn)^2
-    real(KIND=dp) :: N2D2rho(2),    N2D2s(2), N2rhoQ(2), N2tau(2), N2rtmn(2)
+    real(KIND=dp) :: N2D2rho(2),    N2D2s(2), N2rhoQ(2), N2tau(2), N2rtaumn(2)
     !                (Im tmn)^2  tmn DmDnrho   (Dm jm)^2   (j Pi)   (Dm Jmn)^2
-    real(KIND=dp) :: N2itmn(2),  N2tddr(2),   N2Dvecj(2), N2jpi(2), N2DJ(2)
+    real(KIND=dp) :: N2itaumn(2),  N2tddr(2),   N2Dvecj(2), N2jpi(2), N2DJ(2)
     !                J V       s S       (T_k)^2  (Re Tmn)^2   (Im Tmn)^2 
     real(KIND=dp) :: N2JV(2), N2sS(2), N2vecT(2), N2ReTmn(2), N2ImTmn(2)
     !                Tmn DmDns
@@ -344,8 +344,8 @@ contains
         print 1111, BN2LO(1), BN2LO(2),BN2LO(1)/BN2LO(2), BN2LO(3), BN2LO(4),  &
         &           BN2LO(3)/BN2LO(4), BN2LO(7), BN2LO(8), BN2LO(7)/BN2LO(8) &
         &         , BN2LO(5), BN2LO(6),BN2LO(5)/BN2LO(6)
-        print 1112, N2D2rho, N2D2s, N2rhoQ, N2tau, N2rtmn,      &
-        &           N2itmn, N2tddr, N2Dvecj, N2jpi, N2DJ,       &
+        print 1112, N2D2rho, N2D2s, N2rhoQ, N2tau, N2rtaumn,      &
+        &           N2itaumn, N2tddr, N2Dvecj, N2jpi, N2DJ,       &
         &           N2JV, N2sS, N2vecT, N2ReTmn, N2ImTmn,       &
         &           N2TmnD2s 
     endif
@@ -517,8 +517,8 @@ contains
         
         N2rhoQ(1)  = BN2LO(3) ; N2rhoQ(2)  = BN2LO(4)
         N2tau(1)   = BN2LO(3) ; N2tau(2)   = BN2LO(4)
-        N2rtmn(1)  = BN2LO(3) ; N2rtmn(2)  = BN2LO(4)
-        N2itmn(1)  = BN2LO(3) ; N2itmn(2)  = BN2LO(4)
+        N2rtaumn(1)= BN2LO(3) ; N2rtaumn(2)= BN2LO(4)
+        N2itaumn(1)= BN2LO(3) ; N2itaumn(2)= BN2LO(4)
         N2tddr(1)  = BN2LO(3) ; N2tddr(2)  = BN2LO(4)
         N2Dvecj(1) = BN2LO(3) ; N2Dvecj(2) = BN2LO(4)
         N2jpi(1)   = BN2LO(3) ; N2jpi(2)   = BN2LO(4)

@@ -23,7 +23,11 @@ contains
     ! Calculate the action of \hat{h} on a wavefunction.
     !---------------------------------------------------------------------------
     ! Depending on whether time-reversal is conserved or not, and depending on 
-    ! the type of functional, different fields are 
+    ! the type of functional, different fields are used to construct the 
+    ! single-particle hamiltonian.
+    !
+    ! Note that all of the signs have been absorbed into the definitions of the 
+    ! actions, in order that all signs in this routine can be '+'.
     !---------------------------------------------------------------------------
     use WaveFunctions
     use Force 

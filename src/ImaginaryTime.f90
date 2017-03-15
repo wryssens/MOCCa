@@ -22,6 +22,9 @@ contains
     !---------------------------------------------------------------------------
     ! Calculate the action of \hat{h} on a wavefunction.
     !---------------------------------------------------------------------------
+    ! Depending on whether time-reversal is conserved or not, and depending on 
+    ! the type of functional, different fields are 
+    !---------------------------------------------------------------------------
     use WaveFunctions
     use Force 
     use Cranking
@@ -30,44 +33,51 @@ contains
     type(Spinor)             :: hPsi, U, B, S, A, W, C, D, Crank, DN2LO, X, T, P
     integer                  :: i
 
-    B = ActionOfB(Psi)
-    U = ActionOfU(Psi)
-    W = ActionOfW(Psi)
-   
     hPsi = NewSpinor()
+    
+    !---------------------------------------------------------------------------
+    ! Time-even part 
+    B = ActionOfB(Psi) ! Field of tau (or tau_mn)
+    U = ActionOfU(Psi) ! Field of rho
+    W = ActionOfW(Psi) ! Spin-orbit density
+   
     hPsi = B + U + W
 
     if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
-        DN2LO = ActionOfDN2LO(Psi)
-        X     = ActionOfX(Psi)
-        hPsi = hpsi + DN2LO + X
-        
-        if(TmunuKa) then
-            T = ActionOfImTField(Psi)
-            hPsi = hPsi + T
-        endif
+        !--------------------------------------
+        ! N2LO time-even fields 
+        DN2LO = ActionOfDN2LO(Psi)   ! Field of Q density
+        X     = ActionOfX(Psi)       ! Field of Vmn density
+        T     = ActionOfImTField(Psi)! Field of Im Tmnk density
+        hPsi = hpsi + DN2LO + X + T
     endif
 
+    !---------------------------------------------------------------------------
+    ! Time-odd part 
     if(.not.TRC) then
-        S = ActionOfS(Psi)
-        A = ActionOfA(Psi)
-
-        hPsi = hPsi + S
-        hPsi = hPsi + A
+        S = ActionOfS(Psi)  ! Field of (small) s density
+        A = ActionOfA(Psi)  ! Field of j density
+        hPsi = hPsi + S + A
         
         if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
-            T  = ActionOfReTField(Psi)
-            P  = ActionOfPi(Psi)
-            S  = ActionOfSN2LO(Psi)
+            !--------------------------------------
+            ! Time-odd N2LO fields
+            T  = ActionOfReTField(Psi) ! Field of Re Tmnk density
+            P  = ActionOfPi(Psi)       ! Field of Pi density
+            S  = ActionOfSN2LO(Psi)    ! Field of (big) S density
             hPsi = hPsi + T + P + S         
         endif
 
         if(B14.ne.0.0_dp .or. B15 .ne. 0.0_dp) then
+            !--------------------------------------
+            ! time-odd tensor fields
             C = ActionOfC(Psi)
             hPsi = hPsi + C
         endif
 
         if(B16.ne.0.0_dp .or. B17 .ne. 0.0_dp) then
+            !--------------------------------------
+            ! Other time-odd tensor field
             D = ActionOfD(Psi)
             hPsi = hPsi + D
         endif

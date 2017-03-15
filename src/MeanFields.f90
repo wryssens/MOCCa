@@ -684,10 +684,12 @@ contains
       
       integer      :: it
 
+      if(B16.eq.0.0_dp .and. B17 .eq.0.0_dp) return
+
       DPot   =0.0_dp
       DerDpot=0.0_dp
 
-      if(B16.eq.0.0_dp .and. B17 .eq.0.0_dp) return
+
 
       !Calculating D itself
       do it=1,2
@@ -733,9 +735,8 @@ contains
   !-----------------------------------------------------------------------------
       integer :: it
 
-      CPot=0.0_dp
       if(B14 .eq. 0.0_dp .and. B15 .eq. 0.0_dp) return
-
+      CPot=0.0_dp
       do it=1,2
           CPot(:,:,:,:,it) = CPot(:,:,:,:,it)                                  &
           &                - B14*(Density%VecS(:,:,:,:,1)+Density%VecS(:,:,:,:,2))

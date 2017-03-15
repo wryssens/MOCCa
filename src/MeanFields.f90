@@ -856,8 +856,8 @@ contains
     ImAction = NewSpinor()
     at = 3 - it
     do nu=1,3
-        ImAction = ImAction + (4*(N2itaumn(1) + N2imtmn(2))*Density%DmuItau(:,:,:,nu,it)  &
-        &                   +  4* N2itaumn(1) *             Density%DmuItau(:,:,:,nu,at)) &
+        ImAction = ImAction + (4*(N2itaumn(1) + N2itaumn(2))*Density%DmuItau(:,:,:,nu,it)  &
+        &                   +  4* N2itaumn(1) *              Density%DmuItau(:,:,:,nu,at)) &
         &                   *Psi%Der(nu)
     enddo
     ActionofB = ActionOfB - MultiplyI(ImAction)

@@ -1,8 +1,10 @@
 module Force
-    !----------------------------------------------------------------------------------
-    ! This module contains all the variables related to the Skyrme interaction used,
-    ! and that includes the physical constants, hbar, e^2 and others...
-    !----------------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
+    ! This module contains all the variables related to the functional employed 
+    ! Currently possible:
+    !   * ) SLy4/5-like functionals
+    !   * ) local gauge-invariant N2LO functional
+    !---------------------------------------------------------------------------
 
     use Compilationinfo
     use GenInfo
@@ -11,8 +13,10 @@ module Force
     !-----------------------------------------------------------------------------
     ! Flag on how to calculate and print the energy of the Skyrme terms.
     ! Possible options at the moment:
-    !  BTerms     => Calculate everything per coupling constant B
-    !  TermByTerm => Calculate everything terms by term (DEFAULT)
+    !  BTerms     => Calculate everything per coupling constant B 
+    !                Legacy option, not recommended.
+    !  TermByTerm => Calculate everything terms by term           
+    !                DEFAULT option, and more reliable.
     character(len=200), public   :: SkyrmeTreatment='TERMBYTERM'
     !-----------------------------------------------------------------------------
     !Name of the force
@@ -54,14 +58,15 @@ module Force
     real(KIND=dp) :: CN2LO(8), BN2LO(8)
     !---------------------------------------------------------------------------
     ! Coupling constants that are in principle calculated from the BN2LO, but 
-    ! are pretty useful for debugging.
-    real(KIND=dp) :: N2D2rho(2), N2D2s(2), N2rhoQ(2), N2tau(2), N2rtmn(2)
-    real(KIND=dp) :: N2itmn(2), N2tddr(2), N2Dvecj(2), N2jpi(2), N2DJ(2)
+    ! allow for independently determining the contribution of all the terms.
+    !               (Delta rho)^2 (Delta s)^2 rho Q      tau^2     (Re tmn)^2
+    real(KIND=dp) :: N2D2rho(2),    N2D2s(2), N2rhoQ(2), N2tau(2), N2rtmn(2)
+    !                (Im tmn)^2  tmn DmDnrho   (Dm jm)^2   (j Pi)   (Dm Jmn)^2
+    real(KIND=dp) :: N2itmn(2),  N2tddr(2),   N2Dvecj(2), N2jpi(2), N2DJ(2)
+    !                J V       s S       (T_k)^2  (Re Tmn)^2   (Im Tmn)^2 
     real(KIND=dp) :: N2JV(2), N2sS(2), N2vecT(2), N2ReTmn(2), N2ImTmn(2)
+    !                Tmn DmDns
     real(KIND=dp) :: N2TmnD2s(2) 
-    !---------------------------------------------------------------------------
-    ! Temporary flag that determines whether to include Tmunuka selfconsistently
-    logical       :: Tmunuka=.true.
     !.....................................................
     !   Physical constants. They are set with an interaction, but have default
     !   values.
@@ -147,7 +152,7 @@ contains
     logical            :: exists
 
     NameList /skf/ Name,t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,te,to, &
-    &                    wso,wsoq, t1n2,t2n2,x1n2,x2n2,  Tmunuka,          &
+    &                    wso,wsoq, t1n2,t2n2,x1n2,x2n2,                    &
     &                    hbm,e2,                                           &
     &                    COM1body, COM2body,                               &
     &                    J2Terms   ,                                       &
@@ -165,7 +170,7 @@ contains
     wso=0.0_dp;     wsoq=0.0_dp
     t1n2 = 0 ; t2n2 = 0 ; x1n2 = 0 ; x2n2 = 0 ;
     COM1body=0;     COM2body=0
-    J2Terms=.false. ; Tmunuka = .true.
+    J2Terms=.false. 
     call ResetConstants
 
     call get_unit(inunit)
@@ -193,7 +198,7 @@ contains
             t1n2 = 0 ;      t2n2 = 0 ; x1n2 = 0 ; x2n2 = 0 ;
             b14=0.0_dp;     b15=0.0_dp;     b16=0.0_dp;      b17=0.0_dp
             COM1body=0;     COM2body=0
-            J2Terms=.false. ; Tmunuka = .true.
+            J2Terms=.false. 
             call ResetConstants
         endif
     enddo
@@ -263,7 +268,6 @@ contains
     &' D2 rho^2_t', f13.6, ' D2 rho^2_q', f13.6                        , /, &  
     &' D2   s^2_t', f13.6, ' D2   s^2_q', f13.6                        , /, &  
     &' rho Q_t   ', f13.6, ' rho Q_q   ', f13.6                        , /, & 
-    &' D2 rho^2_t', f13.6, ' D2 rho^2_q', f13.6                        , /, &  
     &' tau^2_t   ', f13.6, ' tau^2_q   ', f13.6                        , /, &  
     &' Retmn^2_t ', f13.6, ' Retmn^2_q ', f13.6                        , /, &  
     &' Imtmn^2_t ', f13.6, ' Imtmn^2_q ', f13.6                        , /, &  
@@ -277,7 +281,6 @@ contains
     &' ReTmnk^2_t', f13.6, ' ReTmnk^2_q', f13.6                        , /, &  
     &' ImTmnk^2_t', f13.6, ' ImTmnk^2_q', f13.6                        , /, &  
     &' Tmnk D2s_t', f13.6, ' Tmnk D2s_q', f13.6, /)  
-    
     
     112  format ('EDF Coefficients (Isospin representation)')
     113  format (&
@@ -352,15 +355,6 @@ contains
     if(t1n2 .ne. 0 .or. t2n2 .ne. 0) then
         print 1131, CN2LO(1:8)
     endif
-
-    if(Tmunuka) then
-        print *, '!!!!!!!!'
-        print *, 'Selfconsistent TMUNUKA'
-    else
-        print *, '!!!!!!!!'
-        print *, 'NONSELFCONSISTENT TMUNUKA'
-    endif
-
   end subroutine PrintForce
 
   subroutine CalcEDFCoef()

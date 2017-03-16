@@ -483,9 +483,11 @@ contains
 
     do it=1,2
       at = 3 - it
+      !-------------------------------------------------------------------------
       !B3 contribution
       APot(:,:,:,:,it) = - 2.0_dp*((B3+B4)*Density%Vecj(:,:,:,:,it) +          &
       &                                 B3*Density%VecJ(:,:,:,:,at))
+      !-------------------------------------------------------------------------
       !B9 contribution
       APot(:,:,:,:,it) = APot(:,:,:,:,it)                                      &
       &                + ((B9+B9q)*Density%RotS(:,:,:,:,it)                    &
@@ -581,7 +583,7 @@ contains
   subroutine CalcXPot()
     !-------------------------------------------------------------------------
     ! Calculates the X_munu N2LO potential. 
-    ! X_munu \sim J_munu
+    ! X_munu = - 4 C^(4 Ms) J_munu
     !-------------------------------------------------------------------------
     integer :: it, mu,nu 
 
@@ -1409,8 +1411,8 @@ contains
     
     do it=1,2
         at = 3 - it
-        PiField(:,:,:,:,it) = 4*(N2jpi(1)+N2jpi(2))*Density%vecj(:,:,:,:,it)   &
-        &                   + 4*N2jpi(1)           *Density%vecj(:,:,:,:,at) 
+        PiField(:,:,:,:,it) = - 4*(N2jpi(1)+N2jpi(2))*Density%vecj(:,:,:,:,it) &
+        &                     - 4*N2jpi(1)           *Density%vecj(:,:,:,:,at) 
     enddo
    end subroutine CalcPiField
 
@@ -1448,5 +1450,6 @@ contains
          
      ActionOfPi = ActionOfPiX + ActionOfPiY + ActionOfPiZ
      ActionOfPi = MultiplyI(ActionOfPi)
+     
    end function ActionofPi
 end module MeanFields

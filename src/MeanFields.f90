@@ -1058,7 +1058,7 @@ contains
         enddo
     enddo
     
-    ActionOfX = - MultiplyI(ActionofX)
+    ActionOfX =  MultiplyI(ActionofX)
   end function ActionOfX
 
   function ActionOfA(Psi)
@@ -1419,7 +1419,7 @@ contains
      !-----------------------------------------------------------------------
      ! Action of the Pi field
      !
-     ! - i D_n Fpi_m D_n D_m
+     ! i D_n Fpi_m D_n D_m
      !-----------------------------------------------------------------------
      type(Spwf), intent(in) :: Psi
      type(Spinor)           :: ActionOfPi, temp, ActionofPiX, ActionOfPiY, ActionOfPiZ
@@ -1448,7 +1448,7 @@ contains
      call DeriveSpinor_Z(temp, ActionOfPiZ,-Psi%Parity, Psi%Signature, Psi%TimeSimplex)
          
      ActionOfPi = ActionOfPiX + ActionOfPiY + ActionOfPiZ
-     ActionOfPi = - MultiplyI(ActionOfPi)
+     ActionOfPi = MultiplyI(ActionOfPi)
      
    end function ActionofPi
 end module MeanFields

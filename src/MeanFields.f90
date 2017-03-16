@@ -471,7 +471,7 @@ contains
   !
   !               N2LO
   !               ---------
-  ! A_q =   4 C^(4 Mrho)_q Pi
+  ! A_q = - 4 C^(4 Mrho)_q Pi
   !
   ! Also added is the contribution from the cranking constraints.
   !-----------------------------------------------------------------------------
@@ -499,8 +499,8 @@ contains
         do it=1,2
             at = 3 - it
             Apot(:,:,:,:,it) = Apot(:,:,:,:,it) &
-            &                + (N2jpi(1) + N2jpi(2))*Density%PiN2LO(:,:,:,:,it) &
-            &                +  N2jpi(1)            *Density%PiN2LO(:,:,:,:,at) 
+            &                -4*(N2jpi(1) + N2jpi(2))*Density%PiN2LO(:,:,:,:,it) &
+            &                -4* N2jpi(1)            *Density%PiN2LO(:,:,:,:,at) 
         enddo
     endif
     
@@ -1044,7 +1044,6 @@ contains
     enddo
     ! D_m Lap Psi
     call DeriveSpinor(Psi%Lap, temp, Psi%Parity, Psi%Signature, Psi%TimeSimplex)
-        
     
     do nu=1,3
         do mu=1,3

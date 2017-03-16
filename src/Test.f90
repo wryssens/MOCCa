@@ -3624,11 +3624,11 @@ subroutine N2LOanalysis()
  TestPi = 0.0_dp
  do it=1,2
     TestPi(:,:,:,it) = TestPi(:,:,:,it) + &
-    & DeriveX(N2LODen%PiN2LO(:,:,:,1,it),-ParityInt,-SignatureInt, TimesimplexInt,1)
+    & DeriveX(N2LODen%PiN2LO(:,:,:,1,it),-ParityInt,-SignatureInt, TimesimplexInt,2)
     TestPi(:,:,:,it) = TestPi(:,:,:,it) + &
-    & DeriveY(N2LODen%PiN2LO(:,:,:,2,it),-ParityInt,-SignatureInt, TimesimplexInt,2)
+    & DeriveY(N2LODen%PiN2LO(:,:,:,2,it),-ParityInt,-SignatureInt, TimesimplexInt,1)
     TestPi(:,:,:,it) = TestPi(:,:,:,it) + &
-    & DeriveZ(N2LODen%PiN2LO(:,:,:,3,it),-ParityInt, SignatureInt, TimesimplexInt,1)
+    & DeriveZ(N2LODen%PiN2LO(:,:,:,3,it),-ParityInt, SignatureInt, TimesimplexInt,2)
     
     do i=1,nx
         print *, TestPi(i,i,i,it)
@@ -3645,25 +3645,25 @@ subroutine N2LOanalysis()
  TestV = 0.0_dp
  do it=1,2
    TestV(:,:,:,1,it) = TesTV(:,:,:,1,it) + &
-   & DeriveX(N2LODen%VN2LO(:,:,:,1,1,it),-ParityInt, SignatureInt, TimesimplexInt,1)
+   & DeriveX(N2LODen%VN2LO(:,:,:,1,1,it),-ParityInt, SignatureInt, TimesimplexInt,2)
    TestV(:,:,:,1,it) = TesTV(:,:,:,1,it) + &
-   & DeriveY(N2LODen%VN2LO(:,:,:,2,1,it),-ParityInt, SignatureInt, TimesimplexInt,2)
+   & DeriveY(N2LODen%VN2LO(:,:,:,2,1,it),-ParityInt, SignatureInt, TimesimplexInt,1)
    TestV(:,:,:,1,it) = TesTV(:,:,:,1,it) + &
-   & DeriveZ(N2LODen%VN2LO(:,:,:,3,1,it),-ParityInt,-SignatureInt, TimesimplexInt,1)
+   & DeriveZ(N2LODen%VN2LO(:,:,:,3,1,it),-ParityInt,-SignatureInt, TimesimplexInt,2)
    
    TestV(:,:,:,2,it) = TesTV(:,:,:,2,it) + &
-   & DeriveX(N2LODen%VN2LO(:,:,:,1,2,it),-ParityInt, SignatureInt, TimesimplexInt,2)
+   & DeriveX(N2LODen%VN2LO(:,:,:,1,2,it),-ParityInt, SignatureInt, TimesimplexInt,1)
    TestV(:,:,:,2,it) = TesTV(:,:,:,2,it) + &
-   & DeriveY(N2LODen%VN2LO(:,:,:,2,2,it),-ParityInt, SignatureInt, TimesimplexInt,1)
+   & DeriveY(N2LODen%VN2LO(:,:,:,2,2,it),-ParityInt, SignatureInt, TimesimplexInt,2)
    TestV(:,:,:,2,it) = TesTV(:,:,:,2,it) + &
-   & DeriveZ(N2LODen%VN2LO(:,:,:,3,2,it),-ParityInt,-SignatureInt, TimesimplexInt,2)
+   & DeriveZ(N2LODen%VN2LO(:,:,:,3,2,it),-ParityInt,-SignatureInt, TimesimplexInt,1)
    
    TestV(:,:,:,3,it) = TesTV(:,:,:,3,it) + &
-   & DeriveX(N2LODen%VN2LO(:,:,:,1,3,it),-ParityInt, SignatureInt, TimesimplexInt,1)
+   & DeriveX(N2LODen%VN2LO(:,:,:,1,3,it),-ParityInt, SignatureInt, TimesimplexInt,2)
    TestV(:,:,:,3,it) = TesTV(:,:,:,3,it) + &
-   & DeriveY(N2LODen%VN2LO(:,:,:,2,3,it),-ParityInt, SignatureInt, TimesimplexInt,2)
+   & DeriveY(N2LODen%VN2LO(:,:,:,2,3,it),-ParityInt, SignatureInt, TimesimplexInt,1)
    TestV(:,:,:,3,it) = TesTV(:,:,:,3,it) + &
-   & DeriveZ(N2LODen%VN2LO(:,:,:,3,3,it),-ParityInt,-SignatureInt, TimesimplexInt,1)
+   & DeriveZ(N2LODen%VN2LO(:,:,:,3,3,it),-ParityInt,-SignatureInt, TimesimplexInt,2)
    
    print *
    do i=1,nx

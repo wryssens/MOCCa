@@ -3670,6 +3670,8 @@ subroutine TestN2LOspH
             E(9) = E(9) + InproductSpinorReal(HFBasis(i)%value, temp)
             temp = ActionofU(HFBasis(i))
             E(10) = E(10) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofSN2LO(HFBasis(i))
+            E(11) = E(11) + InproductSpinorReal(HFBasis(i)%value, temp)
     enddo
     
     print 1
@@ -3684,6 +3686,7 @@ subroutine TestN2LOspH
     print 3, 'RT', E(7)
     print 3, 'IT', E(8)
     print 3, 'Pi', E(9)
+    print 3, 'SN2', E(11)
     
     print 1
 

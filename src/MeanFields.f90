@@ -497,8 +497,8 @@ contains
         do it=1,2
             at = 3 - it
             Apot(:,:,:,:,it) = Apot(:,:,:,:,it) &
-            &                - (N2jpi(1) + N2jpi(2))*Density%PiN2LO(:,:,:,:,it) &
-            &                -  N2jpi(1)            *Density%PiN2LO(:,:,:,:,at) 
+            &                + (N2jpi(1) + N2jpi(2))*Density%PiN2LO(:,:,:,:,it) &
+            &                +  N2jpi(1)            *Density%PiN2LO(:,:,:,:,at) 
         enddo
     endif
     
@@ -1447,5 +1447,6 @@ contains
      call DeriveSpinor_Z(temp, ActionOfPiZ,-Psi%Parity, Psi%Signature, Psi%TimeSimplex)
          
      ActionOfPi = ActionOfPiX + ActionOfPiY + ActionOfPiZ
+     ActionOfPi = MultiplyI(ActionOfPi)
    end function ActionofPi
 end module MeanFields

@@ -225,6 +225,7 @@ contains
         Sum%SN2LO      = Den1%SN2LO        + Den2%SN2LO
         Sum%D2S        = Den1%D2S          + Den2%D2S
         Sum%LapLapS    = Den1%LapLapS      + Den2%LapLapS
+        Sum%Divvecj    = Den1%Divvecj      + Den2%Divvecj
     endif
     
     if(.not.TRC) then

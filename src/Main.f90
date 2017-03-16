@@ -167,11 +167,9 @@ subroutine Evolve(MaxIterations, iprint)
   endif
 
   if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp)   then
-    
     if(MAXFDORDER .ne. -1 .or. MAXFDLAPORDER .NE. -1) then
         call stp('It is irresponsible to calculate N2LO without lag derivatives.')
     endif
-  
     call N2LODerive()
   else
     call DeriveAll()  
@@ -196,7 +194,7 @@ subroutine Evolve(MaxIterations, iprint)
   ! Printing the parameters of this run.
   call PrintStartInfo
   !Loop over the iterations
-  Iteration = 0
+  Iteration   = 0
   Convergence = .false.
 
   call CalculateAllMoments(1)

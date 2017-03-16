@@ -1026,8 +1026,8 @@ contains
     ! Part of the single-particle hamiltonian, field X in the Meyer-Becker notes
     ! and Fv in my notation.
     !
-    ! D_ka F^V_{mn} D_k D_m sigma_nu = [ D_ka F^V_{mn} ] D_ka D_m sigma_nu  + 
-    !                                         F^V_{mn}   Lap  D_m sigma_nu
+    ! D_k F^V_{mn} D_k D_m sigma_nu = [ D_ka F^V_{mn} ] D_ka D_m sigma_nu  + 
+    !                                        F^V_{mn}   Lap  D_m sigma_nu
     !
     ! and in the end we add an extra factor i!
     !---------------------------------------------------------------------------

@@ -3471,6 +3471,8 @@ subroutine N2LOanalysis()
   implicit none
 
   real(KIND=dp) :: TestTau(nx,ny,nz,2), TestT(nx,ny,nz,3,2), TestF(nx,ny,nz,3,2)
+  real(KIND=dp) :: TestPi(nx,ny,nz,2),  TestV(nx,ny,nz,3,2)
+
 
   integer               :: i,j,k,it,mu,nu,ka
   type(DensityVector)   :: N2LODen
@@ -3585,10 +3587,10 @@ subroutine N2LOanalysis()
         print *, 'Test 3 failed!'
      endif
  endif
- !-----------------------------------------------
- ! Fourth test:
- !   T_munuka - Tnumuka = -i [ D_mu J_nuka - D_nu J_muka]
- !-----------------------------------------------
+! !-----------------------------------------------
+! ! Fourth test:
+! !   T_munuka - Tnumuka = -i [ D_mu J_nuka - D_nu J_muka]
+! !-----------------------------------------------
 !  print *, '-----------------------'
 !  print *, 'Ultimate test'
 !  print *, '-----------------------'
@@ -3603,8 +3605,8 @@ subroutine N2LOanalysis()
 !            do i=1,nx
 !                print *, N2LODen%DJmunu(i,i,i,mu,nu,ka,it), N2LODen%DJmunu(i,i,i,nu,mu,ka,it) , &
 !                &        N2LODen%ImKN2LO(i,i,i,mu,nu,ka,it), N2LODen%ImKN2LO(i,i,i,nu,mu,ka,it) , &
-!                !&        N2LODen%ImKN2LO(i,i,i,mu,nu,ka,it) - N2LODen%ImKN2LO(i,i,i,nu,mu,ka,it), &
-!                !&        N2LODen%DJmunu(i,i,i,mu,nu,ka,it)  - N2LODen%DJmunu(i,i,i,nu,mu,ka,it), & 
+!                &        N2LODen%ImKN2LO(i,i,i,mu,nu,ka,it) - N2LODen%ImKN2LO(i,i,i,nu,mu,ka,it), &
+!                &        N2LODen%DJmunu(i,i,i,mu,nu,ka,it)  - N2LODen%DJmunu(i,i,i,nu,mu,ka,it), & 
 !                &        N2LODen%ImKN2LO(i,i,i,mu,nu,ka,it) - N2LODen%ImKN2LO(i,i,i,nu,mu,ka,it) +  &
 !                &        N2LODen%DJmunu(i,i,i,mu,nu,ka,it)  - N2LODen%DJmunu(i,i,i,nu,mu,ka,it)
 !            enddo   
@@ -3614,17 +3616,71 @@ subroutine N2LOanalysis()
 !      enddo
 !      print *
 !  enddo
-! 
+ !-----------------------------------------------
+ ! Fifth test:
+ !   sum_m D_m  Pi_m = 0 ?
+ !-----------------------------------------------
+ print *
+ TestPi = 0.0_dp
+ do it=1,2
+    TestPi(:,:,:,it) = TestPi(:,:,:,it) + &
+    & DeriveX(N2LODen%PiN2LO(:,:,:,1,it),-ParityInt,-SignatureInt, TimesimplexInt,1)
+    TestPi(:,:,:,it) = TestPi(:,:,:,it) + &
+    & DeriveY(N2LODen%PiN2LO(:,:,:,2,it),-ParityInt,-SignatureInt, TimesimplexInt,2)
+    TestPi(:,:,:,it) = TestPi(:,:,:,it) + &
+    & DeriveZ(N2LODen%PiN2LO(:,:,:,3,it),-ParityInt, SignatureInt, TimesimplexInt,1)
+    
+    do i=1,nx
+        print *, TestPi(i,i,i,it)
+    enddo
+    print *
+ enddo
+
+
+ !-----------------------------------------------
+ ! Sixth test:
+ !   sum_m V_mn  Pi_m = 0 ?
+ !-----------------------------------------------
+ print 1
+ TestV = 0.0_dp
+ do it=1,2
+   TestV(:,:,:,1,it) = TesTV(:,:,:,1,it) + &
+   & DeriveX(N2LODen%VN2LO(:,:,:,1,1,it),-ParityInt, SignatureInt, TimesimplexInt,1)
+   TestV(:,:,:,1,it) = TesTV(:,:,:,1,it) + &
+   & DeriveY(N2LODen%VN2LO(:,:,:,2,1,it),-ParityInt, SignatureInt, TimesimplexInt,2)
+   TestV(:,:,:,1,it) = TesTV(:,:,:,1,it) + &
+   & DeriveZ(N2LODen%VN2LO(:,:,:,3,1,it),-ParityInt,-SignatureInt, TimesimplexInt,1)
+   
+   TestV(:,:,:,2,it) = TesTV(:,:,:,2,it) + &
+   & DeriveX(N2LODen%VN2LO(:,:,:,1,2,it),-ParityInt, SignatureInt, TimesimplexInt,2)
+   TestV(:,:,:,2,it) = TesTV(:,:,:,2,it) + &
+   & DeriveY(N2LODen%VN2LO(:,:,:,2,2,it),-ParityInt, SignatureInt, TimesimplexInt,1)
+   TestV(:,:,:,2,it) = TesTV(:,:,:,2,it) + &
+   & DeriveZ(N2LODen%VN2LO(:,:,:,3,2,it),-ParityInt,-SignatureInt, TimesimplexInt,2)
+   
+   TestV(:,:,:,3,it) = TesTV(:,:,:,3,it) + &
+   & DeriveX(N2LODen%VN2LO(:,:,:,1,3,it),-ParityInt, SignatureInt, TimesimplexInt,1)
+   TestV(:,:,:,3,it) = TesTV(:,:,:,3,it) + &
+   & DeriveY(N2LODen%VN2LO(:,:,:,2,3,it),-ParityInt, SignatureInt, TimesimplexInt,2)
+   TestV(:,:,:,3,it) = TesTV(:,:,:,3,it) + &
+   & DeriveZ(N2LODen%VN2LO(:,:,:,3,3,it),-ParityInt,-SignatureInt, TimesimplexInt,1)
+   
+   print *
+   do i=1,nx
+    print *, testV(i,i,i,1:3,it)
+   enddo
+ enddo
+ 
 ! print 1
- !----------------------------------------------
- ! Calculate the N2LO contribution to the energy
- ! 
- Density = N2LODen
- call compEnergy
- call printEnergy()
- 
- call writeN2LOdensities(N2LODen)
- 
+! !----------------------------------------------
+! ! Calculate the N2LO contribution to the energy
+! ! 
+! Density = N2LODen
+! call compEnergy
+! call printEnergy()
+! 
+! call writeN2LOdensities(N2LODen)
+! 
 end subroutine N2LOAnalysis
 
 subroutine TestN2LOspH

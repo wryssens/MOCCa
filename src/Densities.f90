@@ -423,11 +423,11 @@ contains
     
     !Reset the values of the densities.
     if(OnlyRho) then
-      DenIn%Rho = 0.0_dp
+        DenIn%Rho = 0.0_dp
     else
         DenIn = NewDensityVector()
     endif
-
+   
     if(.not.associated(DensityBasis)) then
       call stp('Density basis not correctly associated at the start of '       &
       &        // 'subroutine ComputeDensity.')
@@ -674,6 +674,29 @@ contains
             & DeriveY(DenIn%JMuNu(:,:,:,1,2,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1)
             DenIn%DJmunu(:,:,:,3,1,2,it) =                                     &
             & DeriveZ(DenIn%JMuNu(:,:,:,1,2,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1)
+        
+             do i=1,nx
+                print *, DenIn%DJmunu(i,i,i,1,1,1,1),  DenIn%DJmunu(i,i,i,2,2,1,1) &
+                &      , DenIn%DJmunu(i,i,i,3,3,1,1), &
+                &        DenIn%DJmunu(i,i,i,1,1,1,1) + DenIn%DJmunu(i,i,i,2,2,1,1) &
+                &      + DenIn%DJmunu(i,i,i,3,3,1,1)
+             enddo
+             print *
+             do i=1,nx   
+                print *, DenIn%DJmunu(i,i,i,1,1,2,1), DenIn%DJmunu(i,i,i,2,2,2,1) &
+                &      , DenIn%DJmunu(i,i,i,3,3,2,1), &
+                &        DenIn%DJmunu(i,i,i,1,1,2,1) + DenIn%DJmunu(i,i,i,2,2,2,1) &
+                &      + DenIn%DJmunu(i,i,i,3,3,2,1)
+            enddo
+            print *
+            do i=1,nx
+                print *, DenIn%DJmunu(i,i,i,1,1,3,1) , DenIn%DJmunu(i,i,i,2,2,3,1) &
+                &      , DenIn%DJmunu(i,i,i,3,3,3,1), & 
+                &        DenIn%DJmunu(i,i,i,1,1,3,1) + DenIn%DJmunu(i,i,i,2,2,3,1) &
+                &      + DenIn%DJmunu(i,i,i,3,3,3,1)
+                
+             enddo
+            stop
         
             !-------------------------------------------------------------------
             ! Derivatives of T_mnk

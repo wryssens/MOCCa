@@ -3468,6 +3468,8 @@ subroutine N2LOanalysis()
   5 format ('No error for test 3.', / &
   &         ' Fmu = 0.5*Sum_nu T_mununu + T_numunu )', /)
 
+  6 format (' Dmu Jmunu, nu = ', i2)
+
   implicit none
 
   real(KIND=dp) :: TestTau(nx,ny,nz,2), TestT(nx,ny,nz,3,2), TestF(nx,ny,nz,3,2)
@@ -3670,7 +3672,32 @@ subroutine N2LOanalysis()
     print *, testV(i,i,i,1:3,it)
    enddo
  enddo
+
+ print *
+ print 1
+ do nu=1,3
+    print 6, nu
+    do it=1,2
+      do i =1,nx
+       print *, N2LODen%DJmunu(i,1,1,1,1,nu,it), N2LODen%DJmunu(i,1,1,2,2,nu,it),N2LODen%DJmunu(i,1,1,3,3,nu,it), &
+             & N2LODen%DJmunu(i,1,1,2,2,nu,it)+N2LODen%DJmunu(i,1,1,1,1,nu,it)+N2LODen%DJmunu(i,1,1,3,3,nu,it)
+      enddo
+      print *
+    enddo
+ enddo
  
+ print *
+ print 1
+
+ print *
+ print 1
+ do it=1,2
+    do i =1,nx
+       print *, N2LODen%divvecj(i,1,1,it)
+    enddo
+    print *
+ enddo
+  
 ! print 1
 ! !----------------------------------------------
 ! ! Calculate the N2LO contribution to the energy

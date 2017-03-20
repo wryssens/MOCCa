@@ -872,7 +872,7 @@ contains
             & DeriveZ(DenIn%ReKN2LO(:,:,:,3,3,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
             
             DenIn%ReD2TN2LO(:,:,:,3,it) = DenIn%ReD2TN2LO(:,:,:,3,it) +          &
-            & DeriveZ(                         temp,-ParityInt, -SignatureInt, TimeSimplexInt,1)
+            & DeriveZ(                         temp,-ParityInt,  SignatureInt, TimeSimplexInt,1)
        enddo
     endif
     !Computing NablaJ by derivatives in the case of tensor interactions

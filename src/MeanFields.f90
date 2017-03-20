@@ -666,8 +666,8 @@ contains
             &             +  2*N2D2S(1)          *Density%LapLapS(:,:,:,:,at)&
             &             +   (N2sS(1)+N2sS(2))*Density%SN2LO(:,:,:,:,it)    &
             &             +    N2sS(1)         *Density%SN2LO(:,:,:,:,at)    &
-            &   + 2*(N2TmnD2S(1) + N2TmnD2S(2))*Density%ReD2TN2LO(:,:,:,:,it)&
-            &   + 2* N2TmnD2S(1)               *Density%ReD2TN2LO(:,:,:,:,at)
+            &   - 2*(N2TmnD2S(1) + N2TmnD2S(2))*Density%ReD2TN2LO(:,:,:,:,it)&
+            &   - 2* N2TmnD2S(1)               *Density%ReD2TN2LO(:,:,:,:,at)
         enddo
     endif
 
@@ -1281,7 +1281,7 @@ contains
             ReDTField(:,:,:,1,1,it) = ReDTField(:,:,:,1,1,it) +                &
             & DeriveY(ReTfield(:,:,:,2,1,1,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
             ReDTField(:,:,:,1,1,it) = ReDTField(:,:,:,1,1,it) +                &
-            & DeriveX(ReTfield(:,:,:,3,1,1,it),-ParityInt,  SignatureInt, TimeSimplexInt,1)
+            & DeriveX(ReTfield(:,:,:,3,1,1,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
             !-------------------------------------------------------------------
             ! kappa = 2, nu = 1, sum over mu
             ReDTField(:,:,:,1,2,it) =                                     &

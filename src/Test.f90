@@ -3726,35 +3726,53 @@ subroutine TestN2LOspH
     
     
     integer :: i
-    real*8  :: E(11)
+    real*8  :: E(13)
     type(Spinor)  :: temp
     
     temp = newspinor()
     E = 0
     do i=1,nwt
             if (HFBasis(i)%getOcc() .eq. 0.0_dp) cycle
+           
+
+            if( .not.TRC) then
+             temp = ActionofS(HFBasis(i))
+             E(2) = E(2) + InproductSpinorReal(HFBasis(i)%value, temp)
+             temp = ActionofA(HFBasis(i))
+             E(3) = E(3) + InproductSpinorReal(HFBasis(i)%value, temp)
+             temp = ActionofD(HFBasis(i))
+             E(12) = E(12) + InproductSpinorReal(HFBasis(i)%value, temp)    
+             temp = ActionofC(HFBasis(i))
+             E(13) = E(13) + InproductSpinorReal(HFBasis(i)%value, temp)    
+                
+                if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
+                        temp = ActionofReTField(HFBasis(i))
+                        E(7) = E(7) + InproductSpinorReal(HFBasis(i)%value, temp)
+                        temp = ActionofPi(HFBasis(i))
+                        E(8) = E(8) + InproductSpinorReal(HFBasis(i)%value, temp)
+                        temp = ActionofSN2LO(HFBasis(i))
+                        E(11) = E(11) + InproductSpinorReal(HFBasis(i)%value, temp)    
+                endif
+
+
+            endif
+
             temp = ActionofB(HFBasis(i))
             E(1) = E(1) + InproductSpinorReal(HFBasis(i)%value, temp)
-            temp = ActionofS(HFBasis(i))
-            E(2) = E(2) + InproductSpinorReal(HFBasis(i)%value, temp)
-            temp = ActionofA(HFBasis(i))
-            E(3) = E(3) + InproductSpinorReal(HFBasis(i)%value, temp)
             temp = ActionofW(HFBasis(i))
             E(4) = E(4) + InproductSpinorReal(HFBasis(i)%value, temp)
+            temp = ActionofU(HFBasis(i))
+            E(10) = E(10) + InproductSpinorReal(HFBasis(i)%value, temp)
+                
+            if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp ) then
             temp = ActionofX(HFBasis(i))
             E(5) = E(5) + InproductSpinorReal(HFBasis(i)%value, temp)
             temp = ActionofDN2LO(HFBasis(i))
             E(6) = E(6) + InproductSpinorReal(HFBasis(i)%value, temp)
-            temp = ActionofReTField(HFBasis(i))
-            E(7) = E(7) + InproductSpinorReal(HFBasis(i)%value, temp)
             temp = ActionofImTField(HFBasis(i))
-            E(8) = E(8) + InproductSpinorReal(HFBasis(i)%value, temp)
-            temp = ActionofPi(HFBasis(i))
             E(9) = E(9) + InproductSpinorReal(HFBasis(i)%value, temp)
-            temp = ActionofU(HFBasis(i))
-            E(10) = E(10) + InproductSpinorReal(HFBasis(i)%value, temp)
-            temp = ActionofSN2LO(HFBasis(i))
-            E(11) = E(11) + InproductSpinorReal(HFBasis(i)%value, temp)
+            endif
+
     enddo
     
     print 1
@@ -3767,10 +3785,15 @@ subroutine TestN2LOspH
     print 3, 'X', E(5)
     print 3, 'D', E(6)
     print 3, 'RT', E(7)
-    print 3, 'IT', E(8)
-    print 3, 'Pi', E(9)
+    print 3, 'IT', E(9)
+    print 3, 'Pi', E(8)
     print 3, 'SN2', E(11)
-    
+    print 3, 'DT', E(12)
+    print 3, 'CT', E(13)
+
+    print 1
+    print *, 'SUM=' , sum(E)
+
     print 1
 
 end subroutine TestN2LOspH

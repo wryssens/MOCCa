@@ -1278,11 +1278,11 @@ contains
             !-------------------------------------------------------------------
             ! kappa = 1, nu = 1, sum over mu
             ReDTField(:,:,:,1,1,it) =                                          &
-            & DeriveX(ReTfield(:,:,:,1,1,1,it), parityint, -signatureint, timesimplexint,1)
+            & DeriveX(ReTfield(:,:,:,1,1,1,it), parityint, -signatureint, Timesimplexint,1)
             ReDTField(:,:,:,1,1,it) = ReDTField(:,:,:,1,1,it) +                &
             & DeriveY(ReTfield(:,:,:,2,1,1,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
             ReDTField(:,:,:,1,1,it) = ReDTField(:,:,:,1,1,it) +                &
-            & DeriveX(ReTfield(:,:,:,3,1,1,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            & DeriveZ(ReTfield(:,:,:,3,1,1,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
             !-------------------------------------------------------------------
             ! kappa = 2, nu = 1, sum over mu
             ReDTField(:,:,:,1,2,it) =                                     &

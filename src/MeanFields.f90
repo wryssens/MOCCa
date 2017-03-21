@@ -1250,7 +1250,7 @@ contains
         ! ReDTField = sum_mu D_mu F_munuka
         !-----------------------------------------------------------------------
         use Derivatives
-        integer :: it, mu
+        integer :: it, mu, P, S, TS
         
         ! The imaginary field is time-even
         do it=1,2
@@ -1276,77 +1276,80 @@ contains
             ! Deriving the T-field
             ! ReDTField = sum_mu D_mu F_munuka
             !-------------------------------------------------------------------
+            P  = ParityInt
+            S  = SignatureInt
+            TS = TimeSimplexInt
             ! kappa = 1, nu = 1, sum over mu
             ReDTField(:,:,:,1,1,it) =                                          &
-            & DeriveX(ReTfield(:,:,:,1,1,1,it), parityint, -signatureint, Timesimplexint,1)
+            & DeriveX(ReTfield(:,:,:,1,1,1,it), P, -S, TS,1)
             ReDTField(:,:,:,1,1,it) = ReDTField(:,:,:,1,1,it) +                &
-            & DeriveY(ReTfield(:,:,:,2,1,1,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            & DeriveY(ReTfield(:,:,:,2,1,1,it), P, -S, TS,2)
             ReDTField(:,:,:,1,1,it) = ReDTField(:,:,:,1,1,it) +                &
-            & DeriveZ(ReTfield(:,:,:,3,1,1,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            & DeriveZ(ReTfield(:,:,:,3,1,1,it), P,  S, TS,1)
             !-------------------------------------------------------------------
             ! kappa = 2, nu = 1, sum over mu
             ReDTField(:,:,:,1,2,it) =                                     &
-            & DeriveX(ReTField(:,:,:,1,1,2,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            & DeriveX(ReTField(:,:,:,1,1,2,it), P, -S, TS,2)
             ReDTField(:,:,:,1,2,it) = ReDTField(:,:,:,1,2,it) +                                                      &
-            & DeriveY(ReTField(:,:,:,2,1,2,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            & DeriveY(ReTField(:,:,:,2,1,2,it), P, -S, TS,1)
             ReDTField(:,:,:,1,2,it) = ReDTField(:,:,:,1,2,it) +                                                      &
-            & DeriveZ(ReTField(:,:,:,3,1,2,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            & DeriveZ(ReTField(:,:,:,3,1,2,it), P,  S, TS,2)
             !-------------------------------------------------------------------
             ! kappa = 3, nu = 1, sum over mu
             ReDTField(:,:,:,1,3,it) =                                     &
-            & DeriveX(ReTfield(:,:,:,1,1,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            & DeriveX(ReTfield(:,:,:,1,1,3,it), P,  S, TS,1)
             ReDTField(:,:,:,1,3,it) = ReDTField(:,:,:,1,3,it) +                                                      &
-            & DeriveY(ReTfield(:,:,:,2,1,3,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            & DeriveY(ReTfield(:,:,:,2,1,3,it), P,  S, TS,2)
             ReDTField(:,:,:,1,3,it) = ReDTField(:,:,:,1,3,it) +                                                      &
-            & DeriveZ(ReTfield(:,:,:,3,1,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            & DeriveZ(ReTfield(:,:,:,3,1,3,it), P, -S, TS,1)
             !-------------------------------------------------------------------
             ! kappa = 1, nu = 2, sum over mu
             ReDTField(:,:,:,2,1,it)  =                                         &
-            & DeriveX(ReTfield(:,:,:,1,2,1,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            & DeriveX(ReTfield(:,:,:,1,2,1,it), P, -S, TS,2)
             ReDTField(:,:,:,2,1,it)  = ReDTField(:,:,:,2,1,it) +               &
-            & DeriveY(ReTfield(:,:,:,2,2,1,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            & DeriveY(ReTfield(:,:,:,2,2,1,it), P, -S, TS,1)
             ReDTField(:,:,:,2,1,it) = ReDTField(:,:,:,2,1,it) +                &
-            & DeriveZ(ReTfield(:,:,:,3,2,1,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            & DeriveZ(ReTfield(:,:,:,3,2,1,it), P,  S, TS,2)
             !-------------------------------------------------------------------
             ! kappa = 2, nu = 2, sum over mu
             ReDTField(:,:,:,2,2,it)  =                                         &
-            & DeriveX(ReTfield(:,:,:,1,2,2,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            & DeriveX(ReTfield(:,:,:,1,2,2,it), P, -S, TS,1)
             ReDTField(:,:,:,2,2,it) = ReDTField(:,:,:,2,2,it) +                &
-            & DeriveY(ReTfield(:,:,:,2,2,2,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            & DeriveY(ReTfield(:,:,:,2,2,2,it), P, -S, TS,2)
             ReDTField(:,:,:,2,2,it) = ReDTField(:,:,:,2,2,it) +                &
-            & DeriveZ(ReTfield(:,:,:,3,2,2,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            & DeriveZ(ReTfield(:,:,:,3,2,2,it), P,  S, TS,1)
             !-------------------------------------------------------------------
             ! kappa = 3, nu = 2, sum over mu 
             ReDTField(:,:,:,2,3,it) =                                          &
-            & DeriveX(ReTfield(:,:,:,1,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            & DeriveX(ReTfield(:,:,:,1,2,3,it), P, -S, TS,2)
             ReDTField(:,:,:,2,3,it) = ReDTField(:,:,:,2,3,it) +                &
-            & DeriveY(ReTfield(:,:,:,2,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            & DeriveY(ReTfield(:,:,:,2,2,3,it), P, -S, TS,1)
             ReDTField(:,:,:,2,3,it) = ReDTField(:,:,:,2,3,it) +                &
-            & DeriveZ(ReTfield(:,:,:,3,2,3,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            & DeriveZ(ReTfield(:,:,:,3,2,3,it), P,  S, TS,2)
             !-------------------------------------------------------------------
             ! kappa= 1, nu = 3, sum over mu
             ReDTField(:,:,:,3,1,it) =                                          &
-            & DeriveX(ReTfield(:,:,:,1,3,1,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            & DeriveX(ReTfield(:,:,:,1,3,1,it), P,  S, TS,1)
             ReDTField(:,:,:,3,1,it) = ReDTField(:,:,:,3,1,it) +                &
-            & DeriveY(ReTfield(:,:,:,2,3,1,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            & DeriveY(ReTfield(:,:,:,2,3,1,it), P,  S, TS,2)
             ReDTField(:,:,:,3,1,it) = ReDTField(:,:,:,3,1,it) +                &
-            & DeriveZ(ReTfield(:,:,:,3,3,1,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            & DeriveZ(ReTfield(:,:,:,3,3,1,it), P, -S, TS,1)
             !-------------------------------------------------------------------
             ! kappa = 2, nu = 3
             ReDTField(:,:,:,3,2,it) =                                          &
-            & DeriveX(ReTfield(:,:,:,1,3,2,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            & DeriveX(ReTfield(:,:,:,1,3,2,it), P,  S, TS,2)
             ReDTField(:,:,:,3,2,it) = ReDTField(:,:,:,3,2,it) +                &
-            & DeriveY(ReTfield(:,:,:,2,3,2,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            & DeriveY(ReTfield(:,:,:,2,3,2,it), P,  S, TS,1)
             ReDTField(:,:,:,3,2,it) = ReDTField(:,:,:,3,2,it) +                &
-            & DeriveZ(ReTfield(:,:,:,3,3,2,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            & DeriveZ(ReTfield(:,:,:,3,3,2,it), P, -S, TS,2)
             !-------------------------------------------------------------------
             ! (nu,ka) = (3,3)
             ReDTField(:,:,:,3,3,it) =                                          &
-            & DeriveX(ReTfield(:,:,:,1,3,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            & DeriveX(ReTfield(:,:,:,1,3,3,it), P, -S, TS,1)
             ReDTField(:,:,:,3,3,it) = ReDTField(:,:,:,3,3,it) +                &
-            & DeriveY(ReTfield(:,:,:,2,3,3,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            & DeriveY(ReTfield(:,:,:,2,3,3,it), P, -S, TS,2)
             ReDTField(:,:,:,3,3,it) = ReDTField(:,:,:,3,3,it) +                &
-            & DeriveZ(ReTfield(:,:,:,3,3,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            & DeriveZ(ReTfield(:,:,:,3,3,3,it), P,  S, TS,1)
         enddo
    end subroutine calcTfield
    

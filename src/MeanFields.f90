@@ -1268,7 +1268,8 @@ contains
             &                    - 2*N2TmnD2S(1)*sum(Density%D2S,7)            &
             &                    - 2*N2TmnD2S(2)*Density%D2S(:,:,:,:,:,:,it)     
             do mu=1,3
-                ReTField(:,:,:,mu,mu,:,it)= 2*N2vecT(1)*sum(Density%VecT,5)    &
+                ReTField(:,:,:,mu,mu,:,it)= ReTField(:,:,:,mu,mu,:,it)         &
+                &                          +2*N2vecT(1)*sum(Density%VecT,5)    &
                 &                          +2*N2vecT(2)*Density%VecT(:,:,:,:,it)
             enddo
             !-------------------------------------------------------------------

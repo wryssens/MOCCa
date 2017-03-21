@@ -56,6 +56,8 @@ module InOutput
   ! Pairing information from file
   integer:: fileptype
   real*8 :: filegn,filegp
+  
+  integer :: nwninit, nwpinit
 contains
 
   subroutine PrintFileInfo
@@ -239,6 +241,10 @@ contains
         else
           call ReadMOCCa_v1(InputChannel)
         endif
+    elseif(InputFilename(1:4) == "INIT") then
+        !
+        ! MOCCa takes no input wave-function and generate one on its own.
+        call INITWF(nwninit, nwpinit)
     else
       ! The input file is not clearly named; MOCCa defaults to its own
       ! subroutine.
@@ -302,7 +308,7 @@ contains
     implicit none
 
     NameList /InAndOutput/ InputFileName,OutputFileName,PromOutput,LegacyInput,&
-    &                      Pictures, AllowTransform
+    &                      Pictures, AllowTransform, nwninit, nwpinit
 
     !--------------- Reading Input---------------------------------------
     !Info for the GenInfo Module
@@ -1315,6 +1321,41 @@ subroutine ReadMOCCa_v1(Ichan)
     
     close(Ichan)
 end subroutine ReadMOCCa_v1
+
+  subroutine INITWF(nwninit,nwpinit)
+    !---------------------------------------------------------------------------
+    ! Generate some nilsson wave-functions from scratch, using a built-in NIL8
+    !---------------------------------------------------------------------------
+    use nil8
+    use Spwfstorage
+  
+    real(KIND=dp),allocatable  :: wfs(:,:,:,:,:)
+    integer, allocatable       :: kparz(:)
+    integer                    :: it, p,i
+    integer, intent(in)        :: nwninit, nwpinit
+    type(Spinor)               :: value
+    
+    call nilsson(wfs, kparz, 5, 4, nwt, nwpinit, nwninit,                      &
+    &            floor(protons), floor(neutrons),                              &
+    &            nx,ny,nz,dx, 0.0_dp,0.0_dp,0.0_dp)
+    
+    call ChangeNumberWaveFunctions(filenwt)
+    
+    value      = NewSpinor()
+    do i=1,nwt
+        if (i .gt. nwninit) then
+            it = +1
+        else
+            it = -1
+        endif
+        value%Grid(:,:,:,:,1) = wfs(:,:,:,:,i)
+        HFBasis(i) = NewWaveFunction(Value,it,1,kparz(i),1,1)
+    enddo
+    
+    ! Need to recalculate all of the densities
+    Recalc = .true.
+    
+  end subroutine 
 
   subroutine PlotDensity()
     !---------------------------------------------------------------------

@@ -1272,6 +1272,7 @@ contains
                 &                          +2*N2vecT(1)*sum(Density%VecT,5)    &
                 &                          +2*N2vecT(2)*Density%VecT(:,:,:,:,it)
             enddo
+            
             !-------------------------------------------------------------------
             ! Deriving the T-field
             ! ReDTField = sum_mu D_mu F_munuka
@@ -1288,27 +1289,27 @@ contains
             & DeriveZ(ReTfield(:,:,:,3,1,1,it), P,  S, TS,1)
             !-------------------------------------------------------------------
             ! kappa = 2, nu = 1, sum over mu
-            ReDTField(:,:,:,1,2,it) =                                     &
+            ReDTField(:,:,:,1,2,it) =                                          &
             & DeriveX(ReTField(:,:,:,1,1,2,it), P, -S, TS,2)
-            ReDTField(:,:,:,1,2,it) = ReDTField(:,:,:,1,2,it) +                                                      &
+            ReDTField(:,:,:,1,2,it) = ReDTField(:,:,:,1,2,it) +                &
             & DeriveY(ReTField(:,:,:,2,1,2,it), P, -S, TS,1)
-            ReDTField(:,:,:,1,2,it) = ReDTField(:,:,:,1,2,it) +                                                      &
+            ReDTField(:,:,:,1,2,it) = ReDTField(:,:,:,1,2,it) +                &
             & DeriveZ(ReTField(:,:,:,3,1,2,it), P,  S, TS,2)
             !-------------------------------------------------------------------
             ! kappa = 3, nu = 1, sum over mu
-            ReDTField(:,:,:,1,3,it) =                                     &
+            ReDTField(:,:,:,1,3,it) =                                          &
             & DeriveX(ReTfield(:,:,:,1,1,3,it), P,  S, TS,1)
-            ReDTField(:,:,:,1,3,it) = ReDTField(:,:,:,1,3,it) +                                                      &
+            ReDTField(:,:,:,1,3,it) = ReDTField(:,:,:,1,3,it) +                &
             & DeriveY(ReTfield(:,:,:,2,1,3,it), P,  S, TS,2)
-            ReDTField(:,:,:,1,3,it) = ReDTField(:,:,:,1,3,it) +                                                      &
+            ReDTField(:,:,:,1,3,it) = ReDTField(:,:,:,1,3,it) +                &
             & DeriveZ(ReTfield(:,:,:,3,1,3,it), P, -S, TS,1)
             !-------------------------------------------------------------------
             ! kappa = 1, nu = 2, sum over mu
-            ReDTField(:,:,:,2,1,it)  =                                         &
+            ReDTField(:,:,:,2,1,it) =                                         &
             & DeriveX(ReTfield(:,:,:,1,2,1,it), P, -S, TS,2)
-            ReDTField(:,:,:,2,1,it)  = ReDTField(:,:,:,2,1,it) +               &
+            ReDTField(:,:,:,2,1,it) = ReDTField(:,:,:,2,1,it) +               &
             & DeriveY(ReTfield(:,:,:,2,2,1,it), P, -S, TS,1)
-            ReDTField(:,:,:,2,1,it) = ReDTField(:,:,:,2,1,it) +                &
+            ReDTField(:,:,:,2,1,it) = ReDTField(:,:,:,2,1,it) +               &
             & DeriveZ(ReTfield(:,:,:,3,2,1,it), P,  S, TS,2)
             !-------------------------------------------------------------------
             ! kappa = 2, nu = 2, sum over mu
@@ -1321,11 +1322,11 @@ contains
             !-------------------------------------------------------------------
             ! kappa = 3, nu = 2, sum over mu 
             ReDTField(:,:,:,2,3,it) =                                          &
-            & DeriveX(ReTfield(:,:,:,1,2,3,it), P, -S, TS,2)
+            & DeriveX(ReTfield(:,:,:,1,2,3,it), P,  S, TS,2)
             ReDTField(:,:,:,2,3,it) = ReDTField(:,:,:,2,3,it) +                &
-            & DeriveY(ReTfield(:,:,:,2,2,3,it), P, -S, TS,1)
+            & DeriveY(ReTfield(:,:,:,2,2,3,it), P,  S, TS,1)
             ReDTField(:,:,:,2,3,it) = ReDTField(:,:,:,2,3,it) +                &
-            & DeriveZ(ReTfield(:,:,:,3,2,3,it), P,  S, TS,2)
+            & DeriveZ(ReTfield(:,:,:,3,2,3,it), P, -S, TS,2)
             !-------------------------------------------------------------------
             ! kappa= 1, nu = 3, sum over mu
             ReDTField(:,:,:,3,1,it) =                                          &
@@ -1384,21 +1385,21 @@ contains
         !                               -       Re Ft_mnk  D_m D_n sigma_k
         !-----------------------------------------------------------------------
         type(Spwf), intent(in) :: Psi
-        type(Spinor)           :: ActionOfT
+        type(Spinor)           :: ActionOfT, temp
         integer :: nu, kappa, it, mu
         
         it    = (Psi%GetIsospin() + 3)/2
         ActionOfT = newspinor()
         
         do kappa=1,3
+            temp = newspinor()
             do nu=1,3
                 do mu=1,3
-                    ActionOfT = ActionOfT - ReTfield(:,:,:,mu,nu,kappa,it) *   &
-                    &                       Pauli(Psi%SecondDer(mu,nu), kappa)
+                    Temp = Temp + ReTfield(:,:,:,mu,nu,kappa,it) * Psi%SecondDer(mu,nu)
                 enddo
-                ActionOfT = ActionOfT -                                        &
-                &       ReDTfield(:,:,:,nu,kappa,it) * Pauli(Psi%Der(nu), kappa) 
-            enddo
+                temp = temp + ReDTfield(:,:,:,nu,kappa,it) * Psi%Der(nu) 
+            enddo        
+            ActionofT = ActionOfT - Pauli(temp, kappa)
         enddo
         
    end function ActionOfReTField

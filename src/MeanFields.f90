@@ -1250,12 +1250,13 @@ contains
         ! ReDTField = sum_mu D_mu F_munuka
         !-----------------------------------------------------------------------
         use Derivatives
-        integer :: it, mu, P, S, TS
+        integer :: it, mu, P, S, TS, at
         
         ! The imaginary field is time-even
         do it=1,2
-            ImTfield(:,:,:,:,:,it)=  4*N2ImTmn(1)*sum(Density%ImDTN2LO,6)      &
-            &                       +4*N2ImTmn(2)*Density%ImDTN2LO(:,:,:,:,:,it)
+            at = 3-it
+            ImTfield(:,:,:,:,:,it)=  4*(N2ImTmn(1)+N2ImTmn(2))*Density%ImDTN2LO(:,:,:,:,:,it)   &
+            &                       +4* N2ImTmn(1)            *Density%ImDTN2LO(:,:,:,:,:,at)
         enddo
 
         if(TRC) return
@@ -1370,11 +1371,11 @@ contains
         
         do kappa=1,3
             do nu=1,3
-                ActionOfT = ActionofT -                                        &
-                &          ImTfield(:,:,:,nu,kappa,it)*Pauli(Psi%Der(nu), kappa)
+                ActionOfT = ActionofT +                                        &
+                &       Pauli(ImTfield(:,:,:,nu,kappa,it)*Psi%Der(nu), kappa)
             enddo
         enddo
-        ActionOfT = MultiplyI(ActionOfT) 
+        ActionOfT = - MultiplyI(ActionOfT) 
    end function ActionOfImTField
 
    function ActionOfReTField(Psi) result(ActionOfT)
@@ -1438,19 +1439,19 @@ contains
      do mu=1,3
         temp = temp + PiField(:,:,:,mu,it) * Psi%SecondDer(mu, 1)
      enddo  
-     call DeriveSpinor_X(temp, ActionofPiX,-Psi%Parity,-Psi%Signature, Psi%TimeSimplex)
+     call DeriveSpinor_X(temp, ActionofPiX,-Psi%Parity,-Psi%Signature,-Psi%TimeSimplex)
      
      temp=NewSpinor()
      do mu=1,3
         temp = temp + PiField(:,:,:,mu,it) * Psi%SecondDer(mu, 2)
      enddo  
-     call DeriveSpinor_Y(temp, ActionofPiY,-Psi%Parity,-Psi%Signature,-Psi%TimeSimplex)
+     call DeriveSpinor_Y(temp, ActionofPiY,-Psi%Parity,-Psi%Signature, Psi%TimeSimplex)
      
      temp=NewSpinor()
      do mu=1,3
         temp = temp + PiField(:,:,:,mu,it) * Psi%SecondDer(mu, 3)
      enddo  
-     call DeriveSpinor_Z(temp, ActionOfPiZ,-Psi%Parity, Psi%Signature, Psi%TimeSimplex)
+     call DeriveSpinor_Z(temp, ActionOfPiZ,-Psi%Parity, Psi%Signature,-Psi%TimeSimplex)
          
      ActionOfPi = ActionOfPiX + ActionOfPiY + ActionOfPiZ
      ActionOfPi = MultiplyI(ActionOfPi)

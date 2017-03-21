@@ -505,7 +505,7 @@ contains
     enddo
     if(all(DenIn%Rho.eq.0.0_dp)) call stp('Rho is zero')
     if(onlyRho) return
-
+        
     !---------------------------------------------------------------------------
     ! Compute all necessary derivatives of these densities.
     !Derivative and laplacian of Rho.
@@ -744,11 +744,11 @@ contains
             !-------------------------------------------------------------------
             ! (nu,ka) = (2,3)
             DenIn%ImDTN2LO(:,:,:,2,3,it) =                                     &
-            & DeriveX(DenIn%ImKN2LO(:,:,:,1,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            & DeriveX(DenIn%ImKN2LO(:,:,:,1,2,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
             DenIn%ImDTN2LO(:,:,:,2,3,it) = DenIn%ImDTN2LO(:,:,:,2,3,it) +      &
-            & DeriveY(DenIn%ImKN2LO(:,:,:,2,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            & DeriveY(DenIn%ImKN2LO(:,:,:,2,2,3,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
             DenIn%ImDTN2LO(:,:,:,2,3,it) = DenIn%ImDTN2LO(:,:,:,2,3,it) +      &
-            & DeriveZ(DenIn%ImKN2LO(:,:,:,3,2,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
+            & DeriveZ(DenIn%ImKN2LO(:,:,:,3,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
             !-------------------------------------------------------------------
             ! (nu,ka) = (3,1)
             DenIn%ImDTN2LO(:,:,:,3,1,it) =                                     &
@@ -832,14 +832,14 @@ contains
             !-------------------------------------------------------------------
             ! kappa = 3, nu = 2, sum over mu
             temp =                                     &
-            & DeriveX(DenIn%ReKN2LO(:,:,:,1,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
+            & DeriveX(DenIn%ReKN2LO(:,:,:,1,2,3,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
             temp = temp +                                                      &
-            & DeriveY(DenIn%ReKN2LO(:,:,:,2,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,1)
+            & DeriveY(DenIn%ReKN2LO(:,:,:,2,2,3,it), ParityInt,  SignatureInt, TimeSimplexInt,1)
             temp = temp +                                                      &
-            & DeriveZ(DenIn%ReKN2LO(:,:,:,3,2,3,it), ParityInt,  SignatureInt, TimeSimplexInt,2)
+            & DeriveZ(DenIn%ReKN2LO(:,:,:,3,2,3,it), ParityInt, -SignatureInt, TimeSimplexInt,2)
             
             DenIn%ReD2TN2LO(:,:,:,3,it) = DenIn%ReD2TN2LO(:,:,:,3,it) +          &
-            & DeriveY(                         temp,-ParityInt,  SignatureInt, TimeSimplexInt,2)
+            & DeriveY(                         temp,-ParityInt, -SignatureInt, TimeSimplexInt,2)
             !-------------------------------------------------------------------
             ! kappa= 1, nu = 3, sum over mu
             temp =                                     &

@@ -275,12 +275,12 @@ contains
             &        "Signature", Signature)
     endif
 
-    if((zsimplex.eq.1) .and. ((parity.ne.1) .and. (signature.ne.1))) then
-            SZC = .true.
-            NumSpatSym = NumSpatSym + 1
-    elseif(zsimplex.eq.0) then
-            SZC = .false.
-    endif
+!    if((zsimplex.eq.1) .and. ((parity.ne.1) .and. (signature.ne.1))) then
+!            SZC = .true.
+!            NumSpatSym = NumSpatSym + 1
+!    elseif(zsimplex.eq.0) then
+!            SZC = .false.
+!    endif
 
     if(TimeSimplex.eq.1) then
             TSC = .true.

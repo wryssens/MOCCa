@@ -899,8 +899,8 @@ contains
     ActionofS = NewSpinor()
     do mu=1,3
         ActionOfS = ActionOfS +                                                &
-        & Pauli(LapSpinor(SN2LOField(:,:,:,mu,it)*Psi%Lap,                     &
-        &       Psi%parity, psi%signature, psi%timesimplex), mu)    
+        & LapSpinor(Pauli(SN2LOField(:,:,:,mu,it)*Psi%Lap, mu),                &
+        &           Psi%parity, psi%signature, psi%timesimplex)    
     enddo
     
     return

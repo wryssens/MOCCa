@@ -555,28 +555,30 @@ contains
 
     write(Ichan) 8
     
-    write(Ichan) !head line from CR8
+    write(Ichan)  !head line from CR8
     write(Ichan) nwn,nwp!,npn0,npp0 in CR8
 
-    write(Ichan) !mx,my,mz 
-    write(Ichan) !itert,filedx
-    write(Ichan) !cqx,qxcst,q0xcst,qxx,pentex,excst,
+    write(Ichan) nx,ny,nz!mx,my,mz 
+    write(Ichan) 0, dx!itert,filedx
+    write(Ichan) (0.0_dp,i=1,100)
+    !cqx,qxcst,q0xcst,qxx,pentex,excst,
     !        1             cqy,qycst,q0ycst,qyy,pentey,eycst,
     !        2             cqz,qzcst,q0zcst,qzz,pentez,ezcst,
     !        3             q2cst,q02cst,g02cst,
     !        4             iq1,iq2,delq,cq2,q2cut
-    write(Ichan) !imtd,icqx,imtg
-    write(Ichan) !cqr,qrtc,qrcst,qrfint,pentert,ercstt
-    write(Ichan) !nforce,nfunc,ndd,ngal,njmunu,ncm2,nmass,ncoex
-    write(Ichan) !t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,wso,wsoq
+    write(Ichan) (0,i=1,100)!imtd,icqx,imtg
+    write(Ichan) (0.0_dp,i=1,100)!cqr,qrtc,qrcst,qrfint,pentert,ercstt
+    write(Ichan) (0,i=1,100)!nforce,nfunc,ndd,ngal,njmunu,ncm2,nmass,ncoex
+    write(Ichan) (0.0_dp,i=1,100)!t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,wso,wsoq
     
     !---------------------------------------------------------------------------
     ! Fermi energy and Lipkin-Nogami parameter for solving the pairing equations
-    write(Ichan) ! npair,vgn,vgp,ren,rep,dcut, icut,Fermi,LNLambda
+    write(Ichan) 0, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0.0_dp, 0 ,0.0_dp, 0.0_dp,0.0_dp, 0.0_dp
+                ! npair,vgn,vgp,ren,rep,dcut, icut,Fermi,LNLambda
     !---------------------------------------------------------------------------
-    write(Ichan)
+    write(Ichan) (0.0_dp,i=1,100)
     
-    write(Ichan) !epair,eproj
+    write(Ichan) (0.0_dp,i=1,100)
     
     npar = 0
     do i=1,nwt
@@ -603,10 +605,10 @@ contains
     write(Ichan) (kparz(i),i=1,nwt) !Parity of the HF-wavefunctions
     write(Ichan) (keta(i),i=1,nwt)  !Signature of the HF-wavefunctions
     write(Ichan) (esp1(i),i=1,nwt)  !Single-particle energies
-    write(Ichan) !(eqp(i),i=1,nwt)
+    write(Ichan) (0.0_dp,i=1,100)   !(eqp(i),i=1,nwt)
     write(Ichan) (v2(i),i=1,nwt)    ! Occupations of the canonical basis
     write(Ichan) (esp1(i),i=1,nwt) ! Single-particle energies in the canbasis
-    write(Ichan) !(icv0(i),i=1,mqp)
+    write(Ichan) (0.0_dp,i=1,100)
     ! Number of wavefunctions in parity-signature blocks.
     ! (1,it) = (P =  1, S =  1)
     ! (2,it) = (P = -1, S =  1)
@@ -616,42 +618,42 @@ contains
     
     do it=1,2
       do ipa=1,2
-        write(Ichan) !((deltacr8(i,j,ipa,it),i=1,mulb1),j=1,mulb2)
-        write(Ichan) !((rrn(i,j,ipa,it),i=1,mulb1),j=1,mulb1)
-        write(Ichan) !((rrt(i,j,ipa,it),i=1,mulb2),j=1,mulb2)
-        write(Ichan) !((xkap(i,j,ipa,it),i=1,mulb1),j=1,mulb2)
-        write(Ichan) !((deltacr8(i,j,ipa,it),i=1,mulb1),j=1,mulb2)
-        write(Ichan) !((uvst(i,j,ipa,it),i=1,mulb1),j=1,mulb2)
+        write(Ichan) (0.0_dp,i=1,300) !((deltacr8(i,j,ipa,it),i=1,mulb1),j=1,mulb2)
+        write(Ichan) (0.0_dp,i=1,300)!((rrn(i,j,ipa,it),i=1,mulb1),j=1,mulb1)
+        write(Ichan) (0.0_dp,i=1,300)!((rrt(i,j,ipa,it),i=1,mulb2),j=1,mulb2)
+        write(Ichan) (0.0_dp,i=1,300)!((xkap(i,j,ipa,it),i=1,mulb1),j=1,mulb2)
+        write(Ichan) (0.0_dp,i=1,300)!((deltacr8(i,j,ipa,it),i=1,mulb1),j=1,mulb2)
+        write(Ichan) (0.0_dp,i=1,300)!((uvst(i,j,ipa,it),i=1,mulb1),j=1,mulb2)
       enddo
-      write(Ichan) !dr(:,:,:,it)
-      write(Ichan) !di(:,:,:,it)
-      write(Ichan) !dlnr(:,:,:,it)
-      write(Ichan) !dlni(:,:,:,it)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)!dr(:,:,:,it)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)!di(:,:,:,it)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)!dlnr(:,:,:,it)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)!dlni(:,:,:,it)
       
       !-------------------------------------------------------------------------
       ! Reading the special densities
-      write(Ichan) !(drhor(i,it),i=1,mv)
-      write(Ichan) !(drhoi(i,it),i=1,mv)
-      write(Ichan)! (dtaur(i,it),i=1,mv)
-      write(Ichan)! (dtaui(i,it),i=1,mv)
-      write(Ichan)! (dJxxr(i,it),i=1,mv)
-      write(Ichan)! (dJxxi(i,it),i=1,mv)
-      write(Ichan)! (dJxyr(i,it),i=1,mv)
-      write(Ichan)! (dJxyi(i,it),i=1,mv)
-      write(Ichan)! (dJxzr(i,it),i=1,mv)
-      write(Ichan)! (dJxzi(i,it),i=1,mv)
-      write(Ichan)! (dJyxr(i,it),i=1,mv)
-      write(Ichan)! (dJyxi(i,it),i=1,mv)
-      write(Ichan)! (dJyyr(i,it),i=1,mv)
-      write(Ichan)! (dJyyi(i,it),i=1,mv)
-      write(Ichan)! (dJyzr(i,it),i=1,mv)
-      write(Ichan)! (dJyzi(i,it),i=1,mv)
-      write(Ichan)! (dJzxr(i,it),i=1,mv)
-      write(Ichan)! (dJzxi(i,it),i=1,mv)
-      write(Ichan)! (dJzyr(i,it),i=1,mv)
-      write(Ichan)! (dJzyi(i,it),i=1,mv)
-      write(Ichan)! (dJzzr(i,it),i=1,mv)
-      write(Ichan)! (dJzzi(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz) !(drhor(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)!(drhoi(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dtaur(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dtaui(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJxxr(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJxxi(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJxyr(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJxyi(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJxzr(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJxzi(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJyxr(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJyxi(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJyyr(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJyyi(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJyzr(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJyzi(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJzxr(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJzxi(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJzyr(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJzyi(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJzzr(i,it),i=1,mv)
+      write(Ichan) (0.0_dp,i=1,nx*ny*nz)! (dJzzi(i,it),i=1,mv)
       do i=1,4
         k=npar(i,it)
         if (k.ne.0) then
@@ -661,10 +663,10 @@ contains
     enddo
     !---------------------------------------------------------------------------
     ! Reading normal densities
-    write(Ichan) !cr8rho(:,:,:,1)
-    write(Ichan) !cr8rho(:,:,:,2)
-    write(Ichan) !cr8vtau
-    write(IChan) !cr8vdiv
+    write(Ichan) (0.0_dp,i=1,nx*ny*nz)!cr8rho(:,:,:,1)
+    write(Ichan) (0.0_dp,i=1,nx*ny*nz)!cr8rho(:,:,:,2)
+    write(Ichan) (0.0_dp,i=1,nx*ny*nz)!cr8vtau
+    write(IChan) (0.0_dp,i=1,nx*ny*nz)!cr8vdiv
     !---------------------------------------------------------------------------
     ! Allocate space for the wavefunctions and read them
     do i=1,nwt

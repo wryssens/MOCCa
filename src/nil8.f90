@@ -90,7 +90,7 @@ contains
     dimension xk(4),xmu(4),cf(2), hbm(2), psi(mx,my,mz,4)
     
     data ca,cb /0.986d0,0.14d0/
-    data xk,xmu/0.08d0,0.08d0, 0.0637d0,0.0637d0    &
+    data xk,xmu/0.08d0,0.08d0,   0.0637d0,0.0637d0    &
     &           ,0.0d0 ,0.0d0 ,  0.42d0,  0.60d0   /
     !data xk,xmu/0.08d0,0.08d0, 0.008d0,0.008d0    &
     !&           ,0.0d0 ,0.0d0 ,  0.00d0,  0.00d0   /
@@ -154,7 +154,7 @@ contains
       nodd  = modd
       nmax  = max(neven,nodd)
       
-
+      print *, xk
 !c..................................................... ordering the basis
       nvec  = 0
       nblc  = 0
@@ -347,6 +347,7 @@ contains
 
     !c................................................................ nucleus
     x = xk(it)
+    print *, 'in loop', xk(it)
     y = xmu(it)
     if (np.gt.50) x = xk(it+2)
     if (np.gt.50) y = xmu(it+2)

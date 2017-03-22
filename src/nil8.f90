@@ -12,7 +12,7 @@ module nil8
   
 contains
  
- subroutine nilsson (wfs,kparz,meven,modd,nwt,nwp,nwn,npp,npn,mx,my,mz,        &
+ subroutine nilsson (wfs,kparz,esp1,meven,modd,nwt,nwp,nwn,npp,npn,mx,my,mz,   &
  &                   dx,hox,hoy,hoz)
     !---------------------------------------------------------------------------
     ! Subroutine taken from nil8.1.0.0.f, written by 
@@ -50,6 +50,8 @@ contains
     !       allocatable array containing the constructed wave-functions on exit
     !   kparz:
     !       allocatable array containing the parities on exit
+    !   esp1  :
+    !       single-particle energies on exit
     !   meven, modd:
     !       the number of oscillator shells with even/odd parity
     !   nwt, nwn, nwp:
@@ -77,10 +79,10 @@ contains
     integer              , intent(in)        :: meven, modd,mx,my,mz,nwt,nwp,nwn
     integer, allocatable, intent(inout)      :: kparz(:)
     real(KIND=dp), intent(in)                :: hox, hoy, hoz
-    real(KIND=dp), allocatable, intent(inout):: wfs(:,:,:,:,:)
+    real(KIND=dp), allocatable, intent(inout):: wfs(:,:,:,:,:), esp1(:)
     
     real(KIND=dp), allocatable :: h(:,:), s(:,:), d(:), wd(:), e(:)
-    real(KIND=dp), allocatable :: he(:,:,:), esp1(:), a(:)
+    real(KIND=dp), allocatable :: he(:,:,:) , a(:)
     integer                    :: npar(2,2), ifail
     integer, allocatable       :: nsi(:,:),ns(:), nx(:), ny(:), nz(:), irep(:)
     integer, allocatable       :: nor(:), npa(:), ntrs(:)
@@ -90,6 +92,8 @@ contains
     data ca,cb /0.986d0,0.14d0/
     data xk,xmu/0.08d0,0.08d0, 0.0637d0,0.0637d0    &
     &           ,0.0d0 ,0.0d0 ,  0.42d0,  0.60d0   /
+    !data xk,xmu/0.08d0,0.08d0, 0.008d0,0.008d0    &
+    !&           ,0.0d0 ,0.0d0 ,  0.00d0,  0.00d0   /
     parameter (hhbar=6.58218d0,xxmn =1.044673d0)
     
     mblc =  meven+modd+1
@@ -114,7 +118,6 @@ contains
     he = 0.0d0 ; kparz=0; a= 0.0d0
     
     allocate(wfs(mx,my,mz,4,nwt)) ; wfs = 0.0d0
-    
 !c......................... mz must be larger or equal than both mx and my
 
 !c     neven   nodd   nvec+   nvec-   nblc    ms   mblc   ndim     mqa
@@ -367,7 +370,7 @@ contains
                 nz2 = nz(nn+j)
     !c..................................... computation of the matrix elements
                 if (j.ne.i) go to 19
-                h(i,j) = ax*(nx1+0.5d0) + ay*(ny1+0.5d0) + az*(nz1+0.5d0) & 
+                h(i,j) = ax*(nx1+0.5d0) + ay*(ny1+0.5d0) + az*(nz1+0.5d0) &
                 &        -x*y*((nb*(nb+1))/2.0d0 -nx1**2 -ny1**2 -nz1**2)
                 go to 18
                 19 if (nx1.ne.nx2) go to 20
@@ -400,6 +403,10 @@ contains
                 if (nz2.eq.nz1-2) h(i,j) = x*y*sqrt(nz1*(nz1-1)*an*(nx2-1))
             18 h(j,i) = h(i,j)
         17 continue
+        !do i=1,size(h,1)
+!		print *, h(i,:)!
+	!enddo
+        !print *
         call diagoncr8 (h,ndim,n,s,d,wd,'nil8 routine',ifail)
     !c.......................storage and shift of the single particle energies
         irep(ni) = ia
@@ -529,5 +536,100 @@ contains
 15 continue
 
   end subroutine nilsson 
+
+  subroutine DiagonalizeJZ()
+    !---------------------------------------------------------------------------
+    ! Detects degeneracies in the spwf spectrum and tries to diagonalize <Jz>
+    ! within degenerate sub-blocks.
+    !---------------------------------------------------------------------------
+    use Spinors    
+    use HFB ! For the diagoncr8 routine
+    
+    real(KIND=dp) :: Jmatrix(nwt,nwt), temp(6,2), Ecomp, vectors(nwt,nwt), values(nwt)
+    real(KIND=dp) :: work(nwt,nwt), alt(nwt)
+    integer       :: i,j,k,it,at,s, ifail
+    integer       :: diagonalized(nwt), todiag(nwt)  
+    type(Spinor)  :: eigspin(nwt)
+
+    ! Make sure all derivatives are calculated
+    call DeriveAll()
+    call UpdateAm(.false.)
+
+    diagonalized = 0
+    do i=1,nwt
+	Ecomp  = HFBasis(i)%Energy
+	todiag = 0
+	todiag(1) = i 
+	s         = 2
+	it =  HFBasis(i)%GetIsospin()
+	if(diagonalized(i) .eq. 1) cycle
+	diagonalized(i) = 1
+
+	do j=1,nwt
+		if(i.eq.j) cycle
+		at = HFBasis(j)%GetIsospin()
+		if(it.ne.at) cycle
+	    	!-------------------------------------------------
+	    	! Detect degenerate sets of spwfs with the same J.
+    	    	!-------------------------------------------------
+		if(abs(HFBasis(j)%Energy - Ecomp).lt.1d-6&
+                &  .and. abs(HFBasis(i)%AngQuantum - HFBasis(j)%AngQuantum).lt.1d-1) then
+			todiag(s) = j
+			s = s +1
+			diagonalized(j) = 1
+		endif
+	enddo
+	
+	! Compute the matrix elements
+	Jmatrix = 0.0_dp
+	do j=1,s-1
+	   do k=j,s-1
+            jj = todiag(j)
+	    kk = todiag(k)
+            temp = Angularmomentum(HFBasis(jj),HFBasis(kk), .false.,.false.,.false.,.true.)
+            Jmatrix(j,k) = temp(3,1)
+            Jmatrix(k,j) = temp(3,1)
+           enddo
+         enddo 
+
+	vectors = 0.0_dp
+	values  = 0.0_dp
+        !print *, '----------------------------'
+	!print *, 'Diagonalisation'
+	!print *, 'states' , todiag(1:s-1)
+	!print *, 'J=' , HFBasis(todiag(1))%AngQuantum
+	!print *, 'JMatrix'
+	!do j=1,s-1
+	!	print ('(99(2x,f6.3))'), JMatrix(j,1:s-1)
+	!enddo
+	! Diagonalize the matrix
+	ifail = 0
+	call diagoncr8 (Jmatrix,nwt,s-1,vectors,values,work, 'Diag of Jz' ,ifail)
+
+	!print *, 'Eigenvalues', values(1:s-1)
+	!print *, 'eigenvectors'
+	!do j=1,s-1
+	!	print ('(99(2x,f6.3))'), vectors(j,1:s-1)
+	!enddo
+
+	! Construct the eigenstates
+	do j=1,s-1
+		eigspin(j) = NewSpinor()
+		jj = todiag(j)
+		do k=1,s-1
+			kk = todiag(k)
+			eigspin(j) = eigspin(j) + (vectors(k,j)*HFBasis(kk)%getValue())
+		enddo
+	enddo
+	do j=1,s-1
+		jj = todiag(j)
+		HFBasis(jj)%Value = eigspin(j)
+	enddo
+	!print *
+	!print *, '----------------------------'
+
+    enddo
+  end subroutine DiagonalizeJZ
+
 end module nil8
 

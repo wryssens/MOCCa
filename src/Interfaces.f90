@@ -520,6 +520,176 @@ contains
     close(IChan)
   end subroutine ReadCr8
   
+  subroutine WriteCr8 (OutputFileName)
+  !-----------------------------------------------------------------------------
+  ! Write a file for wave-functions that is readable by CR8.
+  ! Only compatible with the latest file format, iver = 8
+  !-----------------------------------------------------------------------------
+    use CompilationInfo
+    use GenInfo
+    use WaveFunctions
+    use SpwfStorage
+    use Pairing,   only : Fermi, LNLambda
+    use Cranking,  only : Omega, ContinueCrank, CrankValues
+    use Densities, only : Recalc
+
+    character(len=*), intent(in) :: outputFileName
+    !---------------------------------------------------------------------------
+    !Non-important quantities that need to get read
+    real(KIND=dp) :: wf(nx,ny,nz,4), trash
+    !---------------------------------------------------------------------------
+    ! Important quantities that are necessary for MOCCa to continue the 
+    ! calculation.
+    integer       :: kparz(nwt), keta(nwt), s, p, it, i, ipa,j, k, Ichan
+    real(KIND=dp) :: esp1(nwt) , v2(nwt), espro(nwt)
+    
+    ! Do some quick checks
+    if(.not. PC) call stp("MOCCa can't transform CR8 files on input.")
+    if(.not. SC) call stp("MOCCa can't transform CR8 files on input.")
+    if(     TRC) then
+      call stp("MOCCa can't conserve Time-reversal starting from a CR8 file.")
+    endif
+
+    Ichan = 13
+    open  (IChan,form='unformatted',file=OutputFileName)
+
+    write(Ichan) 8
+    
+    write(Ichan) !head line from CR8
+    write(Ichan) nwn,nwp!,npn0,npp0 in CR8
+
+    write(Ichan) !mx,my,mz 
+    write(Ichan) !itert,filedx
+    write(Ichan) !cqx,qxcst,q0xcst,qxx,pentex,excst,
+    !        1             cqy,qycst,q0ycst,qyy,pentey,eycst,
+    !        2             cqz,qzcst,q0zcst,qzz,pentez,ezcst,
+    !        3             q2cst,q02cst,g02cst,
+    !        4             iq1,iq2,delq,cq2,q2cut
+    write(Ichan) !imtd,icqx,imtg
+    write(Ichan) !cqr,qrtc,qrcst,qrfint,pentert,ercstt
+    write(Ichan) !nforce,nfunc,ndd,ngal,njmunu,ncm2,nmass,ncoex
+    write(Ichan) !t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,wso,wsoq
+    
+    !---------------------------------------------------------------------------
+    ! Fermi energy and Lipkin-Nogami parameter for solving the pairing equations
+    write(Ichan) ! npair,vgn,vgp,ren,rep,dcut, icut,Fermi,LNLambda
+    !---------------------------------------------------------------------------
+    write(Ichan)
+    
+    write(Ichan) !epair,eproj
+    
+    npar = 0
+    do i=1,nwt
+        kparz(i) = HFBasis(i)%Parity
+        keta(i)  = HFBasis(i)%Signature
+        v2(i)    = 0.0_dp
+        esp1(i)  = HFBasis(i)%Energy
+        
+        it = (HFBasis(i)%isospin+3)/2
+        p  = kparz(i)
+        s  = keta(i) 
+        
+        if( p.eq.1 .and. s.eq.1) then
+            npar(1,it) = npar(1,it) + 1 
+        elseif( p.eq.-1 .and. s.eq.1) then
+            npar(2,it) = npar(1,it) + 1 
+        elseif( p.eq.+1 .and. s.eq.-1) then
+            npar(3,it) = npar(1,it) + 1 
+        elseif( p.eq.-1 .and. s.eq.-1) then
+            npar(4,it) = npar(1,it) + 1 
+        endif
+    enddo
+    
+    write(Ichan) (kparz(i),i=1,nwt) !Parity of the HF-wavefunctions
+    write(Ichan) (keta(i),i=1,nwt)  !Signature of the HF-wavefunctions
+    write(Ichan) (esp1(i),i=1,nwt)  !Single-particle energies
+    write(Ichan) !(eqp(i),i=1,nwt)
+    write(Ichan) (v2(i),i=1,nwt)    ! Occupations of the canonical basis
+    write(Ichan) (esp1(i),i=1,nwt) ! Single-particle energies in the canbasis
+    write(Ichan) !(icv0(i),i=1,mqp)
+    ! Number of wavefunctions in parity-signature blocks.
+    ! (1,it) = (P =  1, S =  1)
+    ! (2,it) = (P = -1, S =  1)
+    ! (3,it) = (P =  1, S = -1)
+    ! (4,it) = (P = -1, S = -1) 
+    write(Ichan) ((npar(i,it),i=1,4),it=1,2) 
+    
+    do it=1,2
+      do ipa=1,2
+        write(Ichan) !((deltacr8(i,j,ipa,it),i=1,mulb1),j=1,mulb2)
+        write(Ichan) !((rrn(i,j,ipa,it),i=1,mulb1),j=1,mulb1)
+        write(Ichan) !((rrt(i,j,ipa,it),i=1,mulb2),j=1,mulb2)
+        write(Ichan) !((xkap(i,j,ipa,it),i=1,mulb1),j=1,mulb2)
+        write(Ichan) !((deltacr8(i,j,ipa,it),i=1,mulb1),j=1,mulb2)
+        write(Ichan) !((uvst(i,j,ipa,it),i=1,mulb1),j=1,mulb2)
+      enddo
+      write(Ichan) !dr(:,:,:,it)
+      write(Ichan) !di(:,:,:,it)
+      write(Ichan) !dlnr(:,:,:,it)
+      write(Ichan) !dlni(:,:,:,it)
+      
+      !-------------------------------------------------------------------------
+      ! Reading the special densities
+      write(Ichan) !(drhor(i,it),i=1,mv)
+      write(Ichan) !(drhoi(i,it),i=1,mv)
+      write(Ichan)! (dtaur(i,it),i=1,mv)
+      write(Ichan)! (dtaui(i,it),i=1,mv)
+      write(Ichan)! (dJxxr(i,it),i=1,mv)
+      write(Ichan)! (dJxxi(i,it),i=1,mv)
+      write(Ichan)! (dJxyr(i,it),i=1,mv)
+      write(Ichan)! (dJxyi(i,it),i=1,mv)
+      write(Ichan)! (dJxzr(i,it),i=1,mv)
+      write(Ichan)! (dJxzi(i,it),i=1,mv)
+      write(Ichan)! (dJyxr(i,it),i=1,mv)
+      write(Ichan)! (dJyxi(i,it),i=1,mv)
+      write(Ichan)! (dJyyr(i,it),i=1,mv)
+      write(Ichan)! (dJyyi(i,it),i=1,mv)
+      write(Ichan)! (dJyzr(i,it),i=1,mv)
+      write(Ichan)! (dJyzi(i,it),i=1,mv)
+      write(Ichan)! (dJzxr(i,it),i=1,mv)
+      write(Ichan)! (dJzxi(i,it),i=1,mv)
+      write(Ichan)! (dJzyr(i,it),i=1,mv)
+      write(Ichan)! (dJzyi(i,it),i=1,mv)
+      write(Ichan)! (dJzzr(i,it),i=1,mv)
+      write(Ichan)! (dJzzi(i,it),i=1,mv)
+      do i=1,4
+        k=npar(i,it)
+        if (k.ne.0) then
+          write(Ichan) 
+        endif
+      enddo   
+    enddo
+    !---------------------------------------------------------------------------
+    ! Reading normal densities
+    write(Ichan) !cr8rho(:,:,:,1)
+    write(Ichan) !cr8rho(:,:,:,2)
+    write(Ichan) !cr8vtau
+    write(IChan) !cr8vdiv
+    !---------------------------------------------------------------------------
+    ! Allocate space for the wavefunctions and read them
+    do i=1,nwt
+      ! Read the components
+      if(keta(i).eq.1) then
+          wf(:,:,:,1) = HFBasis(i)%Value%Grid(:,:,:,1,1)                  
+          wf(:,:,:,2) = HFBasis(i)%Value%Grid(:,:,:,2,1)                  
+          wf(:,:,:,3) = HFBasis(i)%Value%Grid(:,:,:,3,1)                  
+          wf(:,:,:,4) = HFBasis(i)%Value%Grid(:,:,:,4,1)                            
+      else
+          !The states with negative signature have a different ordering of     
+          ! components in CR8.
+          wf(:,:,:,3) = HFBasis(i)%Value%Grid(:,:,:,1,1)                  
+          wf(:,:,:,4) = HFBasis(i)%Value%Grid(:,:,:,2,1)                  
+          wf(:,:,:,1) = HFBasis(i)%Value%Grid(:,:,:,3,1)                  
+          wf(:,:,:,2) = HFBasis(i)%Value%Grid(:,:,:,4,1)     
+      endif 
+      do j=1,4
+        write(Ichan) wf(:,:,:,j)
+      enddo
+    enddo
+    
+    close(IChan)
+  end subroutine writeCr8
+  
   subroutine CR8State 
   !-----------------------------------------------------------------------------
   ! Subroutine that translates the data left by a CR8 run to data that is usable

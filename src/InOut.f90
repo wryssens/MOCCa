@@ -42,7 +42,11 @@ module InOutput
   integer, allocatable          :: FileBlocksizes(:,:), FileHFBColumns(:,:,:)
   !-----------------------------------------------------------------------------
   ! Whether or not to write extra output files for various other codes.
-  logical :: PromOutput     = .false.
+  logical :: PromOutput     = .false. ! Promesse
+  logical :: CR8Output      = .false. ! Promesse
+  !-----------------------------------------------------------------------------
+  ! Whether or not to allow MOCCa to break symmetries and/or interpolate 
+  ! the mesh.
   logical :: AllowTransform = .false.
   !-----------------------------------------------------------------------------
   logical :: LegacyInput=.false.
@@ -181,6 +185,8 @@ contains
 
     ! Writing extra files if asked for
     if(PromOutput) call writePromesse(trim(OutputFileName)//'.prom')
+    ! Writing extra files if asked for
+    if(CR8Output)  call writeCR8(trim(OutputFileName)//'.CR8')
 
   end subroutine Output
 
@@ -308,7 +314,7 @@ contains
     implicit none
 
     NameList /InAndOutput/ InputFileName,OutputFileName,PromOutput,LegacyInput,&
-    &                      Pictures, AllowTransform, nwninit, nwpinit
+    &                      Pictures, AllowTransform, nwninit, nwpinit, Cr8output
 
     !--------------- Reading Input---------------------------------------
     !Info for the GenInfo Module

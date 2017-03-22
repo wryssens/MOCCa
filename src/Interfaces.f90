@@ -553,7 +553,7 @@ contains
     Ichan = 13
     open  (IChan,form='unformatted',file=OutputFileName)
 
-    write(Ichan) 8
+    write(Ichan) 9
     
     write(Ichan)  !head line from CR8
     write(Ichan) nwn,nwp!,npn0,npp0 in CR8
@@ -663,10 +663,10 @@ contains
     enddo
     !---------------------------------------------------------------------------
     ! Reading normal densities
-    write(Ichan) (0.0_dp,i=1,nx*ny*nz)!cr8rho(:,:,:,1)
-    write(Ichan) (0.0_dp,i=1,nx*ny*nz)!cr8rho(:,:,:,2)
-    write(Ichan) (0.0_dp,i=1,nx*ny*nz)!cr8vtau
-    write(IChan) (0.0_dp,i=1,nx*ny*nz)!cr8vdiv
+    write(Ichan) (0.0_dp,i=1,nx*ny*nz*2)!cr8rho(:,:,:,1)
+    write(Ichan) (0.0_dp,i=1,nx*ny*nz*2)!cr8rho(:,:,:,2)
+    write(Ichan) (0.0_dp,i=1,nx*ny*nz*2)!cr8vtau
+    write(IChan) (0.0_dp,i=1,nx*ny*nz*2)!cr8vdiv
     !---------------------------------------------------------------------------
     ! Allocate space for the wavefunctions and read them
     do i=1,nwt

@@ -1382,7 +1382,7 @@ end subroutine ReadMOCCa_v1
     ! Need to recalculate all of the densities
     Recalc = .true.
     call DiagonalizeJz()
-    call UpdateAM(.false.)
+
   end subroutine 
 
   subroutine PlotDensity()

@@ -20,6 +20,7 @@ module Energy
   use Densities
   use Force
   use SpwfStorage
+  use Pairing
 
   implicit none
 
@@ -28,7 +29,7 @@ module Energy
   ! All the different Energies
   real(KIND=dp),public :: Kinetic(2),  CoulombEnergy
   real(KIND=dp),public :: CoulombExchange,CoMCorrection(2,2)
-  real(KIND=dp),public :: TotalEnergy, OldEnergy(7), SpEnergy, PairingEnergy(2)
+  real(KIND=dp),public :: TotalEnergy, OldEnergy(7), SpEnergy
   real(KIND=dp),public :: LNEnergy(2), Routhian, OldRouthian(7)
 
   ! Two different ways of calculating and treating Skyrme terms
@@ -144,7 +145,6 @@ contains
     else 
       NesterovSignal = 0
     endif
-
     return
   end subroutine CompEnergy
 
@@ -788,6 +788,7 @@ contains
     print 103, Kinetic(1), Kinetic(2), sum(Kinetic)
     if(PairingType.ne.0) then
       print 104, PairingEnergy, sum(PairingEnergy)
+      print *, 'wtf3', pairingenergy
       if(Lipkin) then
         print 105, LNEnergy, sum(LNEnergy)
       endif

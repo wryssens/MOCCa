@@ -555,6 +555,13 @@ contains
     ! Construct the matrices in block form. Note that the Fermi energy does not
     ! get passed in.
     call BlockHFBHamil(Delta, z, L2)
+    
+    if(Lipkin) then
+         LN = Lncr8(Delta,DeltaLN,succes)
+    elseif(ConstrainDispersion) then 
+         Disp = Dispersion()      
+    endif
+    
     !---------------------------------------------------------------------------
     ! Reduce the dimension of the problem, by checking the pairing window and 
     ! rearranging all of the relevant matrices.
@@ -593,16 +600,7 @@ contains
       ! Construct the density and anomalous density matrix.
       ! Only necessary when LN is active, since they then contribute to the
       ! HFBHamiltonian
-!      do it=1,Iindex
-!        do P=1,Pindex
-!          N = blocksizes(P,it)
-!          RhoHFB(1:N,1:N,P,it)  = ConstructRho(  GradV(1:N,1:N,P,it),          &
-!          &                                      sigblocks(P,it))
-!          KappaHFB(1:N,1:N,P,it)= ConstructKappa(GradU(1:N,1:N,P,it),          &
-!          &                                      GradV(1:N,1:N,P,it),          &
-!          &                                      sigblocks(P,it))
-!        enddo
-!      enddo
+
       !-------------------------------------------------------------------------
       ! Calculate the gradients H20, N20 and LN20
       do it=1,Iindex
@@ -632,11 +630,6 @@ contains
       !-------------------------------------------------------------------------
       ! Readjust Fermi and L2
       succes = 0
-      if(Lipkin .and. mod(iter,10).eq.1) then
-         LN = Lncr8(Delta,DeltaLN,succes)
-      elseif(ConstrainDispersion) then 
-         Disp = Dispersion()      
-      endif
       if(any(succes.ne.0)) call stp("lncr8 failed")
       do it=1,Iindex
           par(it) = 0.0
@@ -663,7 +656,7 @@ contains
           ! We don't take this luxury for the L2 variable, as it is kind of a
           ! nonsense to add it anyway.
           if(Lipkin) then
-            L2(it) = L2(it) + 0.1*(LN(it)   - L2(it))
+            L2(it) = LN(it)!L2(it) + 0.1*(LN(it)   - L2(it))
           elseif(ConstrainDispersion) then
             L2(it) = L2(it) - 0.01*(Disp(it) - DN2(it))
 !            if(it.eq.1) print *, 'iter, it',it, L2(it), Disp(it), DN2(it)

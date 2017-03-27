@@ -29,6 +29,7 @@ module SpwfStorage
   ! All Single particle wavefunctions in the Canonical Basis.
   ! Only allocated when HFB pairing is active.
   type (Spwf), public, allocatable,target :: CanBasis(:)
+  integer, allocatable                    :: CanDeriv(:)
   !-----------------------------------------------------------------------------
   ! In addition, a pointer to either the HFBasis or the CanBasis, depending on
   ! the type of parity. It should point to the wavefunctions needed to construct
@@ -130,8 +131,8 @@ contains
       deallocate(HFBasis)
       allocate(HFBasis(NewNumber))
       if(allocated(CanBasis)) then
-        deallocate(CanBasis)
-        allocate(CanBasis(NewNumber))
+        deallocate(CanBasis)          ; deallocate(CanDeriv)
+        allocate(CanBasis(NewNumber)) ; allocate(CanDeriv(Newnumber))
       endif
 
       !-------------------------------------------------------------------------
@@ -473,7 +474,14 @@ contains
 
     if(allocated(CanBasis)) then
       do i=1,nwt
-        call CanBasis(i)%CompDer()
+        if(CanDeriv(i).eq.0) then
+            call CanBasis(i)%CompDer()
+        else
+            CanBasis(i)%Der(1) = HFBasis(CanDeriv(i))%Der(1)
+            CanBasis(i)%Der(2) = HFBasis(CanDeriv(i))%Der(2)
+            CanBasis(i)%Der(3) = HFBasis(CanDeriv(i))%Der(3)
+            CanBasis(i)%Lap    = HFBasis(CanDeriv(i))%Lap
+        endif
       enddo
     endif
     return

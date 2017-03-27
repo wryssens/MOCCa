@@ -94,7 +94,7 @@ subroutine Evolve(MaxIterations, iprint)
   use Pairing, only     : SolvePairing, PairingType, SolvePairingStart
   use Cranking, only    : ReadjustCranking, CrankC0
   use DensityMixing,only: MixDensities
-  use Energy
+  use Energy 
   use Cranking, only    : RutzCrank, CrankType
   use HFB
   use Testing
@@ -211,10 +211,10 @@ subroutine Evolve(MaxIterations, iprint)
       call Canbasis(i)%SetEnergy(CanEnergy)
     enddo
   endif
-
+  
   !Calculating  The Energy
   call CompEnergy()
-
+  
   !Printing observables
   call PrintIterationInfo(0, .true.)
 
@@ -440,7 +440,7 @@ subroutine PrintIterationInfo(Iteration, PrintAll)
   use Moments,     only : PrintAllMoments
   use Cranking,    only : PrintCranking
   use Pairing,     only : PrintPairing, PairingType, Fermi
-  use Energy,      only : PrintEnergy
+  use Energy,      only : PrintEnergy, PairingEnergy
   use HFB, only         : PrintQP
 
   implicit none
@@ -491,10 +491,10 @@ subroutine FinalIteration()
 
   !Recalculating densities without damping and/or Mixing
   call UpdateDensities(0)
-
+   
   !Computing Energies
   call CompEnergy
-
+  
   !Printing Energy (with Lagrange mention...)
   call PrintEnergy(.true.)
 

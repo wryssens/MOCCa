@@ -2953,6 +2953,7 @@ subroutine InsertionSortQPEnergies
   real(KIND=dp), intent(inout)              :: PairingDisp(2)
   real(KIND=dp), intent(in)                 :: Fermi(2), LNLambda(2)
   complex(KIND=dp), intent(in), allocatable :: Delta(:,:,:,:)
+  real(KIND=dp)                             :: mx
   real(KIND=dp)                             :: Energy,  RhoII, SR, overlaps(nwt,nwt)
   integer                                   :: it,P,i,j,S,ii,iii,loc(1),TS,jj,jjj,k
   integer                                   :: Columns(nwt,Pindex,Iindex)
@@ -2981,11 +2982,8 @@ subroutine InsertionSortQPEnergies
     call stp('No occupations in the canonical basis!')
   endif
   if(any(Occupations - 1.0_dp.gt.1d-5)) then
-     print *, Occupations(:,1,1)
-     print *, Occupations(:,1,2)
-     print *, Occupations(:,2,1)
-     print *, Occupations(:,2,2)
-     call stp('Some occupations are bigger than one in the canonical basis.')
+     
+  call stp('Some occupations are bigger than one in the canonical basis.')
   endif
   where(Occupations.gt.1.0_dp) Occupations=1.0_dp
   if(any(Occupations .lt. -HFBNumCut)) then
@@ -3010,14 +3008,15 @@ subroutine InsertionSortQPEnergies
     do P=1,Pindex
       do i=1,nwt
         if(Columns(i,P,it).eq.0) exit !No more columns to take here
-
         ! The correct eigenvector of RhoHFB is this one:
         C = Columns(i,P,it)
         !-----------------------------------------------------------------------
         !Find the quantum numbers of this wavefunction
         loc = maxloc(abs(CanTransfo(:,C,P,it)))
+        
         ii  = Blockindices(loc(1),P,it)
         iii = mod(ii-1,nwt)+1
+        !-----------------------------------------------------------------------
         !note that we DO need to filter non-stored spwfs, but only in the case
         !where time-reversal is conserved, but signature isn't.
         S   = HFBasis(iii)%GetSignature()
@@ -3031,13 +3030,27 @@ subroutine InsertionSortQPEnergies
         call CanBasis(index)%SetTimeSimplex(TS)
         call CanBasis(index)%SetIsospin(2*it-3)
         Energy = 0.0_dp
-        !------------------------------------------------------------------------
+        !-----------------------------------------------------------------------
+        ! Detect if the canonical basis level is just a level in the HF basis
+        mx  = abs(CanTransfo(loc(1),C,P,it))
+        if(abs(mx - 1).lt.1d-8) then
+            CanDeriv(index)           = mod(blockindices(loc(1),P,it)-1,nwt)+1
+            print *, 'state ', index, ' is HF level', blockindices(loc(1),P,it), mx
+        else
+            CanDeriv(index)           = 0
+        endif
+        !-----------------------------------------------------------------------
         ! Make the transformation
         do j=1,blocksizes(P,it)
           jj = Blockindices(j,P,it)
           jjj= mod(jj-1,nwt)+1
           !Cutoff for numerical stability
           if(abs(CanTransfo(j,C,P,it)) .lt.HFBNumCut) cycle
+          !---------------------------------------------------------------------
+          ! Get the phase of the not-transformed levels correctly
+          if(CanDeriv(index).ne.0) then
+            CanTransfo(j,C,P,it) = abs(CanTransfo(j,C,P,it))
+          endif
           !----------------------------------------------------------------------
           !Transformation
           !----------------------------------------------------------------------
@@ -3046,7 +3059,6 @@ subroutine InsertionSortQPEnergies
           ! this routine to act on wavefunctions, not the (more efficient)
           ! spinors, since in this way MOCCa checks the consistency of
           ! quantum numbers.
-          !print *, 'j', jj, jjj, DBLE(CanTransfo(j,C,P,it)), HFBasis(jjj)%GetSignatureR()
           if(jj.eq.jjj) then
             if(TSC) then
                 do k=1,nx*ny*nz*4
@@ -3092,6 +3104,7 @@ subroutine InsertionSortQPEnergies
   if(index.ne.nwt+1) then
     call stp('Not enough canonical spwfs were constructed.')
   endif
+  !stop
   !-----------------------------------------------------------------------------
   ! Another important observable is the single-particle energy of these
   ! wavefunctions, but this module has no access to the hPsi routine

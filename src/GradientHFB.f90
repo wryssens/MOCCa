@@ -19,9 +19,6 @@ module GradientHFB
   !    (GEMM routines) might do better for larger matrices, but I highly doubt
   !    this.
   !-----------------------------------------------------------------------------
-  ! TODO:
-  ! * Optimize the signature breaking routines.
-  ! *
   !-----------------------------------------------------------------------------
   use HFB
 
@@ -30,15 +27,26 @@ module GradientHFB
   !-----------------------------------------------------------------------------
   ! Local storage for the U and V
   real(KIND=dp),allocatable  :: GradU(:,:,:,:), GradV(:,:,:,:)
-
+  real(KIND=dp),allocatable  :: ucopy(:,:,:,:), vcopy(:,:,:,:)
   !-----------------------------------------------------------------------------
   ! Store single-particle hamiltonian and delta in block-form
-  real(KIND=dp), allocatable :: hblock(:,:,:,:)   ,dblock(:,:,:,:)
+  real(KIND=dp), allocatable :: hblock(:,:,:,:),dblock(:,:,:,:)
+  real(KIND=dp), allocatable :: hcopy(:,:,:,:),dcopy(:,:,:,:)
   !-----------------------------------------------------------------------------
   ! Number of positive signature states in every isospin/parity block
   ! The number of negative states then is blocksizes - sigblocks
   integer :: SigBlocks(2,2) = 0
-
+  !-----------------------------------------------------------------------------
+  ! Effective blocksize of the problem
+  integer :: EffBlocks(2,2) = 0, EffSig(2,2) = 0
+  !-----------------------------------------------------------------------------
+  ! Indices of the reduced problem
+  integer, allocatable :: empty(:,:,:,:), full(:,:,:,:), paired(:,:,:,:)
+  integer              :: occupiedlevels(2)
+  !-----------------------------------------------------------------------------
+  ! Allow MOCCa to reduce the HFB problem or not
+  logical      :: HFBReduce=.false.
+  real(KIND=dp):: reducprec=1d-6
   !-----------------------------------------------------------------------------
   ! Matrices that I don't want to reallocate everytime.
   real(KIND=dp),allocatable  :: Gradient(:,:,:,:) ,OldGrad(:,:,:,:)
@@ -104,10 +112,8 @@ contains
     !
     !
     !---------------------------------------------------------------------------
-
     integer :: it,P,i,j,N, ind(2,2), Rzindex,k, S
     logical :: incolumns
-
     !----------------------------------------
     ! Initialize the matrices.
     !----------------------------------------
@@ -134,8 +140,6 @@ contains
         call stp('No legacy for signature broken.')
       endif
     endif
-!     print *, HFBColumns(1:blocksizes(1,2),1,2)
-!     print *, HFBColumns(1:blocksizes(2,2),2,2)
 
     if(allocated(qpexcitations)) then
       call BlockQuasiParticles
@@ -146,12 +150,12 @@ contains
             N = blocksizes(P,it)
             ind(P,it) = 1
             do j=1,2*N
-                !----------------------------------------------
+                !---------------------------------------------------------------
                 ! This loop makes sure that we go through the
                 ! big matrix in order. Otherwise the signature
                 ! block might end up somewhere we don't expect
                 ! them.
-                !----------------------------------------------
+                !---------------------------------------------------------------
                 incolumns = .false.
                 do k=1,N
                     if (j .eq. HFBColumns(k,P,it)) then
@@ -181,15 +185,41 @@ contains
 
   subroutine OutHFBModule
       !-------------------------------------------------------------------------
-      ! Put our solution into the HFB module correctly.
-      !-------------------------------------------------------------------------
-
-      integer :: i,j,P,it,N, S
-
+      ! Put our solution into the HFB module correctly.if(SC) then
+      integer :: i,j,P,it,N, S, E, ii,jj
+    
+      1 format ('indices ', 50i3)
+      
+      if(HFBreduce) then
+        !-------------------------------------------------------------------
+        ! Copy U, V, h and d to their old values, but with the new paired 
+        ! levels obtained from the solver. 
+        do it=1,Iindex
+            do P=1,Pindex
+                N  = effblocks(P,it)
+                do i=1,N
+                    do j=1,N
+                        ii = paired(i,1,P,it)
+                        jj = paired(j,1,P,it)
+                        hcopy(ii,jj,P,it) = hblock(i,j,P,it)
+                        dcopy(ii,jj,P,it) = dblock(i,j,P,it)
+                            
+                        jj = paired(j,2,P,it)
+                        Ucopy(ii,jj,P,it) = gradU(i,j,P,it) 
+                        Vcopy(ii,jj,P,it) = gradV(i,j,P,it) 
+                    enddo
+                enddo
+            enddo
+        enddo
+        gradU = Ucopy
+        gradV = Vcopy
+      endif
+ 
       do it=1,Iindex
           do P=1,Pindex
               N = blocksizes(P,it)
               S = sigblocks(P,it)
+              
               do i=1,N
                   do j=1,S
                       HFBColumns(j,P,it) = j
@@ -218,17 +248,18 @@ contains
               &                                       sigblocks(P,it))
           enddo
       enddo
-      
-!    print *
-!    do j =1, blocksizes(1,2)
-!      print *, DBLE(U(j,1:2*blocksizes(1,2),1,2))
-!    enddo
-!    print *
-!    do j =1, blocksizes(1,2)
-!      print *, DBLE(V(j,1:2*blocksizes(1,2),1,2))
-!    enddo
-!    print *
-!      ! stop
+!      
+!      print *, 'RHOHFB'
+!      do it=1,2
+!        do P=1,2
+!            N = blocksizes(P,it)
+!            do i=1,N
+!                print ('(100f7.2)'), RhoHFB(i,1:N,P,it)
+!            enddo
+!            print *
+!        enddo
+!      enddo 
+!      stop
   end subroutine OutHFBModule
 
   subroutine BlockHFBHamil(Delta, Fermi, L2)
@@ -262,6 +293,190 @@ contains
       enddo
 
   end subroutine BlockHFBHamil
+  
+  subroutine ReduceDimension
+    !---------------------------------------------------------------------------
+    ! Reorganises the HFB subproblem so that the dimensionality of the problem
+    ! to be solved can be significantly smaller.
+    !---------------------------------------------------------------------------
+    integer                    :: P, it, N, i,j, e, f, x,jj,ii
+    real(KIND=dp), allocatable :: temp(:)
+    real(KIND=dp)              :: m
+    logical                    :: pair
+    
+    1 format ('indices:' , 1i3, 50f7.3)
+    
+    if(.not. HFBReduce) then
+        EffBlocks = Blocksizes
+        Effsig    = Sigblocks
+        return
+    endif
+    
+    if(.not.allocated(empty)) then
+        allocate(    empty(maxval(blocksizes),2,2,2))
+        allocate(     full(maxval(blocksizes),2,2,2))
+        allocate(   paired(maxval(blocksizes),2,2,2))
+        allocate(temp(maxval(blocksizes)))
+    endif
+
+    Ucopy = gradU ; Vcopy = GradV
+    dcopy = dblock; hcopy = hblock
+
+    do it=1,Iindex
+        occupiedlevels(it) = 0 
+        do P=1, Pindex
+            N = blocksizes(P,it)
+            !-------------------------------------------------------------------
+            ! Step one: check which HF levels are completely decoupled from the 
+            ! pairing.
+            e = 0 ; f = 0 ; x = 0
+            empty(:,:,P,it)  = 0
+            full(:,:,P,it)   = 0
+            paired(:,:,P,it) = 0
+            do i=1,N
+                !---------------------------------------------------------------
+                ! Level i in the HFBASIS does not partake in the pairing
+                if(any(abs(abs(gradU(i,1:N,P,it))-1).lt.reducprec)) then
+                   ! i is fully empty
+                   ! Find the eigenvector in U and V that corresponds to this,
+                   ! i.e. with the largest overlap in U
+                   m = 0.0_dp
+                   do j=1,N
+                         if(abs(gradU(i,j,P,it)).gt.m) then
+                            m  = abs(gradU(i,j,P,it))
+                            jj = j
+                         endif
+                   enddo
+                   e = e +1
+                   empty(e,1,P,it) = i
+                   empty(e,2,P,it) = jj
+                elseif(any(abs(abs(gradV(i,1:N,P,it))-1).lt.reducprec)) then
+                   ! i is fully occupied
+                   ! Find the eigenvector in U and V that corresponds to this,
+                   ! i.e. with the largest overlap in V
+                   m = 0.0_dp
+                   do j=1,N
+                         if(abs(gradV(i,j,P,it)).gt.m) then
+                            m  = abs(gradV(i,j,P,it))
+                            jj = j
+                         endif
+                   enddo
+                   f = f + 1
+                   full(f,1,P,it) = i
+                   full(f,2,P,it) = jj
+                else
+                    ! Level is paired
+                    x = x+1
+                    paired(x,1,P,it) = i
+                endif               
+            enddo
+            !-------------------------------------------------------------------
+            ! find the paired U and V columns
+            jj = 0
+            do i=1,N
+                
+                pair = .true.
+                do j=1,e
+                    ! Check if the level is empty
+                    if(i .eq. empty(j,2,P,it)) pair=.false.
+                enddo
+                do j=1,f
+                    ! Check if the level is full
+                    if(i .eq. full(j,2,P,it)) pair=.false.
+                enddo
+                if(.not.pair) cycle
+                ! Level i is not empty or full, thus paired
+                jj = jj +1
+                paired(jj,2,P,it) = i
+            enddo
+            !-------------------------------------------------------------------
+            ! The effective blocksize is the number of levels not fully occupied
+            ! or empty
+            Effblocks(P,it) = x
+    
+!            print *, '-------------------------------------'
+!            print *, 'HFBASIS'
+!            print *,'empty levels', e, empty(1:e,1,P,it)
+!            print *,'full levels',  f, full(1:f,1,P,it)
+!            print *,'paired levels', x, paired(1:x,1,P,it)
+!            print *, '-------------------------------------'
+!            print *
+!            print *,'-------------------------------------'
+!            print *,'CANBASIS'
+!            print *,'empty levels', e, empty(1:e,2,P,it)
+!            print *,'full levels',  f, full(1:f,2,P,it)
+!            print *,'paired levels', x, paired(1:x,2,P,it)
+!            print *, '-------------------------------------'
+!            
+!            print *
+!            do i=1,N
+!                print *, hblock(i,1:N,P,it)
+!            enddo
+!            print *
+!            print *
+            !-------------------------------------------------------------------
+            ! Move the paired levels first
+            do i=1,x
+                do j=1,x
+                    ii = paired(i,1,P,it)
+                    jj = paired(j,1,P,it)
+                    hblock(i,j,P,it) = hcopy(ii,jj,P,it)
+                    dblock(i,j,P,it) = dcopy(ii,jj,P,it)
+                    
+                    jj = paired(j,2,P,it)
+                    gradU(i,j,P,it) = Ucopy(ii,jj,P,it)
+                    gradV(i,j,P,it) = Vcopy(ii,jj,P,it)
+                enddo
+            enddo
+            !-------------------------------------------------------------------
+            ! the effective signature blocks need to be correctly 
+            ! indicated
+            effsig(P,it) = 0
+            do i=1,EffBlocks(P,it)
+                if(paired(i,1,P,it) .le. sigblocks(P,it)) then
+                    Effsig(p,it) = Effsig(P,it) + 1
+                endif            
+            enddo
+        enddo
+        occupiedlevels(it) = occupiedlevels(it) + f
+    enddo
+
+  end subroutine ReduceDimension
+  
+!  subroutine Switch(A,N,Rind,Cind,Nind, invert)
+!    !---------------------------------------------------------------------------
+!    ! Rearranges a matrix A so that the indices are last in storage
+!    !---------------------------------------------------------------------------
+!    integer, intent(in)      :: Rind(Nind),Cind(Nind),N, Nind
+!    real(KIND=dp)            :: A(N,N)
+!    integer                  :: i,j
+!    real(KIND=dp)            :: temp(N)
+!    logical                  :: invert
+
+!    if(invert) then
+!        do i=Nind,1,-1
+!            temp            = A(Rind(i),1:N)
+!            A(Rind(i),1:N)  = A(N-i+1,1:N)
+!            A(N-i+1  ,1:N)  = temp
+!        enddo
+!        do i=Nind,1,-1
+!            temp            = A(1:N,Cind(i))
+!            A(1:N, Cind(i)) = A(1:N,N-i+1)
+!            A(1:N, N-i+1)   = temp
+!        enddo
+!    else
+!        do i=1,Nind
+!            temp            = A(1:N,Cind(i))
+!            A(1:N, Cind(i)) = A(1:N,N-i+1)
+!            A(1:N, N-i+1)   = temp
+!        enddo
+!        do i=1,Nind
+!            temp            = A(Rind(i),1:N)
+!            A(Rind(i),1:N)  = A(N-i+1  ,1:N)
+!            A(N-i+1  ,1:N)  = temp
+!        enddo 
+!    endif
+!  end subroutine Switch
 
   subroutine HFBFermiGradient(Fermi,L2,Delta,DeltaLN,Lipkin,DN2,               &
     &                                                  ConstrainDispersion,Prec)
@@ -293,7 +508,7 @@ contains
     real(KIND=dp) :: gamma(2,2), maxstep, step, L20Norm(2), LN(2), Disp(2)
     real(KIND=dp) :: N20norm(2), par(2), slope,  OldFermi(2)
     real(KIND=dp) :: gradientnorm(2,2), oldnorm(2,2), PR(2,2), z(2)=0.0
-    integer       :: i,j,P,it,N, Rzindex,iter, inneriter, first=1, succes(2)
+    integer       :: i,j,P,it,N, Rzindex,iter, inneriter, first=1, succes(2), s
     logical       :: converged(2)
 
     ! Make sure we search for the right number of particles
@@ -336,27 +551,58 @@ contains
           ortho          => ortho_nosig
         endif
     endif
-
+    !---------------------------------------------------------------------------
+    ! Construct the matrices in block form. Note that the Fermi energy does not
+    ! get passed in.
+    call BlockHFBHamil(Delta, z, L2)
+    !---------------------------------------------------------------------------
+    ! Reduce the dimension of the problem, by checking the pairing window and 
+    ! rearranging all of the relevant matrices.
+    call reducedimension()
+    
+    print *, '*******'
+    print *, 'EFFSIG=   ', effsig
+    print *, 'EFFBLOCKS=', effblocks
+    print *
+    
+!    P=1
+!    it=1
+!    N = effblocks(P,it)
+!    
+!    print * , 'HBLOCk'
+!    do i=1,N
+!         print ('(100f7.3)') ,hblock(i,1:N,P,it)  
+!    enddo
+!    print * , 'dBLOCk'
+!    do i=1,N
+!         print ('(100f7.3)') ,dblock(i,1:N,P,it)  
+!    enddo
+!    print * , 'U'
+!    do i=1,N
+!         print ('(100f7.3)') ,gradu(i,1:N,P,it)  
+!    enddo
+!    print * , 'V'
+!    do i=1,N
+!         print ('(100f8.4)') ,gradV(i,1:N,P,it)  
+!    enddo
+    !stop
     !---------------------------------------------------------------------------
     ! Start of the iterative solver
-    do iter=1,HFBIter
+    do iter=1,HFBiter
       !-------------------------------------------------------------------------
       ! Construct the density and anomalous density matrix.
       ! Only necessary when LN is active, since they then contribute to the
       ! HFBHamiltonian
-      do it=1,Iindex
-        do P=1,Pindex
-          N = blocksizes(P,it)
-          RhoHFB(1:N,1:N,P,it)  = ConstructRho(  GradV(1:N,1:N,P,it),          &
-          &                                      sigblocks(P,it))
-          KappaHFB(1:N,1:N,P,it)= ConstructKappa(GradU(1:N,1:N,P,it),          &
-          &                                      GradV(1:N,1:N,P,it),          &
-          &                                      sigblocks(P,it))
-        enddo
-      enddo
-      !-------------------------------------------------------------------------
-      ! Construct the matrices in block form.
-      call BlockHFBHamil(Delta, z, L2)
+!      do it=1,Iindex
+!        do P=1,Pindex
+!          N = blocksizes(P,it)
+!          RhoHFB(1:N,1:N,P,it)  = ConstructRho(  GradV(1:N,1:N,P,it),          &
+!          &                                      sigblocks(P,it))
+!          KappaHFB(1:N,1:N,P,it)= ConstructKappa(GradU(1:N,1:N,P,it),          &
+!          &                                      GradV(1:N,1:N,P,it),          &
+!          &                                      sigblocks(P,it))
+!        enddo
+!      enddo
       !-------------------------------------------------------------------------
       ! Calculate the gradients H20, N20 and LN20
       do it=1,Iindex
@@ -364,7 +610,7 @@ contains
 
         n20norm(it) = 0.0d0
         do P=1,Pindex
-            N = blocksizes(P,it)
+            N = Effblocks(P,it)
             ! Save the old gradient
             Oldgrad(1:N,1:N,p,it)  = Gradient(1:N,1:N,P,it)
 
@@ -372,10 +618,10 @@ contains
             &                            GradV(1:N,1:N,P,it),                  &
             &                            hblock(1:N,1:N,P,it),                 &
             &                            Dblock(1:N,1:N,P,it),                 &
-            &                            sigblocks(P,it))
-
+            &                            effsig(P,it))
+        
             aN20(1:N,1:N,P,it) = N20(GradU(1:N,1:N,P,it),GradV(1:N,1:N,P,it),  &
-            &                                           sigblocks(P,it))
+            &                                                      effsig(P,it))
             do j=1,N
               do i=1,N
                 N20norm(it) = N20norm(it) + aN20(i,j,P,it) * aN20(i,j,P,it)
@@ -395,13 +641,17 @@ contains
       do it=1,Iindex
           par(it) = 0.0
           do P=1,Pindex
-            N = blocksizes(P,it)
+            N = effblocks(P,it)
             do i=1,N
               do j=1,N
                 par(it) = par(it) + GradV(i,j,P,it) * GradV(i,j,P,it)
               enddo
             enddo
+
           enddo
+          ! Take into account how many occupied-non-paired levels there are
+          par(it) = par(it) + occupiedlevels(it)
+          
           ! This is why we don't include the Fermi contribution directly in the
           ! HFBHamiltonian. In this way, we get more control over the conjugate
           ! descent in the Fermi direction and (hopefully) faster convergence.
@@ -424,9 +674,15 @@ contains
       do it=1,Iindex
           if(converged(it)) cycle
           do P=1,Pindex
-              N = blocksizes(P,it)
+              N =  effblocks(P,it)
               Gradient(1:N,1:N,P,it) = Gradient(1:N,1:N,P,it)                  &
               &                                 - Fermi(it) * aN20(1:N,1:N,P,it)
+              
+!              print *, 'Gradient ', P, it
+!              do i=1,N
+!                print ('(100f7.3)') ,Gradient(i, 1:N,P,it)
+!              enddo
+!              print *
               ! Calculate the norm of the new gradient to
               ! 1) check for convergence and
               ! 2) calculate the conjugate direction
@@ -443,7 +699,6 @@ contains
                 enddo
               enddo
           enddo
-
           !---------------------------------------------------------------------
           ! Check if this isospin is converged or not. We check on
           ! 1) the gradient is small enough
@@ -460,12 +715,13 @@ contains
            endif
          endif
       enddo
+!      stop
       !-------------------------------------------------------------------------
       ! Construct the conjugate direction and update the U and V matrices.
       do it=1,Iindex
           if(converged(it)) cycle
           do P=1,Pindex
-              N = blocksizes(P,it)
+              N =  effblocks(P,it)
               Direction(1:N,1:N,P,it) = Gradient(1:N,1:N,P,it)
               if(oldnorm(P,it).ne.0.0d0) then
                 !---------------------------------------------------------------
@@ -501,6 +757,12 @@ contains
               oldgradU(1:N,1:N,P,it) = GradU(1:N,1:N,P,it)
               oldgradV(1:N,1:N,P,it) = GradV(1:N,1:N,P,it)
 
+!              print *, 'V ', P, it
+!              do i=1,N
+!                print ('(100f7.3)') ,GradV(i, 1:N,P,it)
+!              enddo
+!              print *
+
               !-----------------------------------------------------------------
               ! Line search for a good step.
               ! In practice, this does nothing but slow the process in my
@@ -509,7 +771,7 @@ contains
               &               Gradient(1:N,1:N,P,it), Direction(1:N,1:N,P,it), &
               &               step,   gradU(1:N,1:N,P,it), gradV(1:N,1:N,P,it),&
               &             hblock(1:N,1:N,P,it),Dblock(1:N,1:N,P,it),Fermi(it)&
-              &            ,Sigblocks(P,it))
+              &            ,effsig(P,it))
 
               OldDir(1:N,1:N,P,it)  = Direction(1:N,1:N,P,it)
               oldnorm(P,it)         = gradientnorm(P,it)
@@ -526,8 +788,32 @@ contains
       endif
       if(all(converged)) exit
    enddo
+   
+   ! Reorganize the gradU and gradV matrices
+!   if(HFBreduce) then
+!     do it=1,Iindex
+!        do P=1,Pindex
+!            N = blocksizes(P,it)
+!            s = Effblocks(P,it)
+!            call Switch(hblock(1:N,1:N,P,it),N,indices(1:s,P,it),indices(1:s,P,it),s,.true.)
+!            call Switch(dblock(1:N,1:N,P,it),N,indices(1:s,P,it),indices(1:s,P,it),s,.true.)
+!            call Switch(GradU(1:N,1:N,P,it), N,indices(1:s,P,it),canindices(1:s,P,it),s,.true.)
+!            call Switch(GradV(1:N,1:N,P,it), N,indices(1:s,P,it),canindices(1:s,P,it),s,.true.)
+!        enddo
+!     enddo        
+!   endif
+
+   P = 1
+   it = 1
+   N = blocksizes(P,it)
+!   print *,'**************************************'
+!   do i=1,N
+!    print ('(100f7.3)') , gradV(i,1:N,P,it)
+!   enddo
+!   print *,'**************************************'
    ! Make the HFB module happy again and hand control back.
    call OutHFBModule
+   !call CheckUandVColumns(HFBColumns)
    call CalcQPEnergies(GradU,gradV,Fermi,L2,Delta)
  end subroutine HFBFermiGradient
 
@@ -709,7 +995,6 @@ contains
 
     !Don't forget to orthonormalise
     call ortho(U2,V2,S)
-
   end subroutine GradUpdate_sig
 
 function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
@@ -983,6 +1268,7 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
             V(1:N/2,i)   = V(1:N/2,i)   - Overlap * V(1:N/2,j)
         enddo
       enddo
+      
   end subroutine ortho_sig
 
   subroutine CalcQPEnergies(Ulim,Vlim,Fermi,L2,Delta)

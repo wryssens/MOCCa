@@ -155,7 +155,7 @@ contains
      &                  SemiBCS, SemiBCSNeutron, SemiBCSProton,                &
      &                  QPinHFBasis, SolvePairingStart,QPPrintWindow, Block,   &
      &                  FermiSolver, HFBIter,HFBgauge,HFConfig, LNFixN, LNFixP,&
-     &                  DN2P, DN2N, ConstrainDispersion, HFBlock
+     &                  DN2P, DN2N, ConstrainDispersion, HFBlock, HFBreduce
 
      read(unit=*, NML=Pairing)
 
@@ -407,7 +407,8 @@ contains
         HFBNumberParity=1
         !-----------------------------------------------------------------------
         !Reset the canonical wavefunctions
-        allocate(CanBasis(nwt))
+        allocate(CanBasis(nwt)) ; allocate(CanDeriv(nwt))
+        CanDeriv = 0
         do i=1,nwt
             call CanBasis(i)%Resetwf()
         enddo

@@ -474,6 +474,26 @@ contains
     endif
   end function ActionOfSignature
   
+  function ActionOfXSimplex(Phi) result(Psi)
+    !---------------------------------------------------------------------------
+    ! S_x Phi = -i  Phi(-x,+y,+z, -sigma)
+    !---------------------------------------------------------------------------
+    class(Spinor), intent(in) :: Phi  
+    type(Spinor)              :: Psi
+    integer                   :: i,j
+    
+    Psi = NewSpinor()
+    
+    do i=1,nx
+        Psi%Grid(i,:,:,1,:) = Phi%Grid(nx-i+1,:,:,3,:)
+        Psi%Grid(i,:,:,2,:) = Phi%Grid(nx-i+1,:,:,4,:)
+        Psi%Grid(i,:,:,3,:) = Phi%Grid(nx-i+1,:,:,1,:)
+        Psi%Grid(i,:,:,4,:) = Phi%Grid(nx-i+1,:,:,2,:)
+    enddo
+    Psi = - MultiplyI(Psi)        
+   
+  end function ActionOfXSimplex
+  
   function ActionOfTimeSimplex(Phi) result(Psi)
     !-------------------------------------------------------------------------
     ! This function computes the action of the Time Simplex operator on Phi.

@@ -82,6 +82,7 @@ module WaveFunctions
     ! symmetry operators.
     !---------------------------------------------------------------------------
     real(KIND=dp) :: IsospinR, TimeSimplexR, ParityR, SignatureR, TimeReversalR
+    real(KIND=dp) :: xsimplexR
     !---------------------------------------------------------------------------
     !sqrt(< R^2 >) for every wavefunction, very useful in debugging.
     !---------------------------------------------------------------------------
@@ -1307,12 +1308,12 @@ contains
   ! HFB calculations
   !           n      <P>    RhoII  Delta PairPartner E_spd2H <Jx/y/z> ,J,<r^2>
   3  format ( i3,1x,f5.2,1x,f7.4,1x,f7.2,1x, i3, 1x,f8.3,1x,e9.2,5(f7.2))
-  !           n      <P>     <S>    RhoII   Delta , PairPartner E_sp  d2H
-  31 format ( i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x,f8.3,1x,e9.2,        &
+  !           n      <P>     <Rz>    <Sx>   RhoII   Delta , PairPartner E_sp d2H
+  31 format ( i3,1x,f5.2,1x,f5.2,1x,f5.2,1x f7.4,1x,f7.2,1x,i3,1x,f8.3,1x,e9.2,&
   &           5(f7.2))
   !           <Jx/y/z>,J, <r^2>
-  !           n      <P>     <S>    RhoII   Delta , PairPartner E_sp  d2H
-  32 format ( i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x,f8.3,1x,e9.2,        &
+  !           n      <P>     <Rz>   <Sx>   RhoII   Delta , PairPartner E_sp  d2H
+  32 format ( i3,1x,f5.2,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x,f8.3,1x,e9.2,&
   &           5(f7.2))
   !           <Jx/y/z>J, <r^2>
   class(Spwf), intent(in) :: WF
@@ -1366,7 +1367,8 @@ contains
             &          WF%Energy,WF%Dispersion,WF%AngMoment(1:3),                &
             &          WF%AngQuantum,WF%RMSRadius
         else
-            print 31,i,WF%ParityR,WF%SignatureR,PrintOcc,Real(WF%Delta),         &
+            print 31,i,WF%ParityR,WF%SignatureR,WF%xsimplexR, PrintOcc,          &
+            &          Real(WF%Delta),                                           &
             &          WF%PairPartner,WF%Energy,WF%Dispersion,WF%AngMoment(1:3), &
             &          WF%AngQuantum, WF%RMSRadius
         endif
@@ -1396,8 +1398,8 @@ contains
   ! HFB calculations
   !           n      <P>    v^2      E_sp   <Jx/y/z> ,J,<r^2>
   3  format ( i3,1x,f5.2,1x,f7.4,1x,f8.3,5(f7.2))
-  !           n    <P>  <S>   v^2      E_sp   <Jx/y/z> J <r^2>
-  31 format ( i3, 2(1x,f5.2) ,1x,f7.4,1x,f8.3,5(f7.2))
+  !           n  <P>  <Rz> <Sx>   v^2      E_sp   <Jx/y/z> J <r^2>
+  31 format ( i3, 3(1x,f5.2) ,1x,f7.4,1x,f8.3,5(f7.2))
 
   real(KIND =dp)          :: PrintOcc
 
@@ -1411,8 +1413,8 @@ contains
         print 3, i , WF%ParityR, PrintOcc, WF%Energy, WF%AngMoment(1:3),  &
         &            WF%AngQuantum, WF%RMSRadius
     else
-        print 31, i , WF%ParityR, WF%SignatureR, PrintOcc, WF%Energy,     &
-        &             WF%AngMoment(1:3), WF%AngQuantum, WF%RMSRadius
+        print 31, i , WF%ParityR, WF%SignatureR,WF%xsimplexR, PrintOcc,   &
+        &             WF%Energy,WF%AngMoment(1:3), WF%AngQuantum, WF%RMSRadius
     endif
   case DEFAULT
     call stp('Undefined printtype in PrintCanonical.')
@@ -1851,6 +1853,13 @@ contains
     else
       Temp = ActionOfTimeSimplex(wf%value)
       wf%TimeSimplexR = InproductSpinorReal(wf%value, Temp)
+    endif
+
+    ! Expectation of xsimplex
+    if(wf%signature.eq.0 .and. wf%parity.eq.0) then
+        wf%xsimplexr = InproductSpinorReal(wf%value, ActionofXsimplex(wf%value))
+    else
+        wf%xsimplexr = 0
     endif
 
     !Calculate the RMS radius

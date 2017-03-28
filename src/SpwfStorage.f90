@@ -558,9 +558,9 @@ contains
     &          'Var(h)',3x,'<Jx|T>',1x, '<Jy|T>', 2x, '<Jz>',5x,'J',3x,'<r^2>')
     31 format (6x,'n',3x,'<P>',2x,'<Rz>',2x,'Rhoii',2x,'Delta',5x,'m',4x,'E_sp'&
     &         ,4x,'Var(h)',3x,'<Jx|T>',1x,'<Jy|T>',2x,'<Jz>',5x,'J',3x,'<r^2>')
-    32 format (5x, ' n ' ,1x, ' <P> ',1x, '<Rz> ', 1x, ' Rhoii ',1x, ' Delta ',&
-    &             1x, ' m ', 1x, '  E_sp  ', 1x, ' Var(h) ', 1x, ' <Jx> ', 1x ,&
-    &            '   J  ', 1x, ' <Jz> ', 1x ,' <r^2> ')
+    32 format (5x, ' n ' ,1x, ' <P> ',1x, '<Rz> ', '<Sx> ', 1x, ' Rhoii ',1x,  &
+    &              ' Delta ',1x, ' m ', 1x, '  E_sp  ', 1x, ' Var(h) ', 1x,    &
+    &              ' <Jx> ', 1x ,'   J  ', 1x, ' <Jz> ', 1x ,' <r^2> ')
 
     ! Headers for Canonical basis
     !---------------------------------------------------------------------------
@@ -578,7 +578,7 @@ contains
     select case(PairingType)
 
     case(0)
-       if(TSC .and. SC) then
+       if(TSC .and. SC.and.TRC) then
         write(HFheader, fmt=1)
        elseif(TSC) then
         write(HFHeader, fmt=11)

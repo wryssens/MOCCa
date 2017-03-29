@@ -38,14 +38,13 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         xlabel =r'$\beta_{20}$ '
         xfname =PREFIX + '.t.qlm.tab'
         xcolumn=2
-
         if(PC != 1) :
             xcolumn = 4
         if(SC != 1) :
             xcolumn = 4
-        if( SC !=1 and PC != 1):
+        if(SC !=1 and PC != 1):
             xcolumn = 6
-
+        print xcolumn, PC
     elif(XARG=='B30') :
         if(PC == 1) :
             print "Can't plot Q30 when parity is conserved."
@@ -151,6 +150,11 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         yfname =PREFIX + '.e.tab'
         ycolumn= 11
         derivY = 0
+    elif(YARG=='OmX') :
+        ylabel =r'$\omega_{x}$ (MeV $\hbar^{-1}$) '
+        yfname =PREFIX + '.e.tab'
+        ycolumn=10
+        derivY = 0
     elif(YARG=='I2Z') :
         # Dynamical moment of inertia. 
         ylabel =r'$\mathcal{I}^{(2)}$ ($\hbar^2$ MeV$^{-1}$)'
@@ -177,9 +181,8 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         if( PC!= 1):
             ycolumn = 4
         derivY=0
-        
         fac = np.sqrt(5/( 16 * np.pi))
-        
+
     elif(YARG=='B22') :
         yfname =PREFIX + '.t.qlm.tab'
         ycolumn=4
@@ -287,7 +290,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         if(XMIN != None):
             indices = []
             for j in range(len(xdata)):
-                if(tempx[j] < XMIN):
+                if(xdata[j] < XMIN):
                     indices.append(j)
             xdata= np.delete(xdata,indices)
             ydata = np.delete(ydata,indices)
@@ -310,7 +313,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
             ydata = abs(ydata)
         
         ydata = fac * ydata
-    
+        
     # Sort along X-data for surety
     xdata, ydata = zip(*sorted(zip(xdata, ydata)))
 
@@ -323,6 +326,15 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
             deriv[i] = ( ydata[i+1] - ydata[i])/(xdata[i+1] - xdata[i])
         ydata = deriv
         xdata = xdata[0:-1]
+        
+#        for i in range(2, len(ydata)-2):
+#            if (abs(ydata[i] - (ydata[i-2] + ydata[i+2])/2) > 10):
+#                ydata[i] = (ydata[i-1] + ydata[i+1])/2
+#                print 'smoothed', i
+#        for i in range(2, len(ydata)-2):
+#            if (abs(ydata[i] - (ydata[i-2] + ydata[i+2])/2) > 10):
+#                ydata[i] = (ydata[i-2] + ydata[i+2])/2
+#                print 'smoothed', i        
 
     if(INTERPOLATE > 0):
         f     = interp1d(xdata, ydata,kind='cubic')

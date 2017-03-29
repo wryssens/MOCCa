@@ -28,7 +28,7 @@ def Inter(datafile, points, SYM=1, execloc='$HOME/Documents/Codes/inter/SplineIn
        os.system('rm inter.exe')
        return (data, X,Y,Z)
        
-def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1, LABEL=''):
+def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1, LABEL='', CMAP=plt.cm.jet_r):
     
     #Default to current axis
     if AXIS is None:
@@ -46,9 +46,9 @@ def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1, LA
     print xmin, ymin, coordmin
     #Plot on the axis
     if(len(LEVELS)>0):
-        contour = AXIS.contourf(X,Y,Z - np.min(Z), levels=LEVELS)
+        contour = AXIS.contourf(X,Y,Z - np.min(Z), levels=LEVELS, cmap=CMAP)
     else:
-        contour = AXIS.contourf(X,Y,Z - np.min(Z))
+        contour = AXIS.contourf(X,Y,Z - np.min(Z), cmap=CMAP)
         
     AXIS.plot(xmin,ymin,'kd')    
     AXIS.set_xlim(min(data[:,0]),max(data[:,0]))

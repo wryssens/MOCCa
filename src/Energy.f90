@@ -33,7 +33,7 @@ module Energy
   real(KIND=dp),public :: LNEnergy(2), Routhian, OldRouthian(7)
 
   ! Two different ways of calculating and treating Skyrme terms
-  real(KIND=dp) :: Skyrmeterms(32),BTerm(21), N2LOterms(32)
+  real(KIND=dp) :: Skyrmeterms(32),BTerm(21), N2LOterms(32), N3LOterms(2)
 
   ! Signal to the Nesterov iteration whether or not the energy decreased
   integer       :: NesterovSignal=0
@@ -105,6 +105,9 @@ contains
 
     ! Calculate the N2LO terms
     N2LOterms = N2LO(Density)
+
+    ! Calculate the N3LO term
+    N3LOterms = N3LO(Density)
 
     !Pairing Energy
     PairingEnergy = CompPairingEnergy(Delta)
@@ -323,6 +326,33 @@ contains
     ! Multiply everyting by dv
     terms = terms * dv 
   end function N2LO
+  
+  function N3LO(Den) result(terms)
+    
+    integer                         :: it
+    real(KIND=dp)                   :: terms(2)
+    type(DensityVector), intent(in) :: Den
+    
+    real(KIND=dp)                   :: laplaplaprho(nx,ny,nz,2)
+    
+    if(t1n3.eq.0.0_dp .and. t2n3.eq.0.0_dp) return
+    !---------------------------------------------------------------------------
+    ! Calculate the Delta Delta Delta of rho here, as a placeholder
+    do it=1,2
+        laplaplaprho(:,:,:,it) = laplacian(Den%Laplaprho(:,:,:,it),            &
+        &                               ParityInt,SignatureInt,Timesimplexint,1)
+    enddo
+    
+    terms = 0.0_dp
+    !---------------------------------------------------------------------------
+    ! rho Delta Delta Delta rho                                        Time-even
+    terms(1) = sum(sum(Den%rho,4) * sum(laplaplaprho,4))             *N3D3rho(1)
+    do it=1,2
+      terms(2)=terms(2)+sum(Den%rho(:,:,:,it)*laplaplaprho(:,:,:,it))*N3D3rho(2)
+    enddo
+    terms = terms*dv    
+    
+  end function
 
   function compSkyrmeTerms(Den) result(B)
     !---------------------------------------------------------------------------
@@ -884,6 +914,9 @@ contains
      45 format (2x,' T_mn Ds_t   =', f12.5, 5x ,' T_mn Ds_q   = ', f12.5, ' t', f12.5)
      46 format (2x,' Im T_mn^2_t =', f12.5, 5x ,' Im T_mn^2_q = ', f12.5, ' t', f12.5)
     
+    500 format ('N3LO terms')
+     51 format (2x,' rhoDDDrho_t =', f12.5, 5x ,' rhoDDDrho_q  = ', f12.5, ' t', f12.5)
+     
     301 format (2x,' M^(Drho)    =', f12.5) 
     302 format (2x,' M^even(rho) =', f12.5) 
     303 format (2x,' M^even( s ) =', f12.5) 
@@ -976,6 +1009,12 @@ contains
         print 304, sum(N2LOterms(17:18))
         print 305, sum(N2LOterms(19:22))
         print 306, sum(N2LOterms(23:32))
+        print *
+    endif
+    
+    if(any(N3LOterms.ne.0)) then
+        print 500
+        print 51, N3LOterms(1:2), sum(N3LOterms(1:2))
         print *
     endif
     

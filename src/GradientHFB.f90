@@ -141,7 +141,7 @@ contains
       endif
     endif
 
-    if(allocated(qpexcitations)) then
+    if(allocated(qpexcitations) .and. BlockConsistent) then
       call BlockQuasiParticles
     endif
 
@@ -215,7 +215,7 @@ contains
         gradV = Vcopy
       endif
  
-      do it=1,Iindex
+        do it=1,Iindex
           do P=1,Pindex
               N = blocksizes(P,it)
               S = sigblocks(P,it)
@@ -240,26 +240,26 @@ contains
                       V(i,N-j+1,P,it) = GradU(i,j+S,P,it)
                   enddo
               enddo
-              RhoHFB(1:N,1:N,P,it)   = ConstructRho(GradV(1:N,1:N,P,it),       &
-              &                                     sigblocks(P,it))
-
-              KappaHFB(1:N,1:N,P,it) = ConstructKappa(GradU(1:N,1:N,P,it),     &
-              &                                       GradV(1:N,1:N,P,it),     &
-              &                                       sigblocks(P,it))
           enddo
-      enddo
-!      
-!      print *, 'RHOHFB'
-!      do it=1,2
-!        do P=1,2
-!            N = blocksizes(P,it)
-!            do i=1,N
-!                print ('(100f7.2)'), RhoHFB(i,1:N,P,it)
-!            enddo
-!            print *
-!        enddo
-!      enddo 
-!      stop
+        enddo
+
+        if(allocated(qpexcitations) .and. (.not.BlockConsistent)) then
+            ! Don't consistently block qps
+            call BlockQuasiParticles
+            call constructRhoHFB(HFBColumns)            
+        else
+        
+            do it=1,Iindex
+                do P=1,Pindex
+                  RhoHFB(1:N,1:N,P,it)   = ConstructRho(GradV(1:N,1:N,P,it),       &
+                  &                                     sigblocks(P,it))
+
+                  KappaHFB(1:N,1:N,P,it) = ConstructKappa(GradU(1:N,1:N,P,it),     &
+                  &                                       GradV(1:N,1:N,P,it),     &
+                  &                                       sigblocks(P,it))
+                enddo
+            enddo
+        endif
   end subroutine OutHFBModule
 
   subroutine BlockHFBHamil(Delta, Fermi, L2)
@@ -506,7 +506,7 @@ contains
 
     !---------------------------------------------------------------------------
     real(KIND=dp) :: gamma(2,2), maxstep, step, L20Norm(2), LN(2), Disp(2)
-    real(KIND=dp) :: N20norm(2), par(2), slope,  OldFermi(2)
+    real(KIND=dp) :: N20norm(2), par(2), slope,  OldFermi(2), corr(2)
     real(KIND=dp) :: gradientnorm(2,2), oldnorm(2,2), PR(2,2), z(2)=0.0
     integer       :: i,j,P,it,N, Rzindex,iter, inneriter, first=1, succes(2), s
     logical       :: converged(2)
@@ -566,33 +566,12 @@ contains
     ! Reduce the dimension of the problem, by checking the pairing window and 
     ! rearranging all of the relevant matrices.
     call reducedimension()
-    
-    print *, '*******'
-    print *, 'EFFSIG=   ', effsig
-    print *, 'EFFBLOCKS=', effblocks
-    print *
-    
-!    P=1
-!    it=1
-!    N = effblocks(P,it)
 !    
-!    print * , 'HBLOCk'
-!    do i=1,N
-!         print ('(100f7.3)') ,hblock(i,1:N,P,it)  
-!    enddo
-!    print * , 'dBLOCk'
-!    do i=1,N
-!         print ('(100f7.3)') ,dblock(i,1:N,P,it)  
-!    enddo
-!    print * , 'U'
-!    do i=1,N
-!         print ('(100f7.3)') ,gradu(i,1:N,P,it)  
-!    enddo
-!    print * , 'V'
-!    do i=1,N
-!         print ('(100f8.4)') ,gradV(i,1:N,P,it)  
-!    enddo
-    !stop
+!    print *, '*******'
+!    print *, 'EFFSIG=   ', effsig
+!    print *, 'EFFBLOCKS=', effblocks
+!    print *
+
     !---------------------------------------------------------------------------
     ! Start of the iterative solver
     do iter=1,HFBiter
@@ -631,6 +610,7 @@ contains
       ! Readjust Fermi and L2
       succes = 0
       if(any(succes.ne.0)) call stp("lncr8 failed")
+      corr = block_gradient()
       do it=1,Iindex
           par(it) = 0.0
           do P=1,Pindex
@@ -644,6 +624,8 @@ contains
           enddo
           ! Take into account how many occupied-non-paired levels there are
           par(it) = par(it) + occupiedlevels(it)
+          ! Correct for the blocking of levels
+          par(it) = par(it) + corr(it)
           
           ! This is why we don't include the Fermi contribution directly in the
           ! HFBHamiltonian. In this way, we get more control over the conjugate
@@ -781,29 +763,11 @@ contains
       endif
       if(all(converged)) exit
    enddo
-   
-   ! Reorganize the gradU and gradV matrices
-!   if(HFBreduce) then
-!     do it=1,Iindex
-!        do P=1,Pindex
-!            N = blocksizes(P,it)
-!            s = Effblocks(P,it)
-!            call Switch(hblock(1:N,1:N,P,it),N,indices(1:s,P,it),indices(1:s,P,it),s,.true.)
-!            call Switch(dblock(1:N,1:N,P,it),N,indices(1:s,P,it),indices(1:s,P,it),s,.true.)
-!            call Switch(GradU(1:N,1:N,P,it), N,indices(1:s,P,it),canindices(1:s,P,it),s,.true.)
-!            call Switch(GradV(1:N,1:N,P,it), N,indices(1:s,P,it),canindices(1:s,P,it),s,.true.)
-!        enddo
-!     enddo        
-!   endif
 
    P = 1
    it = 1
    N = blocksizes(P,it)
-!   print *,'**************************************'
-!   do i=1,N
-!    print ('(100f7.3)') , gradV(i,1:N,P,it)
-!   enddo
-!   print *,'**************************************'
+
    ! Make the HFB module happy again and hand control back.
    call OutHFBModule
    !call CheckUandVColumns(HFBColumns)
@@ -1263,6 +1227,52 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
       enddo
       
   end subroutine ortho_sig
+  
+  function block_gradient() result(Correction)
+    !---------------------------------------------------------------------------
+    ! Subroutine to determine which column in V is the one that will end up  
+    ! blocked, in order to correctly determine the particle number.
+    !---------------------------------------------------------------------------
+    
+    integer       :: N, j, i, C, loc(1), index, it, P
+    real(KIND=dp) :: tempU2, overlap
+    real(KIND=dp) :: Correction(2)
+    
+    N = size(QPExcitations)
+    
+    Correction = 0.0_dp
+
+    if(.not.allocated(QPBlockind)) call QPindices()
+    do i=1,N
+        index = QPblockind(i)
+        P     = QPParities(i)
+        it    = QPIsospins(i)
+        
+        !----------------------------------------------------------------------
+        ! Identify the quasiparticle excitation
+        loc = 0
+        TempU2 = 0.0_dp ; Overlap = 0.0_dp
+
+        !----------------------------------------------------------------------
+        ! Search among the U and V matrices for the highest overlap
+        do j=1,blocksizes(P,it)
+            TempU2 = DBLE(gradU(index,j,P,it)**2)
+            if( TempU2 .gt. Overlap) then
+                loc     = j
+                Overlap = TempU2
+            endif
+        enddo
+        !----------------------------------------------------------------------
+        ! When found, calculate the change in particle number due to this 
+        ! blocking.
+        C   = loc(1)
+        do j=1,blocksizes(P,it)
+            correction(it) = correction(it) - gradV(j,C,P,it)*gradV(j,C,P,it)  &
+            &                               + gradU(j,C,P,it)*gradU(j,C,P,it)
+        enddo
+        
+    enddo
+  end function block_gradient
 
   subroutine CalcQPEnergies(Ulim,Vlim,Fermi,L2,Delta)
     !---------------------------------------------------------------------------

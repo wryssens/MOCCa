@@ -3919,5 +3919,101 @@ subroutine writeN2LOdensities(Den)
    
 end subroutine writeN2LOdensities
 
+
+subroutine writeN3LOdensities(Den)
+
+    use densities
+    use mesh
+
+    implicit none
+
+    type(DensityVector), intent(in) :: Den
+    integer :: i,mu,nu,ka,it
+    character(len=20) :: fname=''
+    character(len=2)  :: temp=''
     
+    real(KIND=dp) :: laplaplaprho(nx,ny,nz,2), derlaprho(nx,ny,nz,2)
+    real(KIND=dp) :: derlaplaprho(nx,ny,nz,2)
+    !---------------------------------------------------------------------------
+    ! Calculate the Delta Delta Delta of rho here, as a placeholder
+    do it=1,2
+        laplaplaprho(:,:,:,it) = laplacian(Den%Laplaprho(:,:,:,it),            &
+        &                               ParityInt,SignatureInt,Timesimplexint,1)
+        
+        derlaprho(:,:,:,it) = DeriveX(Den%Laprho(:,:,:,it),                    &
+        &                              ParityInt,SignatureInt,Timesimplexint,1)
+        derlaplaprho(:,:,:,it) = DeriveX(Den%lapLaprho(:,:,:,it),              &
+        &                              ParityInt,SignatureInt,Timesimplexint,1)
+    enddo
+    
+    fname='Drho_n'
+    fname= adjustl(trim(fname)//'.dat')
+    open(unit=12, file=fname)
+    do i=1,nx
+        write(12, '(10f12.5)'), sqrt(MeshX(i)**2+MeshY(1)**2+MeshZ(1)**2), &
+        &                     Den%rho(i,1,1,1),              & 
+        &                     Den%Derrho(i,1,1,1,1),&
+        &                     Den%Laprho(i,1,1,1),&
+        &                     derlaprho(i,1,1,1),&
+        &                     den%laprho(i,1,1,1),&
+        &                     derlaplaprho(i,1,1,1),&
+        &                     laplaplaprho(i,i,i,1)  
+    enddo
+    close(12)
+    fname='Drho_p'
+    fname= adjustl(trim(fname)//'.dat')
+    open(unit=12, file=fname)
+    do i=1,nx
+        write(12, '(10f12.5)'), sqrt(MeshX(i)**2+MeshY(1)**2+MeshZ(1)**2), &
+        &                     Den%rho(i,1,1,2), &
+        &                     Den%Derrho(i,1,1,1,2), &
+        &                     Den%Laprho(i,1,1,2), &
+        &                     derlaprho(i,1,1,2), &
+        &                     den%laprho(i,1,1,2), &
+        &                     derlaplaprho(i,1,1,2), &
+        &                     laplaplaprho(i,i,i,2)  
+    enddo
+    close(12)
+    
+!    fname='D3rho'
+!    fname= adjustl(trim(fname)//'.dat')
+!    open(unit=12, file=fname)
+!    do i=1,nx
+!        write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+!        &                     laplaplaprho(i,i,i,1),laplaplaprho(i,i,i,1),&
+!        &                     laplaplaprho(i,i,i,2),laplaplaprho(i,i,i,2)    
+!    enddo
+!    close(12)
+!    
+!    fname='D2rho'
+!    fname= adjustl(trim(fname)//'.dat')
+!    open(unit=12, file=fname)
+!    do i=1,nx
+!        write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+!        &                     Den%laplaprho(i,i,i,1),Den%laplaprho(i,i,i,1),&
+!        &                     Den%laplaprho(i,i,i,2),Den%laplaprho(i,i,i,2)    
+!    enddo
+!    close(12)
+!    
+!    fname='D1rho'
+!    fname= adjustl(trim(fname)//'.dat')
+!    open(unit=12, file=fname)
+!    do i=1,nx
+!        write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+!        &                     Den%laprho(i,i,i,1),Den%laprho(i,i,i,1),&
+!        &                     Den%laprho(i,i,i,2),Den%laprho(i,i,i,2)    
+!    enddo
+!    close(12)
+!    
+!    fname='D0rho'
+!    fname= adjustl(trim(fname)//'.dat')
+!    open(unit=12, file=fname)
+!    do i=1,nx
+!        write(12, '(5f12.5)'), sqrt(MeshX(i)**2+MeshY(i)**2+MeshZ(i)**2), &
+!        &                     Den%rho(i,i,i,1),Den%rho(i,i,i,1),&
+!        &                     Den%rho(i,i,i,2),Den%rho(i,i,i,2)    
+!    enddo
+!    close(12)
+    
+end subroutine writeN3LODEnsities
  end module Testing

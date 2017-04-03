@@ -29,9 +29,11 @@ module Force
     !-----------------------------------------------------------------------------
     !Skyrme Force parameters
     real(KIND=dp) :: t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,te,to
+    real(KIND=dp) :: wso,wsoq
     ! N2LO parameters
     real(KIND=dp) :: t1n2,t2n2, x1n2, x2n2     
-    real(KIND=dp) :: wso,wsoq
+    ! N3LO parameters
+    real(KIND=dp) :: t1n3, t2n3, x1n3, x2n3
     !Functional parameters in the BFH representation
     real(KIND=dp), public :: B1,B2,B3,B4,B5,B6,B7a,B7b,B8a,B8b,Byt3a,Byt3b,B9,B9q
     real(KIND=dp), public :: B10,B11,B12a,B12b,B13a,B13b,B14
@@ -67,6 +69,11 @@ module Force
     real(KIND=dp) :: N2JV(2), N2sS(2), N2vecT(2), N2ReTmn(2), N2ImTmn(2)
     !                Tmn DmDns
     real(KIND=dp) :: N2TmnD2s(2) 
+    !---------------------------------------------------------------------------
+    ! Coupling constants that are in principle calculated from the BN3LO, but 
+    ! allow for independently determining the contribution of all the terms.
+    !               rho Delta Delta Delta rho
+    real(KIND=dp) :: N3D3rho(2), C3D3rho(2)
     !.....................................................
     !   Physical constants. They are set with an interaction, but have default
     !   values.
@@ -153,9 +160,10 @@ contains
 
     NameList /skf/ Name,t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,te,to, &
     &                    wso,wsoq, t1n2,t2n2,x1n2,x2n2,                    &
+    &                    t1n3, t2n3, x1n3, x2n3,                           &
     &                    hbm,e2,                                           &
     &                    COM1body, COM2body,                               &
-    &                    J2Terms   ,                                       &
+    &                    J2Terms,                                          &
     &                    averagemass, hbar, nucleonmass
 
     inquire(file='forces.param', exist=exists)
@@ -196,6 +204,7 @@ contains
             te=0.0_dp;      to=0.0_dp
             wso=0.0_dp;     wsoq=0.0_dp
             t1n2 = 0 ;      t2n2 = 0 ; x1n2 = 0 ; x2n2 = 0 ;
+            t1n3 = 0 ;      t2n3 = 0 ; x1n3 = 0 ; x2n3 = 0 ;
             b14=0.0_dp;     b15=0.0_dp;     b16=0.0_dp;      b17=0.0_dp
             COM1body=0;     COM2body=0
             J2Terms=.false. 
@@ -282,6 +291,11 @@ contains
     &' ImTmnk^2_t', f13.6, ' ImTmnk^2_q', f13.6                        , /, &  
     &' Tmnk D2s_t', f13.6, ' Tmnk D2s_q', f13.6, /)  
     
+    11111   format(' N3LO coefficients (BFH representation)', / &
+    &' C^(DDDrho)_n =',f13.6, ' C^(DDDrho)_p =',f13.6)
+    11112   format(' N3LO coefficients (BFH representation)', / &
+    &' B^(DDDrho)_n =',f13.6, ' B^(DDDrho)_p =',f13.6)
+    
     112  format ('EDF Coefficients (Isospin representation)')
     113  format (&
     &   ' C^rho_0[_0_] =',f13.6,' C^rho_1[_0_] =',f13.6,/, &
@@ -348,6 +362,10 @@ contains
         &           N2itaumn, N2tddr, N2Dvecj, N2jpi, N2DJ,       &
         &           N2JV, N2sS, N2vecT, N2ReTmn, N2ImTmn,       &
         &           N2TmnD2s 
+    endif
+    if(t1n3 .ne.0) then
+        print 11111, C3D3rho(:)
+        print 11112, N3D3rho(:)
     endif
     print 112
     print 113, Crho,Crhosat, Cs, Cssat, Ctau, Cdrho, CnablaJ, Ct, Cf, Cds,     &
@@ -530,6 +548,16 @@ contains
         N2ReTmn(1) = BN2LO(7) ; N2reTmn(2) = BN2LO(8)
         N2ImTmn(1) = BN2LO(7) ; N2ImTmn(2) = BN2LO(8)
         N2TmnD2s(1)= BN2LO(7) ; N2TmnD2s(2)= BN2LO(8)
+    endif
+    
+    !---------------------------------------------------------------------------
+    ! N3LO terms
+    if(t1n3.ne.0.0_dp .or. t2n3.ne.0.0_dp) then
+        C3D3rho(1) = 1/256d0 * ( -27 * t1n3                 + t2n3 * ( 5 + 4*x2n3))
+        C3D3rho(2) = 1/256d0 * (   9 * t1n3 * ( 1 + 2*x1n3) + t2n3 * ( 1 + 2*x2n3)) 
+        
+        N3D3rho(1) = C3D3rho(1) - C3D3rho(2)
+        N3D3rho(2) =            2*C3D3rho(2)
     endif
 
     return

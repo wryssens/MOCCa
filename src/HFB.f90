@@ -125,6 +125,10 @@ module HFB
   integer,allocatable :: QPSignatures(:)
   integer,allocatable :: QPblockind(:)
   !-----------------------------------------------------------------------------
+  ! When using the gradient solver, block before doing the gradient procedure
+  ! or after.
+  logical :: BlockConsistent=.true.
+  !-----------------------------------------------------------------------------
   ! Integer that controls whether the program looks for even or odd HFB states.
   ! This needs to be stored for every parity-isospin block.
   integer :: HFBNumberParity(2,2)=0
@@ -2795,20 +2799,25 @@ subroutine InsertionSortQPEnergies
 !  end subroutine DiagonaliseRhoHFB_ZHEEV
 
   subroutine DiagonaliseRhoHFB!_diagoncr8
-        !-------------------------------------------------------------------------
+        !-----------------------------------------------------------------------
         ! Diagonalise the HFB density matrix using the diagon subroutine from cr8.
         !
         ! Notice that we do not bother to explicitly use the signature symmetry
         ! to simplify the diagonalization. This routine does not cost any time in
         ! practice, since the dimension of Rho is only half that of he HFB
         ! hamiltonian.
-        !-------------------------------------------------------------------------
+        !
+        !-----------------------------------------------------------------------
+        ! Note that we do not diagonalise the full HFB density. We first
+        ! identify the subspace of the HFBasis where the pairing is active.
+        ! 
+        !-----------------------------------------------------------------------
         ! NOT SUITED FOR TIME SIMPLEX BREAKING CALCULATIONS!
-        !-------------------------------------------------------------------------
+        !-----------------------------------------------------------------------
         real(KIND=dp), allocatable :: Work(:), Eigenvalues(:)
         real(KIND=dp), allocatable :: Temp(:,:)
         real(KIND=dp), allocatable :: Eigenvectors(:,:)
-        integer                          :: P, it, N, i, Nmax, ii, iii, ifail
+        integer                    :: P, it, N, i, Nmax, ii, iii, ifail
 
         Nmax = maxval(Blocksizes)
          if(.not. allocated(Work)) then
@@ -2817,9 +2826,19 @@ subroutine InsertionSortQPEnergies
             allocate(Temp(Nmax,Nmax))         ; Temp = 0.0_dp
             allocate(Eigenvalues(Nmax))       ; Eigenvalues = 0.0_dp
         endif
-
+        
         do it=1,Iindex
           do P=1,Pindex
+!              !---------------------------------------------------------------
+!              ! Identify the pairing subspace 
+!              do j=1,N
+!                if(any(abs(abs(RhoHFB(1:N,j,P,it))-1).lt.HFBNumcut)) then
+!                    ! This level corresponds to a fully occupied HF level
+!                    
+!                
+!                endif
+!              enddo
+              
               Temp          = 0.0_dp
               N             = blocksizes(P,it)
               Temp(1:N,1:N) = DBLE(RhoHFB(1:N,1:N,P,it))
@@ -3033,9 +3052,8 @@ subroutine InsertionSortQPEnergies
         !-----------------------------------------------------------------------
         ! Detect if the canonical basis level is just a level in the HF basis
         mx  = abs(CanTransfo(loc(1),C,P,it))
-        if(abs(mx - 1).lt.1d-8) then
+        if(abs(mx - 1).lt.HFBNumcut) then
             CanDeriv(index)           = mod(blockindices(loc(1),P,it)-1,nwt)+1
-            print *, 'state ', index, ' is HF level', blockindices(loc(1),P,it), mx
         else
             CanDeriv(index)           = 0
         endif
@@ -3711,6 +3729,8 @@ subroutine PrintBlocking
     7 format(2x,'Parity',8x,' -',11x,' +')
     8 format(2x,'Neutron',7x,i2,11x,i2)
     9 format(2x,'Proton ',7x,i2,11x,i2)
+   10 format(2x, 'Blocking non-self-consistent after gradient step.')
+   11 format(2x, 'Blocking self-consistent in gradient step.')
     print 1
 
     N = size(QPExcitations)
@@ -3726,6 +3746,14 @@ subroutine PrintBlocking
     print 5
     print 8, HFBNumberparity(:,1)
     print 9, HFBNumberParity(:,2)
+    if(trim(FermiSolver).eq.'GRADIENT') then
+        print 5
+        if(blockconsistent) then
+            print 11
+        else
+            print 10
+        endif
+    endif
     print 5
   end subroutine PrintBlocking
 
@@ -3782,21 +3810,10 @@ subroutine PrintBlocking
         C   = loc(1)
         do j=1,blocksizes(P,it)
             if(HFBColumns(j,P,it) .eq. C) then
-!                print *, HFBColumns(1:blocksizes(P,it),P,it)
-!                print *, HFBColumns(j,P,it), 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
-!                print *
-!                print *, HFBColumns(j,P,it)
-!                print *, DBLE(V(1:blocksizes(P,it),HFBColumns(j,P,it),P,it))
-!                print *
-                
                 HFBColumns(j,P,it) = 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
-!                print *, HFBColumns(j,P,it)
-!                print *, DBLE(V(1:blocksizes(P,it),HFBColumns(j,P,it),P,it))
-!                print *                
             endif
         enddo
     enddo
-    print *
   end subroutine BlockQuasiParticles
 
   subroutine PrintQP()

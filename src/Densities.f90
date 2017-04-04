@@ -141,6 +141,8 @@ contains
       allocate(R%Vecj(sizex,sizey,sizez,3,2),R%RotS(sizex,sizey,sizez,3,2))
       allocate(R%Vecs(sizex,sizey,sizez,3,2),R%Rotvecj(sizex,sizey,sizez,3,2))
       allocate(R%DerS(sizex,sizey,sizez,3,3,2))
+      allocate(R%DivS(sizex,sizey,sizez,2))      ;   R%DivS = 0.0_dp
+
       R%Vecj=0.0_dp ; R%RotS = 0.0_dp
       R%Vecs=0.0_dp ; R%RotVecj =0.0_dp ; R%DerS=0.0_dp ;
 
@@ -150,7 +152,6 @@ contains
       &   t1n2.ne.0.0_dp) then
         allocate(R%LapS(sizex,sizey,sizez,3,2))    ;   R%LapS=0.0_dp ;
         allocate(R%GradDivS(sizex,sizey,sizez,3,2));   R%GradDivS=0.0_dp
-        allocate(R%DivS(sizex,sizey,sizez,2))      ;   R%DivS = 0.0_dp
       endif
 
       !F & T densities.
@@ -240,11 +241,12 @@ contains
       Sum%RotVecj= Den1%RotVecJ  + Den2%RotVecJ
       Sum%Vecs   = Den1%vecs     + Den2%vecs
       Sum%RotS   = Den1%RotS     + Den2%RotS
+      Sum%DivS = Den1%DivS + Den2%DivS
+
       if(allocated(Sum%LapS)) then
         Sum%LapS = Den1%LapS + Den2%LapS
         Sum%DerS = Den1%DerS + Den2%DerS
         Sum%GradDivS = Den1%GradDivS + Den2%GradDivS
-        Sum%DivS = Den1%DivS + Den2%DivS
       endif
     endif
 
@@ -1001,12 +1003,10 @@ contains
           DenIn%RotS(:,:,:,2,it) = DenIn%DerS(:,:,:,3,1,it)-DenIn%DerS(:,:,:,1,3,it)
           DenIn%RotS(:,:,:,3,it) = DenIn%DerS(:,:,:,1,2,it)-DenIn%DerS(:,:,:,2,1,it)
 
-          if(MoreDers) then
-            DivS(:,:,:,it)=0.0_dp
-            do i=1,3
+          DivS(:,:,:,it)=0.0_dp
+          do i=1,3
               DivS(:,:,:,it) = DenIn%DivS(:,:,:,it) + DenIn%DerS(:,:,:,i,i,it)
-            enddo
-          endif
+          enddo
           !------------------------------------------------------------------------
           ! Second derivatives of S
           if(allocated(DenIn%RtauN2LO)) then
@@ -1214,12 +1214,10 @@ contains
       DenIn%RotS(:,:,:,2,it) = DenIn%DerS(:,:,:,3,1,it)-DenIn%DerS(:,:,:,1,3,it)
       DenIn%RotS(:,:,:,3,it) = DenIn%DerS(:,:,:,1,2,it)-DenIn%DerS(:,:,:,2,1,it)
 
-      if(MoreDers) then
-        DivS(:,:,:,it)=0.0_dp
-        do i=1,3
-          DivS(:,:,:,it) = DenIn%DivS(:,:,:,it) + DenIn%DerS(:,:,:,i,i,it)
-        enddo
-      endif
+      DivS(:,:,:,it)=0.0_dp
+      do i=1,3
+        DivS(:,:,:,it) = DenIn%DivS(:,:,:,it) + DenIn%DerS(:,:,:,i,i,it)
+      enddo
     enddo
 
     if(.not. MoreDers) return

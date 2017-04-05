@@ -610,7 +610,7 @@ contains
       ! Readjust Fermi and L2
       succes = 0
       if(any(succes.ne.0)) call stp("lncr8 failed")
-      corr = block_gradient()
+      if(.not. blockconsistent)corr = block_gradient()
       do it=1,Iindex
           par(it) = 0.0
           do P=1,Pindex

@@ -248,15 +248,16 @@ contains
             call BlockQuasiParticles
             call constructRhoHFB(HFBColumns)            
         else
-        
             do it=1,Iindex
                 do P=1,Pindex
-                  RhoHFB(1:N,1:N,P,it)   = ConstructRho(GradV(1:N,1:N,P,it),       &
-                  &                                     sigblocks(P,it))
+                    N = blocksizes(P,it)
+                    S = sigblocks(P,it)
+                    RhoHFB(1:N,1:N,P,it)  =ConstructRho(GradV(1:N,1:N,P,it),   &
+                    &                                     S)
 
-                  KappaHFB(1:N,1:N,P,it) = ConstructKappa(GradU(1:N,1:N,P,it),     &
-                  &                                       GradV(1:N,1:N,P,it),     &
-                  &                                       sigblocks(P,it))
+                    KappaHFB(1:N,1:N,P,it)=ConstructKappa(GradU(1:N,1:N,P,it), &
+                    &                                     GradV(1:N,1:N,P,it), &
+                    &                                     S)
                 enddo
             enddo
         endif

@@ -115,15 +115,15 @@ module HFB
   !-----------------------------------------------------------------------------
   ! Indices of the quasiparticle states that we want to block.
   ! NOTE THAT THESE ARE IN THE HFBasis, as this is truely the only
-  ! sensible thing to do.
-  ! The rest of the arrays take the quantum numbers. Only QPBlockind takes
-  ! the indices of the HF wavefunctions in their respective parity/isospin
-  ! blocks.
-  integer,allocatable :: QPExcitations(:)
-  integer,allocatable :: QPParities(:)
-  integer,allocatable :: QPIsospins(:)
-  integer,allocatable :: QPSignatures(:)
-  integer,allocatable :: QPblockind(:)
+  ! sensible thing to do.  The rest of the arrays take the quantum numbers. 
+  !-----------------------------------------------------------------------------
+  ! Only QPBlockind takes the indices of the HF wavefunctions in their 
+  ! respective parity/isospin blocks.  
+  integer,allocatable :: QPExcitations(:), QPblockind(:)
+  integer,allocatable :: QPParities(:),QPIsospins(:), QPSignatures(:)
+  !-----------------------------------------------------------------------------
+  ! Angle for the alirotation in the y-direction in degrees. Use with care.
+  real(KIND=dp), allocatable :: aliyangle(:)
   !-----------------------------------------------------------------------------
   ! When using the gradient solver, block before doing the gradient procedure
   ! or after.
@@ -2100,21 +2100,74 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
             HFBHamil(j,i,P,it) = conjg(HFBHamil(i,j,P,it))
         enddo
       enddo
-!      print *
-!      print *, Lambda(it)
-!      print *
-!      do i=1,2*N
-!            print *, real(HFBHamil(i,1:2*N,P,it)) 
-!      enddo
-!      print *
-!      
-!      
     enddo
   enddo
+
+!  do it=1,iindex
+!    do p=1,pindex
+!      n = blocksizes(p,it)
+!      print *
+!      do i=1,2*n
+!            print *, real(hfbhamil(i,1:2*n,p,it)) 
+!      enddo
+!      print *
+!    enddo
+!  enddo
 !  stop
 
   if(all(HFBHamil.eq.0.0_dp)) call stp('HFBHamiltonian completely zero!')
   end subroutine ConstructHFBHamiltonian
+  
+!  subroutine AliRotation(xangle)
+!    !---------------------------------------------------------------------------
+!    ! In order to achieve the alirotation of a blocked quasiparticle, this 
+!    ! routine can add some terms to single-particle hamiltonian in order to
+!    ! break the degeneracy between a state and its time-reversed partner. Note
+!    ! that this is an operation that breaks signature.
+!    !---------------------------------------------------------------------------
+!    ! Currently only rotations about the same angle for all qp excitations, 
+!    ! and only ali-x rotations.
+!    !---------------------------------------------------------------------------
+!    
+!    real(KIND=dp), intent(in) :: xangle
+!    integer                   :: i, N, index, partner, P, it, B
+!    
+!    if(SC) call stp('Alirotation breaks signature.')
+!    
+!    ! First, find the blocked quasi-particle.
+!    if(.not.allocated(QPBlockind)) call QPindices()
+!    N = size(QPblockind)
+!    do i=1,N
+!        index = QPblockind(i)
+!        P     = QPParities(i)
+!        it    = QPIsospins(i)
+!        !-----------------------------------------------------------------------
+!        ! Find the time-reversed partner. This unfortunately has to rely on the
+!        ! storage scheme, since we are breaking time-reversal and signature 
+!        ! computationally, but not yet self-consistently at this point.
+!        if(index.gt.blocksizes(P,it)/2) then
+!            partner = index - blocksizes(P,it)/2
+!        else
+!            partner = index + blocksizes(P,it)/2
+!        endif
+!        
+!        B = blocksizes(P,it)
+!        !-----------------------------------------------------------------------
+!        ! We will thus be blocking the qp corresponding to the 'index' HF-level
+!        ! so we need to 'improve' the single-particle hamiltonian corresponding 
+!        ! to that level.
+!        HFBHamil(index,index,P,it)         = HFBHamil(index,index,P,it)        + cos(xangle)! + cos(xangle/2) 
+!        HFBHamil(partner,partner,P,it)     = HFBHamil(partner,partner,P,it)    - cos(xangle)! - sin(xangle/2) 
+!        HFBHamil(index,partner,P,it)       = HFBHamil(index,partner,P,it)      + sin(xangle) 
+!        HFBHamil(partner,index,P,it)       = HFBHamil(partner,index,P,it)      + sin(xangle) 
+!        
+!        HFBHamil(index+B,index+B,P,it)     = HFBHamil(index+B,index+B,P,it)    - cos(xangle)! - cos(xangle/2)
+!        HFBHamil(partner+B,partner+B,P,it) = HFBHamil(partner+B,partner+B,P,it)+ cos(xangle)! + sin(xangle/2)
+!        HFBHamil(index+B,partner+B,P,it)   = HFBHamil(index+B,partner+B,P,it)  - sin(xangle) 
+!        HFBHamil(partner+B,index+B,P,it)   = HFBHamil(partner+B,index+B,P,it)  - sin(xangle) 
+!    enddo
+!    
+!  end subroutine AliRotation
 
   subroutine DiagonaliseHFBHamiltonian_Signature
     !-------------------------------------------------------------------------------
@@ -3001,8 +3054,7 @@ subroutine InsertionSortQPEnergies
     call stp('No occupations in the canonical basis!')
   endif
   if(any(Occupations - 1.0_dp.gt.1d-5)) then
-     
-  call stp('Some occupations are bigger than one in the canonical basis.')
+    call stp('Some occupations are bigger than one in the canonical basis.')
   endif
   where(Occupations.gt.1.0_dp) Occupations=1.0_dp
   if(any(Occupations .lt. -HFBNumCut)) then
@@ -3650,15 +3702,21 @@ subroutine InsertionSortQPEnergies
     integer, allocatable :: Blocked(:)
     integer, allocatable :: Temp(:)
 
-    Namelist /Blocking/ Blocked
+    Namelist /Blocking/ Blocked, aliyangle
 
     io = 0
     allocate(QPExcitations(Block)) ; QPExcitations=0
+    allocate(aliyangle(Block))     ; aliyangle=0
 
     ! Read the namelist
     allocate(Blocked(block))
     read(unit=*,NML=Blocking, iostat=io)
     if(io.ne.0) call stp('Error on reading blocked particle indices', 'Iostat', io)
+    
+    !---------------------------------------------------------------------------
+    ! Change the aliyangle to radians
+    aliyangle = aliyangle/180*pi
+    
     if(any(Blocked.le.0) .or. any(Blocked.gt.nwt)) then
         call stp('Invalid quasiparticle index.')
     endif
@@ -3731,6 +3789,10 @@ subroutine PrintBlocking
     9 format(2x,'Proton ',7x,i2,11x,i2)
    10 format(2x, 'Blocking non-self-consistent after gradient step.')
    11 format(2x, 'Blocking self-consistent in gradient step.')
+   
+   12 format(2x, ' Alirotation at iteration 0',/, &
+   &         2x, '   Index   y-angle')
+   13 format(i7,5x,f12.5 )
     print 1
 
     N = size(QPExcitations)
@@ -3746,6 +3808,7 @@ subroutine PrintBlocking
     print 5
     print 8, HFBNumberparity(:,1)
     print 9, HFBNumberParity(:,2)
+    
     if(trim(FermiSolver).eq.'GRADIENT') then
         print 5
         if(blockconsistent) then
@@ -3755,6 +3818,14 @@ subroutine PrintBlocking
         endif
     endif
     print 5
+    if(any(aliyangle.ne.0.0_dp)) then
+        print 12
+        do i=1,N
+            ! Note that we already converted the ali-angle to radians
+            print 13, QPexcitations(i),aliyangle(i)*180/pi
+        enddo
+        print 5  
+    endif
   end subroutine PrintBlocking
 
  subroutine BlockQuasiParticles()
@@ -3778,12 +3849,13 @@ subroutine PrintBlocking
     ! with a given HF index.
     !---------------------------------------------------------------------------
 
-    integer          :: N, i, index , j, P, it, C, K, loc(1)
-    complex(KIND=dp) :: Temp(HFBSize)
-    real(KIND=dp)    :: TempU2, Overlap, A, B
+    integer          :: N, i, index , j, P, it, C, K, loc(1), CT, B, D, DT
+    complex(KIND=dp) :: TempU(HFBSize), TempV(HFBSize)
+    real(KIND=dp)    :: TempU2, Overlap, theta
 
     N = size(QPExcitations)
-
+    
+    
     if(.not.allocated(QPBlockind)) call QPindices()
     do i=1,N
         index = QPblockind(i)
@@ -3805,15 +3877,52 @@ subroutine PrintBlocking
                 Overlap = TempU2
             endif
         enddo
-        !----------------------------------------------------------------------
-        ! When found, exchange it with its conjugate partner.
         C   = loc(1)
+        
+        !-----------------------------------------------------------------------
+        ! If an alirotation is requested, find the time-reversed partner.
+        if(aliyangle(i).ne. 0.0_dp) then
+            B = blocksizes(P,it)
+            if(C.gt.B/2) then
+                CT = C - B/2
+            else
+                CT = C + B/2
+            endif           
+            
+            Theta = aliyangle(i)/2 
+                        
+            TempU(1:B) = U(1:B,C,P,it)
+            TempV(1:B) = V(1:B,C,P,it)
+
+            U(1:B,C,P,it)  =  cos(theta) * U(1:B,C,P,it)+ sin(theta) *  U(1:B,CT,P,it)
+            V(1:B,C,P,it)  =  cos(theta) * V(1:B,C,P,it)+ sin(theta) *  V(1:B,CT,P,it)
+            
+            U(1:B,CT,P,it) = -sin(theta) * tempU(1:B)   + cos(theta) *  U(1:B,CT,P,it)
+            V(1:B,CT,P,it) = -sin(theta) * tempV(1:B)   + cos(theta) *  V(1:B,CT,P,it)  
+            
+            D  = 2*B - C  + 1 
+            DT = 2*B - CT + 1
+            
+            TempU(1:B) = U(1:B,D,P,it)
+            TempV(1:B) = V(1:B,D,P,it)
+            
+            U(1:B,D,P,it)  =  cos(theta) * U(1:B,D,P,it)+ sin(theta) *  U(1:B,DT,P,it)
+            V(1:B,D,P,it)  =  cos(theta) * V(1:B,D,P,it)+ sin(theta) *  V(1:B,DT,P,it)
+            
+            U(1:B,DT,P,it) = -sin(theta) * tempU(1:B)   + cos(theta) *  U(1:B,DT,P,it)
+            V(1:B,DT,P,it) = -sin(theta) * tempV(1:B)   + cos(theta) *  V(1:B,DT,P,it)  
+                    
+        endif
+        !-----------------------------------------------------------------------
+        ! When found, exchange it with its conjugate partner.
         do j=1,blocksizes(P,it)
             if(HFBColumns(j,P,it) .eq. C) then
                 HFBColumns(j,P,it) = 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
             endif
         enddo
     enddo
+!    call checkUandVColumns(HFBcolumns)
+!    stop
   end subroutine BlockQuasiParticles
 
   subroutine PrintQP()

@@ -215,6 +215,9 @@ subroutine Evolve(MaxIterations, iprint)
   !Calculating  The Energy
   call CompEnergy()
   
+  if(Maxiterations.eq.0) then
+        print 101
+  endif
   !Printing observables
   call PrintIterationInfo(0, .true.)
 

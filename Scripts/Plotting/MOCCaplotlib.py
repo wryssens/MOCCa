@@ -92,6 +92,10 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         xlabel =r'$dx$ (fm)'
         xfname =PREFIX + '.calc.tab'
         xcolumn=6
+    elif(XARG=='ALIY'):
+        xlabel =r'$\alpha_x (^{\circ})$'
+        xfname =PREFIX + '.block.tab'
+        xcolumn=1
     else :
         print 'XARG not recognized'
         return

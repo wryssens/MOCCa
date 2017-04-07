@@ -246,7 +246,8 @@ contains
         if(allocated(qpexcitations) .and. (.not.BlockConsistent)) then
             ! Don't consistently block qps
             call BlockQuasiParticles
-            call constructRhoHFB(HFBColumns)            
+            call constructRhoHFB(HFBColumns)
+            call constructKappaHFB(HFBColumns)            
         else
             do it=1,Iindex
                 do P=1,Pindex
@@ -611,7 +612,7 @@ contains
       ! Readjust Fermi and L2
       succes = 0
       if(any(succes.ne.0)) call stp("lncr8 failed")
-      if(.not. blockconsistent)corr = block_gradient()
+      if(.not. blockconsistent) corr = block_gradient()
       do it=1,Iindex
           par(it) = 0.0
           do P=1,Pindex
@@ -764,11 +765,7 @@ contains
       endif
       if(all(converged)) exit
    enddo
-
-   P = 1
-   it = 1
-   N = blocksizes(P,it)
-
+        
    ! Make the HFB module happy again and hand control back.
    call OutHFBModule
    !call CheckUandVColumns(HFBColumns)

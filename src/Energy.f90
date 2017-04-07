@@ -335,6 +335,8 @@ contains
     
     real(KIND=dp)                   :: laplaplaprho(nx,ny,nz,2)
     
+    
+    terms = 0.0_dp
     if(t1n3.eq.0.0_dp .and. t2n3.eq.0.0_dp) return
     !---------------------------------------------------------------------------
     ! Calculate the Delta Delta Delta of rho here, as a placeholder
@@ -342,8 +344,6 @@ contains
         laplaplaprho(:,:,:,it) = laplacian(Den%Laplaprho(:,:,:,it),            &
         &                               ParityInt,SignatureInt,Timesimplexint,1)
     enddo
-    
-    terms = 0.0_dp
     !---------------------------------------------------------------------------
     ! rho Delta Delta Delta rho                                        Time-even
     terms(1) = sum(sum(Den%rho,4) * sum(laplaplaprho,4))             *N3D3rho(1)

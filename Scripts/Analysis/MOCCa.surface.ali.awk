@@ -41,11 +41,24 @@ BEGIN{
     if ( $1 == "J_x" ) {
         jx = $3;
     }
+    if ( $1 == "Re" && $2 == "Q^m_{" && $3 == "1" && $4 == "0}"){
+        for (i=0 ; i < 12 ; i+=1){
+            getline ;
+        }
+        Qm10 = $5    
+    }
+    if ( $1 == "Re" && $2 == "Q^m_{" && $3 == "1" && $4 == "1}"){
+        for (i=0 ; i < 12 ; i+=1){
+            getline ;
+        }
+        Qm11 = $5    
+    }
+    
   }
 }
 END{
    if( ee != 0) {
     # Don't include the file if it is empty and does not contain a final energy
-    printf("  %8.3f %8.3f %12.3f %8.3f %8.3f\n",alix,aliy,ee,jx,jz);
+    printf("  %8.3f %8.3f %12.3f %8.3f %8.3f %8.4f %8.4f\n",alix,aliy,ee,jx,jz, Qm10, Qm11);
    }
 }

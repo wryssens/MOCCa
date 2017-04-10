@@ -2981,10 +2981,10 @@ subroutine InsertionSortQPEnergies
   if(all(Occupations.eq.0.0_dp)) then
     call stp('No occupations in the canonical basis!')
   endif
-  if(any(Occupations - 1.0_dp.gt.1d-5)) then
-     
-  call stp('Some occupations are bigger than one in the canonical basis.')
-  endif
+  !if(any(Occupations - 1.0_dp.gt.1d-5)) then
+  !   
+  !      call stp('Some occupations are bigger than one in the canonical basis.')
+  !endif
   where(Occupations.gt.1.0_dp) Occupations=1.0_dp
   if(any(Occupations .lt. -HFBNumCut)) then
     ! Notice that we allow some very small negative occupation numbers.
@@ -3991,15 +3991,28 @@ subroutine PrintBlocking
     NP = 0
     do it=1,Iindex
         do P=1,Pindex
-            do j=1,Blocksizes(P,it)
-                ! This activates when Time-reversal is not conserved
-                if(abs(Occupations(j,P,it) - 1.0_dp).lt.1d-7) NP(P,it) = NP(P,it) + 1
-                ! This activates when Time-reversal is conserved
-                if(abs(Occupations(j,P,it) - 2.0_dp).lt.1d-7) NP(P,it) = NP(P,it) + 1
+            print *
+            print *, P, it
+            NP(P,it) = blocksizes(P,it)/2
+            do j=1,Blocksizes(P,it)    
+                !--------------------------------------------------------------------
+                ! For reasons I do not completely understand yet, the detection
+                ! of number parity is less dependent on the method used when counting
+                ! the total number of holes rather than the total number of particles.
+                ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                ! The cutoff precision also seems to be 'optimal' in the following 
+                ! sense: pairs in the canonical basis have the same occupation up to
+                ! about 10**-9 in some cases (but often better). Test case was 
+                ! one neutron qp state in Th223.
+                !--------------------------------------------------------------------
+                if(abs(Occupations(j,P,it)).lt.1d-8) NP(P,it) = NP(P,it) - 1
+                !if(abs(Occupations(j,P,it) - 1.0_dp).lt.1d-5) NP(P,it) = NP(P,it) + 1
+                !if(abs(Occupations(j,P,it) - 2.0_dp).lt.1d-5) NP(P,it) = NP(P,it) + 1
             enddo
+            if(TRC) NP(P,it) = NP(P,it)*2
         enddo
     enddo
-
+    
     print *
     print 1
     if(PC) then

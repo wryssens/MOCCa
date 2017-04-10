@@ -72,7 +72,7 @@ contains
         ! Note that -1 is taken as l to signify 1)
         ! that it is not a multipole moment
         ! and that 2) it is parity-odd.
-        Schiff = NewMoment(-1, 0, 0)
+        Schiff = NewMoment_electric(-1, 0, 0)
 
         ! Notice that we don't initialize the spherical
         ! harmonic for the Schiff moment here.

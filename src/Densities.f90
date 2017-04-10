@@ -141,6 +141,8 @@ contains
       allocate(R%Vecj(sizex,sizey,sizez,3,2),R%RotS(sizex,sizey,sizez,3,2))
       allocate(R%Vecs(sizex,sizey,sizez,3,2),R%Rotvecj(sizex,sizey,sizez,3,2))
       allocate(R%DerS(sizex,sizey,sizez,3,3,2))
+      allocate(R%DivS(sizex,sizey,sizez,2))      ;   R%DivS = 0.0_dp
+
       R%Vecj=0.0_dp ; R%RotS = 0.0_dp
       R%Vecs=0.0_dp ; R%RotVecj =0.0_dp ; R%DerS=0.0_dp ;
 
@@ -150,7 +152,6 @@ contains
       &   t1n2.ne.0.0_dp) then
         allocate(R%LapS(sizex,sizey,sizez,3,2))    ;   R%LapS=0.0_dp ;
         allocate(R%GradDivS(sizex,sizey,sizez,3,2));   R%GradDivS=0.0_dp
-        allocate(R%DivS(sizex,sizey,sizez,2))      ;   R%DivS = 0.0_dp
       endif
 
       !F & T densities.
@@ -178,11 +179,15 @@ contains
         allocate(R%D2Rho   (sizex,sizey,sizez,3,3,2)) ; R%D2Rho     = 0.0_dp
         allocate(R%D2S   (sizex,sizey,sizez,3,3,3,2)) ; R%D2S       = 0.0_dp
         allocate(R%DJmunu(sizex,sizey,sizez,3,3,3,2)) ; R%DJmunu    = 0.0_dp
-        allocate(R%LapLapRho(sizex,sizey,sizez,2))    ; R%LapLapRho = 0.0_dp
+        
         allocate(R%D2Rtau(sizex,sizey,sizez,2))       ; R%D2Rtau    = 0.0_dp
         allocate(R%DmuItau(sizex,sizey,sizez,3,2))    ; R%DmuItau   = 0.0_dp
         allocate(R%divvecj (sizex,sizey,sizez,2))     ; R%divvecj   = 0.0_dp
         allocate(R%LapLaps(sizex,sizey,sizez,3,2))    ; R%laplaps   = 0.0_dp
+    endif
+    
+    if(t1n2.ne.0.0_dp .or. t1n3.ne.0.0_dp .or. t2n2.ne.0.0_dp .or. t2n3.ne.0.0_dp) then
+        allocate(R%LapLapRho(sizex,sizey,sizez,2))    ; R%LapLapRho = 0.0_dp
     endif
 
   end function NewDensityVector
@@ -214,7 +219,6 @@ contains
         Sum%D2RTau     = Den1%D2RTau       + Den2%D2RTau
         Sum%DmuITau    = Den1%DmuITau      + Den2%DmuITau
         Sum%D2Rho      = Den1%D2Rho        + Den2%D2Rho
-        Sum%LapLapRho  = Den1%LapLapRho    + Den2%LapLapRho
         Sum%DJmunu     = Den1%DJmunu       + Den2%DJmunu
         Sum%ReKN2LO    = Den1%ReKN2LO      + Den2%ReKN2LO
         Sum%ImKN2LO    = Den1%ImKN2LO      + Den2%ImKN2LO
@@ -228,16 +232,21 @@ contains
         Sum%Divvecj    = Den1%Divvecj      + Den2%Divvecj
     endif
     
+    if(allocated(Sum%laplaprho)) then
+        Sum%LapLapRho  = Den1%LapLapRho    + Den2%LapLapRho
+    endif    
+    
     if(.not.TRC) then
       Sum%Vecj   = Den1%VecJ     + Den2%VecJ
       Sum%RotVecj= Den1%RotVecJ  + Den2%RotVecJ
       Sum%Vecs   = Den1%vecs     + Den2%vecs
       Sum%RotS   = Den1%RotS     + Den2%RotS
+      Sum%DivS = Den1%DivS + Den2%DivS
+
       if(allocated(Sum%LapS)) then
         Sum%LapS = Den1%LapS + Den2%LapS
         Sum%DerS = Den1%DerS + Den2%DerS
         Sum%GradDivS = Den1%GradDivS + Den2%GradDivS
-        Sum%DivS = Den1%DivS + Den2%DivS
       endif
     endif
 
@@ -274,7 +283,6 @@ contains
         Prod%ItauN2LO   = A*Den%ITauN2LO
         Prod%D2RTau     = A*Den%D2RTau
         Prod%DmuITau    = A*Den%DmuITau
-        Prod%LapLapRho  = A*Den%LapLapRho
         Prod%D2Rho      = A*Den%D2Rho
         Prod%ReKN2LO    = A*Den%ReKN2LO 
         Prod%ImKN2LO    = A*Den%ImKN2LO
@@ -287,6 +295,10 @@ contains
         Prod%LapLapS    = A*Den%LapLapS 
         Prod%DJmunu     = A*Den%DJmunu 
     endif
+    
+    if(allocated(Prod%laplaprho)) then
+        Prod%LapLapRho  = A*Den%LapLapRho
+    endif 
 
     if(allocated(Prod%Jmunu)) then
       Prod%JMuNu = A*Den%Jmunu
@@ -521,9 +533,7 @@ contains
     enddo
     if (allocated(DenIn%RtauN2LO)) then
         do it=1,2
-            DenIn%LapLapRho(:,:,:,it)   = &
-            & Laplacian(DenIn%LapRho(:,:,:,it),ParityInt,SignatureInt,TimeSimplexInt,1)
-        
+            
             ! Full tensor of second derivatives of rho        
             DenIn%D2Rho(:,:,:,1,1,it) = &
             & DeriveX(DenIn%DerRho(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
@@ -875,6 +885,14 @@ contains
             & DeriveZ(                         temp,-ParityInt,  SignatureInt, TimeSimplexInt,1)
        enddo
     endif
+    
+    if(allocated(DenIn%laplaprho)) then
+        do it=1,2
+            DenIn%LapLapRho(:,:,:,it)   = &
+            & Laplacian(DenIn%LapRho(:,:,:,it),ParityInt,SignatureInt,TimeSimplexInt,1)
+        enddo
+    endif
+    
     !Computing NablaJ by derivatives in the case of tensor interactions
     if(B14.ne.0.0_dp.or.B15.ne.0.0_dp.or.B17.ne.0.0_dp.or.B16.ne.0.0_dp) then
       !Temporary
@@ -985,12 +1003,10 @@ contains
           DenIn%RotS(:,:,:,2,it) = DenIn%DerS(:,:,:,3,1,it)-DenIn%DerS(:,:,:,1,3,it)
           DenIn%RotS(:,:,:,3,it) = DenIn%DerS(:,:,:,1,2,it)-DenIn%DerS(:,:,:,2,1,it)
 
-          if(MoreDers) then
-            DivS(:,:,:,it)=0.0_dp
-            do i=1,3
+          DivS(:,:,:,it)=0.0_dp
+          do i=1,3
               DivS(:,:,:,it) = DenIn%DivS(:,:,:,it) + DenIn%DerS(:,:,:,i,i,it)
-            enddo
-          endif
+          enddo
           !------------------------------------------------------------------------
           ! Second derivatives of S
           if(allocated(DenIn%RtauN2LO)) then
@@ -1198,12 +1214,10 @@ contains
       DenIn%RotS(:,:,:,2,it) = DenIn%DerS(:,:,:,3,1,it)-DenIn%DerS(:,:,:,1,3,it)
       DenIn%RotS(:,:,:,3,it) = DenIn%DerS(:,:,:,1,2,it)-DenIn%DerS(:,:,:,2,1,it)
 
-      if(MoreDers) then
-        DivS(:,:,:,it)=0.0_dp
-        do i=1,3
-          DivS(:,:,:,it) = DenIn%DivS(:,:,:,it) + DenIn%DerS(:,:,:,i,i,it)
-        enddo
-      endif
+      DivS(:,:,:,it)=0.0_dp
+      do i=1,3
+        DivS(:,:,:,it) = DenIn%DivS(:,:,:,it) + DenIn%DerS(:,:,:,i,i,it)
+      enddo
     enddo
 
     if(.not. MoreDers) return

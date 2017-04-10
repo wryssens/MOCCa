@@ -215,6 +215,9 @@ subroutine Evolve(MaxIterations, iprint)
   !Calculating  The Energy
   call CompEnergy()
   
+  if(Maxiterations.eq.0) then
+        print 101
+  endif
   !Printing observables
   call PrintIterationInfo(0, .true.)
 
@@ -340,7 +343,9 @@ subroutine Evolve(MaxIterations, iprint)
   !Reanalysis of the result with Lagrange derivatives.
   call FinalIteration()
 
-  if(recalcN2LO) call N2LOAnalysis()
+  !if(recalcN2LO) call N2LOAnalysis()
+
+  !call writeN3LODensities(Density)
 
   if(Convergence) then
      print 5

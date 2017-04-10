@@ -155,7 +155,8 @@ contains
      &                  SemiBCS, SemiBCSNeutron, SemiBCSProton,                &
      &                  QPinHFBasis, SolvePairingStart,QPPrintWindow, Block,   &
      &                  FermiSolver, HFBIter,HFBgauge,HFConfig, LNFixN, LNFixP,&
-     &                  DN2P, DN2N, ConstrainDispersion, HFBlock, HFBreduce
+     &                  DN2P, DN2N, ConstrainDispersion, HFBlock, HFBreduce,   &
+     &                  Blockconsistent, aliyangle
 
      read(unit=*, NML=Pairing)
 
@@ -268,8 +269,6 @@ contains
      if(any(DN2.lt.0.0_dp)) then
        call stp('Dispersion needs to be larger than 0.')
      endif
-
-     !-----------------------------------------------------------------------------
      !--------------------------------------------------------------------------
      ! Determine the cutoff type.
      select case(Cuttype)

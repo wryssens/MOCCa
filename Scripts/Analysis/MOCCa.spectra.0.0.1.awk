@@ -14,7 +14,7 @@
 #==============================================================================#
 # TODO                                                                         #
 # + Add detection of quadrupole orientation                                    #
-# + Add blocking information                                                   #
+# + Add more blocking information                                              #
 # + Add convergence info                                                       #
 #==============================================================================#
 #                                                                              #
@@ -40,6 +40,8 @@
 #                           for neutrons (n), protons(p) and total(t).         #
 # - PREFIX.calc.tab         Details of the calculation: neutron & proton       #
 #                           numbers, mesh parameters, force name               #
+# - PREFIX.block.tab        Details about the blocking, currently only         #
+#                           alirotation angle.                                 #
 # - PREFIX.[base].[iso].par=[par].sig=[sig].tab                                #   
 #                                                                              #
 #  where                                                                       #
@@ -336,6 +338,11 @@ BEGIN{
                 R       =1.2 * xa^(1.0/3.0)
         }
        
+        if ( $1 == "Alirotation") {
+                getline;
+                aliy = $2
+        }
+       
         #------------------------------------------------------------------------
         # This flag marks the end of a MOCCa calculation in the file
         # All more serious information is obtained here.
@@ -376,6 +383,7 @@ BEGIN{
             protonarray[iq] = protons
             neutronarray[iq]= neutrons
             massarray[iq]   = mass
+            aliyarray[iq]   = aliy
             #Reset nx to zero to indicate that next time it can be overwritten
             nx = ""
 	}
@@ -952,6 +960,14 @@ END{
     close("tmp.p.ql.tab");
     close("tmp.t.ql.tab");
     #---------------------------------------------------------------------------
+    # Blocking
+    print "!      ali_y"  >> "tmp.block.tab"
+    iq = 1 ;
+    while ( iq < iqmax + 1 ) {
+        printf("%3.0f %8.3f \n",iq, aliyarray[iq]) >> "tmp.block.tab"; 
+        iq += 1;
+    }
+    close("tmp.block.tab")
     #------------ Fermi energies and information on Lipkin-Nogami scheme--------
     print "!      eF_n     eF_p   lambda_2n lambda_2p  eLN(n)   eLN(p) <DeltaN^2> <DeltaZ^2>" > "tmp.ef.tab";
     iq = 1;
@@ -1021,7 +1037,7 @@ END{
                 energy[N] = neutronqp[iq,N,-1] 
                 N+=1
             }
-            ind = asort(energy)
+            #ind = asort(energy)
 
             N = 1;
             while ( neutronqp[iq,N,-1] != "" ){
@@ -1044,7 +1060,7 @@ END{
                 energy[N] = neutronqp[iq,N,-1] 
                 N+=1
             }
-            ind = asort(energy)
+            #ind = asort(energy)
 
             N = 1;
             while ( neutronqp[iq,N,+1] != "" ){

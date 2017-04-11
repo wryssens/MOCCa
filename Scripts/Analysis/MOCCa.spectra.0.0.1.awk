@@ -510,7 +510,7 @@ BEGIN{
            
         #-------------------------------------------------------------------
         # read information on multipole moments
-        if ( flag[multipole] && $2 == "Multipole" && $3 == "Moments")  {
+        if ( flag[multipole] && $2 == "Electric" && $3 == "Multipole")  {
                 getline; # Quantisation axis line
                 getline; # Secondary axis ordering line
                 getline; # Header lines

@@ -4117,8 +4117,6 @@ subroutine PrintBlocking
     NP = 0
     do it=1,Iindex
         do P=1,Pindex
-            print *
-            print *, P, it
             NP(P,it) = blocksizes(P,it)/2
             do j=1,Blocksizes(P,it)    
                 !--------------------------------------------------------------------

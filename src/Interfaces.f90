@@ -994,26 +994,26 @@ contains
   
     open(13, form='formatted',file=Outputfilename)
     
-    write(13) neutrons, protons, neutrons+protons
-    write(13) nx,ny,nz,dx
+    write(13, '(3f10.5)') neutrons, protons, neutrons+protons
+    write(13, '(3i5,f10.5)') nx,ny,nz,dx
+    Current => FindMoment(-2,0,.false.)
     
-    Current = FindMoment(-1,0,.false.)
-    
-    write(13) sqrt(Current%Value), sqrt(sum(Current%Value)) ! radius squared
+    write(13, '(3f10.5)') sqrt(Current%Value), sqrt(sum(Current%Value)) ! radius squared
     
     Current => Root
     do while(associated(Current%Next))
         Current => Current%Next
-        write(13) Current%l, Current%m, Current%Value
+        if (Current%l .le. 0) exit
+        write(13,'(2i5,3f15.5)') Current%l, Current%m, Current%Value
     enddo
     
     do k=1,nz
         do j=1,ny
             do i=1,nx
-                write(13), MeshX(i), MeshY(j), MeshZ(k), Density%Rho(:,:,:,1), Density%Rho(:,:,:,2)
+                write(13, '(5f10.5)'), MeshX(i), MeshY(j), MeshZ(k), Density%Rho(i,j,k,1), Density%Rho(i,j,k,2)
             enddo
         enddo
     enddo
-    
+    close(13)
   end subroutine 
 end module Interfaces

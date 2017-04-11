@@ -43,7 +43,8 @@ module InOutput
   !-----------------------------------------------------------------------------
   ! Whether or not to write extra output files for various other codes.
   logical :: PromOutput     = .false. ! Promesse
-  logical :: CR8Output      = .false. ! Promesse
+  logical :: CR8Output      = .false. ! CR8
+  logical :: JacquesOutput  = .false. ! CR8
   !-----------------------------------------------------------------------------
   ! Whether or not to allow MOCCa to break symmetries and/or interpolate 
   ! the mesh.
@@ -187,6 +188,9 @@ contains
     if(PromOutput) call writePromesse(trim(OutputFileName)//'.prom')
     ! Writing extra files if asked for
     if(CR8Output)  call writeCR8(trim(OutputFileName)//'.CR8')
+    ! Writing extra files if asked for
+    if(JacquesOutput) call writeJACQUES(trim(OutputFileName)//'.JAC')
+
 
   end subroutine Output
 
@@ -314,7 +318,8 @@ contains
     implicit none
 
     NameList /InAndOutput/ InputFileName,OutputFileName,PromOutput,LegacyInput,&
-    &                      Pictures, AllowTransform, nwninit, nwpinit, Cr8output
+    &                      Pictures, AllowTransform,nwninit,nwpinit, Cr8output,&
+    &                      JacquesOutput
 
     !--------------- Reading Input---------------------------------------
     !Info for the GenInfo Module

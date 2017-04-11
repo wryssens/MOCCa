@@ -983,4 +983,37 @@ contains
         close(iunit)
 
   end subroutine writepromesse
+  
+  subroutine WriteJacques(OutputFilename)
+    
+    use Moments
+    
+    character(len=*), intent(in) :: OutputFilename
+    integer :: i,j,k,l,m
+    type(Moment), pointer :: Current
+  
+    open(13, form='formatted',file=Outputfilename)
+    
+    write(13) neutrons, protons, neutrons+protons
+    write(13) nx,ny,nz,dx
+    
+    Current = FindMoment(-1,0,.false.)
+    
+    write(13) sqrt(Current%Value), sqrt(sum(Current%Value)) ! radius squared
+    
+    Current => Root
+    do while(associated(Current%Next))
+        Current => Current%Next
+        write(13) Current%l, Current%m, Current%Value
+    enddo
+    
+    do k=1,nz
+        do j=1,ny
+            do i=1,nx
+                write(13), MeshX(i), MeshY(j), MeshZ(k), Density%Rho(:,:,:,1), Density%Rho(:,:,:,2)
+            enddo
+        enddo
+    enddo
+    
+  end subroutine 
 end module Interfaces

@@ -172,6 +172,8 @@ contains
   end subroutine ReadjustCranking
 
   subroutine PrintCranking
+    
+    use Densities
 
     1 format (18('-'), ' Angular Momentum (hbar) ',17('-') )
     2 format (15x, 'Total', 4x, 'Desired', 4x, 'Omega', 4x, 'Energy')
@@ -181,6 +183,10 @@ contains
     6 format (2x,' ___________________________________________________' )
     7 format (3x,a1,'_',a1,3x,'|',4f10.3)
 
+    8 format (3x,'Open spin')
+    9 format (2x,' ___________________________________________________' )
+   10 format (3x,a1,1x,'|',3x,'|',4f10.3)
+    
     integer :: i
 
     do i=1,3
@@ -213,11 +219,20 @@ contains
       print 7, 'P','y', AMIsoblock(:,:,2,2)
     endif
 
-
     print 6
     print 7, 'N','z', AMIsoblock(:,:,1,3)
     print 7, 'P','z', AMIsoblock(:,:,2,3)
 
+    print *
+    print 8
+    print 9
+    if(.not. SC) then
+        print 10, 'X', 0.5*sum(Density%vecs(:,:,:,1,1))*dv, 0.5*sum(Density%vecs(:,:,:,1,2))*dv
+    endif
+    if(.not. SC .and. .not. TSC) then
+        print 10, 'Y', 0.5*sum(Density%vecs(:,:,:,1,1))*dv, 0.5*sum(Density%vecs(:,:,:,2,1))*dv
+    endif
+    print 10, 'Z', 0.5*sum(Density%vecs(:,:,:,3,1))*dv, 0.5*sum(Density%vecs(:,:,:,3,2))*dv
     print *
 
   end subroutine PrintCranking

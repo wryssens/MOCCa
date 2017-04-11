@@ -36,45 +36,46 @@ def Inter(datafile, points, COLUMN=2, SYM=1, execloc='$HOME/Documents/Codes/inte
        Y = np.loadtxt('data.y', skiprows=1)
        Z = np.loadtxt('data.z', skiprows=1)
        
-       os.system('rm data.x')
-       os.system('rm data.y')
-       os.system('rm data.z')
+       #os.system('rm data.x')
+       #os.system('rm data.y')
+       #os.system('rm data.z')
        os.system('rm inter.exe')
        return (data, X,Y,Z)
        
 def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1, LABEL='', CMAP=plt.cm.jet_r, NORM=1):
-    
+
     #Default to current axis
     if AXIS is None:
         AXIS = plt.gca()
-    
+
     minZ     = np.min(Z)
-    coordmin = c=(np.argmin(Z)/len(Z[0]),np.argmin(Z)%len(Z[0]))
+    coordmin = (np.argmin(Z)/len(Z[0]),np.argmin(Z)%len(Z[0]))
     xmin = X[coordmin]
     ymin = Y[coordmin]
-    
+
     if(SYMX == 1 and xmin < 0):
         xmin = -xmin
     if(SYMY == 1 and ymin < 0):
         ymin = -ymin
-    
+
     if(NORM == 1):
         off = np.min(Z)
     else:
         off = 0
-    
+
     #Plot on the axis
     if(len(LEVELS)>0):
         contour = AXIS.contourf(X,Y,Z - off, levels=LEVELS, cmap=CMAP)
     else:
         contour = AXIS.contourf(X,Y,Z - off, cmap=CMAP)
-        
-    AXIS.plot(xmin,ymin,'kd')    
+
+    AXIS.plot(xmin,ymin,'kd')
     AXIS.set_xlim(min(data[:,0]),max(data[:,0]))
     AXIS.set_ylim(min(data[:,1]),max(data[:,1]))
     cbar    = plt.colorbar(contour, label=LABEL)
-    
+
     if(PLOTDATA> 0):
         plt.plot(data[:,0],data[:,1], 'kx')
-    
 
+
+    return(xmin,ymin,np.min(Z))

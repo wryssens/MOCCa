@@ -77,5 +77,4 @@ def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1, LA
     if(PLOTDATA> 0):
         plt.plot(data[:,0],data[:,1], 'kx')
 
-
     return(xmin,ymin,np.min(Z))

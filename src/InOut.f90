@@ -140,6 +140,14 @@ contains
     &         ' * nz             ',i3,'       ',i3,26(' '),            '*'  ,/,&
     &         ' * nwt            ',i3,'       ',i3,26(' '),            '*'  ,/,&
     &         ' *********************************************************')
+    
+    2 format (' *********************************************************'  ,/,&
+    &         ' * ATTENTION                                             *'  ,/,&
+    &         ' * The HFBasis from file has been alirotated along y.    *'  ,/,&
+    &         ' * Angles       N        P                               *'  ,/,&
+    &         ' *      + ' 2f10.3, '                           *'           ,/,&
+    &         ' *      - ' 2f10.3, '                           *'           ,/,&
+    &         ' *********************************************************')
     !---------------------------------------------------------------------------
     !Reading the input from data; and allocate all necessary arrays.
     call ReadRunInfo()
@@ -170,6 +178,13 @@ contains
           &                     inPC,inTRC,inIC,filenwt,FileHFBColumns,FileBlocksizes)
         endif
     endif
+    !---------------------------------------------------------------------------
+    ! If alirotation is demanded, perform it.
+    if(any(aliy.ne.0.0_dp)) then
+        call AlirotateBasis(aliy/180.0*pi)
+        print 2, aliy(2,1), aliy(2,2), aliy(1,1),aliy(1,2) 
+    endif
+    
   end subroutine Input
 
   subroutine Output

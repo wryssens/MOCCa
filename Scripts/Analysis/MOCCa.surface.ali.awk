@@ -17,16 +17,30 @@
 #==============================================================================#
 BEGIN{
   iflag = 0;
+  basis = 0;
 }
 
 {
-   if ( $1 == "Alirotation") {
+   
+  if ( $2 =="The"  && $3 == "HFBasis" && $8=="alirotated"){
+    basis = 1 ;
+    getline;
+    getline;
+    ali1 = $3
+    ali3 = $4
+    getline;
+    ali2 = $3
+    ali4 = $4
+  }
+  
+  if ( $1 == "Alirotation" && basis == 0) {
     getline ;
     getline ;   
     alix = $2
     getline ;
     aliy = $2
-   }
+  }
+
 
   if ( $1 == "**FINAL**" ) {
     iflag   = 1;
@@ -57,8 +71,12 @@ BEGIN{
   }
 }
 END{
-   if( ee != 0) {
+   if( ee != 0 && basis==0) {
     # Don't include the file if it is empty and does not contain a final energy
     printf("  %8.3f %8.3f %12.3f %8.3f %8.3f %8.4f %8.4f\n",alix,aliy,ee,jx,jz, Qm10, Qm11);
+   }
+   if( ee != 0 && basis==1) {
+    # Don't include the file if it is empty and does not contain a final energy
+    printf("  %8.3f %8.3f %8.3f %8.3f %12.3f %8.3f %8.3f %8.4f %8.4f\n",ali1,ali2,ali3,ali4,ee,jx,jz, Qm10, Qm11);
    }
 }

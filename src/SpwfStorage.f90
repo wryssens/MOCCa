@@ -63,6 +63,9 @@ module SpwfStorage
   !-----------------------------------------------------------------------------
   ! Add this number of spwfs into every parity-isospin block
   integer :: PlusSpwf=0
+  !-----------------------------------------------------------------------------
+  ! Ali-rotation to perform on every parity-isospin block on input of the spwfs.
+  real(KIND=dp) :: aliy(2,2) = 0.0_dp
 
 contains
 
@@ -70,7 +73,7 @@ contains
     !---------------------------------------------------------------------------
     ! Subroutine that reads the necessary info on this module.
     !---------------------------------------------------------------------------
-    NameList /SpwfStorage/ nwt, AdjustNumber, PrintingWindow, PlusSpwf
+    NameList /SpwfStorage/ nwt, AdjustNumber, PrintingWindow, PlusSpwf, aliy
     read(unit=*, NML=SpwfStorage)
 
     if(nwt.le.0) call stp('Negative number of states.', 'Nwt', nwt)
@@ -931,6 +934,47 @@ contains
         enddo
       endif
   end subroutine CompNablaMElements
+  
+  subroutine AlirotateBasis(aliyangle)
+    !---------------------------------------------------------------------------
+    ! This subroutine alirotates all parity-isospin blocks available with a 
+    ! given alirotation in the y-direction. 
+    ! 
+    !---------------------------------------------------------------------------
+    
+    real(KIND=dp), intent(in) :: aliyangle(2,2)
+    integer                   :: wave, Iindex, Pindex, it, P
+    type(spinor)              :: Tphi, phi
+    
+    if(SC) then
+        call stp('Alirotation breaks signature.')
+    endif
+    
+    Iindex = 1 ; if(IC) Iindex = 2
+    Pindex = 1 ; if(PC) Pindex = 2
+    
+    do it=1,Iindex
+        do P=1,Pindex
+            do wave=1,nwt
+                !---------------------------------------------------------------
+                ! Check if this particular wave-function is in this
+                ! parity-isospin block
+                if((HFBasis(wave)%isospin+3)/2 .ne. it) cycle
+                if((HFBasis(wave)%parity+3)/2  .ne. P)  cycle
+                !---------------------------------------------------------------
+                ! Take the time-reverse                 
+                Tphi = TimeReverse(HFBasis(wave)%Value)
+                
+                ! Transform
+                phi = cos(aliyangle(P,it)/2) * HFBasis(wave)%Value             &
+                &   + sin(aliyangle(P,it)/2) * Tphi
+                
+                HFBasis(wave)%Value = phi
+            enddo        
+        enddo
+    enddo
+    
+  end subroutine Alirotatebasis
 
   ! subroutine DrawWaveFunction(wave, Direction, FileName)
   !   !---------------------------------------------------------------------------

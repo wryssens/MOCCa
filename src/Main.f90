@@ -158,7 +158,11 @@ subroutine Evolve(MaxIterations, iprint)
   enddo
   
   if(SolvePairingStart) then
-    call SolvePairing
+    if(FreezeOccupation .and. PairingType.eq.0) then
+        call HFFill ! Fill in the HF way anyway for the first iteration
+    else
+        call SolvePairing
+    endif
   else
   ! Temporary, until MOCCa saves canonical basis to file.
     if(PairingType.eq.2) then

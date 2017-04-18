@@ -230,9 +230,9 @@ contains
         print 10, 'X', 0.5*sum(Density%vecs(:,:,:,1,1))*dv, 0.5*sum(Density%vecs(:,:,:,1,2))*dv
     endif
     if(.not. SC .and. .not. TSC) then
-        print 10, 'Y', 0.5*sum(Density%vecs(:,:,:,1,1))*dv, 0.5*sum(Density%vecs(:,:,:,2,1))*dv
+        print 10, 'Y', 0.5*sum(Density%vecs(:,:,:,2,1))*dv, 0.5*sum(Density%vecs(:,:,:,2,1))*dv
     endif
-    print 10, 'Z', 0.5*sum(Density%vecs(:,:,:,3,1))*dv, 0.5*sum(Density%vecs(:,:,:,3,2))*dv
+    print 10    , 'Z', 0.5*sum(Density%vecs(:,:,:,3,1))*dv, 0.5*sum(Density%vecs(:,:,:,3,2))*dv
     print *
 
   end subroutine PrintCranking

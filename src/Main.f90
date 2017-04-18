@@ -101,6 +101,8 @@ subroutine Evolve(MaxIterations, iprint)
 
   implicit none
 
+  integer :: dummyHF(2,2,2,2) = 0
+
   !---------------------------------------------------------------------------
   ! Interface for the Summaryprinting routines, since FORTRAN is rather
   ! peculiar about routines in the same program...
@@ -159,7 +161,7 @@ subroutine Evolve(MaxIterations, iprint)
   
   if(SolvePairingStart) then
     if(FreezeOccupation .and. PairingType.eq.0) then
-        call HFFill ! Fill in the HF way anyway for the first iteration
+        call HFFill(DummyHF) ! Fill in the HF way anyway for the first iteration
     else
         call SolvePairing
     endif

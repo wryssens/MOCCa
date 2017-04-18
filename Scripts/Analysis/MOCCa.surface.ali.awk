@@ -75,7 +75,8 @@ END{
     printf("  %8.3f %8.3f %12.3f %8.3f %8.3f %8.4f %8.4f\n",alix,aliy,ee,jx,jz, Qm10, Qm11);
    }
    if( ee != 0 && basis==1) {
+    j2 = jx**2 + jz**2
     # Don't include the file if it is empty and does not contain a final energy
-    printf("  %8.3f %8.3f %8.3f %8.3f %12.3f %8.3f %8.3f %8.4f %8.4f\n",ali1,ali2,ali3,ali4,ee,jx,jz, Qm10, Qm11);
+    printf("  %8.3f %8.3f %8.3f %8.3f %12.3f %8.3f %8.3f %8.4f %8.4f\n",ali1,ali2,ali3,ali4,ee,jx,jz,j2,Qm10, Qm11);
    }
 }

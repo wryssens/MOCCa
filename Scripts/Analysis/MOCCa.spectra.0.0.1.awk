@@ -207,6 +207,9 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
     else if (PairingType =="HF")
     {
         Eind=5
+        if( TRC != 1.0 || SC != 1.0 ){
+            Eind = 6
+        }
     }
          
     #index of the state

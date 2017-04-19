@@ -433,15 +433,16 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1):
     return (minx, miny)
 ################################################################################
 def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, 
-            PLOTDATA=-1, MARKER='', FERMIWINDOW=-1):
+            PLOTDATA=-1, MARKER='', FERMIWINDOW=-1, XARG='B20', PC=1, SC=1):
 
     #Default to current axis
     if AXIS is None:
         AXIS = plt.gca()
 
-    xfname=PREFIX + '.t.qlm.tab'
+    (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty, absy,fac)  = Determinedata(PREFIX, XARG,'E' ,PC,SC)
+    
     dataX=np.loadtxt(xfname,skiprows=1)
-    xdata = dataX[:,2]
+    xdata = dataX[:,xcolumn]
 
     fermifname=PREFIX + '.ef.tab'
     if(ISO == 'neutron'):
@@ -493,7 +494,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                         except IndexError:
                             # Just ignore spwfs that are a single point
                             continue
-                        xdata   = dataX[indexes,2]
+                        xdata   = dataX[indexes,xcolumn]
                         if(PLOTDATA == 1):
                             AXIS.plot(xdata, ydata, c +'x')
                         if(INTERPOLATE > 0):
@@ -512,9 +513,42 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
 #                            print *, 'Value'
 #                            continue
             else:
-                print 'No plotting defined for nonaxial case yet'
-                sys.exit()
-    AXIS.set_xlabel(r'$\beta_{20}$')
+               #################################################################
+               # NONAXIAL CASE
+                fname = fnametemp + '.tab'
+                c = 'k'
+                try:
+                    tokens = tokenizer(fname)
+                    tokens.next()
+                    spwfs = [np.loadtxt(A) for A in tokens]
+                except IOError:
+                    break
+                for i in range(len(spwfs)):
+                    spwf = spwfs[i]
+                    try:
+                        ydata = spwf[:,7]
+                        indexes = [int(x)-1 for x in spwf[:,1]]
+                    except IndexError:
+                        # Just ignore spwfs that are a single point
+                        continue
+                    xdata   = dataX[indexes,xcolumn]
+                    
+                    if(PLOTDATA == 1):
+                        AXIS.plot(xdata, ydata, c +'x')
+                    if(INTERPOLATE > 0):
+                        try:
+                            f     = interp1d(xdata, ydata, kind='cubic')
+                        except:
+                            continue
+                        interx= np.arange(min(xdata), max(xdata) - (max(xdata) - min(xdata))/100, INTERPOLATE) 
+                        ydata = f(interx)
+                        xdata = interx
+                    if(i == 0 and P == PAR[0] ):
+                        AXIS.plot(xdata, ydata, c+linestyle, marker=MARKER)
+                    else:
+                        AXIS.plot(xdata, ydata, c+linestyle, marker=MARKER)
+               
+    AXIS.set_xlabel(xlabel)
     AXIS.set_ylabel(r'E (MeV)')
 
 ################################################################################

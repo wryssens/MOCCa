@@ -195,6 +195,9 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
     if(PairingType == "HFB" && basis =="hf")
     {
         Eind=7
+        if( TRC != 1.0 || SC != 1.0 ){
+            Eind = 9
+        }
     }
     if(PairingType == "HFB" && basis =="can")
     {
@@ -222,7 +225,7 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
         # Expected value of signature
         sorted[3] = $4
         #Occupation number or Rho_ii
-        sorted[4] = $5
+        sorted[4] = $6
     }
     else {
         #Automatically positive signature

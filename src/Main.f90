@@ -453,6 +453,7 @@ subroutine PrintIterationInfo(Iteration, PrintAll)
   use Pairing,     only : PrintPairing, PairingType, Fermi
   use Energy,      only : PrintEnergy, PairingEnergy
   use HFB, only         : PrintQP
+  use geninfo
 
   implicit none
 
@@ -468,7 +469,9 @@ subroutine PrintIterationInfo(Iteration, PrintAll)
   call printSpwf(PairingType, Fermi, PrintAll)
   if(PairingType.eq.2) call PrintQp()
   call PrintAllMoments
-  call PrintCranking
+  if(.not. TRC) then
+        call PrintCranking
+  endif
   call PrintPairing
   call PrintEnergy
 

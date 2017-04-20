@@ -130,12 +130,12 @@ contains
       do wave=1,nwt
         HFBasis(wave) = InterpolateSpwf(HFBasis(wave))
       enddo
+      !---------------------------------------------------------------------------
+      ! Make sure the densities get recalculated
+      Density = NewDensityVector()
+      Recalc=.true.  
     endif
-    !---------------------------------------------------------------------------
-    ! Make sure the densities get recalculated
-    Density = NewDensityVector()
-    Recalc=.true.
-  end subroutine TransformInput
+    end subroutine TransformInput
 
   subroutine BreakParity(wf)
    !---------------------------------------------------------------------------
@@ -1010,6 +1010,7 @@ contains
         ! File matches rundata ; 
         ! Check if the number of wavefunctions did not change
         if((filenwt .eq. nwt)) then
+            print *, 'Correct thing happens'
             KappaHFB = InKappa
             RhoHFB   = InRho
             U        = inU

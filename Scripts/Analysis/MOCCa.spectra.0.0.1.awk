@@ -51,7 +51,6 @@
 #  [base] = hf "Hartree-Fock" basis diagonalizing the sp Hamiltonian           #
 #         = ca canonical      basis diagonalizing the one-body density matrix  # 
 #         = qp  quasiparticle  basis diagonalizing the q-p Hamiltonian         # 
-#          (NOT IMPLEMENTED)                                                   #
 #  [iso]  = n  neutrons                                                        #
 #         = p  protons                                                         #
 #  [par]  = +1  positive parity                                                #
@@ -494,26 +493,55 @@ BEGIN{
                 getline;
                 getline;
                 i = 1
-
+                # FIRST BLOCK
                 while(  NF != 1){
                     neutronqp[iq,i,-1]=$3 
                     i = i+1                    
                     getline;
                 }
+                if ( Pc == 1) {
+                    getline;
+                    getline;
+                    getline;
+                    i = 1
+                    getline;
+                    # SECOND BLOCK
+                    while(  NF != 1){
+                        neutronqp[iq,i,+1]=$3 
+                        i = i+1
+                        getline;
+                    }
+                }
+                
+                getline;
+                getline;
                 getline;
                 getline;
                 getline;
                 i = 1
-                getline;
+                #THIRD BLOCK
                 while(  NF != 1){
-                    neutronqp[iq,i,+1]=$3 
-                    i = i+1
+                    protonqp[iq,i,-1]=$3 
+                    i = i+1                    
                     getline;
                 }
+                if(PC==1) {
+                    getline;
+                    getline;
+                    getline;
+                    getline;
+                    
+                    #FOURTH BLOCK
+                    while(  NF != 1){
+                        protonqp[iq,i,+1]=$3 
+                        i = i+1
+                        getline;
+                    }
+                }
+                
             }
             QPBasisflag = 0
-        }
-           
+        }           
         #-------------------------------------------------------------------
         # read information on multipole moments
         if ( flag[multipole] && ( $2 == "Electric" ||  $2 == "Multipole") )  {
@@ -1047,8 +1075,8 @@ END{
 
             N = 1;
             while ( neutronqp[iq,N,-1] != "" ){
-                    printf("%4i %4i %4i", N, iq, 0)         >> "tmp.n.qp.P=-1.tab"
-                    printf("%10.3f \n", energy[N]) >> "tmp.n.qp.P=-1.tab"
+                    printf("%4i %4i %4i", N, iq, 0) >> "tmp.n.qp.P=-1.tab"
+                    printf("%10.3f \n", energy[N])  >> "tmp.n.qp.P=-1.tab"
                     N+=1
             }
             printf("* \n") >> "tmp.n.qp.P=-1.tab"                
@@ -1070,8 +1098,8 @@ END{
 
             N = 1;
             while ( neutronqp[iq,N,+1] != "" ){
-                    printf("%4i %4i %4i", N, iq, 0)         >> "tmp.n.qp.P=+1.tab"
-                    printf("%10.3f \n", energy[N]) >> "tmp.n.qp.P=+1.tab"
+                    printf("%4i %4i %4i", N, iq, 0) >> "tmp.n.qp.P=+1.tab"
+                    printf("%10.3f \n", energy[N])  >> "tmp.n.qp.P=+1.tab"
                     N+=1
             }
             printf("* \n") >> "tmp.n.qp.P=+1.tab"                

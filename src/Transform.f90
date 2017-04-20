@@ -1010,7 +1010,6 @@ contains
         ! File matches rundata ; 
         ! Check if the number of wavefunctions did not change
         if((filenwt .eq. nwt)) then
-            print *, 'Correct thing happens'
             KappaHFB = InKappa
             RhoHFB   = InRho
             U        = inU

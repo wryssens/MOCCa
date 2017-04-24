@@ -1000,7 +1000,7 @@ contains
     integer, intent(in)           :: InputBlockSizes(2,2), InColumns(:,:,:)
     integer, intent(in)           :: filenwt
     logical, intent(in)           :: inPC, inIC, inTRC
-    integer                       :: sizes(2),it,i,j, check, new,N,P
+    integer                       :: sizes(2),it,i,j, check, new,N,P, sm, sp, st
 
     if(.not. inIC) then
         call stp('No rules to transform the HFB matrices yet when breaking Isospin.')
@@ -1143,6 +1143,7 @@ contains
                 & 2*sizes(2)+sizes(1)  +1:2*sum(sizes),1,it)=                  &
                 &         inU(sizes(1)/2+1:sizes(1), sizes(1)+1:2*sizes(1),1,it)
                 !
+               
                 V(sum(sizes)/2 + 1:sum(sizes)/2 + sizes(2)/2, 1:sizes(2),1,it) =&
                 &                    inV(sizes(2)/2+1:sizes(2), 1:sizes(2),2,it)
                 V(sizes(2)+sizes(1)/2+1:sum(sizes), sizes(2)+1:sum(sizes),1,it)=&
@@ -1173,42 +1174,153 @@ contains
                 !---------------------------------------------------------------
                 ! Signature broken case
                 !---------------------------------------------------------------
+                sm = sizes(1)/2
+                sp = sizes(2)/2
+                st = sm + sp
+                
                 !---------------------------------------------------------------
                 ! Anomalous density matrix
-                KappaHFB(1:sizes(2), 1:sizes(2),1,it) =                        &
-                &                            InKappa(1:sizes(2),1:sizes(2),2,it)
-                KappaHFB(sizes(2)+1:sum(sizes), sizes(2)+1:sum(sizes),1,it) =  &
-                &                            InKappa(1:sizes(1),1:sizes(1),1,it)
-                !-------------------------------------------------------------------
+                ! Positive parity
+                KappaHFB(   1:sp,      1:sp   ,1,it)  =  InKappa(   1:  sp,   1:sp,  2,it)
+                KappaHFB(   1:sp,   st+1:st+sp,1,it)  =  InKappa(   1:  sp,sp+1:2*sp,2,it)
+                KappaHFB(st+1:st+sp,st+1:st+sp,1,it)  =  InKappa(sp+1:2*sp,sp+1:2*sp,2,it)
+                
+                ! Negative parity
+                KappaHFB(   sp+1:   sp+sm,   sp+1:   sp+sm,1,it) = InKappa(   1:sm,   1:  sm,1,it)
+                KappaHFB(   sp+1:   sp+sm,st+sp+1:st+sp+sm,1,it) = InKappa(   1:sm,sm+1:2*sm,1,it)
+                KappaHFB(st+sp+1:st+sp+sm,st+sp+1:st+sp+sm,1,it) = InKappa(sm+1:2*sm,sm+1:2*sm,1,it)
+                
+                ! Antisymmetrize Kappa
+                do i=1,HFBSize
+                  do j=1, i-1
+                    KappaHFB(i,j,1,it) = - KappaHFB(j,i,1,it)
+                  enddo
+                enddo
+                do i=1,2*sp
+                    print ('(99f7.2)'),DBLE(inkappa(i,1:2*sp,2,it))
+                enddo
+                print *
+                do i=1,2*sm
+                    print ('(99f7.2)'),DBLE(inkappa(i,1:2*sm,1,it))
+                enddo
+                print *
+                do i=1,2*(sm+sp)
+                    print ('(99f7.2)'),DBLE( KappaHFB(i,1:2*sm+2*sp,1,it))
+                enddo
+                !---------------------------------------------------------------
                 ! Density matrix
-                RhoHFB(1:sizes(2), 1:sizes(2),1,it) =                        &
-                &                            InRho(1:sizes(2),1:sizes(2),2,it)
-                RhoHFB(sizes(2)+1:sum(sizes), sizes(2)+1:sum(sizes),1,it) =  &
-                &                            InRho(1:sizes(1),1:sizes(1),1,it)
+                ! Positive parity
+                RhoHFB(   1:sp,      1:sp   ,1,it)   = InRho(1:sp,   1:sp,2,it)
+                RhoHFB(   1:sp,   st+1:sp   ,1,it)   = InRho(1:sp,sp+1:2*sp,2,it)
+                RhoHFB(st+1:st+sp,st+1:st+sp,1,it)   = InRho(sp+1:2*sp,sp+1:2*sp,2,it)
+                
+                ! Negative parity
+                RhoHFB(   sp+1:   sp+sm,   sp+1:   sp+sm,1,it) = InRho(   1:sm,     1:  sm,1,it)
+                RhoHFB(   sp+1:   sp+sm,st+sp+1:st+sp+sm,1,it) = InRho(   1:sm,  sm+1:2*sm,1,it)
+                RhoHFB(st+sp+1:st+sp+sm,st+sp+1:st+sp+sm,1,it) = InRho(sm+1:2*sm,sm+1:2*sm,1,it)
+                    
+                do i=1,HFBSize
+                  do j=1, i-1
+                    RhoHFB(i,j,1,it) = RhoHFB(j,i,1,it)
+                  enddo
+                enddo             
+
                 !---------------------------------------------------------------
                 ! U and V matrices.
-                !               
                 U(:,:,:,it) = 0.0d0 ; V(:,:,:,it) = 0.0d0
-                ! Positive parity
-                U(1:sizes(2),1:sizes(2),1,it) =                                &
-                &                               inU(1:sizes(2), 1:sizes(2),2,it)
-                ! Negative parity
-                U(sizes(2)+1:sum(sizes), sizes(2)+1:sum(sizes),1,it) =     &
-                &                            inU( 1:sizes(1),   1:sizes(1),1,it)
-                ! Positive parity
-                V(1:sizes(2),1:sizes(2),1,it) =                                &
-                &                               inV(1:sizes(2), 1:sizes(2),2,it)
-                ! Negative parity
-                V(sizes(2)+1:sum(sizes), sizes(2)+1:sum(sizes),1,it) =     &
-                &                            inV( 1:sizes(1),   1:sizes(1),1,it)
+                
+                ! The first positive parity eigenvectors
+                U(   1:sp   , 1:2*sp,1,it)        =    inU(   1:sp  , 1:2*sp,2,it)
+                U(st+1:st+sp, 1:2*sp,1,it)        =    inU(sp+1:2*sp, 1:2*sp,2,it)
+                
+                ! The first negative parity eigenvectors
+                U(    sp+1:   sp+sm, 2*sp+1:sp+2*sm,1,it) =inU(   1:sm  , 1:2*sm,1,it)
+                U( st+sp+1:st+sp+sm, 2*sp+1:sp+2*sm,1,it) =inU(sm+1:2*sm, 1:2*sm,1,it)
+                
+                ! The second positive parity eigenvectors
+                U(   1:sp   , 2*st+1:2*st+2*sp,1,it)  = inU(   1:sp  , 2*sp+1:4*sp,2,it)
+                U(st+1:st+sp, 2*st+1:2*st+2*sp,1,it)  = inU(sp+1:2*sp, 2*sp+1:4*sp,2,it)
+                
+                ! The second negative parity eigenvectors
+                U(    sp+1:   sp+sm, 2*st+2*sp+1:2*st+2*sp+2*sm,1,it) =        &
+                &                                 inU(   1:sm  , 2*sm+1:4*sm,1,it)
+                U( st+sp+1:st+sp+sm, 2*st+2*sp+1:2*st+2*sp+2*sm,1,it) =        &
+                &                                 inU(sm+1:2*sm, 2*sm+1:4*sm,1,it)
+                
+                ! The first positive parity eigenvectors
+                V(   1:sp   , 1:2*sp,1,it)        =    inV(   1:sp  , 1:2*sp,2,it)
+                V(st+1:st+sp, 1:2*sp,1,it)        =    inV(sp+1:2*sp, 1:2*sp,2,it)
+                
+                ! The first negative parity eigenvectors
+                V(    sp+1:   sp+sm, 2*sp+1:2*sp+2*sm,1,it) =inV(   1:sm  , 1:2*sm,1,it)
+                V( st+sp+1:st+sp+sm, 2*sp+1:2*sp+2*sm,1,it) =inV(sm+1:2*sm, 1:2*sm,1,it)
+                
+                ! The second positive parity eigenvectors
+                V(   1:sp   , 2*st+1:2*st+2*sp,1,it)  = inV(   1:sp  , 2*sp+1:4*sp,2,it)
+                V(st+1:st+sp, 2*st+1:2*st+2*sp,1,it)  = inV(sp+1:2*sp, 2*sp+1:4*sp,2,it)
+                
+                ! The second negative parity eigenvectors
+                V(    sp+1:   sp+sm, 2*st+2*sp+1:2*st+2*sp+2*sm,1,it) =        &
+                &                                 inV(   1:sm  , 2*sm+1:4*sm,1,it)
+                V( st+sp+1:st+sp+sm, 2*st+2*sp+1:2*st+2*sp+2*sm,1,it) =        &
+                &                                 inV(sm+1:2*sm, 2*sm+1:4*sm,1,it)
+                
                 !---------------------------------------------------------------
                 do i=1,sizes(2)
-                    HFBColumns(i,1,it)          = Incolumns(i,2,it)
+                  if(Incolumns(i,2,it) .gt. sizes(2)) then
+                    HFBColumns(i,1,it) = Incolumns(i,2,it) + sizes(1)
+                  else
+                    HFBColumns(i,1,it) = Incolumns(i,2,it)
+                  endif
                 enddo
                 do i=1,sizes(1)
+                  if(Incolumns(i,1,it) .gt. sizes(1)) then
+                    HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) + 2*sizes(2)
+                  else
                     HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) +   sizes(2)
+                  endif
                 enddo
-                !---------------------------------------------------------------  
+                
+!                print *
+!                print *, '---------------------'
+!                print *, 'after breaking'
+!                print *
+!                do i=1,sizes(1) + sizes(2)
+!                    print ('(99f7.3)'), DBLE(U(i,1:2*sizes(1) + 2*sizes(2),1,it))
+!                enddo
+!                print *
+!                print *, 'before'
+!                print *
+!                do i=1,sizes(2)
+!                    print ('(99f7.3)'), DBLE(inU(i,1:2*sizes(2),2,it))
+!                enddo
+!                print *
+!                do i=1,sizes(1)
+!                    print ('(99f7.3)'), DBLE(inU(i,1:2*sizes(1),1,it))
+!                enddo                   
+!                print *
+!                print *, '---------------------'
+!                print *, 'after breaking'
+!                print *
+!                do i=1,sizes(1) + sizes(2)
+!                    print ('(99f7.3)'), DBLE(V(i,1:2*sizes(1) + 2*sizes(2),1,it))
+!                enddo
+!                print *
+!                print *, 'before'
+!                print *
+!                do i=1,sizes(2)
+!                    print ('(99f7.3)'), DBLE(inV(i,1:2*sizes(2),2,it))
+!                enddo
+!                print *
+!                do i=1,sizes(1)
+!                    print ('(99f7.3)'), DBLE(inV(i,1:2*sizes(1),1,it))
+!                enddo          
+!                !---------------------------------------------------------------  
+!                print *
+!                print *, 'columns'
+!                print *, HFBcolumns(1:sizes(1)+sizes(2),1,it)
+!                print *, incolumns(1:sizes(1),1,it)
+!                print *, incolumns(1:sizes(2),2,it)
             endif  
         enddo
     endif

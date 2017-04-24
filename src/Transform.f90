@@ -1080,17 +1080,16 @@ contains
         if(.not.allocated(HFBColumns)) then
           allocate(HFBColumns(HFBSize,1,2)) ; HFBColumns = 0
         endif
-        if(.not. SC) then
-          print *, 'WARNING: TRANSFORMATION RULES FOR U AND V MIGHT NOT BE '   &
-          &      //'CORRECT WHEN BREAKING PARITY FROM A SIGNATURE BROKEN '     &
-          &      //'CALCULATION.'
-        endif
+!        if(.not. SC) then
+!          print *, 'WARNING: TRANSFORMATION RULES FOR U AND V MIGHT NOT BE '   &
+!          &      //'CORRECT WHEN BREAKING PARITY FROM A SIGNATURE BROKEN '     &
+!          &      //'CALCULATION.'
+!        endif
 
         do it=1,2
             sizes = InputBlocksizes(:,it)
             !-------------------------------------------------------------------
             ! Anomalous density matrix
-
             ! Parity plus, meaning P=2 for inputKappa and input Rho
             KappaHFB(sum(sizes)/2+1:sum(sizes)/2+sizes(2)/2,1:sizes(2)/2,1,it) &
             &                 = InKappa(sizes(2)/2+1:sizes(2),1:sizes(2)/2,2,it)
@@ -1098,14 +1097,12 @@ contains
             KappaHFB(sum(sizes)/2+sizes(2)/2+1:sum(sizes),                     &
             &                     sizes(2)/2+1:sum(sizes)/2,1,it )             &
             &                 = InKappa(sizes(1)/2+1:sizes(1),1:sizes(1)/2,1,it)
-
             ! Antisymmetrize Kappa
             do i=1,HFBSize
               do j=i+1, HFBSize
                 KappaHFB(i,j,1,it) = - KappaHFB(j,i,1,it)
               enddo
             enddo
-
             !-------------------------------------------------------------------
             ! Density matrix
             ! Positive parity, positive signature
@@ -1123,63 +1120,80 @@ contains
             RhoHFB(sum(sizes)/2+sizes(2)/2+1:sum(sizes),                       &
             &      sum(sizes)/2+sizes(2)/2+1:sum(sizes),1,it)                  &
             &          = InRho(sizes(1)/2+1:sizes(1),sizes(1)/2+1:sizes(1),1,it)
-
-            !-------------------------------------------------------------------
-            ! U and V matrices
-            ! The order of these is not very important, as long as the
-            ! HFBColumns matrix is correctly initialized.
-            U(:,:,:,it) = 0.0d0 ; V(:,:,:,it) = 0.0d0
-
-            ! Positive parity, positive signature
-            U(1:sizes(2)/2, 1:sizes(2),1,it) =                                 &
-            &                               inU(1:sizes(2)/2, 1:sizes(2),2,it)
-
-            ! Negative parity, positive signature
-            U(sizes(2)/2+1:sum(sizes)/2, sizes(2)+1:sum(sizes),1,it) =         &
-            &                            inU( 1:sizes(1)/2,   1:sizes(1),1,it)
-
-            ! Positive parity, negative signature
-            U(sum(sizes)/2+1:sizes(2)+sizes(1)/2,                              &
-            & sum(sizes)+1:sum(sizes) + sizes(2),1,it) =                       &
-            &             inU(sizes(2)/2+1:sizes(2), sizes(2)+1:2*sizes(2),2,it)
-
-            ! Negative parity, negative signature
-            U(  sizes(2)+sizes(1)/2+1:  sum(sizes),                            &
-            & 2*sizes(2)+sizes(1)  +1:2*sum(sizes),1,it)=                      &
-            &             inU(sizes(1)/2+1:sizes(1), sizes(1)+1:2*sizes(1),1,it)
-            !
-
-            V(sum(sizes)/2 + 1:sum(sizes)/2 + sizes(2)/2, 1:sizes(2),1,it) =   &
-            &                        inV(sizes(2)/2+1:sizes(2), 1:sizes(2),2,it)
-
-            V(sizes(2)+sizes(1)/2+1:sum(sizes), sizes(2)+1:sum(sizes),1,it) =  &
-            &                        inV(sizes(1)/2+1:sizes(1), 1:sizes(1),1,it)
-
-            V(1:sizes(2)/2,                                                    &
-            & sum(sizes) +1: sum(sizes) + sizes(2),1,it) =                     &
-            &              inV(1:sizes(2),sizes(2)+1:2*sizes(2),2,it)
-
-            V(sizes(2)/2+1:sum(sizes)/2,                                       &
-            & sum(sizes) + sizes(2)+1: 2*sum(sizes),1,it) =                    &
-            &              inV(1:sizes(1),sizes(1)+1:2*sizes(1),1,it)
-            !
-
-            do i=1,sizes(2)
-              if(Incolumns(i,2,it) .gt. sizes(2)) then
-                HFBColumns(i,1,it) = Incolumns(i,2,it) + sizes(1)
-              else
-                HFBColumns(i,1,it) = Incolumns(i,2,it)
-              endif
-            enddo
-
-            do i=1,sizes(1)
-              if(Incolumns(i,1,it) .gt. sizes(1)) then
-                HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) + 2*sizes(2)
-              else
-                HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) + sizes(2)
-              endif
-            enddo
-
+            
+            if(SC) then
+                !---------------------------------------------------------------
+                ! U and V matrices
+                ! The order of these is not very important, as long as the
+                ! HFBColumns matrix is correctly initialized.
+                U(:,:,:,it) = 0.0d0 ; V(:,:,:,it) = 0.0d0
+                ! Positive parity, positive signature
+                U(1:sizes(2)/2, 1:sizes(2),1,it) =                             &
+                &                             inU(1:sizes(2)/2, 1:sizes(2),2,it)
+                ! Negative parity, positive signature
+                U(sizes(2)/2+1:sum(sizes)/2, sizes(2)+1:sum(sizes),1,it) =     &
+                &                          inU( 1:sizes(1)/2,   1:sizes(1),1,it)
+                ! Positive parity, negative signature
+                U(sum(sizes)/2+1:sizes(2)+sizes(1)/2,                          &
+                & sum(sizes)+1:sum(sizes) + sizes(2),1,it) =                   &
+                &         inU(sizes(2)/2+1:sizes(2), sizes(2)+1:2*sizes(2),2,it)
+                ! Negative parity, negative signature
+                U(  sizes(2)+sizes(1)/2+1:  sum(sizes),                        &
+                & 2*sizes(2)+sizes(1)  +1:2*sum(sizes),1,it)=                  &
+                &         inU(sizes(1)/2+1:sizes(1), sizes(1)+1:2*sizes(1),1,it)
+                !
+                V(sum(sizes)/2 + 1:sum(sizes)/2 + sizes(2)/2, 1:sizes(2),1,it) =&
+                &                    inV(sizes(2)/2+1:sizes(2), 1:sizes(2),2,it)
+                V(sizes(2)+sizes(1)/2+1:sum(sizes), sizes(2)+1:sum(sizes),1,it)=&
+                &                    inV(sizes(1)/2+1:sizes(1), 1:sizes(1),1,it)
+                V(1:sizes(2)/2,                                                &
+                & sum(sizes) +1: sum(sizes) + sizes(2),1,it) =                 &
+                &              inV(1:sizes(2),sizes(2)+1:2*sizes(2),2,it)
+                V(sizes(2)/2+1:sum(sizes)/2,                                   &
+                & sum(sizes) + sizes(2)+1: 2*sum(sizes),1,it) =                &
+                &              inV(1:sizes(1),sizes(1)+1:2*sizes(1),1,it)
+                !---------------------------------------------------------------
+                do i=1,sizes(2)
+                  if(Incolumns(i,2,it) .gt. sizes(2)) then
+                    HFBColumns(i,1,it) = Incolumns(i,2,it) + sizes(1)
+                  else
+                    HFBColumns(i,1,it) = Incolumns(i,2,it)
+                  endif
+                enddo
+                do i=1,sizes(1)
+                  if(Incolumns(i,1,it) .gt. sizes(1)) then
+                    HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) + 2*sizes(2)
+                  else
+                    HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) +   sizes(2)
+                  endif
+                enddo
+                !---------------------------------------------------------------               
+            else
+                !---------------------------------------------------------------
+                ! Signature broken case
+                !---------------------------------------------------------------
+                U(:,:,:,it) = 0.0d0 ; V(:,:,:,it) = 0.0d0
+                ! Positive parity
+                U(1:sizes(2),1:sizes(2),1,it) =                                &
+                &                               inU(1:sizes(2), 1:sizes(2),2,it)
+                ! Negative parity
+                U(sizes(2)+1:sum(sizes), sizes(2)+1:sum(sizes),1,it) =     &
+                &                            inU( 1:sizes(1),   1:sizes(1),1,it)
+                ! Positive parity
+                V(1:sizes(2),1:sizes(2),1,it) =                                &
+                &                               inV(1:sizes(2), 1:sizes(2),2,it)
+                ! Negative parity
+                V(sizes(2)+1:sum(sizes), sizes(2)+1:sum(sizes),1,it) =     &
+                &                            inV( 1:sizes(1),   1:sizes(1),1,it)
+                !---------------------------------------------------------------
+                do i=1,sizes(2)
+                    HFBColumns(i,1,it) = Incolumns(i,2,it)
+                enddo
+                do i=1,sizes(1)
+                    HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) +   sizes(2)
+                enddo
+                !---------------------------------------------------------------  
+            endif  
         enddo
     endif
 end subroutine TransformHFBMatrices

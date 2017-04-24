@@ -1088,40 +1088,41 @@ contains
 
         do it=1,2
             sizes = InputBlocksizes(:,it)
-            !-------------------------------------------------------------------
-            ! Anomalous density matrix
-            ! Parity plus, meaning P=2 for inputKappa and input Rho
-            KappaHFB(sum(sizes)/2+1:sum(sizes)/2+sizes(2)/2,1:sizes(2)/2,1,it) &
-            &                 = InKappa(sizes(2)/2+1:sizes(2),1:sizes(2)/2,2,it)
-            ! Parity minus, meaning P=1 for inputKappa
-            KappaHFB(sum(sizes)/2+sizes(2)/2+1:sum(sizes),                     &
-            &                     sizes(2)/2+1:sum(sizes)/2,1,it )             &
-            &                 = InKappa(sizes(1)/2+1:sizes(1),1:sizes(1)/2,1,it)
-            ! Antisymmetrize Kappa
-            do i=1,HFBSize
-              do j=i+1, HFBSize
-                KappaHFB(i,j,1,it) = - KappaHFB(j,i,1,it)
-              enddo
-            enddo
-            !-------------------------------------------------------------------
-            ! Density matrix
-            ! Positive parity, positive signature
-            RhoHFB(1:sizes(2)/2,1:sizes(2)/2,1,it)                             &
-            &                            = InRho(1:sizes(2)/2,1:sizes(2)/2,2,it)
-            ! Negative parity, positive signature
-            RhoHFB(sizes(2)/2+1:sum(sizes)/2,sizes(2)/2+1:sum(sizes)/2,1,it)   &
-            &                            = InRho(1:sizes(1)/2,1:sizes(1)/2,1,it)
-
-            ! Positive parity, negative signature
-            RhoHFB(sum(sizes)/2+1:sum(sizes)/2+sizes(1)/2,                     &
-            &      sum(sizes)/2+1:sum(sizes)/2+sizes(1)/2,1,it)                &
-            &          = InRho(sizes(2)/2+1:sizes(2),sizes(2)/2+1:sizes(2),2,it)
-            ! Negative parity, negative signature
-            RhoHFB(sum(sizes)/2+sizes(2)/2+1:sum(sizes),                       &
-            &      sum(sizes)/2+sizes(2)/2+1:sum(sizes),1,it)                  &
-            &          = InRho(sizes(1)/2+1:sizes(1),sizes(1)/2+1:sizes(1),1,it)
             
             if(SC) then
+                !---------------------------------------------------------------
+                ! Anomalous density matrix
+                ! Parity plus, meaning P=2 for inputKappa and input Rho
+                KappaHFB(sum(sizes)/2+1:sum(sizes)/2+sizes(2)/2,1:sizes(2)/2,1,it) &
+                &             = InKappa(sizes(2)/2+1:sizes(2),1:sizes(2)/2,2,it)
+                ! Parity minus, meaning P=1 for inputKappa
+                KappaHFB(sum(sizes)/2+sizes(2)/2+1:sum(sizes),                 &
+                &                     sizes(2)/2+1:sum(sizes)/2,1,it )         &
+                &             = InKappa(sizes(1)/2+1:sizes(1),1:sizes(1)/2,1,it)
+                ! Antisymmetrize Kappa
+                do i=1,HFBSize
+                  do j=i+1, HFBSize
+                    KappaHFB(i,j,1,it) = - KappaHFB(j,i,1,it)
+                  enddo
+                enddo
+                !-------------------------------------------------------------------
+                ! Density matrix
+                ! Positive parity, positive signature
+                RhoHFB(1:sizes(2)/2,1:sizes(2)/2,1,it)                         &
+                &                        = InRho(1:sizes(2)/2,1:sizes(2)/2,2,it)
+                ! Negative parity, positive signature
+                RhoHFB(sizes(2)/2+1:sum(sizes)/2,sizes(2)/2+1:sum(sizes)/2,1,it)   &
+                &                        = InRho(1:sizes(1)/2,1:sizes(1)/2,1,it)
+
+                ! Positive parity, negative signature
+                RhoHFB(sum(sizes)/2+1:sum(sizes)/2+sizes(1)/2,                 &
+                &      sum(sizes)/2+1:sum(sizes)/2+sizes(1)/2,1,it)            &
+                &      = InRho(sizes(2)/2+1:sizes(2),sizes(2)/2+1:sizes(2),2,it)
+                ! Negative parity, negative signature
+                RhoHFB(sum(sizes)/2+sizes(2)/2+1:sum(sizes),                   &
+                &      sum(sizes)/2+sizes(2)/2+1:sum(sizes),1,it)              &
+                &      = InRho(sizes(1)/2+1:sizes(1),sizes(1)/2+1:sizes(1),1,it)
+
                 !---------------------------------------------------------------
                 ! U and V matrices
                 ! The order of these is not very important, as long as the
@@ -1172,6 +1173,21 @@ contains
                 !---------------------------------------------------------------
                 ! Signature broken case
                 !---------------------------------------------------------------
+                !---------------------------------------------------------------
+                ! Anomalous density matrix
+                KappaHFB(1:sizes(2), 1:sizes(2),1,it) =                        &
+                &                            InKappa(1:sizes(2),1:sizes(2),2,it)
+                KappaHFB(sizes(2)+1:sum(sizes), sizes(2)+1:sum(sizes),1,it) =  &
+                &                            InKappa(1:sizes(1),1:sizes(1),1,it)
+                !-------------------------------------------------------------------
+                ! Density matrix
+                RhoHFB(1:sizes(2), 1:sizes(2),1,it) =                        &
+                &                            InRho(1:sizes(2),1:sizes(2),2,it)
+                RhoHFB(sizes(2)+1:sum(sizes), sizes(2)+1:sum(sizes),1,it) =  &
+                &                            InRho(1:sizes(1),1:sizes(1),1,it)
+                !---------------------------------------------------------------
+                ! U and V matrices.
+                !               
                 U(:,:,:,it) = 0.0d0 ; V(:,:,:,it) = 0.0d0
                 ! Positive parity
                 U(1:sizes(2),1:sizes(2),1,it) =                                &
@@ -1187,7 +1203,7 @@ contains
                 &                            inV( 1:sizes(1),   1:sizes(1),1,it)
                 !---------------------------------------------------------------
                 do i=1,sizes(2)
-                    HFBColumns(i,1,it) = Incolumns(i,2,it)
+                    HFBColumns(i,1,it)          = Incolumns(i,2,it)
                 enddo
                 do i=1,sizes(1)
                     HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) +   sizes(2)

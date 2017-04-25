@@ -1177,7 +1177,7 @@ contains
                 sm = sizes(1)/2
                 sp = sizes(2)/2
                 st = sm + sp
-                
+                KappaHFB(:,:,1,it) = 0.0_dp ; RhoHFB(:,:,1,it) = 0.0_dp
                 !---------------------------------------------------------------
                 ! Anomalous density matrix
                 ! Positive parity
@@ -1229,49 +1229,90 @@ contains
                 ! U and V matrices.
                 U(:,:,:,it) = 0.0d0 ; V(:,:,:,it) = 0.0d0
                 
-                ! The first positive parity eigenvectors
-                U(   1:sp   , 1:2*sp,1,it)        =    inU(   1:sp  , 1:2*sp,2,it)
-                U(st+1:st+sp, 1:2*sp,1,it)        =    inU(sp+1:2*sp, 1:2*sp,2,it)
-                ! The first negative parity eigenvectors
-                U(    sp+1:   sp+sm, 2*sp+1:sp+2*sm,1,it) =inU(   1:sm  , 1:2*sm,1,it)
-                U( st+sp+1: 2*st, 2*sp+1:sp+2*sm,1,it) =inU(sm+1:2*sm, 1:2*sm,1,it)
-                ! The second positive parity eigenvectors
-                U(   1:sp   , 2*st+1:2*st+2*sp,1,it)  = inU(   1:sp  , 2*sp+1:4*sp,2,it)
-                U(st+1:st+sp, 2*st+1:2*st+2*sp,1,it)  = inU(sp+1:2*sp, 2*sp+1:4*sp,2,it)
-                ! The second negative parity eigenvectors
+                U(   1:sp   , 1:2*sp,1,it)        =  inU(   1:sp  , 1:2*sp,2,it)
+                U(st+1:st+sp, 1:2*sp,1,it)        =  inU(sp+1:2*sp, 1:2*sp,2,it)
+                
+                U(   1:sp   , 2*sp+1:4*sp,1,it)  =                             &
+                &                               inU(   1:sp  , 2*sp+1:4*sp,2,it)
+                U(st+1:st+sp, 2*sp+1:4*sp,1,it)  =                            &
+                &                               inU(sp+1:2*sp, 2*sp+1:4*sp,2,it)     
+                
+                U(    sp+1:   sp+sm, 4*sp+1:4*sp+2*sm,1,it) =                  &
+                &                                    inU(   1:sm  , 1:2*sm,1,it)
+                U( st+sp+1: 2*st,    4*sp+1:4*sp+2*sm,1,it) =                  &
+                &                                    inU(sm+1:2*sm, 1:2*sm,1,it)
+                
                 U(    sp+1:  sp+sm, 2*st+2*sp+1:4*st,1,it) =        &
                 &                               inU(   1:sm  , 2*sm+1:4*sm,1,it)
                 U( st+sp+1:2*st,    2*st+2*sp+1:4*st,1,it) =        &
                 &                               inU(sm+1:2*sm, 2*sm+1:4*sm,1,it)
                 
-                ! The first positive parity eigenvectors
-                V(   1:sp   , 1:2*sp,1,it)      =    inV(   1:sp  , 1:2*sp,2,it)
-                V(st+1:st+sp, 1:2*sp,1,it)      =    inV(sp+1:2*sp, 1:2*sp,2,it)
-                ! The second positive parity eigenvectors
-                V(   1:sp   , 2*st+1:2*st+2*sp,1,it) = inV(   1:sp  , 2*sp+1:4*sp,2,it)
-                V(st+1:st+sp, 2*st+1:2*st+2*sp,1,it) = inV(sp+1:2*sp, 2*sp+1:4*sp,2,it)
-                ! The first negative parity eigenvectors
-                V(    sp+1:   sp+sm, 2*sp+1:2*st,1,it) =inV(   1:sm  , 1:2*sm,1,it)
-                V( st+sp+1:st+sp+sm, 2*sp+1:2*st,1,it) =inV(sm+1:2*sm, 1:2*sm,1,it)
-                ! The second negative parity eigenvectors
-                V(    sp+1:   sp+sm, 2*st+2*sp+1:4*st,1,it) =        &
+                V(   1:sp   , 1:2*sp,1,it)        =  inV(   1:sp  , 1:2*sp,2,it)
+                V(st+1:st+sp, 1:2*sp,1,it)        =  inV(sp+1:2*sp, 1:2*sp,2,it)
+                
+                V(   1:sp   , 2*sp+1:4*sp,1,it)  =                             &
+                &                               inV(   1:sp  , 2*sp+1:4*sp,2,it)
+                V(st+1:st+sp, 2*sp+1:4*sp,1,it)  =                            &
+                &                               inV(sp+1:2*sp, 2*sp+1:4*sp,2,it)     
+                
+                V(    sp+1:   sp+sm, 4*sp+1:4*sp+2*sm,1,it) =                  &
+                &                                    inV(   1:sm  , 1:2*sm,1,it)
+                V( st+sp+1: 2*st,    4*sp+1:4*sp+2*sm,1,it) =                  &
+                &                                    inV(sm+1:2*sm, 1:2*sm,1,it)
+                
+                V(    sp+1:  sp+sm, 2*st+2*sp+1:4*st,1,it) =        &
                 &                               inV(   1:sm  , 2*sm+1:4*sm,1,it)
-                V( st+sp+1:st+sp+sm, 2*st+2*sp+1:4*st,1,it) =        &
+                V( st+sp+1:2*st,    2*st+2*sp+1:4*st,1,it) =        &
                 &                               inV(sm+1:2*sm, 2*sm+1:4*sm,1,it)
+                
+!                ! The first negative parity eigenvectors
+!                U(    sp+1:   sp+sm, 2*sp+1:sp+2*sm,1,it) =                    &
+!                &                                    inU(   1:sm  , 1:2*sm,1,it)
+!                U( st+sp+1: 2*st, 2*sp+1:sp+2*sm,1,it)    =                    &
+!                &                                    inU(sm+1:2*sm, 1:2*sm,1,it)
+!                ! The second positive parity eigenvectors
+!                U(   1:sp   , 2*st+1:2*st+2*sp,1,it)  =                        &
+!                &                               inU(   1:sp  , 2*sp+1:4*sp,2,it)
+!                U(st+1:st+sp, 2*st+1:2*st+2*sp,1,it)  =                        &
+!                &                               inU(sp+1:2*sp, 2*sp+1:4*sp,2,it)
+!                ! The second negative parity eigenvectors
+!                U(    sp+1:  sp+sm, 2*st+2*sp+1:4*st,1,it) =        &
+!                &                               inU(   1:sm  , 2*sm+1:4*sm,1,it)
+!                U( st+sp+1:2*st,    2*st+2*sp+1:4*st,1,it) =        &
+!                &                               inU(sm+1:2*sm, 2*sm+1:4*sm,1,it)
+                
+!                ! The first positive parity eigenvectors
+!                V(   1:sp   , 1:2*sp,1,it)      =    inV(   1:sp  , 1:2*sp,2,it)
+!                V(st+1:st+sp, 1:2*sp,1,it)      =    inV(sp+1:2*sp, 1:2*sp,2,it)
+!                ! The second positive parity eigenvectors
+!                V(   1:sp   , 2*st+1:2*st+2*sp,1,it) =                         &
+!                &                               inV(   1:sp  , 2*sp+1:4*sp,2,it)
+!                V(st+1:st+sp, 2*st+1:2*st+2*sp,1,it) =                         &
+!                &                               inV(sp+1:2*sp, 2*sp+1:4*sp,2,it)
+!                ! The first negative parity eigenvectors
+!                V(    sp+1:   sp+sm, 2*sp+1:2*st,1,it) =                       &
+!                &                                    inV(   1:sm  , 1:2*sm,1,it)
+!                V( st+sp+1:st+sp+sm, 2*sp+1:2*st,1,it) =                       &
+!                &                                    inV(sm+1:2*sm, 1:2*sm,1,it)
+!                ! The second negative parity eigenvectors
+!                V(    sp+1:   sp+sm, 2*st+2*sp+1:4*st,1,it) =        &
+!                &                               inV(   1:sm  , 2*sm+1:4*sm,1,it)
+!                V( st+sp+1:st+sp+sm, 2*st+2*sp+1:4*st,1,it) =        &
+!                &                               inV(sm+1:2*sm, 2*sm+1:4*sm,1,it)
                 !---------------------------------------------------------------
                 do i=1,sizes(2)
-                  if(Incolumns(i,2,it) .gt. sizes(2)) then
-                    HFBColumns(i,1,it) = Incolumns(i,2,it) + sizes(1)
-                  else
+                  !if(Incolumns(i,2,it) .gt. sizes(2)) then
+                  !  HFBColumns(i,1,it) = Incolumns(i,2,it) + sizes(1)
+                  !else
                     HFBColumns(i,1,it) = Incolumns(i,2,it)
-                  endif
+                  !endif
                 enddo
                 do i=1,sizes(1)
-                  if(Incolumns(i,1,it) .gt. sizes(1)) then
+                  !if(Incolumns(i,1,it) .gt. sizes(1)) then
                     HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) + 2*sizes(2)
-                  else
-                    HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) +   sizes(2)
-                  endif
+                  !else
+                  !  HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) +   sizes(2)
+                  !endif
                 enddo
 !                print *, HFBColumns(1:sizes(1)+sizes(2),1,it)
 !                print *

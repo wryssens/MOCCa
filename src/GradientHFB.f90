@@ -247,18 +247,21 @@ contains
             call constructRhoHFB(HFBColumns)
             call constructKappaHFB(HFBColumns)            
         else
-            do it=1,Iindex
-                do P=1,Pindex
-                    N = blocksizes(P,it)
-                    S = sigblocks(P,it)
-                    RhoHFB(1:N,1:N,P,it)  =ConstructRho(GradV(1:N,1:N,P,it),   &
-                    &                                     S)
+            !do it=1,Iindex
+            !    do P=1,Pindex
+            !        N = blocksizes(P,it)
+            !        S = sigblocks(P,it)
+            !        RhoHFB(1:N,1:N,P,it)  =ConstructRho(GradV(1:N,1:N,P,it),   &
+            !        &                                     S)
 
-                    KappaHFB(1:N,1:N,P,it)=ConstructKappa(GradU(1:N,1:N,P,it), &
-                    &                                     GradV(1:N,1:N,P,it), &
-                    &                                     S)
-                enddo
-            enddo
+            !        KappaHFB(1:N,1:N,P,it)=ConstructKappa(GradU(1:N,1:N,P,it), &
+            !        &                                     GradV(1:N,1:N,P,it), &
+            !        &                                     S)
+            call constructRhoHFB(HFBColumns)
+            call constructKappaHFB(HFBColumns)            
+
+            !    enddo
+            !enddo
         endif
   end subroutine OutHFBModule
 
@@ -291,7 +294,28 @@ contains
               dblock(1:N,1:N,P,it) = HFBHamil(1:N,N+1:2*N ,P,it)
           enddo
       enddo
-
+      
+!      do it=1,Iindex
+!        do P=1,Pindex
+!            N = blocksizes(P,it)
+!            do i=1,N
+!                print ('(200f7.3)'), hblock(i, 1:N,P,it)
+!            enddo
+!            print *
+!        enddo
+!      enddo
+!      
+!      print *, '----------------------'
+!      print *
+!      do it=1,Iindex
+!        do P=1,Pindex
+!            N = blocksizes(P,it)
+!            do i=1,N
+!                print ('(200f7.3)'), dblock(i, 1:N,P,it)
+!            enddo
+!            print *
+!        enddo
+!      enddo
   end subroutine BlockHFBHamil
   
   subroutine ReduceDimension
@@ -753,7 +777,7 @@ contains
           enddo
       enddo
       
-      print *, iter, abs(gradientnorm(1,:)), par, fermi
+!      print *, iter, abs(gradientnorm(1,:)), abs(gradientnorm(2,:)), par, fermi
       
       !-------------------------------------------------------------------------
       ! Detect convergence or divergence?
@@ -766,7 +790,6 @@ contains
       endif
       if(all(converged)) exit
    enddo
-        
    ! Make the HFB module happy again and hand control back.
    call OutHFBModule
    !call CheckUandVColumns(HFBColumns)
@@ -1000,6 +1023,27 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
             enddo
         enddo
     enddo
+    
+!    print *, '****************'
+!    print *, 'HV'
+!    do j=1,N
+!        print ('(200f7.3)'), hV(j,1:N)
+!    enddo
+!    print *, '****************'
+!    print *, 'HU'
+!    do j=1,N
+!        print ('(200f7.3)'), hU(j,1:N)
+!    enddo    
+!    print *, '****************'
+!    print *, 'DSV'    
+!    do j=1,N
+!        print ('(200f7.3)'), DsV(j,1:N)
+!    enddo
+!    print *, '****************'
+!    print *, 'DSU'
+!    do j=1,N
+!        print ('(200f7.3)'), DsU(j,1:N)
+!    enddo
     !-------------------------------------------------------
     ! Construct H20
      do j=1,N
@@ -1015,6 +1059,13 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
              H20(j,i) = -H20(i,j)
          enddo
      enddo
+!    print *, '****************'
+!    print *, 'H20'
+!    do j=1,N
+!        print ('(200f7.3)'), DsU(j,1:N)
+!    enddo
+!    print *, '****************'
+!    print *, 'H20 sum', sum(abs(H20(1:N,1:N)))
   end function H20_nosig
 
   function H20_sig(Ulim,Vlim,hlim,Dlim,S) result(H20)

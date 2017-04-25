@@ -935,7 +935,7 @@ contains
     104 format (' Pairing Energy ',/,                                          &
         &    2x,'Pair. N', f12.5, ' Pair. P', f12.5, ' Total ', f12.5)
     105 format (' Lipkin-Nogami Energy ',/,                                    &
-        &    2x,'  LN  N', f12.5, '    LN P ', f12.5, ' Total ', f12.5)
+        &    2x,'  LN  N', f12.5, '    LN P', f12.5, ' Total ', f12.5)
     106 format (' Coulomb ',/,3x,'Direct', f12.5, ' Exch.  ', f12.5)
     107 format (' Total Energy ',/,                                            &
         & 3x,'from functional: ', f20.11, /,                                   &

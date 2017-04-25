@@ -1196,17 +1196,17 @@ contains
                     KappaHFB(i,j,1,it) = - KappaHFB(j,i,1,it)
                   enddo
                 enddo
-                do i=1,2*sp
-                    print ('(99f7.2)'),DBLE(inkappa(i,1:2*sp,2,it))
-                enddo
-                print *
-                do i=1,2*sm
-                    print ('(99f7.2)'),DBLE(inkappa(i,1:2*sm,1,it))
-                enddo
-                print *
-                do i=1,2*(sm+sp)
-                    print ('(99f7.2)'),DBLE( KappaHFB(i,1:2*sm+2*sp,1,it))
-                enddo
+!                do i=1,2*sp
+!                    print ('(99f7.2)'),DBLE(inkappa(i,1:2*sp,2,it))
+!                enddo
+!                print *
+!                do i=1,2*sm
+!                    print ('(99f7.2)'),DBLE(inkappa(i,1:2*sm,1,it))
+!                enddo
+!                print *
+!                do i=1,2*(sm+sp)
+!                    print ('(99f7.2)'),DBLE( KappaHFB(i,1:2*sm+2*sp,1,it))
+!                enddo
                 !---------------------------------------------------------------
                 ! Density matrix
                 ! Positive parity
@@ -1232,39 +1232,32 @@ contains
                 ! The first positive parity eigenvectors
                 U(   1:sp   , 1:2*sp,1,it)        =    inU(   1:sp  , 1:2*sp,2,it)
                 U(st+1:st+sp, 1:2*sp,1,it)        =    inU(sp+1:2*sp, 1:2*sp,2,it)
-                
                 ! The first negative parity eigenvectors
                 U(    sp+1:   sp+sm, 2*sp+1:sp+2*sm,1,it) =inU(   1:sm  , 1:2*sm,1,it)
-                U( st+sp+1:st+sp+sm, 2*sp+1:sp+2*sm,1,it) =inU(sm+1:2*sm, 1:2*sm,1,it)
-                
+                U( st+sp+1: 2*st, 2*sp+1:sp+2*sm,1,it) =inU(sm+1:2*sm, 1:2*sm,1,it)
                 ! The second positive parity eigenvectors
                 U(   1:sp   , 2*st+1:2*st+2*sp,1,it)  = inU(   1:sp  , 2*sp+1:4*sp,2,it)
                 U(st+1:st+sp, 2*st+1:2*st+2*sp,1,it)  = inU(sp+1:2*sp, 2*sp+1:4*sp,2,it)
-                
                 ! The second negative parity eigenvectors
-                U(    sp+1:   sp+sm, 2*st+2*sp+1:2*st+2*sp+2*sm,1,it) =        &
-                &                                 inU(   1:sm  , 2*sm+1:4*sm,1,it)
-                U( st+sp+1:st+sp+sm, 2*st+2*sp+1:2*st+2*sp+2*sm,1,it) =        &
-                &                                 inU(sm+1:2*sm, 2*sm+1:4*sm,1,it)
+                U(    sp+1:  sp+sm, 2*st+2*sp+1:4*st,1,it) =        &
+                &                               inU(   1:sm  , 2*sm+1:4*sm,1,it)
+                U( st+sp+1:2*st,    2*st+2*sp+1:4*st,1,it) =        &
+                &                               inU(sm+1:2*sm, 2*sm+1:4*sm,1,it)
                 
                 ! The first positive parity eigenvectors
-                V(   1:sp   , 1:2*sp,1,it)        =    inV(   1:sp  , 1:2*sp,2,it)
-                V(st+1:st+sp, 1:2*sp,1,it)        =    inV(sp+1:2*sp, 1:2*sp,2,it)
-                
-                ! The first negative parity eigenvectors
-                V(    sp+1:   sp+sm, 2*sp+1:2*sp+2*sm,1,it) =inV(   1:sm  , 1:2*sm,1,it)
-                V( st+sp+1:st+sp+sm, 2*sp+1:2*sp+2*sm,1,it) =inV(sm+1:2*sm, 1:2*sm,1,it)
-                
+                V(   1:sp   , 1:2*sp,1,it)      =    inV(   1:sp  , 1:2*sp,2,it)
+                V(st+1:st+sp, 1:2*sp,1,it)      =    inV(sp+1:2*sp, 1:2*sp,2,it)
                 ! The second positive parity eigenvectors
-                V(   1:sp   , 2*st+1:2*st+2*sp,1,it)  = inV(   1:sp  , 2*sp+1:4*sp,2,it)
-                V(st+1:st+sp, 2*st+1:2*st+2*sp,1,it)  = inV(sp+1:2*sp, 2*sp+1:4*sp,2,it)
-                
+                V(   1:sp   , 2*st+1:2*st+2*sp,1,it) = inV(   1:sp  , 2*sp+1:4*sp,2,it)
+                V(st+1:st+sp, 2*st+1:2*st+2*sp,1,it) = inV(sp+1:2*sp, 2*sp+1:4*sp,2,it)
+                ! The first negative parity eigenvectors
+                V(    sp+1:   sp+sm, 2*sp+1:2*st,1,it) =inV(   1:sm  , 1:2*sm,1,it)
+                V( st+sp+1:st+sp+sm, 2*sp+1:2*st,1,it) =inV(sm+1:2*sm, 1:2*sm,1,it)
                 ! The second negative parity eigenvectors
-                V(    sp+1:   sp+sm, 2*st+2*sp+1:2*st+2*sp+2*sm,1,it) =        &
-                &                                 inV(   1:sm  , 2*sm+1:4*sm,1,it)
-                V( st+sp+1:st+sp+sm, 2*st+2*sp+1:2*st+2*sp+2*sm,1,it) =        &
-                &                                 inV(sm+1:2*sm, 2*sm+1:4*sm,1,it)
-                
+                V(    sp+1:   sp+sm, 2*st+2*sp+1:4*st,1,it) =        &
+                &                               inV(   1:sm  , 2*sm+1:4*sm,1,it)
+                V( st+sp+1:st+sp+sm, 2*st+2*sp+1:4*st,1,it) =        &
+                &                               inV(sm+1:2*sm, 2*sm+1:4*sm,1,it)
                 !---------------------------------------------------------------
                 do i=1,sizes(2)
                   if(Incolumns(i,2,it) .gt. sizes(2)) then
@@ -1280,7 +1273,7 @@ contains
                     HFBColumns(i+sizes(2),1,it) = Incolumns(i,1,it) +   sizes(2)
                   endif
                 enddo
-                
+!                print *, HFBColumns(1:sizes(1)+sizes(2),1,it)
 !                print *
 !                print *, '---------------------'
 !                print *, 'after breaking'

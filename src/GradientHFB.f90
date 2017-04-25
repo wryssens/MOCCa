@@ -214,7 +214,6 @@ contains
         gradU = Ucopy
         gradV = Vcopy
       endif
- 
         do it=1,Iindex
           do P=1,Pindex
               N = blocksizes(P,it)
@@ -242,7 +241,6 @@ contains
               enddo
           enddo
         enddo
-
         if(allocated(qpexcitations) .and. (.not.BlockConsistent)) then
             ! Don't consistently block qps
             call BlockQuasiParticles
@@ -395,7 +393,7 @@ contains
             ! The effective blocksize is the number of levels not fully occupied
             ! or empty
             Effblocks(P,it) = x
-    
+!    
 !            print *, '-------------------------------------'
 !            print *, 'HFBASIS'
 !            print *,'empty levels', e, empty(1:e,1,P,it)
@@ -439,8 +437,8 @@ contains
                     Effsig(p,it) = Effsig(P,it) + 1
                 endif            
             enddo
+            occupiedlevels(it) = occupiedlevels(it) + f
         enddo
-        occupiedlevels(it) = occupiedlevels(it) + f
     enddo
 
   end subroutine ReduceDimension
@@ -754,6 +752,9 @@ contains
               oldnorm(P,it)         = gradientnorm(P,it)
           enddo
       enddo
+      
+      print *, iter, abs(gradientnorm(1,:)), par, fermi
+      
       !-------------------------------------------------------------------------
       ! Detect convergence or divergence?
       if(any(.not. converged) .and. iter.eq.HFBIter) then

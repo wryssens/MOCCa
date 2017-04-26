@@ -453,6 +453,7 @@ contains
    17  format ('  LNFraction on the HFB hamiltonian: ', f8.3)
    18  format ('  Gauge of the HFB hamiltonian:      ', f8.3)
    19  format ('  Fermisolver used: ', a9)
+   20  format ('  HFBreduce is ON.')
 
     print 1
     select case(PairingType)
@@ -493,6 +494,7 @@ contains
     if(ConstrainDispersion) print 122, DN2
     print *
     if(PairingType .eq. 2) print 19, FermiSolver
+    if(HFBReduce) print 20
     print 15 , PairingIter
     if(PairingType .eq. 2) print 16, HFBIter
     if(Lipkin)             print 17, LNFraction

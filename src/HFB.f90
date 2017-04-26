@@ -807,8 +807,6 @@ contains
   N = HFBNumberofParticles(Fermi, Delta, L2 ) - Particles
   if(all(abs(N) .lt. Prec)) return
   do iter=1,HFBIter
-
-
     InitialBracket(:,1) = Fermi
     InitialBracket(:,2) = Fermi
     ! Try to find an initial interval that brackets the Fermi energy
@@ -3053,9 +3051,9 @@ subroutine InsertionSortQPEnergies
   if(all(Occupations.eq.0.0_dp)) then
     call stp('No occupations in the canonical basis!')
   endif
-  if(any(Occupations - 1.0_dp.gt.1d-5)) then
-    call stp('Some occupations are bigger than one in the canonical basis.')
-  endif
+!  if(any(Occupations - 1.0_dp.gt.1d-5)) then
+!    call stp('Some occupations are bigger than one in the canonical basis.')
+!  endif
   where(Occupations.gt.1.0_dp) Occupations=1.0_dp
   if(any(Occupations .lt. -HFBNumCut)) then
     ! Notice that we allow some very small negative occupation numbers.

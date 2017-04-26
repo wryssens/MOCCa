@@ -44,7 +44,6 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
             xcolumn = 4
         if(SC !=1 and PC != 1):
             xcolumn = 6
-        print xcolumn, PC
     elif(XARG=='B30') :
         if(PC == 1) :
             print "Can't plot Q30 when parity is conserved."
@@ -433,7 +432,7 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1):
     return (minx, miny)
 ################################################################################
 def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, 
-            PLOTDATA=-1, MARKER='', FERMIWINDOW=-1, XARG='B20', PC=1, SC=1):
+            PLOTDATA=-1, MARKER='', FERMIWINDOW=-1, XARG='B20', PC=1, SC=1, HF=0):
 
     #Default to current axis
     if AXIS is None:
@@ -441,9 +440,11 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
 
     (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty, absy,fac)  = Determinedata(PREFIX, XARG,'E' ,PC,SC)
     
+    print xfname    
     dataX=np.loadtxt(xfname,skiprows=1)
     xdata = dataX[:,xcolumn]
 
+    
     fermifname=PREFIX + '.ef.tab'
     if(ISO == 'neutron'):
         fermicolumn=1
@@ -509,14 +510,11 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                             AXIS.plot(xdata, ydata, c+linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=MARKER)
                         else:
                             AXIS.plot(xdata, ydata, c+linestyle, marker=MARKER)
-#                        except ValueError:
-#                            print *, 'Value'
-#                            continue
             else:
                #################################################################
                # NONAXIAL CASE
                 fname = fnametemp + '.tab'
-                c = 'k'
+                c='k'
                 try:
                     tokens = tokenizer(fname)
                     tokens.next()
@@ -528,6 +526,12 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                     try:
                         ydata = spwf[:,7]
                         indexes = [int(x)-1 for x in spwf[:,1]]
+                        if(HF == 1):
+                            occupation = spwf[4,6]
+                            if(occupation == 1):
+                                c = 'r'
+                            else:
+                                c = 'k'
                     except IndexError:
                         # Just ignore spwfs that are a single point
                         continue
@@ -569,10 +573,10 @@ def Qps(PREFIX, PAR, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER='', COLOR=''
             linestyle = '-'
 
         fname =PREFIX + '.n.qp.' + 'P=' + P + '.tab'
-	efname=PREFIX + '.ef.tab'
+        efname=PREFIX + '.ef.tab'
 
-	l2data = np.loadtxt(efname, skiprows=1)
-    	l2     = l2data[:,3]
+        l2data = np.loadtxt(efname, skiprows=1)
+        l2     = l2data[:,3]
 
         try:
             tokens = tokenizer(fname)
@@ -582,28 +586,29 @@ def Qps(PREFIX, PAR, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER='', COLOR=''
             continue
 
         for i in range(len(spwfs)):
-                        spwf = spwfs[i]
-                        try:
-                            ydata = spwf[:,3]
-                            indexes = [int(x)-1 for x in spwf[:,1]]
-                        except IndexError:
-                            # Just ignore spwfs that are a single point
-                            continue
-                        xdata   = dataX[indexes,2]
-                        if(PLOTDATA == 1):
-                            AXIS.plot(xdata, ydata, c +'x')
-                        if(INTERPOLATE > 0):
-                            try:
-                                f     = interp1d(xdata, ydata, kind='cubic')
-                            except:
-                                continue
-                            interx= np.arange(min(xdata), max(xdata) - (max(xdata) - min(xdata))/100, INTERPOLATE) 
-                            ydata = f(interx)
-                            xdata = interx
-                        if(i == 0 and P == PAR[0] ):
-                            AXIS.plot(xdata, ydata, COLOR+linestyle, marker=MARKER)
-                        else:
-                            AXIS.plot(xdata, ydata, COLOR+linestyle, marker=MARKER)
+            spwf = spwfs[i]
+            try:
+                ydata = spwf[:,3]
+                indexes = [int(x)-1 for x in spwf[:,1]]
+            except IndexError:
+                # Just ignore spwfs that are a single point
+                continue
+            xdata   = dataX[indexes,2]
+            print xdata
+            if(PLOTDATA == 1):
+                AXIS.plot(xdata, ydata, c +'x')
+            if(INTERPOLATE > 0):
+                try:
+                    f     = interp1d(xdata, ydata, kind='cubic')
+                except:
+                    continue
+                interx= np.arange(min(xdata), max(xdata) - (max(xdata) - min(xdata))/100, INTERPOLATE) 
+                ydata = f(interx)
+                xdata = interx
+            if(i == 0 and P == PAR[0] ):
+                AXIS.plot(xdata, ydata, COLOR+linestyle, marker=MARKER)
+            else:
+                AXIS.plot(xdata, ydata, COLOR+linestyle, marker=MARKER)
 
     AXIS.set_xlabel(r'$\beta_{20}$')
     AXIS.set_ylabel(r'$E_{qp}$ (MeV)')

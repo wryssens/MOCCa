@@ -78,6 +78,12 @@ module Densities
     real(KIND=dp), allocatable ::       D2S(:,:,:,:,:,:,:)
     real(KIND=dp), allocatable ::    DJmunu(:,:,:,:,:,:,:)
     
+    !---------------------------------------------------------------------------
+    ! N3LO densities. (For the moment only the time-even ones.)
+    real(KIND=dp), allocatable ::   D3Rho(:,:,:,:)
+    real(KIND=dp), allocatable :: DmnRTau(:,:,:,:,:,:)
+    real(KIND=dp), allocatable :: DDRTaumn(:,:,:,:,:,:)
+    
   end type DensityVector
 
   !-----------------------------------------------------------------------------
@@ -165,7 +171,7 @@ contains
       endif
     endif
 
-    if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
+    if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp .or. t1n3 .ne.0.0_dp .or. t2n3.ne.0.0_dp) then
         allocate(R%RtauN2LO(sizex,sizey,sizez,3,3,2)) ; R%RtauN2LO  = 0.0_dp
         allocate(R%ItauN2LO(sizex,sizey,sizez,3,3,2)) ; R%ItauN2LO  = 0.0_dp
         allocate(R%ReKN2LO(sizex,sizey,sizez,3,3,3,2)); R%ReKN2LO   = 0.0_dp
@@ -187,7 +193,10 @@ contains
     endif
     
     if(t1n2.ne.0.0_dp .or. t1n3.ne.0.0_dp .or. t2n2.ne.0.0_dp .or. t2n3.ne.0.0_dp) then
-        allocate(R%LapLapRho(sizex,sizey,sizez,2))    ; R%LapLapRho = 0.0_dp
+        allocate(R%LapLapRho(sizex,sizey,sizez,2))   ; R%LapLapRho = 0.0_dp
+        allocate(R%D3Rho(sizex,sizey,sizez,2))       ; R%LapLapRho = 0.0_dp
+        allocate(R%DmnRtau(sizex,sizey,sizez,3,3,2)) ; R%DmnRTau   = 0.0_dp
+        allocate(R%DDRtaumn(sizex,sizey,sizez,3,3,2)); R%DDRTaumn   = 0.0_dp
     endif
 
   end function NewDensityVector
@@ -559,33 +568,114 @@ contains
             !-------------------------------------------------------------------
             ! Sum of derivatives of Tau_munu
             !  D2Rtau = sum_{mu nu} D_mu D_nu Re tau_mu_nu
-            DenIn%D2RTau(:,:,:,it) = 0.0_dp
-            temp =          &
-            &      DeriveX(DenIn%RTauN2LO(:,:,:,1,1,it), ParityInt, SignatureInt, TimeSimplexInt,1)
-            temp = temp   + &
-            &      DeriveY(DenIn%RTauN2LO(:,:,:,1,2,it), ParityInt, SignatureInt, TimeSimplexInt,2)
-            temp = temp   + &
-            &      DeriveZ(DenIn%RTauN2LO(:,:,:,1,3,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
-            DenIn%D2RTau(:,:,:,it) =                                           &
-            &           DeriveX(temp,-ParityInt,-SignatureInt, TimeSimplexInt,1)
-            ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-            temp =          &
-            &      DeriveX(DenIn%RTauN2LO(:,:,:,2,1,it), ParityInt, SignatureInt, TimeSimplexInt,2)
-            temp = temp   + &
-            &      DeriveY(DenIn%RTauN2LO(:,:,:,2,2,it), ParityInt, SignatureInt, TimeSimplexInt,1)
-            temp = temp   + &
-            &      DeriveZ(DenIn%RTauN2LO(:,:,:,2,3,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
-            DenIn%D2RTau(:,:,:,it) =  DenIn%D2RTau(:,:,:,it) +                 &
-            &           DeriveY(temp,-ParityInt,-SignatureInt, TimeSimplexInt,2)
-            ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-            temp =                                                             &
-            &      DeriveX(DenIn%RTauN2LO(:,:,:,3,1,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
-            temp = temp +                                                      &
-            &      DeriveY(DenIn%RTauN2LO(:,:,:,3,2,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
-            temp = temp +                                                      &
-            &      DeriveZ(DenIn%RTauN2LO(:,:,:,3,3,it), ParityInt, SignatureInt, TimeSimplexInt,1)
-            DenIn%D2RTau(:,:,:,it) =  DenIn%D2RTau(:,:,:,it) +                 &
-            &           DeriveZ(temp,-ParityInt, SignatureInt, TimeSimplexInt,1)
+            !-------------------------------------------------------------------
+            if(.not.allocated(DenIn%DmnRTau)) then
+                DenIn%D2RTau(:,:,:,it) = 0.0_dp
+                temp =          &
+                &      DeriveX(DenIn%RTauN2LO(:,:,:,1,1,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+                temp = temp   + &
+                &      DeriveY(DenIn%RTauN2LO(:,:,:,1,2,it), ParityInt, SignatureInt, TimeSimplexInt,2)
+                temp = temp   + &
+                &      DeriveZ(DenIn%RTauN2LO(:,:,:,1,3,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
+                DenIn%D2RTau(:,:,:,it) =                                           &
+                &           DeriveX(temp,-ParityInt,-SignatureInt, TimeSimplexInt,1)
+                ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+                temp =          &
+                &      DeriveX(DenIn%RTauN2LO(:,:,:,2,1,it), ParityInt, SignatureInt, TimeSimplexInt,2)
+                temp = temp   + &
+                &      DeriveY(DenIn%RTauN2LO(:,:,:,2,2,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+                temp = temp   + &
+                &      DeriveZ(DenIn%RTauN2LO(:,:,:,2,3,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
+                DenIn%D2RTau(:,:,:,it) =  DenIn%D2RTau(:,:,:,it) +                 &
+                &           DeriveY(temp,-ParityInt,-SignatureInt, TimeSimplexInt,2)
+                ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+                temp =                                                             &
+                &      DeriveX(DenIn%RTauN2LO(:,:,:,3,1,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
+                temp = temp +                                                      &
+                &      DeriveY(DenIn%RTauN2LO(:,:,:,3,2,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
+                temp = temp +                                                      &
+                &      DeriveZ(DenIn%RTauN2LO(:,:,:,3,3,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+                DenIn%D2RTau(:,:,:,it) =  DenIn%D2RTau(:,:,:,it) +                 &
+                &           DeriveZ(temp,-ParityInt, SignatureInt, TimeSimplexInt,1)
+            else
+                !-------------------------------------------------------------------
+                ! Now, the intermediate results need to be saved for the N3LO 
+                ! functional. The laplacian also needs to be calculated.
+                !
+                !-------------------------------------------------------------------
+                DenIn%D2RTau(:,:,:,it) = 0.0_dp ; DenIn%DmnRTau(:,:,:,:,:,it) = 0.0_dp
+                ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+                temp =  & 
+                &      DeriveX(DenIn%RTauN2LO(:,:,:,1,1,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+                DenIn%DmnRTau(:,:,:,1,1,it) =& 
+                &           DeriveX(temp,-ParityInt,-SignatureInt, TimeSimplexInt,1)
+                temp =  &
+                &      DeriveY(DenIn%RTauN2LO(:,:,:,1,2,it), ParityInt, SignatureInt, TimeSimplexInt,2)
+                DenIn%DmnRTau(:,:,:,1,2,it) =& 
+                &           DeriveX(temp,-ParityInt,-SignatureInt, TimeSimplexInt,1)
+                temp =  &
+                &      DeriveZ(DenIn%RTauN2LO(:,:,:,1,3,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
+                DenIn%DmnRTau(:,:,:,1,3,it) =& 
+                &           DeriveX(temp,-ParityInt,-SignatureInt, TimeSimplexInt,1)
+                ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+                temp = &
+                &      DeriveX(DenIn%RTauN2LO(:,:,:,2,1,it), ParityInt, SignatureInt, TimeSimplexInt,2)
+                DenIn%DmnRTau(:,:,:,2,1,it) =& 
+                &           DeriveY(temp,-ParityInt,-SignatureInt, TimeSimplexInt,2)
+                temp = &
+                &      DeriveY(DenIn%RTauN2LO(:,:,:,2,2,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+                DenIn%DmnRTau(:,:,:,2,2,it) =& 
+                &           DeriveY(temp,-ParityInt,-SignatureInt, TimeSimplexInt,2)
+                temp =  &
+                &      DeriveZ(DenIn%RTauN2LO(:,:,:,2,3,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
+                DenIn%DmnRTau(:,:,:,2,3,it) =& 
+                &           DeriveY(temp,-ParityInt,-SignatureInt, TimeSimplexInt,2)
+                ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+                temp = &
+                &      DeriveX(DenIn%RTauN2LO(:,:,:,3,1,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
+                DenIn%DmnRTau(:,:,:,3,1,it) =&
+                &           DeriveZ(temp,-ParityInt, SignatureInt, TimeSimplexInt,1)
+                temp = &
+                &      DeriveY(DenIn%RTauN2LO(:,:,:,3,2,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
+                DenIn%DmnRTau(:,:,:,3,2,it) =&
+                &           DeriveZ(temp,-ParityInt, SignatureInt, TimeSimplexInt,1)
+                temp = &
+                &      DeriveZ(DenIn%RTauN2LO(:,:,:,3,3,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+                DenIn%DmnRTau(:,:,:,3,3,it) =&
+                &           DeriveZ(temp,-ParityInt, SignatureInt, TimeSimplexInt,1)
+                ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+                DenIn%D2Rtau(:,:,:,it) = DenIn%DmnRTau(:,:,:,1,1,it)           &
+                &                      + DenIn%DmnRTau(:,:,:,1,2,it)           &
+                &                      + DenIn%DmnRTau(:,:,:,1,3,it)           &
+                &                      + DenIn%DmnRTau(:,:,:,2,1,it)           &
+                &                      + DenIn%DmnRTau(:,:,:,2,2,it)           &
+                &                      + DenIn%DmnRTau(:,:,:,2,3,it)           &
+                &                      + DenIn%DmnRTau(:,:,:,3,1,it)           &
+                &                      + DenIn%DmnRTau(:,:,:,3,2,it)           &
+                &                      + DenIn%DmnRTau(:,:,:,3,3,it)
+                ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+                ! And now the laplacian
+                DenIn%DDRtaumn(:,:,:,1,1,it) = &
+                &     Laplacian(DenIn%RTauN2LO(:,:,:,1,1,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+                DenIn%DDRtaumn(:,:,:,1,2,it) = &
+                &     Laplacian(DenIn%RTauN2LO(:,:,:,1,2,it), ParityInt, SignatureInt, TimeSimplexInt,2)
+                DenIn%DDRtaumn(:,:,:,1,3,it) = &
+                &     Laplacian(DenIn%RTauN2LO(:,:,:,1,3,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
+  
+                DenIn%DDRtaumn(:,:,:,2,1,it) = &
+                &     Laplacian(DenIn%RTauN2LO(:,:,:,2,1,it), ParityInt, SignatureInt, TimeSimplexInt,2)
+                DenIn%DDRtaumn(:,:,:,2,2,it) = &
+                &     Laplacian(DenIn%RTauN2LO(:,:,:,2,2,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+                DenIn%DDRtaumn(:,:,:,2,3,it) = &
+                &     Laplacian(DenIn%RTauN2LO(:,:,:,2,3,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
+                
+                DenIn%DDRtaumn(:,:,:,3,1,it) = &
+                &     Laplacian(DenIn%RTauN2LO(:,:,:,3,1,it), ParityInt,-SignatureInt, TimeSimplexInt,1)
+                DenIn%DDRtaumn(:,:,:,3,2,it) = &
+                &     Laplacian(DenIn%RTauN2LO(:,:,:,3,2,it), ParityInt,-SignatureInt, TimeSimplexInt,2)
+                DenIn%DDRtaumn(:,:,:,3,3,it) = &
+                &     Laplacian(DenIn%RTauN2LO(:,:,:,3,3,it), ParityInt, SignatureInt, TimeSimplexInt,1)
+            endif
             !-------------------------------------------------------------------
             ! Different sum of derivatives for the imaginary part of tau
             ! Sum_mu \nabla_\mu Im tau_munu
@@ -892,6 +982,15 @@ contains
             & Laplacian(DenIn%LapRho(:,:,:,it),ParityInt,SignatureInt,TimeSimplexInt,1)
         enddo
     endif
+
+
+    if(allocated(DenIn%D3Rho)) then
+        do it=1,2
+            DenIn%D3Rho(:,:,:,it)   = &
+            & Laplacian(DenIn%LapLapRho(:,:,:,it),ParityInt,SignatureInt,TimeSimplexInt,1)
+        enddo
+    endif
+
     
     !Computing NablaJ by derivatives in the case of tensor interactions
     if(B14.ne.0.0_dp.or.B15.ne.0.0_dp.or.B17.ne.0.0_dp.or.B16.ne.0.0_dp) then

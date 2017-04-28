@@ -73,7 +73,10 @@ module Force
     ! Coupling constants that are in principle calculated from the BN3LO, but 
     ! allow for independently determining the contribution of all the terms.
     !               rho Delta Delta Delta rho
-    real(KIND=dp) :: N3D3rho(2), C3D3rho(2)
+    real(KIND=dp) :: N3D3rho(2), N3tauDtau(2), N3taumnDtaumn(2),N3DrhoDtau(2)
+    real(KIND=dp) :: N3tauDmntau(2), N3tauDDrho(2)
+    real(KIND=dp) :: C3D3rho(2), C3tauDtau(2), C3taumnDtaumn(2),C3DrhoDtau(2)
+    real(KIND=dp) :: C3tauDmntau(2), C3tauDDrho(2)
     !.....................................................
     !   Physical constants. They are set with an interaction, but have default
     !   values.
@@ -256,7 +259,7 @@ contains
     107     format(' Two-body c.o.m. correction included perturbatively.')
     108     format(' Two-body c.o.m. correction included selfconsistently.')
 
-    110     format("EDF Coefficients (BFH representation)")
+    110     format(" EDF Coefficients (BFH representation)")
     111     format ( &
     &' B1 =',f13.6,'  B2 =',f13.6,'  B3 =',f13.6,/, &
     &' B4 =',f13.6,'  B5 =',f13.6,'  B6 =',f13.6,/, &
@@ -291,10 +294,19 @@ contains
     &' ImTmnk^2_t', f13.6, ' ImTmnk^2_q', f13.6                        , /, &  
     &' Tmnk D2s_t', f13.6, ' Tmnk D2s_q', f13.6, /)  
     
-    11111   format(' N3LO coefficients (BFH representation)', / &
-    &' C^(DDDrho)_n =',f13.6, ' C^(DDDrho)_p =',f13.6)
+    11111   format(' N3LO coefficients ', / &
+    &' C^(DDDrho)_n =',f13.6, ' C^(DDDrho)_p =',f13.6       , / &
+    &' C^(tDt)_n    =',f13.6, ' C^(tDt)_p    =',f13.6       , / &
+    &' C^(tmnDtmn)_n=',f13.6, ' C^(tmnDtmn)_p=',f13.6       , / &
+    &' C^(DrhoDt)_n =',f13.6, ' C^(DrhoDt)_p =',f13.6       , / &
+    &' C^(tDt)_n    =',f13.6, ' C^(tDt)_p    =',f13.6       )
+    
     11112   format(' N3LO coefficients (BFH representation)', / &
-    &' B^(DDDrho)_n =',f13.6, ' B^(DDDrho)_p =',f13.6)
+    &' B^(DDDrho)_n =',f13.6, ' B^(DDDrho)_p =',f13.6       , / &
+    &' B^(tDt)_n    =',f13.6, ' B^(tDt)_p    =',f13.6       , / &
+    &' B^(tmnDtmn)_n=',f13.6, ' B^(tmnDtmn)_p=',f13.6       , / &
+    &' B^(DrhoDt)_n =',f13.6, ' B^(DrhoDt)_p =',f13.6       , / &
+    &' B^(tDt)_n    =',f13.6, ' B^(tDt)_p    =',f13.6       )
     
     112  format ('EDF Coefficients (Isospin representation)')
     113  format (&
@@ -310,7 +322,7 @@ contains
     &   ' C^Ds_0       =',f13.6,' C^Ds_1       =',f13.6,/, &
     &   ' C^divs_0     =',f13.6,' C^divs_1     =',f13.6,/)
 
-    1131 format(&
+    1131 format(' N2LO coefficients ', / &
     &   ' C^(4 Drho)_0 = ', f13.6, ' C^(4 Drho)_1 = ', f13.6,/,&
     &   ' C^(4 Mrho)_0 = ', f13.6, ' C^(4 Mrho)_1 = ', f13.6,/,&
     &   ' C^(4 Ds  )_0 = ', f13.6, ' C^(4 Ds  )_1 = ', f13.6,/,&
@@ -350,10 +362,16 @@ contains
     end select
 
     print *
-
+    print 112
+    print 113, Crho,Crhosat, Cs, Cssat, Ctau, Cdrho, CnablaJ, Ct, Cf, Cds,     &
+    &          Cnablas
     print 110
     print 111, B1,B2,B3,B4,B5,B6,B7a,B8a,B9,B9q,B10,B11,B12a,B13a,B14,B15,B16, &
     &          B17,B18,B19,B20,B21
+   
+    if(t1n2 .ne. 0 .or. t2n2 .ne. 0) then
+        print 1131, CN2LO(1:8)
+    endif
     if(t1n2 .ne. 0 .or. t2n2 .ne. 0) then
         print 1111, BN2LO(1), BN2LO(2),BN2LO(1)/BN2LO(2), BN2LO(3), BN2LO(4),  &
         &           BN2LO(3)/BN2LO(4), BN2LO(7), BN2LO(8), BN2LO(7)/BN2LO(8) &
@@ -363,16 +381,15 @@ contains
         &           N2JV, N2sS, N2vecT, N2ReTmn, N2ImTmn,       &
         &           N2TmnD2s 
     endif
+    print *
     if(t1n3 .ne.0) then
-        print 11111, C3D3rho(:)
-        print 11112, N3D3rho(:)
+        print 11111, C3D3rho,C3tauDtau,C3taumnDtaumn,C3DrhoDtau,C3tauDmntau
+        print *
+        print 11112, N3D3rho,N3tauDtau,N3taumnDtaumn,N3DrhoDtau,N3tauDmntau
+        print *
     endif
-    print 112
-    print 113, Crho,Crhosat, Cs, Cssat, Ctau, Cdrho, CnablaJ, Ct, Cf, Cds,     &
-    &          Cnablas
-    if(t1n2 .ne. 0 .or. t2n2 .ne. 0) then
-        print 1131, CN2LO(1:8)
-    endif
+    
+    
   end subroutine PrintForce
 
   subroutine CalcEDFCoef()
@@ -556,10 +573,39 @@ contains
         C3D3rho(1) = 1/256d0 * ( -27 * t1n3                 + t2n3 * ( 5 + 4*x2n3))
         C3D3rho(2) = 1/256d0 * (   9 * t1n3 * ( 1 + 2*x1n3) + t2n3 * ( 1 + 2*x2n3)) 
         
-        N3D3rho(1) = C3D3rho(1) - C3D3rho(2)
-        N3D3rho(2) =            2*C3D3rho(2)
-    endif
+        C3tauDtau(1)    = 1/16d0  * (   3 * t1n3                 + t2n3 * ( 5 + 4*x2n3)) 
+        C3tauDtau(2)    = 1/16d0  * (      -t1n3 * ( 1 + 2*x1n3) + t2n3 * ( 1 + 2*x2n3)) 
+        
+        C3taumnDtaumn(1)= 1/16d0  * (   3 * t1n3                 + t2n3 * ( 5 + 4*x2n3)) 
+        C3taumnDtaumn(2)= 1/16d0  * (      -t1n3 * ( 1 + 2*x1n3) + t2n3 * ( 1 + 2*x2n3)) 
+        
+        C3DrhoDtau(1)   = 1/16d0  * (   3 * t1n3                 + t2n3 * ( 5 + 4*x2n3)) 
+        C3DrhoDtau(2)   = 1/16d0  * (      -t1n3 * ( 1 + 2*x1n3) + t2n3 * ( 1 + 2*x2n3)) 
+        
+        C3tauDmntau(1)  = 1/16d0  * (   3 * t1n3                 + t2n3 * ( 5 + 4*x2n3)) 
+        C3tauDmntau(2)  = 1/16d0  * (      -t1n3 * ( 1 + 2*x1n3) + t2n3 * ( 1 + 2*x2n3)) 
+        
+        C3tauDDrho(1)   = 1/16d0  * (   3 * t1n3                 + t2n3 * ( 5 + 4*x2n3)) 
+        C3tauDDrho(2)   = 1/16d0  * (      -t1n3 * ( 1 + 2*x1n3) + t2n3 * ( 1 + 2*x2n3)) 
 
+        N3D3rho(1)      = C3D3rho(1)       - C3D3rho(2)
+        N3D3rho(2)      =                  2*C3D3rho(2)
+        
+        N3tauDtau(1)    = C3tauDtau(1)     - C3tauDtau(2)
+        N3tauDtau(2)    =                  2*C3tauDtau(2)
+        
+        N3taumnDtaumn(1)= C3taumnDtaumn(1) - C3taumnDtaumn(2)
+        N3taumnDtaumn(2)=                  2*C3taumnDtaumn(2)
+  
+        N3DrhoDtau(1)   = C3DrhoDtau(1)    - C3DrhoDtau(2)
+        N3DrhoDtau(2)   =                  2*C3DrhoDtau(2)
+        
+        N3tauDmntau(1)  = C3tauDmntau(1)   - C3tauDmntau(2)
+        N3tauDmntau(2)  =                  2*C3tauDmntau(2)
+        
+        N3tauDDrho(1)   = C3tauDDrho(1)    - C3tauDDrho(2) 
+        N3tauDDrho(2)   =                  2*C3tauDDrho(2) 
+    endif
     return
   end subroutine CalcEDFCoef
 end module Force

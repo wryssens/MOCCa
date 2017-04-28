@@ -33,7 +33,7 @@ module Energy
   real(KIND=dp),public :: LNEnergy(2), Routhian, OldRouthian(7)
 
   ! Two different ways of calculating and treating Skyrme terms
-  real(KIND=dp) :: Skyrmeterms(32),BTerm(21), N2LOterms(32), N3LOterms(2)
+  real(KIND=dp) :: Skyrmeterms(32),BTerm(21), N2LOterms(32), N3LOterms(12)
 
   ! Signal to the Nesterov iteration whether or not the energy decreased
   integer       :: NesterovSignal=0
@@ -328,30 +328,74 @@ contains
   end function N2LO
   
   function N3LO(Den) result(terms)
-    
+    !---------------------------------------------------------------------------
+    ! Calculate the contributions of the N3LO densities to the functional.
+    ! 
+    !
+    !---------------------------------------------------------------------------
     integer                         :: it
-    real(KIND=dp)                   :: terms(2)
+    real(KIND=dp)                   :: terms(12)
     type(DensityVector), intent(in) :: Den
-    
-    real(KIND=dp)                   :: laplaplaprho(nx,ny,nz,2)
-    
+    real(KIND=dp)                   :: laptau(nx,ny,nz,2), laplaplaprho
     
     terms = 0.0_dp
+
     if(t1n3.eq.0.0_dp .and. t2n3.eq.0.0_dp) return
+
     !---------------------------------------------------------------------------
-    ! Calculate the Delta Delta Delta of rho here, as a placeholder
-    do it=1,2
-        laplaplaprho(:,:,:,it) = laplacian(Den%Laplaprho(:,:,:,it),            &
-        &                               ParityInt,SignatureInt,Timesimplexint,1)
-    enddo
+    ! Intermediate stuff
+    !---------------------------------------------------------------------------
+    laptau = Den%DDRtaumn(:,:,:,1,1,:) + Den%DDRtaumn(:,:,:,2,2,:)             &
+    &      + Den%DDRtaumn(:,:,:,3,3,:) 
+
     !---------------------------------------------------------------------------
     ! rho Delta Delta Delta rho                                        Time-even
-    terms(1) = sum(sum(Den%rho,4) * sum(laplaplaprho,4))             *N3D3rho(1)
+    terms(1) = sum(sum(Den%rho,4) * sum(Den%D3rho,4))             *N3D3rho(1)
     do it=1,2
-      terms(2)=terms(2)+sum(Den%rho(:,:,:,it)*laplaplaprho(:,:,:,it))*N3D3rho(2)
+      terms(2)=terms(2)+sum(Den%rho(:,:,:,it)*Den%D3rho(:,:,:,it))*N3D3rho(2)
     enddo
-    terms = terms*dv    
+    !---------------------------------------------------------------------------
+    ! ReTau delta ReTau term                                           Time-even
+    terms(3) = -3.0/2.0 * sum(sum(Den%tau,4) * sum(laptau,4))   *N3tauDtau(1)
+    do it=1,2
+        terms(4) = terms(4)   &
+        &      -3.0/2.0 *sum(Den%tau(:,:,:,it)*laptau(:,:,:,it))*N3tauDtau(2)
+    enddo
+    !---------------------------------------------------------------------------
+    ! Re Tau_munu Delta Re Tmunu
+    terms(5) = -3.0/2.0 * sum(sum(Den%RTauN2LO,6) * sum(Den%DDRTaumn,6))       &
+    &                                                            *N3tauDmntau(1)
+    do it=1,2
+        terms(6) = terms(6)   &
+        & -3.0/2.0 *sum(Den%RtauN2LO(:,:,:,:,:,it)*Den%DDRTaumn(:,:,:,:,:,it)) &
+        &                                                        *N3tauDmntau(2)
+    enddo
+
+    !---------------------------------------------------------------------------
+    ! Delta rho Dmu Dnu Re Tau_munu                                  Time-even
+    terms(7) = 3d0/2d0*sum(sum(Den%laprho,4) * sum(Den%D2RTau,4))* N3DrhoDtau(1)
+    do it=1,2
+        terms(8) = terms(8) + 3d0/2d0*&
+        &      sum(Den%laprho(:,:,:,it) * Den%D2RTau(:,:,:,it))  * N3DrhoDtau(2)
+    enddo
+    !---------------------------------------------------------------------------
+    ! Tau Dmu Dnu Re Tau_munu                                         Time-even
+    terms(9) = -3 *sum(sum(Den%tau,4) * sum(Den%D2RTau,4))      * N3tauDmntau(1)
+    do it=1,2
+        terms(10) = terms(10) - 3* &
+        &      sum(Den%tau(:,:,:,it) * Den%D2RTau(:,:,:,it))    * N3tauDmntau(2)
+    enddo
+    !---------------------------------------------------------------------------
+    ! tau Delta Delta rho                                             Time-even
+    terms(11) = +3d0/2d0 * sum(sum(Den%tau,4)*sum(Den%laplaprho,4))            &
+    &                                                           *  N3tauDDrho(1)
+    do it=1,2
+        terms(12) = terms(12) + 3d0/2d0 *                                      &
+        &          sum(Den%tau(:,:,:,it)*Den%laplaprho(:,:,:,it))              &
+        &                                                       *  N3tauDDrho(2)
+    enddo
     
+    terms = terms*dv 
   end function
 
   function compSkyrmeTerms(Den) result(B)
@@ -915,7 +959,12 @@ contains
      46 format (2x,' Im T_mn^2_t =', f12.5, 5x ,' Im T_mn^2_q = ', f12.5, ' t', f12.5)
     
     500 format ('N3LO terms')
-     51 format (2x,' rhoDDDrho_t =', f12.5, 5x ,' rhoDDDrho_q  = ', f12.5, ' t', f12.5)
+     51 format (2x,' rhoDDDrho_t =', f12.5, 5x ,' rhoDDDrho_q = ', f12.5, ' t', f12.5)
+     52 format (2x,' tauDtau_t   =', f12.5, 5x ,' tauDtau_q   = ', f12.5, ' t', f12.5)
+     53 format (2x,' Re tmnDtmn_t=', f12.5, 5x ,' Re tmnDtmn_q= ', f12.5, ' t', f12.5)
+     54 format (2x,' Drho DRtmn_t=', f12.5, 5x ,' Drho DRtmn_q= ', f12.5, ' t', f12.5)
+     55 format (2x,' t DRtmn_t   =', f12.5, 5x ,' t DRtmn_q   = ', f12.5, ' t', f12.5)
+     56 format (2x,' tauDDrho_t  =', f12.5, 5x ,' tauDDrho_q  = ', f12.5, ' t', f12.5)
      
     301 format (2x,' M^(Drho)    =', f12.5) 
     302 format (2x,' M^even(rho) =', f12.5) 
@@ -1014,7 +1063,12 @@ contains
     
     if(any(N3LOterms.ne.0)) then
         print 500
-        print 51, N3LOterms(1:2), sum(N3LOterms(1:2))
+        print 51, N3LOterms( 1: 2), sum(N3LOterms( 1: 2))
+        print 52, N3LOterms( 3: 4), sum(N3LOterms( 3: 4))
+        print 53, N3LOterms( 5: 6), sum(N3LOterms( 5: 6))
+        print 54, N3LOterms( 7: 8), sum(N3LOterms( 7: 8))
+        print 55, N3LOterms( 9:10), sum(N3LOterms( 9:10))
+        print 56, N3LOterms(11:12), sum(N3LOterms(11:12))
         print *
     endif
     

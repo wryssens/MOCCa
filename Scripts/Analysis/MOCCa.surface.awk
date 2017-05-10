@@ -34,16 +34,16 @@ BEGIN{
         if ( $1 == "Beta_{" && $2 == l2 && $3 == m2 "}"  ) {
             beta2 = $6
         }
-        if ( $1 == "Lagrange:" ) {
-            ee = $2;
-        }
+        
     }
     if ( leg == 1) {
         if ($1 == "iq" && $2 == "T") {
             beta1 = $3
             beta2 = $4
         }
-    
+    }
+    if ( $1 == "Lagrange:" ) {
+            ee = $2;
     }
   }
 }

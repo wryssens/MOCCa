@@ -176,6 +176,10 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         ycolumn=2
         if(PC != 1) :
             ycolumn = 4
+        if(SC != 1) :
+            ycolumn = 4
+        if(SC !=1 and PC != 1):
+            ycolumn = 6
         derivY=0
     elif(YARG=='B2') :
         ylabel =r'$\beta_{2}$ '

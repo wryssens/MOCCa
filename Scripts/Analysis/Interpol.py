@@ -36,9 +36,9 @@ def Inter(datafile, points, COLUMN=2, SYM=1, execloc='$HOME/Documents/Codes/inte
        Y = np.loadtxt('data.y', skiprows=1)
        Z = np.loadtxt('data.z', skiprows=1)
        
-       #os.system('rm data.x')
-       #os.system('rm data.y')
-       #os.system('rm data.z')
+       os.system('rm data.x')
+       os.system('rm data.y')
+       os.system('rm data.z')
        os.system('rm inter.exe')
        return (data, X,Y,Z)
        

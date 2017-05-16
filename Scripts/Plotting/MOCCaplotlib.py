@@ -237,7 +237,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
               AXIS     =None,  INTERPOLATE=-1, INTERMIN=None,    
               INTERMAX =None,  LABEL=None, NORMY=1, SPHERNORM=0, 
               LINESTYLE='-' ,  MARKER='', COLOR='', OFFSET=None, 
-              XMIN     =None,  XMAX=None, MINRANGE=None):
+              XMIN     =None,  XMAX=None, MINRANGE=None, LINEWIDTH=1.0):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
@@ -381,9 +381,9 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
             ydata[i] = ydata[i] - spher
 
     if(COLOR != ""):
-    	AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER, color=COLOR)
+    	AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER, color=COLOR, linewidth=LINEWIDTH)
     else:
-	    AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER)
+	    AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER, linewidth=LINEWIDTH)
     AXIS.set_xlabel(xlabel)
     AXIS.set_ylabel(ylabel)
 

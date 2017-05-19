@@ -203,15 +203,26 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         derivY = 0
         ylabel=r'$\beta_{22}$'
     elif(YARG=='B30') :
-        if(PC == 1) :
-            print "Can't plot Q30 when parity is conserved."
-            sys.exit()
         ylabel =r'$\beta_{30}$ '
         yfname =PREFIX + '.t.qlm.tab'
         ycolumn=8
         if (SC != 1 ):
             ycolumn=12
         derivY=0
+        
+        if(PC == 1) :
+            ycolumn=-1
+    elif(YARG=='ABSB30'):
+        ylabel =r'$\beta_{30}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        ycolumn=8
+        if (SC != 1 ):
+            ycolumn=12
+        derivY=0
+
+        if(PC == 1) :
+            ycolumn=-1 
+        absy=1 
     elif(YARG=='B32') :
         if(PC == 1) :
             print "Can't plot Q30 when parity is conserved."
@@ -237,7 +248,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
               AXIS     =None,  INTERPOLATE=-1, INTERMIN=None,    
               INTERMAX =None,  LABEL=None, NORMY=1, SPHERNORM=0, 
               LINESTYLE='-' ,  MARKER='', COLOR='', OFFSET=None, 
-              XMIN     =None,  XMAX=None, MINRANGE=None, LINEWIDTH=1.0):
+              XMIN     =None,  XMAX=None, MINRANGE=None, LINEWIDTH=1.0, INTERKIND='cubic'):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
@@ -258,8 +269,10 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
             dataY=np.loadtxt(yfname,skiprows=1)
             
             tempx=dataX[:,xcolumn]
-            tempy=dataY[:,ycolumn]
-            
+            if( ycolumn != -1): 
+                tempy=dataY[:,ycolumn]
+            else:
+                tempy=np.zeros_like(tempx)
             if(XMIN != None):
                 indices = []
                 for j in range(len(tempx)):
@@ -284,6 +297,8 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
                 ydata = np.append(ydata, tempy)
             
             ydata= fac * ydata
+            if(absy == 1):
+                ydata = abs(ydata)
             
     else:
         (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty, absy,fac) = Determinedata(PREFIX, XARG, YARG,PC,SC)
@@ -292,7 +307,10 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         dataY=np.loadtxt(yfname,skiprows=1)
         
         xdata=dataX[:,xcolumn]
-        ydata=dataY[:,ycolumn]
+        if( ycolumn != -1): 
+                tempy=dataY[:,ycolumn]
+        else:
+                tempy=np.zeros_like(tempx)
 
         if(XMIN != None):
             indices = []
@@ -344,7 +362,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
 #                print 'smoothed', i        
 
     if(INTERPOLATE > 0):
-        f     = interp1d(xdata, ydata,kind='cubic')
+        f     = interp1d(xdata, ydata,kind=INTERKIND)
 
         if(INTERMIN == None and INTERMAX == None):  
             interx= np.arange(min(xdata), max(xdata), INTERPOLATE)

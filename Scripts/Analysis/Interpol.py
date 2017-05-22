@@ -87,46 +87,62 @@ def BetaGamma(datafile, A, title='', figname  = 'BG.out.eps', MAXB=0.7, EMAX = 1
 
     #First, extend the data to the full beta-gamma plane
     os.system('cp %s/surf.awk .'%scriptloc)
+    try:
+        essai = np.loadtxt(datafile)
+    except IOError:
+        print 'No datafile %s'%datafile
+        return
+    
     os.system('awk -f surf.awk "mass=%g" < %s '%(A,datafile))
     
     #Combine all of the 6 files
     os.system('cat ESPDATA1.bg ESPDATA2.bg ESPDATA3.bg ESPDATA4.bg ESPDATA5.bg ESPDATA6.bg >  input')
-    #os.system('echo "EOF" >>  input')
     
     # Interpolate
     ntps=0
     with open('input', 'r') as f:
         for i in f:
             ntps = ntps+1
+    check = np.loadtxt('input')
+    for i in range(len(check[:,0])):
+        for j in range(i+1,len(check[:,0])):
+            if(abs(check[i,0] - check[j,0]) < 0.01 and abs(check[i,1]-check[j,1]) < 0.01):
+                print 'Duplicate', i,j
     os.system('cp %s/SplineInter.exe .'%execloc)
     os.system('./SplineInter.exe 2 %d %d "tps" "++"  < %s > inter.out'%(ntps, 501, 'input'))
     
-    data = np.loadtxt('data.z', skiprows=1)
+    try:
+        data = np.loadtxt('data.z', skiprows=1)
     
-    minx = 1000000000
-    for i in range(len(data[:,0])):
-        if data[i,0] < Q1MIN :
-            if data[i,1] < Q2MIN :
-                if data[i,2] < minx:
-                    minx = data[i,2]
-    
-    # rename generic filenames produced by the interpolation code
-    os.system('cp data.z ESPDATA.input.z  ')    # data for solid  isolines at integer energies in MeV
-    os.system('cp data.z ESPDATA.input.2.z')    # data for dotted isolines at  half-integer energies
+        minx = 1000000000
+        for i in range(len(data[:,0])):
+            if data[i,0] < Q1MIN :
+                if data[i,1] < Q2MIN :
+                    if data[i,2] < minx:
+                        minx = data[i,2]
+        
+        # rename generic filenames produced by the interpolation code
+        os.system('cp data.z ESPDATA.input.z  ')    # data for solid  isolines at integer energies in MeV
+        os.system('cp data.z ESPDATA.input.2.z')    # data for dotted isolines at  half-integer energies
 
-    with open("%s/betagamma.template"%(scriptloc), 'r') as template:
-        with open('BG.gle', 'w') as file: 
-            for line in template:
-                line = line.replace('$NAMESTRING', title)
-                line = line.replace('$XMIN', str(minx))
-                line = line.replace('$MAXB', str(MAXB))
-                line = line.replace('$EMAX', str(EMAX))
-                file.write(line)
+        with open("%s/betagamma.template"%(scriptloc), 'r') as template:
+            with open('BG.gle', 'w') as file: 
+                for line in template:
+                    line = line.replace('$NAMESTRING', title)
+                    line = line.replace('$XMIN', str(minx))
+                    line = line.replace('$MAXB', str(MAXB))
+                    line = line.replace('$EMAX', str(EMAX))
+                    file.write(line)
+                    
+        os.system('cp -r %s .'%scriptloc)
+        os.system('gle BG.gle')
+        os.system('mv BG.eps %s'%figname)
+        os.system('rm  input inter.out *.dat *.gle *.z data.x data.y ')
+        os.system('rm -r BGscripts/')
+    except IOError:
+        print 'Interpolation failed.'
     
-    os.system('cp -r %s .'%scriptloc)
-    os.system('gle BG.gle')
-    os.system('mv BG.eps %s'%figname)
-    os.system('rm *.bg *.dat input *.gle *.z inter.out data.x data.y ' )
+    os.system('rm  *.bg  ESP.xflr6 SplineInter.exe' )
     os.system('rm surf.awk')
-    os.system('rm -r BGscripts/')
+
     

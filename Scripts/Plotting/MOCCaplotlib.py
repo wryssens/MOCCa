@@ -312,12 +312,13 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         else:
                 tempy=np.zeros_like(tempx)
 
+        ydata = tempy
         if(XMIN != None):
             indices = []
             for j in range(len(xdata)):
                 if(xdata[j] < XMIN):
                     indices.append(j)
-            xdata= np.delete(xdata,indices)
+            xdata = np.delete(xdata,indices)
             ydata = np.delete(ydata,indices)
         if(XMAX != None):
             indices = []

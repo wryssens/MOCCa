@@ -137,7 +137,7 @@ def BetaGamma(datafile, A, title='', figname  = 'BG.out.eps', MAXB=0.7, EMAX = 1
         os.system('cp -r %s .'%scriptloc)
         os.system('gle BG.gle')
         os.system('mv BG.eps %s'%figname)
-        os.system('rm  input inter.out *.dat *.gle *.z data.x data.y ')
+        os.system('rm  input  *.dat *.gle *.z data.x data.y ')
         os.system('rm -r BGscripts/')
     except IOError:
         print 'Interpolation failed.'

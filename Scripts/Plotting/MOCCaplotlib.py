@@ -248,7 +248,8 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
               AXIS     =None,  INTERPOLATE=-1, INTERMIN=None,    
               INTERMAX =None,  LABEL=None, NORMY=1, SPHERNORM=0, 
               LINESTYLE='-' ,  MARKER='', COLOR='', OFFSET=None, 
-              XMIN     =None,  XMAX=None, MINRANGE=None, LINEWIDTH=1.0, INTERKIND='cubic'):
+              XMIN     =None,  XMAX=None, MINRANGE=None, MAXRANGE=None,
+              LINEWIDTH=1.0, INTERKIND='cubic'):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
@@ -352,15 +353,6 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
             deriv[i] = ( ydata[i+1] - ydata[i])/(xdata[i+1] - xdata[i])
         ydata = deriv
         xdata = xdata[0:-1]
-        
-#        for i in range(2, len(ydata)-2):
-#            if (abs(ydata[i] - (ydata[i-2] + ydata[i+2])/2) > 10):
-#                ydata[i] = (ydata[i-1] + ydata[i+1])/2
-#                print 'smoothed', i
-#        for i in range(2, len(ydata)-2):
-#            if (abs(ydata[i] - (ydata[i-2] + ydata[i+2])/2) > 10):
-#                ydata[i] = (ydata[i-2] + ydata[i+2])/2
-#                print 'smoothed', i        
 
     if(INTERPOLATE > 0):
         f     = interp1d(xdata, ydata,kind=INTERKIND)
@@ -373,6 +365,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         ydata = f(interx)
         xdata = interx
 
+    
     if(MINRANGE == None):
         ymin = min(ydata)
     else:
@@ -381,12 +374,9 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
             if( MINRANGE[0] < xdata[i] < MINRANGE[1]):
                 if( ydata[i] < ymin):
                     ymin = ydata[i]
-        
+    
     if(NORMY == 1) :
         ydata = ydata - ymin
-    
-    if(OFFSET != None):
-        ydata = ydata -OFFSET
     
     if(SPHERNORM==1) :
         spher = 1000000.0
@@ -399,17 +389,65 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         for i in range(len(ydata)):
             ydata[i] = ydata[i] - spher
 
+    if(OFFSET != None):
+        ydata = ydata -OFFSET
+            
+ 
+    if(MINRANGE == None):
+        ymin = min(ydata)
+    else:
+        ymin = + 100000000
+        for i in range(len(ydata)):
+            if( MINRANGE[0] < xdata[i] < MINRANGE[1]):
+                if( ydata[i] < ymin):
+                    ymin = ydata[i]
+  
+
     if(COLOR != ""):
     	AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER, color=COLOR, linewidth=LINEWIDTH)
     else:
 	    AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER, linewidth=LINEWIDTH)
     AXIS.set_xlabel(xlabel)
     AXIS.set_ylabel(ylabel)
+    
+    if(MINRANGE == None):
+       minsearch = [min(xdata), max(xdata)] 
+    else:
+       minsearch = MINRANGE
+       
+    if(MAXRANGE == None):
+       maxsearch = [min(xdata), max(xdata)] 
+    else:
+       maxsearch = MAXRANGE
 
-    return (xdata[np.argmin(ydata)], ymin)
+    if(INTERPOLATE > 0.01):               
+        maskmin = (xdata <= minsearch[1]) &  (xdata >= minsearch[0])
+        maskmax = (xdata <= maxsearch[1]) &  (xdata >= maxsearch[0])
+
+        emax = np.max(ydata[maskmax])
+        emin = np.min(ydata[maskmin])
+
+        minx = xdata[maskmin][np.argmin(ydata[maskmin])]
+        maxx = xdata[maskmax][np.argmax(ydata[maskmax])]
+    else:
+        xdata = np.array(xdata)
+        ydata = np.array(ydata) 
+
+        maskmax = (xdata <= maxsearch[1]) &  (xdata >= maxsearch[0])
+        maskmin = (xdata <= minsearch[1]) &  (xdata >= minsearch[0])
+        
+        argmin = np.argmin(ydata[maskmin])
+        minx   = xdata[maskmin][argmin]
+        emin = min(ydata[maskmin])
+        argmax = np.argmax(ydata[maskmax])
+        maxx = xdata[maskmax][argmax]
+        emax = max(ydata[maskmax])
+    
+
+    return (minx, emin, maxx, emax)
 
 #################################################################################
-def mini(PREFIX, XARG, YARG, PC=1, SC=1):
+def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[]):
     
     if(XARG=='Q20') :
         xfname =PREFIX + '.t.qlm.tab'
@@ -426,12 +464,38 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1):
             xcolumn = 4
         if( SC !=1 and PC != 1):
             xcolumn = 6
+    elif(XARG=='B30') :
+        if(PC == 1) :
+            print "Can't plot Q30 when parity is conserved."
+            sys.exit()
+        xlabel =r'$\beta_{30}$ '
+        xfname =PREFIX + '.t.qlm.tab'
+        xcolumn=8
+        if (SC != 1 ):
+            xcolumn=12
+            
+    if(YARG=='E') :
+        ylabel =r'$E$ (MeV)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn=1
+        derivY=0
     
-    if(YARG=='RRMS') :
+    elif(YARG=='RRMS') :
         ylabel =r'$\langle r^2 \rangle$ (fm$^2$)'
         yfname =PREFIX + '.e.tab'
         ycolumn=8
         derivY=0
+        
+    elif(YARG=='OmX') :
+        ylabel =r'$\omega_{x}$ (MeV $\hbar^{-1}$) '
+        yfname =PREFIX + '.e.tab'
+        ycolumn=10
+        derivY = 0
+    elif(YARG=='JX') :
+        ylabel =r'$\langle \hat{J}_{x} \rangle$ ($\hbar$)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn= 11
+        derivY = 0
     
     efname = PREFIX + '.e.tab'
     
@@ -443,7 +507,11 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1):
     ydata=dataY[:,ycolumn]
     edata=dataE[:,1]
     
-    interx= np.arange(min(xdata), max(xdata)- (max(xdata) - min(xdata))/100, (max(xdata) - min(xdata))/100)
+    if(len(XRANGE) != 0):
+        interx= np.arange(XRANGE[0], XRANGE[1], (max(xdata) - min(xdata))/1000)
+
+    else:
+        interx= np.arange(min(xdata), max(xdata)- (max(xdata) - min(xdata))/100, (max(xdata) - min(xdata))/1000)
     f     = interp1d(xdata, edata,kind='cubic')
     g     = interp1d(xdata, ydata)
     

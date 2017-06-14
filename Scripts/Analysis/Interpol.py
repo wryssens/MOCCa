@@ -81,7 +81,8 @@ def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1, LA
 
 #===============================================================================
 def BetaGamma(datafile, A, title='', figname  = 'BG.out.eps', MAXB=0.7, EMAX = 10, 
-                                     Q1MIN    = 10**8 , Q2MIN = 10**8,  
+                                     Q1MIN    = 10**8 , Q2MIN = 10**8, PLOTDATA=1, 
+                                     LEGEND   = 1,
                                      execloc  ='$HOME/Documents/Codes/inter/SplineInter/exe/',
                                      scriptloc='/home/theorie/ryssens/Documents/Codes/MOCCa/Scripts/Plotting/BGscripts'):
 
@@ -125,6 +126,21 @@ def BetaGamma(datafile, A, title='', figname  = 'BG.out.eps', MAXB=0.7, EMAX = 1
         os.system('cp data.z ESPDATA.input.z  ')    # data for solid  isolines at integer energies in MeV
         os.system('cp data.z ESPDATA.input.2.z')    # data for dotted isolines at  half-integer energies
 
+        if(PLOTDATA == 1):
+            PD = ''
+        else:
+            PD = '!'
+
+        if(title !='') :
+            NC = ''
+        else :
+            NC = '!'
+            
+        if(LEGEND == 0):
+            LEG = '!'
+        else:
+            LEG = ''
+
         with open("%s/betagamma.template"%(scriptloc), 'r') as template:
             with open('BG.gle', 'w') as file: 
                 for line in template:
@@ -132,6 +148,9 @@ def BetaGamma(datafile, A, title='', figname  = 'BG.out.eps', MAXB=0.7, EMAX = 1
                     line = line.replace('$XMIN', str(minx))
                     line = line.replace('$MAXB', str(MAXB))
                     line = line.replace('$EMAX', str(EMAX))
+                    line = line.replace('$NC', str(NC))
+                    line = line.replace('$PD', str(PD))
+                    line = line.replace('$LEGEND', str(LEG))
                     file.write(line)
                     
         os.system('cp -r %s .'%scriptloc)

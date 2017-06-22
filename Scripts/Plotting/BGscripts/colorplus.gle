@@ -1,0 +1,454 @@
+! Color subroutines
+
+palette_shade_gray_fade = 0.4
+
+sub color_range_horizontal zmin zmax zstep palette$ width height format$ pixels
+! draws a horizontal color range
+   default zstep   1
+   default palette "color"
+   default width   xg(xgmax)-xg(xgmin)
+   default height  0.25
+   default format  "fix 0"
+   default pixels  -1
+   if pixels = -1 then
+      pixels = (zmax-zmin)/zstep
+   end if
+   begin box name cmap
+      if palette$ = "gray" then
+         colormap "x" 0 1 0 1 pixels 1 width height
+      else if palette$ = "color" then
+         colormap "x" 0 1 0 1 pixels 1 width height color
+      else
+         colormap "x" 0 1 0 1 pixels 1 width height palette palette$
+      end if
+   end box
+   set just tc
+   local xp = zmin
+   while xp <= zmax
+      amove pointx(cmap.lc)+(xp-zmin)/(zmax-zmin)*width pointy(cmap.bc)
+      rline 0 -height/3; rmove 0 -height/3; write format$(xp, format$)
+      xp = xp + zstep
+   next
+end sub
+
+sub color_range_vertical zmin zmax zstep palette$ width height format$ pixels
+! draws a vertical color range
+   default zstep   1
+   default palette "color"
+   default width   0.25
+   default height  yg(ygmax)-yg(ygmin)
+   default format  "fix 0"
+   default pixels  -1
+   if pixels = -1 then
+      pixels = (zmax-zmin)/zstep
+   end if
+   begin box name cmap
+      if palette$ = "gray" then
+         colormap "y" 0 1 0 1 1 pixels width height
+      else if palette$ = "color" then
+         colormap "y" 0 1 0 1 1 pixels width height color
+      else
+         colormap "y" 0 1 0 1 1 pixels width height palette palette$
+      end if
+   end box
+   set just lc
+   local xp = zmin
+   while xp <= zmax
+      amove pointx(cmap.rc) pointy(cmap.bc)+(xp-zmin)/(zmax-zmin)*height
+      rline width/3 0; rmove width/3 0; write format$(xp, format$)
+      xp = xp + zstep
+   next
+end sub
+
+sub palette_blue_white_red z
+   ! a custom palette ranging from blue over white to red
+   local r = 0
+   local g = 0
+   local b = 0
+   ! RED
+   if (z > 0.25) and (z <= 0.50) then r = (z-0.25)*4
+   if (z > 0.50) and (z <= 0.75) then r = 1
+   if (z > 0.75)                 then r = 1-(123/255)*4*(z-0.75)
+   ! GREEN
+   if (z > 0.25) and (z <= 0.50) then g = (z-0.25)*4
+   if (z > 0.50) and (z <= 0.75) then g = 1-4*(z-0.5)
+   if (z > 0.75)                 then g = 0
+   ! BLUE
+   if (z <= 0.25)                 then b = 132/255+(123/255)*4*z
+   if (z >  0.25) and (z <= 0.50) then b = 1
+   if (z >  0.50) and (z <= 0.75) then b = 1-4*(z-0.5)
+   if (z >  0.75)                 then b = 0
+   return rgb(r,g,b)
+end sub
+
+sub palette_stolenbeauty z
+   ! a custom palette ranging from blue over white to red
+   local r = 0
+   local g = 0
+   local b = 0
+   !---
+   if (z <= 0.025)                  then r = (  320*z + 228)/255
+   if (z <= 0.025)                  then g = (  520*z +  25)/255
+   if (z <= 0.025)                  then b = (- 200*z +  45)/255
+   !---
+   if (z > 0.025) and (z <= 0.050)  then r = (  200*z + 231)/255          
+   if (z > 0.025) and (z <= 0.050)  then g = ( 1160*z +   9)/255         
+   if (z > 0.025) and (z <= 0.050)  then b = (-  40*z +  41)/255         
+   !---                                            
+   if (z > 0.050) and (z <= 0.075)  then r = (- 120*z + 247)/255          
+   if (z > 0.050) and (z <= 0.075)  then g = (  720*z +  31)/255         
+   if (z > 0.050) and (z <= 0.075)  then b = (- 200*z +  49)/255         
+   !---                                            
+   if (z > 0.075) and (z <= 0.100)  then r = (  240*z + 220)/255          
+   if (z > 0.075) and (z <= 0.100)  then g = (  840*z +  22)/255         
+   if (z > 0.075) and (z <= 0.100)  then b = (-  40*z +  37)/255         
+   !---                                            
+   if (z > 0.100) and (z <= 0.125)  then r = (   40*z + 240)/255          
+   if (z > 0.100) and (z <= 0.125)  then g = (  920*z +  14)/255         
+   if (z > 0.100) and (z <= 0.125)  then b = (-  40*z +  37)/255         
+   !---                                            
+   if (z > 0.125) and (z <= 0.150)  then r = (   80*z + 235)/255          
+   if (z > 0.125) and (z <= 0.150)  then g = (  760*z +  34)/255         
+   if (z > 0.125) and (z <= 0.150)  then b = (    0*z +  32)/255         
+   !---                                            
+   if (z > 0.150) and (z <= 0.175)  then r = (  120*z + 229)/255          
+   if (z > 0.150) and (z <= 0.175)  then g = (  800*z +  28)/255         
+   if (z > 0.150) and (z <= 0.175)  then b = (   40*z +  26)/255         
+   !---                                            
+   if (z > 0.175) and (z <= 0.200)  then r = (  160*z + 222)/255          
+   if (z > 0.175) and (z <= 0.200)  then g = ( 1200*z -  42)/255         
+   if (z > 0.175) and (z <= 0.200)  then b = (- 920*z + 194)/255         
+   !---                                            
+   if (z > 0.200) and (z <= 0.225)  then r = (   40*z + 246)/255          
+   if (z > 0.200) and (z <= 0.225)  then g = (  640*z +  70)/255         
+   if (z > 0.200) and (z <= 0.225)  then b = (- 320*z +  74)/255         
+   !---                                            
+   if (z > 0.225) and (z <= 0.250)  then r = (-  40*z + 264)/255          
+   if (z > 0.225) and (z <= 0.250)  then g = (  760*z +  43)/255         
+   if (z > 0.225) and (z <= 0.250)  then b = (-  40*z +  11)/255         
+   !---                                            
+   if (z > 0.250) and (z <= 0.275)  then r = (- 240*z + 314)/255          
+   if (z > 0.250) and (z <= 0.275)  then g = (   80*z + 213)/255         
+   if (z > 0.250) and (z <= 0.275)  then b = (  920*z - 229)/255         
+   !---                                            
+   if (z > 0.275) and (z <= 0.300)  then r = (- 520*z + 391)/255          
+   if (z > 0.275) and (z <= 0.300)  then g = (- 200*z + 290)/255         
+   if (z > 0.275) and (z <= 0.300)  then b = (   40*z +  13)/255         
+   !---                                            
+   if (z > 0.300) and (z <= 0.325)  then r = (- 680*z + 439)/255          
+   if (z > 0.300) and (z <= 0.325)  then g = (- 320*z + 326)/255         
+   if (z > 0.300) and (z <= 0.325)  then b = (  560*z - 143)/255         
+   !---                                            
+   if (z > 0.325) and (z <= 0.350)  then r = (-1040*z + 559)/255          
+   if (z > 0.325) and (z <= 0.350)  then g = (- 240*z + 300)/255         
+   if (z > 0.325) and (z <= 0.350)  then b = (  360*z -  78)/255         
+   !---                                            
+   if (z > 0.350) and (z <= 0.375)  then r = (- 720*z + 444)/255          
+   if (z > 0.350) and (z <= 0.375)  then g = (- 240*z + 300)/255         
+   if (z > 0.350) and (z <= 0.375)  then b = (  120*z +   6)/255         
+   !---                                            
+   if (z > 0.375) and (z <= 0.400)  then r = (- 880*z + 504)/255          
+   if (z > 0.375) and (z <= 0.400)  then g = (- 320*z + 330)/255         
+   if (z > 0.375) and (z <= 0.400)  then b = (  480*z - 129)/255         
+   !---                                            
+   if (z > 0.400) and (z <= 0.425)  then r = (- 640*z + 408)/255          
+   if (z > 0.400) and (z <= 0.425)  then g = (- 240*z + 298)/255         
+   if (z > 0.400) and (z <= 0.425)  then b = (    0*z +  63)/255         
+   !---                                            
+   if (z > 0.425) and (z <= 0.450)  then r = (- 560*z + 374)/255          
+   if (z > 0.425) and (z <= 0.450)  then g = (- 120*z + 247)/255         
+   if (z > 0.425) and (z <= 0.450)  then b = (  160*z -   5)/255         
+   !---                                            
+   if (z > 0.450) and (z <= 0.475)  then r = (- 680*z + 428)/255          
+   if (z > 0.450) and (z <= 0.475)  then g = (-  80*z + 229)/255         
+   if (z > 0.450) and (z <= 0.475)  then b = (   40*z +  49)/255         
+   !---                                            
+   if (z > 0.475) and (z <= 0.500)  then r = (- 400*z + 295)/255          
+   if (z > 0.475) and (z <= 0.500)  then g = (- 160*z + 267)/255         
+   if (z > 0.475) and (z <= 0.500)  then b = (   40*z +  49)/255         
+   !---                        
+   if (z > 0.500) and (z <= 0.525)  then r = (   40*z +  75)/255          
+   if (z > 0.500) and (z <= 0.525)  then g = (-  40*z + 207)/255         
+   if (z > 0.500) and (z <= 0.525)  then b = (   40*z +  49)/255         
+   !---                        
+   if (z > 0.525) and (z <= 0.550)  then r = (  200*z -   9)/255          
+   if (z > 0.525) and (z <= 0.550)  then g = (   40*z + 165)/255         
+   if (z > 0.525) and (z <= 0.550)  then b = (-  40*z +  91)/255         
+   !---                        
+   if (z > 0.550) and (z <= 0.575)  then r = (    0*z + 101)/255          
+   if (z > 0.550) and (z <= 0.575)  then g = (   80*z + 143)/255         
+   if (z > 0.550) and (z <= 0.575)  then b = (  240*z -  63)/255         
+   !---                        
+   if (z > 0.575) and (z <= 0.600)  then r = (   40*z +  78)/255          
+   if (z > 0.575) and (z <= 0.600)  then g = (   80*z + 143)/255         
+   if (z > 0.575) and (z <= 0.600)  then b = ( 1240*z - 638)/255         
+   !---                        
+   if (z > 0.600) and (z <= 0.625)  then r = (    0*z + 102)/255          
+   if (z > 0.600) and (z <= 0.625)  then g = (-  40*z + 215)/255         
+   if (z > 0.600) and (z <= 0.625)  then b = ( 1000*z - 494)/255         
+   !---                        
+   if (z > 0.625) and (z <= 0.650)  then r = (    0*z + 102)/255          
+   if (z > 0.625) and (z <= 0.650)  then g = (   80*z + 140)/255         
+   if (z > 0.625) and (z <= 0.650)  then b = (  840*z - 394)/255         
+   !---                        
+   if (z > 0.650) and (z <= 0.675)  then r = (-  40*z + 128)/255          
+   if (z > 0.650) and (z <= 0.675)  then g = (  200*z +  62)/255         
+   if (z > 0.650) and (z <= 0.675)  then b = (  400*z - 108)/255         
+   !---                        
+   if (z > 0.675) and (z <= 0.700)  then r = (    0*z + 101)/255          
+   if (z > 0.675) and (z <= 0.700)  then g = (  120*z + 116)/255         
+   if (z > 0.675) and (z <= 0.700)  then b = ( 1080*z - 567)/255         
+   !---                        
+   if (z > 0.700) and (z <= 0.725)  then r = (  160*z -  11)/255          
+   if (z > 0.700) and (z <= 0.725)  then g = (   40*z + 172)/255         
+   if (z > 0.700) and (z <= 0.725)  then b = (  480*z - 147)/255         
+   !---                        
+   if (z > 0.725) and (z <= 0.750)  then r = (    0*z + 105)/255          
+   if (z > 0.725) and (z <= 0.750)  then g = (    0*z + 201)/255         
+   if (z > 0.725) and (z <= 0.750)  then b = ( 1120*z - 611)/255         
+   !---                        
+   if (z > 0.750) and (z <= 0.775)  then r = (- 600*z + 555)/255          
+   if (z > 0.750) and (z <= 0.775)  then g = (    0*z + 201)/255         
+   if (z > 0.750) and (z <= 0.775)  then b = (   80*z + 169)/255         
+   !---                        
+   if (z > 0.775) and (z <= 0.800)  then r = (-1120*z + 958)/255          
+   if (z > 0.775) and (z <= 0.800)  then g = (- 200*z + 356)/255         
+   if (z > 0.775) and (z <= 0.800)  then b = (  520*z - 172)/255         
+   !---                        
+   if (z > 0.800) and (z <= 0.825)  then r = (- 320*z + 318)/255          
+   if (z > 0.800) and (z <= 0.825)  then g = (- 760*z + 804)/255         
+   if (z > 0.800) and (z <= 0.825)  then b = (- 280*z + 468)/255         
+   !---                        
+   if (z > 0.825) and (z <= 0.850)  then r = (  720*z - 540)/255          
+   if (z > 0.825) and (z <= 0.850)  then g = (- 640*z + 705)/255         
+   if (z > 0.825) and (z <= 0.850)  then b = (- 680*z + 798)/255         
+   !---                        
+   if (z > 0.850) and (z <= 0.875)  then r = (- 240*z + 276)/255          
+   if (z > 0.850) and (z <= 0.875)  then g = (- 920*z + 943)/255         
+   if (z > 0.850) and (z <= 0.875)  then b = (- 640*z + 764)/255         
+   !---                        
+   if (z > 0.875) and (z <= 0.900)  then r = (   40*z +  31)/255          
+   if (z > 0.875) and (z <= 0.900)  then g = (- 800*z + 838)/255         
+   if (z > 0.875) and (z <= 0.900)  then b = (- 760*z + 869)/255         
+   !---                        
+   if (z > 0.900) and (z <= 0.925)  then r = (- 160*z + 211)/255          
+   if (z > 0.900) and (z <= 0.925)  then g = (- 560*z + 622)/255         
+   if (z > 0.900) and (z <= 0.925)  then b = (- 160*z + 329)/255         
+   !---                        
+   if (z > 0.925) and (z <= 0.950)  then r = (    0*z +  63)/255          
+   if (z > 0.925) and (z <= 0.950)  then g = (- 320*z + 400)/255         
+   if (z > 0.925) and (z <= 0.950)  then b = (- 400*z + 551)/255         
+   !---                        
+   if (z > 0.950) and (z <= 0.975)  then r = (  160*z -  89)/255          
+   if (z > 0.950) and (z <= 0.975)  then g = (- 400*z + 476)/255         
+   if (z > 0.950) and (z <= 0.975)  then b = (    0*z + 171)/255         
+   !---                        
+   if (z > 0.975) and (z <= 1.000)  then r = (    0*z +  67)/255          
+   if (z > 0.975) and (z <= 1.000)  then g = (- 120*z + 203)/255         
+   if (z > 0.975) and (z <= 1.000)  then b = (-  80*z + 249)/255         
+   !---
+   if (z > 1.000) and (z <= 1.025)  then r = ( 7520*z -7453)/255          
+   if (z > 1.000) and (z <= 1.025)  then g = ( 6880*z -6797)/255         
+   if (z > 1.000) and (z <= 1.025)  then b = ( 3440*z -3271)/255         
+   !---
+   if (z >  1.025)                  then r = 1
+   if (z >  1.025)                  then g = 1
+   if (z >  1.025)                  then b = 1
+   return rgb(r,g,b)
+end sub
+
+sub palette_longtail z
+   ! a custom palette ranging from blue over white to red
+   local r = 0
+   local g = 0
+   local b = 0
+   !---
+   if (z <= 0.025)                  then r = (  320*z + 228)/255
+   if (z <= 0.025)                  then g = (  520*z +  25)/255
+   if (z <= 0.025)                  then b = (- 200*z +  45)/255
+   !---
+   if (z > 0.025) and (z <= 0.050)  then r = (  200*z + 231)/255          
+   if (z > 0.025) and (z <= 0.050)  then g = ( 1160*z +   9)/255         
+   if (z > 0.025) and (z <= 0.050)  then b = (-  40*z +  41)/255         
+   !---                                            
+   if (z > 0.050) and (z <= 0.075)  then r = (- 120*z + 247)/255          
+   if (z > 0.050) and (z <= 0.075)  then g = (  720*z +  31)/255         
+   if (z > 0.050) and (z <= 0.075)  then b = (- 200*z +  49)/255         
+   !---                                            
+   if (z > 0.075) and (z <= 0.100)  then r = (  240*z + 220)/255          
+   if (z > 0.075) and (z <= 0.100)  then g = (  840*z +  22)/255         
+   if (z > 0.075) and (z <= 0.100)  then b = (-  40*z +  37)/255         
+   !---                                            
+   if (z > 0.100) and (z <= 0.125)  then r = (   40*z + 240)/255          
+   if (z > 0.100) and (z <= 0.125)  then g = (  920*z +  14)/255         
+   if (z > 0.100) and (z <= 0.125)  then b = (-  40*z +  37)/255         
+   !---                                            
+   if (z > 0.125) and (z <= 0.150)  then r = (   80*z + 235)/255          
+   if (z > 0.125) and (z <= 0.150)  then g = (  760*z +  34)/255         
+   if (z > 0.125) and (z <= 0.150)  then b = (    0*z +  32)/255         
+   !---                                            
+   if (z > 0.150) and (z <= 0.175)  then r = (  120*z + 229)/255          
+   if (z > 0.150) and (z <= 0.175)  then g = (  800*z +  28)/255         
+   if (z > 0.150) and (z <= 0.175)  then b = (   40*z +  26)/255         
+   !---                                            
+   if (z > 0.175) and (z <= 0.200)  then r = (  160*z + 222)/255          
+   if (z > 0.175) and (z <= 0.200)  then g = ( 1200*z -  42)/255         
+   if (z > 0.175) and (z <= 0.200)  then b = (- 920*z + 194)/255         
+   !---                                            
+   if (z > 0.200) and (z <= 0.225)  then r = (   40*z + 246)/255          
+   if (z > 0.200) and (z <= 0.225)  then g = (  640*z +  70)/255         
+   if (z > 0.200) and (z <= 0.225)  then b = (- 320*z +  74)/255         
+   !---                                            
+   if (z > 0.225) and (z <= 0.250)  then r = (-  40*z + 264)/255          
+   if (z > 0.225) and (z <= 0.250)  then g = (  760*z +  43)/255         
+   if (z > 0.225) and (z <= 0.250)  then b = (-  40*z +  11)/255         
+   !---                                            
+   if (z > 0.250) and (z <= 0.275)  then r = (- 240*z + 314)/255          
+   if (z > 0.250) and (z <= 0.275)  then g = (   80*z + 213)/255         
+   if (z > 0.250) and (z <= 0.275)  then b = (  920*z - 229)/255         
+   !---                                            
+   if (z > 0.275) and (z <= 0.300)  then r = (- 520*z + 391)/255          
+   if (z > 0.275) and (z <= 0.300)  then g = (- 200*z + 290)/255         
+   if (z > 0.275) and (z <= 0.300)  then b = (   40*z +  13)/255         
+   !---                                            
+   if (z > 0.300) and (z <= 0.325)  then r = (- 680*z + 439)/255          
+   if (z > 0.300) and (z <= 0.325)  then g = (- 320*z + 326)/255         
+   if (z > 0.300) and (z <= 0.325)  then b = (  560*z - 143)/255         
+   !---                                            
+   if (z > 0.325) and (z <= 0.350)  then r = (-1040*z + 559)/255          
+   if (z > 0.325) and (z <= 0.350)  then g = (- 240*z + 300)/255         
+   if (z > 0.325) and (z <= 0.350)  then b = (  360*z -  78)/255         
+   !---                                            
+   if (z > 0.350) and (z <= 0.375)  then r = (- 720*z + 444)/255          
+   if (z > 0.350) and (z <= 0.375)  then g = (- 240*z + 300)/255         
+   if (z > 0.350) and (z <= 0.375)  then b = (  120*z +   6)/255         
+   !---                                            
+   if (z > 0.375) and (z <= 0.400)  then r = (- 880*z + 504)/255          
+   if (z > 0.375) and (z <= 0.400)  then g = (- 320*z + 330)/255         
+   if (z > 0.375) and (z <= 0.400)  then b = (  480*z - 129)/255         
+   !---                                            
+   if (z > 0.400) and (z <= 0.425)  then r = (- 640*z + 408)/255          
+   if (z > 0.400) and (z <= 0.425)  then g = (- 240*z + 298)/255         
+   if (z > 0.400) and (z <= 0.425)  then b = (    0*z +  63)/255         
+   !---                                            
+   if (z > 0.425) and (z <= 0.450)  then r = (- 560*z + 374)/255          
+   if (z > 0.425) and (z <= 0.450)  then g = (- 120*z + 247)/255         
+   if (z > 0.425) and (z <= 0.450)  then b = (  160*z -   5)/255         
+   !---                                            
+   if (z > 0.450) and (z <= 0.475)  then r = (- 680*z + 428)/255          
+   if (z > 0.450) and (z <= 0.475)  then g = (-  80*z + 229)/255         
+   if (z > 0.450) and (z <= 0.475)  then b = (   40*z +  49)/255         
+   !---                                            
+   if (z > 0.475) and (z <= 0.500)  then r = (- 400*z + 295)/255          
+   if (z > 0.475) and (z <= 0.500)  then g = (- 160*z + 267)/255         
+   if (z > 0.475) and (z <= 0.500)  then b = (   40*z +  49)/255         
+   !---                        
+   if (z > 0.500) and (z <= 0.525)  then r = (   40*z +  75)/255          
+   if (z > 0.500) and (z <= 0.525)  then g = (-  40*z + 207)/255         
+   if (z > 0.500) and (z <= 0.525)  then b = (   40*z +  49)/255         
+   !---                        
+   if (z > 0.525) and (z <= 0.550)  then r = (  200*z -   9)/255          
+   if (z > 0.525) and (z <= 0.550)  then g = (   40*z + 165)/255         
+   if (z > 0.525) and (z <= 0.550)  then b = (-  40*z +  91)/255         
+   !---                        
+   if (z > 0.550) and (z <= 0.575)  then r = (    0*z + 101)/255          
+   if (z > 0.550) and (z <= 0.575)  then g = (   80*z + 143)/255         
+   if (z > 0.550) and (z <= 0.575)  then b = (  240*z -  63)/255         
+   !---                        
+   if (z > 0.575) and (z <= 0.600)  then r = (   40*z +  78)/255          
+   if (z > 0.575) and (z <= 0.600)  then g = (   80*z + 143)/255         
+   if (z > 0.575) and (z <= 0.600)  then b = ( 1240*z - 638)/255         
+   !---                        
+   if (z > 0.600) and (z <= 0.625)  then r = (    0*z + 102)/255          
+   if (z > 0.600) and (z <= 0.625)  then g = (-  40*z + 215)/255         
+   if (z > 0.600) and (z <= 0.625)  then b = ( 1000*z - 494)/255         
+   !---                        
+   if (z > 0.625) and (z <= 0.650)  then r = (    0*z + 102)/255          
+   if (z > 0.625) and (z <= 0.650)  then g = (   80*z + 140)/255         
+   if (z > 0.625) and (z <= 0.650)  then b = (  840*z - 394)/255         
+   !---                        
+   if (z > 0.650) and (z <= 0.675)  then r = (-  40*z + 128)/255          
+   if (z > 0.650) and (z <= 0.675)  then g = (  200*z +  62)/255         
+   if (z > 0.650) and (z <= 0.675)  then b = (  400*z - 108)/255         
+   !---                        
+   if (z > 0.675) and (z <= 0.700)  then r = (    0*z + 101)/255          
+   if (z > 0.675) and (z <= 0.700)  then g = (  120*z + 116)/255         
+   if (z > 0.675) and (z <= 0.700)  then b = ( 1080*z - 567)/255         
+   !---                        
+   if (z > 0.700) and (z <= 0.725)  then r = (  160*z -  11)/255          
+   if (z > 0.700) and (z <= 0.725)  then g = (   40*z + 172)/255         
+   if (z > 0.700) and (z <= 0.725)  then b = (  480*z - 147)/255         
+   !---                        
+   if (z > 0.725) and (z <= 0.750)  then r = (    0*z + 105)/255          
+   if (z > 0.725) and (z <= 0.750)  then g = (    0*z + 201)/255         
+   if (z > 0.725) and (z <= 0.750)  then b = ( 1120*z - 611)/255         
+   !---                        
+   if (z > 0.750) and (z <= 0.775)  then r = (- 600*z + 555)/255          
+   if (z > 0.750) and (z <= 0.775)  then g = (    0*z + 201)/255         
+   if (z > 0.750) and (z <= 0.775)  then b = (   80*z + 169)/255         
+   !---                        
+   if (z > 0.775) and (z <= 0.800)  then r = (-1120*z + 958)/255          
+   if (z > 0.775) and (z <= 0.800)  then g = (- 200*z + 356)/255         
+   if (z > 0.775) and (z <= 0.800)  then b = (  520*z - 172)/255         
+   !---                        
+   if (z > 0.800) and (z <= 0.825)  then r = (- 320*z + 318)/255          
+   if (z > 0.800) and (z <= 0.825)  then g = (- 760*z + 804)/255         
+   if (z > 0.800) and (z <= 0.825)  then b = (- 280*z + 468)/255         
+   !---                        
+   if (z > 0.825) and (z <= 0.850)  then r = (  720*z - 540)/255          
+   if (z > 0.825) and (z <= 0.850)  then g = (- 640*z + 705)/255         
+   if (z > 0.825) and (z <= 0.850)  then b = (- 680*z + 798)/255         
+   !---                        
+   if (z > 0.850) and (z <= 0.875)  then r = (- 240*z + 276)/255          
+   if (z > 0.850) and (z <= 0.875)  then g = (- 920*z + 943)/255         
+   if (z > 0.850) and (z <= 0.875)  then b = (- 640*z + 764)/255         
+   !---                        
+   if (z > 0.875) and (z <= 0.900)  then r = (   40*z +  31)/255          
+   if (z > 0.875) and (z <= 0.900)  then g = (- 800*z + 838)/255         
+   if (z > 0.875) and (z <= 0.900)  then b = (- 760*z + 869)/255         
+   !---                        
+   if (z > 0.900) and (z <= 0.925)  then r = (- 160*z + 211)/255          
+   if (z > 0.900) and (z <= 0.925)  then g = (- 560*z + 622)/255         
+   if (z > 0.900) and (z <= 0.925)  then b = (- 160*z + 329)/255         
+   !---                        
+   if (z > 0.925) and (z <= 0.950)  then r = (    0*z +  63)/255          
+   if (z > 0.925) and (z <= 0.950)  then g = (- 320*z + 400)/255         
+   if (z > 0.925) and (z <= 0.950)  then b = (- 400*z + 551)/255         
+   !---                        
+   if (z > 0.950) and (z <= 0.975)  then r = (  160*z -  89)/255          
+   if (z > 0.950) and (z <= 0.975)  then g = (- 400*z + 476)/255         
+   if (z > 0.950) and (z <= 0.975)  then b = (    0*z + 171)/255         
+   !---                        
+   if (z > 0.975) and (z <= 1.000)  then r = (    0*z +  67)/255          
+   if (z > 0.975) and (z <= 1.000)  then g = (- 120*z + 203)/255         
+   if (z > 0.975) and (z <= 1.000)  then b = (-  80*z + 249)/255         
+   !---
+   if (z > 1.000) and (z <= 1.100)  then r = ( 1880*z -1813)/255          
+   if (z > 1.000) and (z <= 1.100)  then g = ( 1720*z -1637)/255         
+   if (z > 1.000) and (z <= 1.100)  then b = (  860*z - 691)/255         
+   !---
+   if (z >  1.100)                  then r = 1
+   if (z >  1.100)                  then g = 1
+   if (z >  1.100)                  then b = 1
+   return rgb(r,g,b)
+end sub
+
+
+sub palette_blue_purple_red z
+   ! a custom palette ranging from blue over purple to red
+   return rgb(z,0,1-z)
+end sub
+
+sub set_palette_shade_gray_fade fade
+	palette_shade_gray_fade = fade
+end sub
+
+sub sgp_color z x
+  local y = palette_shade_gray_fade ! set to 0 to fade completely white, 1 no fade at all
+  return (z*(1-y)+y)*(x/255-1)+1 ! the final +1 hard codes this to fade to white
+end sub
+
+sub palette_shade_gray z r g b
+  ! r, g, b is the color of the gradient which will fade towards white
+  return rgb(sgp_color(z,r), sgp_color(z,g), sgp_color(z,b))
+end sub

@@ -1,0 +1,214 @@
+size 8.0 7.75
+sx = 8.0
+
+!size 12.0 11.542
+!sx = 12.0
+
+include BGscripts/macro.gle
+include BGscripts/colorplus.gle
+include "contour.gle"
+
+@setfonts 11
+@setsize 1.0
+set font texcmr
+
+lwidththin  = 0.005
+lwidththick = 0.03
+lwidth = lwidth
+
+osl = 0.3
+osr = 0.5
+osb = 0.99
+ost = 0.05
+om  = 0.1
+sy  = sx*0.8660254+osb+ost
+
+afac = 0.017453293
+
+xa = 0.0
+xe = $MAXB
+xt = 0.1
+
+ya = xa
+ye = xe*0.8660254
+yt = xt
+
+gsx = sx-osr-osl
+gsy = gsx
+  
+gx1 = osl
+gy1 = osb
+
+ms   = 0.2
+tlen = 0.15
+
+!-----------------------------------------------
+
+sub betagamma_labels
+
+  set color black
+  set hei axistitlehei
+  tdist = tlen+0.6
+  ang = 30
+  amove gx1+gsx*cos(ang*afac) gy1+gsx*sin(ang*afac)
+  rmove tlen+tdist*cos(ang*afac) tlen+tdist*sin(ang*afac)
+  begin rotate ang
+    text {\gamma}
+  end rotate
+
+! gamma angles
+  set hei axislabelhei/1.2
+  set just cl
+  tm = 0.15
+
+  for ig = 0 to 6
+    ang = 10*ig
+    amove gx1+gsx*cos(ang*afac) gy1+gsx*sin(ang*afac)
+    rline tlen*cos(ang*afac) tlen*sin(ang*afac)
+    rmove tm*cos(ang*afac) tm*sin(ang*afac)
+    begin rotate ang
+      write ang
+    end rotate
+
+  next ig
+
+! beta labels along gamma = 60
+
+  set just cr
+  set hei axislabelhei/1.2
+
+  for ib = 1 to xe/xt
+    xbet = ib*xt
+    ddx = (xbet-xa)/(xe-xa)
+    amove gx1+gsx*ddx*cos(ang*afac) gy1+gsx*ddx*sin(ang*afac)
+    rline tlen*cos((ang+90)*afac) tlen*sin((ang+90)*afac)
+    rmove tm*cos((ang+90)*afac) tm*sin((ang+90)*afac)
+    begin rotate -30
+      write xbet
+    end rotate
+
+  next ib
+
+  set color black
+end sub
+
+!-----------------------------------------------
+
+sub labeled_scatter file$ mcolor$
+   set just cc hei 0.12
+   set color mcolor$ ! grey20 ! white ! grey20
+   fopen file$ f1 read
+   until feof(f1)
+      fread f1 xbb ybb txtb$
+      amove xg(xbb) yg(ybb)
+      marker fcircle 0.2
+!      amove xg(xbb) yg(ybb)
+!      marker fcircle 0.3
+   next
+   fclose f1
+   set color black
+end sub
+
+!------------------------------------------
+
+!sub palette_blue_purple_red z
+!   return rgb(z,0,1-z)
+!end sub
+
+
+! note: the data.z file contains non-shifted raw data
+! values for the legend are lateron shifted such that
+! XMIN is zero
+
+xxx  = $XMIN
+xmin = xxx
+
+begin contour
+  data "ESPDATA.input.z"
+  values from xxx-6 to xxx+$EMAX step 1.0
+end contour
+
+begin contour
+  data "ESPDATA.input.2.z"
+  values from xxx-6.5 to xxx+9.5 step 1.0
+end contour
+
+begin clip
+
+begin path clip
+  amove 0 0
+  box sx gy1 
+  amove gx1 gy1
+  arc gsx 0 60
+  amove gx1 gy1
+  rline gsx*cos(60*afac) gsx*sin(60*afac) 
+end path
+
+amove gx1 gy1
+begin graph
+        size gsx gsy
+        fullsize        
+        yaxis min xa max xe dticks yt
+        xaxis min xa max xe dticks xt
+        xticks length -tlen
+        yticks length -tlen
+        xlabels on
+        xlabels hei axislabelhei
+        xtitle "\beta" hei axistitlehei
+
+        x2axis off
+        yaxis off
+        y2axis off
+        ylabels off hei axislabelhei
+ 
+        data "ESPDATA.input-cdata.dat" d1=c1,c2
+        d1 line lstyle 1 color gray lwidth 0.0005
+        data "ESPDATA.input.2-cdata.dat"  d2=c1,c2
+        d2 line lstyle 1111 color gray lwidth 0.0005
+
+        colormap "ESPDATA.input.z" 200 200 zmin xmin zmax xmin+$EMAX palette palette_stolenbeauty
+end graph
+
+!
+$PD labeled_scatter "ESP.xflr6"      "grey20"
+
+!labeled_scatter "input.min.xflr6" "yellow"
+
+end clip
+
+begin path fill white
+  amove gx1+0.01 gy1+0.01
+  arc 0.0*gsx 0 60
+end path
+
+amove gx1 gy1
+arc gsx 0 60
+amove gx1 gy1
+rline gsx*cos(60.0*afac) gsx*sin(60.0*afac)
+
+betagamma_labels
+
+set hei keyhei
+set hei axislabelhei/1.2
+
+amove 0.1 3.9
+
+! NOTE: plots uses non-shifted values between xmin and xmin+$EMAX, while for the 
+! legend "xmin" is put to 0
+!
+!! color_range_vertical xmin xmin+10 1 palette_stolenbeauty 0.25 3.7 "fix 1" 280
+$LEGEND color_range_vertical 0 $EMAX 1 palette_stolenbeauty 0.25 3.7 "fix 1" 280
+
+set just cc
+set hei keyhei*1.2
+
+$NC bs = twidth("$NAMESTRING")+0.2
+$NC bh = theight("$NAMESTRING")+0.22
+$NC amove sx-bs-0.05 sy-bh-0.4
+$NC box bs bh fill grey10 nobox
+$NC rmove -0.1 0.12
+$NC box bs bh fill white
+$NC rmove 0.1 0.08
+$NC set just bl
+$NC text $NAMESTRING
+

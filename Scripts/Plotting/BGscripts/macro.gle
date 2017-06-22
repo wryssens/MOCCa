@@ -1,0 +1,103 @@
+
+begin text
+        \def\Langle{{\setfont{texcmsy}\char{104}}}
+        \def\Rangle{{\setfont{texcmsy}\char{105}}}
+        \def\Hut{{\accent{texcmr}{22}}}
+end text
+!       \def\Overline{{\setfont{texcmitt}\char{22}}}
+
+
+sub setfonts basesize
+  cmPerInch = 2.54
+  ptPerInch = 72.27
+  pt = cmPerInch/ptPerInch
+  if basesize=10 then
+    normalsize   = 10*pt
+    small        =  9*pt
+    footnotesize =  8*pt
+    scriptsize   =  7*pt
+    tiny         =  5*pt
+    large        = 12*pt
+    llarge       = 14*pt
+    lllarge      = 17*pt
+    huge         = 20*pt
+    hhuge        = 25*pt
+  else 
+    if basesize=11 then
+      normalsize   = 11*pt
+      small        = 10*pt
+      footnotesize =  9*pt
+      scriptsize   =  8*pt
+      tiny         =  6*pt
+      large        = 12*pt
+      llarge       = 14*pt
+      lllarge      = 17*pt
+      huge         = 20*pt
+      hhuge        = 25*pt
+    else
+      normalsize   = 12*pt
+      small        = 11*pt
+      footnotesize = 10*pt
+      scriptsize   =  8*pt
+      tiny         =  6*pt
+      large        = 14*pt
+      llarge       = 17*pt
+      lllarge      = 20*pt
+      huge         = 25*pt
+      hhuge        = 25*pt
+    end if
+  end if
+end sub
+
+sub setsize size
+  set font texcmr
+  lwidthnormal = 0.02
+  ticklengthnormal = 0.1
+  ticklengthshort = 0.1/1.2/1.2
+  if size=1 then
+    set hei normalsize
+    set lwidth lwidthnormal
+    axistitlehei = normalsize
+    axislabelhei = small
+    titlehei = large
+    keyhei = small
+    ticklength = ticklengthnormal
+  else
+    if size=2 then
+      set hei normalsize
+      set lwidth lwidthnormal
+      axistitlehei = scriptsize
+      axislabelhei = tiny
+      titlehei = footnotesize
+      keyhei = tiny
+      ticklength = ticklengthshort
+    else
+    set hei normalsize*size
+    set lwidth lwidthnormal*size
+    axistitlehei = normalsize*size
+    axislabelhei = small*size
+    titlehei = large*size
+    keyhei = small*size
+    ticklength = ticklengthnormal*size
+    end if
+  end if
+end sub
+
+sub box
+  if pos(device,"EPS,",1)<=0 then
+    amove 0 0
+    box sx sy
+  end if
+end sub
+
+sub mydate name$
+  amove 0 0
+  begin rotate 90
+    set hei scriptsize
+    set just tl
+    write name$ ", CENBG " DATE " " TIME
+  end rotate
+end sub
+
+text \chardef{|}{{\setfont{texcmsy}\char{106}}}
+

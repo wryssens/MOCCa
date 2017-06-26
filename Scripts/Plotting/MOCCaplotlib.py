@@ -534,7 +534,6 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
     print xfname    
     dataX=np.loadtxt(xfname,skiprows=1)
     xdata = dataX[:,xcolumn]
-
     
     fermifname=PREFIX + '.ef.tab'
     if(ISO == 'neutron'):
@@ -545,9 +544,19 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
     fermi     = fermidata[:,fermicolumn]
 
     AXIS.plot(xdata, fermi, 'k-.', label='$e_f$')
+
+    minx = 10000000.0
+    minj = 0
+    for j in range(len(xdata)):
+        if(abs(xdata[j]) < abs(minx)):
+            minj = j
+            minx = xdata[j]
+    fermispher = fermi[minj]
     
     yplus = max(fermi)
     ymin  = min(fermi)
+    
+    shells = {}
     
     if(FERMIWINDOW > 0):
         AXIS.set_ylim((ymin-FERMIWINDOW, yplus + FERMIWINDOW))
@@ -555,6 +564,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
     colors   = ['b', 'r', 'c', 'g', 'k', 'm', 'y', 'y', 'y' ]  
 
     for P in PAR:
+        shells[P] = {}
         if (P == '-1'):
             linestyle = '--'
         else:
@@ -567,7 +577,8 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                 #===============================================================
                 # Axial case
                 for K in range(1,KMAX+1,2):
-
+                    
+                    shells[P][K]= []
                     fname = fnametemp + '.k=%d.tab'%K
                     c = colors[(K-1)/2]
                     try:
@@ -601,6 +612,18 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                             AXIS.plot(xdata, ydata, c+linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=MARKER)
                         else:
                             AXIS.plot(xdata, ydata, c+linestyle, marker=MARKER)
+                            
+                        # Find the point of the spwf closest to x = 0 and add it
+                        # to shells
+                        minx = 10000000.0
+                        minj = 0
+                        for j in range(len(xdata)):
+                            if(abs(xdata[j]) < abs(minx)):
+                                minj = j
+                                minx = xdata[j]
+                        if(abs(minx) < 0.05 ):
+                            shells[P][K].append(ydata[minj])
+                            
             else:
                #################################################################
                # NONAXIAL CASE
@@ -645,6 +668,10 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                
     AXIS.set_xlabel(xlabel)
     AXIS.set_ylabel(r'E (MeV)')
+    
+    # Return the shell structure at the spherical point (or at least as close)
+    # as possible.
+    return (fermispher,shells)
 
 ################################################################################
 def Qps(PREFIX, PAR, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER='', COLOR='' ):

@@ -21,7 +21,7 @@ import glob
 import sys
 import math
 
-def Determinedata(PREFIX, XARG, YARG,PC,SC):
+def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
     
     altx = 0
     alty = 0
@@ -238,18 +238,37 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC):
         yfname =PREFIX + '.e.tab'
         ycolumn=8
         derivY=0
+    elif(YARG=='DNP') :
+        ylabel =r'$\langle \Delta N \rangle$ '
+        yfname =PREFIX + '.ef.tab'
+        ycolumn=8
+        derivY=0
+    elif(YARG=='DNN') :
+        ylabel =r'$\langle \Delta N \rangle$'
+        yfname =PREFIX + '.ef.tab'
+        ycolumn=7
+        derivY=0
     else :
         print 'YARG not recognized'
         return
-        
-    return(xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty, absy, fac)
+
+
+    if(SORT=='JX') :
+        sortfname =PREFIX + '.e.tab'
+        sortcolumn=11
+    elif(SORT == ''):
+        sortfname = xfname
+        sortcolumn = xcolumn        
+
+
+    return(xlabel, ylabel, xfname,yfname,sortfname,xcolumn,ycolumn,sortcolumn,derivY,altx,alty, absy, fac)
 
 def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1, 
               AXIS     =None,  INTERPOLATE=-1, INTERMIN=None,    
               INTERMAX =None,  LABEL=None, NORMY=1, SPHERNORM=0, 
               LINESTYLE='-' ,  MARKER='', COLOR='', OFFSET=None, 
               XMIN     =None,  XMAX=None, MINRANGE=None, MAXRANGE=None,
-              LINEWIDTH=1.0, INTERKIND='cubic'):
+              LINEWIDTH=1.0, INTERKIND='cubic', SORT=''):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
@@ -264,12 +283,14 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
 
     if(isinstance(PREFIX, list)):
         for i in range(len(PREFIX)):
-            (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty, absy, fac) = Determinedata(PREFIX[i], XARG, YARG,PC[i],SC[i])
+            (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn,derivY,altx,alty, absy, fac) = Determinedata(PREFIX[i], XARG, YARG,PC[i],SC[i], SORT)
     
             dataX=np.loadtxt(xfname,skiprows=1)
             dataY=np.loadtxt(yfname,skiprows=1)
+            sortdata = np.loadtxt(sortname, skiprows=1)
             
             tempx=dataX[:,xcolumn]
+            tempsort = sortdata[:,sortcolumn]
             if( ycolumn != -1): 
                 tempy=dataY[:,ycolumn]
             else:
@@ -289,25 +310,27 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
                 tempx = np.delete(tempx,indices)
                 tempy = np.delete(tempy,indices)
             
-            
             if(i==0) :
                 xdata=tempx
                 ydata=tempy
+                sortdata = tempsort
             else:
                 xdata = np.append(xdata, tempx)
                 ydata = np.append(ydata, tempy)
-            
+                sortdata = np.append(sortdata, tempsort)
             ydata= fac * ydata
             if(absy == 1):
                 ydata = abs(ydata)
             
     else:
-        (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty, absy,fac) = Determinedata(PREFIX, XARG, YARG,PC,SC)
+        (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn, derivY,altx,alty, absy,fac) = Determinedata(PREFIX, XARG, YARG,PC,SC, SORT)
     
         dataX=np.loadtxt(xfname,skiprows=1)
         dataY=np.loadtxt(yfname,skiprows=1)
-        
+        sortdata = np.loadtxt(sortname, skiprows=1)
+
         xdata=dataX[:,xcolumn]
+        sortdata = sortdata[:,sortcolumn]
         if( ycolumn != -1): 
                 tempy=dataY[:,ycolumn]
         else:
@@ -341,8 +364,8 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         
         ydata = fac * ydata
         
-    # Sort along X-data for surety
-    xdata, ydata = zip(*sorted(zip(xdata, ydata)))
+    # Sort along sort-data for surety
+    sortdata, xdata, ydata = zip(*sorted(zip(sortdata,xdata, ydata)))
 
     if(derivY == 1) :
         #=====================================================

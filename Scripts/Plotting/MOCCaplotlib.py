@@ -354,7 +354,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
     
         if(altx != 0):
             altxdata = dataX[:, altx]
-            xdata = np.arctan2( xdata, altxdata)*180/np.pi
+            xdata = np.arctan2(  altxdata, xdata)*180/np.pi
         if(alty != 0):
             altydata = dataY[:, alty]
             ydata    =  altydata - ydata
@@ -552,9 +552,8 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
     if AXIS is None:
         AXIS = plt.gca()
 
-    (xlabel, ylabel, xfname,yfname,xcolumn, ycolumn,derivY,altx,alty, absy,fac)  = Determinedata(PREFIX, XARG,'E' ,PC,SC)
+    (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn, derivY,altx,alty, absy,fac)= Determinedata(PREFIX, XARG,'E' ,PC,SC, SORT='')
     
-    print xfname    
     dataX=np.loadtxt(xfname,skiprows=1)
     xdata = dataX[:,xcolumn]
     
@@ -566,7 +565,9 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
     fermidata = np.loadtxt(fermifname, skiprows=1)
     fermi     = fermidata[:,fermicolumn]
 
+    xdata, fermi = zip(*sorted(zip(xdata, fermi)))
     AXIS.plot(xdata, fermi, 'k-.', label='$e_f$')
+    xdata = dataX[:,xcolumn]
 
     minx = 10000000.0
     minj = 0
@@ -584,7 +585,8 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
     if(FERMIWINDOW > 0):
         AXIS.set_ylim((ymin-FERMIWINDOW, yplus + FERMIWINDOW))
 
-    colors   = ['b', 'r', 'c', 'g', 'k', 'm', 'y', 'y', 'y' ]  
+    colors   = ['b', 'r', 'c', 'g', 'k', 'm', 'y', 'salmon', 'y' ]  
+
 
     for P in PAR:
         shells[P] = {}
@@ -631,10 +633,12 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                             interx= np.arange(min(xdata), max(xdata) - (max(xdata) - min(xdata))/100, INTERPOLATE) 
                             ydata = f(interx)
                             xdata = interx
+                            
+                        xdata, ydata = zip(*sorted(zip(xdata, ydata)))
                         if(i == 0 and P == PAR[0] ):
-                            AXIS.plot(xdata, ydata, c+linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=MARKER)
+                            AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=MARKER)
                         else:
-                            AXIS.plot(xdata, ydata, c+linestyle, marker=MARKER)
+                            AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, marker=MARKER)
                             
                         # Find the point of the spwf closest to x = 0 and add it
                         # to shells

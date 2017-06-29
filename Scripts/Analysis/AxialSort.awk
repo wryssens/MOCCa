@@ -43,7 +43,7 @@ BEGIN{
         header = $0
     }
     
-    if (NR !=1 && NF !=1) {
+    if (NR !=1 && NF !=1 && $2 != ignore) {
         iq += 1 
         
         kkk = $ind
@@ -75,8 +75,6 @@ BEGIN{
         
         if ( k > kmax ) {
             kmax = k;
-            #print twok "  " k "  " kmax;
-            #print;
         }
         
         ikmax[iq,k] += 1;

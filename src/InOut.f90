@@ -530,7 +530,7 @@ contains
     use Derivatives, only : MaxFDOrder, MaxFDLapOrder, CoulombLapOrder
     use Pairing,     only : PairingType, PairingStrength, alpha, PairingCut
     use Force
-    use Cranking,    only : Omega,CrankValues,ContinueCrank
+    use Cranking,    only : Omega,CrankValues,ContinueCrank, OmegaSize
     use Moments,     only : ReadMoment, ContinueMoment
     use Densities
 
@@ -685,6 +685,7 @@ contains
       ! Only read omega from file, not the crankvalues.
       ! Otherwise they will get overwritten
       read(IChan,iostat=ioerror) Omega !, CrankValues
+      OmegaSize = sqrt(sum(Omega**2))
       if(ioerror.ne.0) then
         call stp('Did not read CrankValues correctly' , &
              &   'Iostat', ioerror)

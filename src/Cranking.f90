@@ -93,8 +93,9 @@ contains
     Omega       = (/ OmegaX,OmegaY,OmegaZ/)
     CrankType   = (/ CrankTypeX, CrankTypeY, CrankTypeZ/)
 
+    if(.not. ContinueCrank) then
     OmegaSize = sqrt((OmegaX**2 + OmegaY**2 + OmegaZ**2))
-    
+    endif
     if(any(CrankType.eq.1) .and. CrankC0.ne.0.0_dp) then
       RutzCrank = .true.
     else
@@ -161,6 +162,8 @@ contains
     real(KIND=dp),parameter :: d0 = 1.0_dp
     logical, intent(in) :: Rutz
 
+    OmegaSize = sqrt(sum(Omega**2))
+
     do i=1,3
         select case(CrankType(i))
         case(0)
@@ -221,11 +224,12 @@ contains
       print 3, 'y',TotalAngMom(2), CrankValues(2), Omega(2), CrankEnergy(2)
     endif
     print 3, 'z',TotalAngMom(3), CrankValues(3), Omega(3), CrankEnergy(3)
-    print 31, sum(totalangmom(1:3)**2) , sum(crankvalues(1:3)**2),             &
-    &         sum(omega(1:3)**2)
+    print 31, sqrt(sum(totalangmom(1:3)**2)) , sqrt(sum(crankvalues(1:3)**2)),  &
+    &         sqrt(sum(omega(1:3)**2))
     if(.not. SC) then
-        print 4, atan2(TotalAngMom(1), TotalAngMom(3)), atan2(crankvalues(1), crankvalues(3)) &
-        &        atan2(Omega(1), Omega(3))
+        print 4, atan2(TotalAngMom(1), TotalAngMom(3)) * 180.0/pi, &
+        &        atan2(crankvalues(1), crankvalues(3)) * 180.0/pi, &
+        &        atan2(Omega(1), Omega(3)) * 180.0/pi
     endif
 
     print *

@@ -29,7 +29,6 @@ program MOCCa
     use Pairing, only     : PairingType
     use Testing
     use Transform
-    use SimplexCheck
     implicit none
 
     real*8 :: time(2)
@@ -64,8 +63,7 @@ program MOCCa
      ! In testing mode.
      if(TestRun.eq.1) then
         print*, "MOCCa is entering test mode!"
-        call ApplySimplex
-!        call stp('End of TestRun')
+        call stp('End of TestRun')
      endif
      !--------------------------------------------------------------------------
      ! Solve the mean-field equations.

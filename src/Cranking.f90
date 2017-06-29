@@ -33,7 +33,7 @@ module Cranking
   !-----------------------------------------------------------------------------
   real(KIND=dp), public :: Omega(3)      = 0.0_dp, CrankValues(3)= 0.0_dp
   real(KIND=dp), public :: CrankReadj    = 1.0_dp, CrankDamp     = 0.95_dp
-  real(KIND=dp), public :: CrankEnergy(3)= 0.0_dp
+  real(KIND=dp), public :: CrankEnergy(3)= 0.0_dp, OmegaSize     = 0.0_dp
   integer      , public :: CrankType(3)  = 0
   !-----------------------------------------------------------------------------
   ! Whether or not to use the cranking info from file
@@ -43,6 +43,7 @@ module Cranking
   !-----------------------------------------------------------------------------
   ! Logical signalling other modules whether or not to do Rutz correction steps
   logical               :: RutzCrank
+  logical               :: RealignOmega = .false.
 contains
 
   subroutine ReadCrankingInfo()
@@ -57,7 +58,8 @@ contains
 
     NameList /Cranking/ OmegaX,OmegaY,OmegaZ,CrankX,CrankY,CrankZ,             &
     &                   CrankDamp,CrankReadj, ContinueCrank,                   &
-    &                   CrankTypeX,CrankTypeY, CrankTypeZ, CrankC0
+    &                   CrankTypeX,CrankTypeY, CrankTypeZ, CrankC0,            &
+    &                   OmegaSize, RealignOmega
 
     read(unit=*, NML=Cranking)
 
@@ -91,6 +93,8 @@ contains
     Omega       = (/ OmegaX,OmegaY,OmegaZ/)
     CrankType   = (/ CrankTypeX, CrankTypeY, CrankTypeZ/)
 
+    OmegaSize = sqrt((OmegaX**2 + OmegaY**2 + OmegaZ**2))
+    
     if(any(CrankType.eq.1) .and. CrankC0.ne.0.0_dp) then
       RutzCrank = .true.
     else
@@ -129,7 +133,7 @@ contains
 
   function CrankSPot() result(CrankContribution)
    !----------------------------------------------------------------------------
-   ! Function that returns the contribution of a cranking constraint to the S
+   ! Function that returns the contribution ReadjustCrankingof a cranking constraint to the S
    ! mean field potential.
    !       SPot => SPot - 1/2 * hbar * \vec{omega}
    !----------------------------------------------------------------------------
@@ -159,6 +163,11 @@ contains
 
     do i=1,3
         select case(CrankType(i))
+        case(0)
+          if(realignomega) then
+            Omega(i) = TotalAngMom(i) * OmegaSize  &
+            & /sqrt(TotalAngMom(1)**2 + TotalAngMom(2)**2 + TotalAngMom(3)**2)
+          endif
         case(1)
           if(.not.Rutz) cycle
           Omega(i) = Omega(i) -                                                &

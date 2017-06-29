@@ -29,6 +29,7 @@ program MOCCa
     use Pairing, only     : PairingType
     use Testing
     use Transform
+    use SimplexCheck
     implicit none
 
     real*8 :: time(2)
@@ -63,7 +64,8 @@ program MOCCa
      ! In testing mode.
      if(TestRun.eq.1) then
         print*, "MOCCa is entering test mode!"
-        call stp('End of TestRun')
+        call ApplySimplex
+!        call stp('End of TestRun')
      endif
      !--------------------------------------------------------------------------
      ! Solve the mean-field equations.
@@ -218,6 +220,7 @@ subroutine Evolve(MaxIterations, iprint)
     enddo
   endif
   
+  call SolvePairing
   !Calculating  The Energy
   call CompEnergy()
   
@@ -297,9 +300,9 @@ subroutine Evolve(MaxIterations, iprint)
 
     !Update all the angular momentum information. This can be skipped on
     !iterations without printout if there is no cranking.
-    if( any(CrankType.ne.0)  .or.  mod(Iteration, PrintIter).eq.0 ) then
+    !if( any(CrankType.ne.0)  .or.  mod(Iteration, PrintIter).eq.0 ) then
       call UpdateAM(.false.)
-    endif
+    !endif
 
     !Print a summary
     if(mod(Iteration, PrintIter).ne.0) call PrintSummary(Iteration)

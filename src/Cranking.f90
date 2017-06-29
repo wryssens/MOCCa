@@ -187,7 +187,10 @@ contains
     1 format (18('-'), ' Angular Momentum (hbar) ',17('-') )
     2 format (15x, 'Total', 4x, 'Desired', 4x, 'Omega', 4x, 'Energy')
     3 format (3x,'J_',a1,'   ','|', 4f10.3 )
-
+   31 format (3x,'Size  |', 3f10.3)
+   
+    4 format (3x,'Theta |', 3f10.3)
+   
     5 format (3x,'P R_z ','|',6x,'++',8x,'-+',8x,'+-',8x,'--')
     6 format (2x,' ___________________________________________________' )
     7 format (3x,a1,'_',a1,3x,'|',4f10.3)
@@ -195,6 +198,8 @@ contains
     8 format (3x,'Open spin')
     9 format (2x,' ___________________________________________________' )
    10 format (3x,a1,1x,'|',3x,'|',4f10.3)
+    
+   11 format (3x, 'Attention: Omega gets realigned to J.') 
     
     integer :: i
 
@@ -204,6 +209,9 @@ contains
 
     print 1
     print *
+    if(RealignOmega) then
+        print 11 
+    endif
     print 2
     print 6
     if(.not.SC) then
@@ -213,6 +221,12 @@ contains
       print 3, 'y',TotalAngMom(2), CrankValues(2), Omega(2), CrankEnergy(2)
     endif
     print 3, 'z',TotalAngMom(3), CrankValues(3), Omega(3), CrankEnergy(3)
+    print 31, sum(totalangmom(1:3)**2) , sum(crankvalues(1:3)**2),             &
+    &         sum(omega(1:3)**2)
+    if(.not. SC) then
+        print 4, atan2(TotalAngMom(1), TotalAngMom(3)), atan2(crankvalues(1), crankvalues(3)) &
+        &        atan2(Omega(1), Omega(3))
+    endif
 
     print *
     print *

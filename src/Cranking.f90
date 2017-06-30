@@ -197,7 +197,7 @@ contains
     5 format (3x,'P R_z ','|',6x,'++',8x,'-+',8x,'+-',8x,'--')
     6 format (2x,' ___________________________________________________' )
     7 format (3x,a1,'_',a1,3x,'|',4f10.3)
-
+   71 format (3x,'Theta_', a1' |'      , 4f10.3)
     8 format (3x,'Open spin')
     9 format (2x,' ___________________________________________________' )
    10 format (3x,a1,1x,'|',3x,'|',4f10.3)
@@ -205,6 +205,7 @@ contains
    11 format (3x, 'Attention: Omega gets realigned to J.') 
     
     integer :: i
+    real(KIND=dp) :: theta(4)
 
     do i=1,3
       CrankEnergy(i) =  - Omega(i) * TotalAngMom(i)
@@ -249,6 +250,21 @@ contains
     print 6
     print 7, 'N','z', AMIsoblock(:,:,1,3)
     print 7, 'P','z', AMIsoblock(:,:,2,3)
+    
+    if(.not. SC) then
+        theta(1) = atan2(AMIsoblock(1,1,1,1), AMIsoblock(1,1,1,3))
+        theta(2) = atan2(AMIsoblock(2,1,1,1), AMIsoblock(2,1,1,3))
+        theta(3) = atan2(AMIsoblock(1,2,1,1), AMIsoblock(1,2,1,3))
+        theta(4) = atan2(AMIsoblock(2,2,1,1), AMIsoblock(2,2,1,3))
+        
+        print 71, 'N', theta
+        
+        theta(1) = atan2(AMIsoblock(1,1,2,1), AMIsoblock(1,1,2,3))
+        theta(2) = atan2(AMIsoblock(2,1,2,1), AMIsoblock(2,1,2,3))
+        theta(3) = atan2(AMIsoblock(1,2,2,1), AMIsoblock(1,2,2,3))
+        theta(4) = atan2(AMIsoblock(2,2,2,1), AMIsoblock(2,2,2,3))
+        print 71, 'P', theta
+    endif
 
     print *
     print 8

@@ -107,21 +107,35 @@ contains
         HFConfiguration(2,2,2) = Ppp
 
         !Sanity check
-        if (sum(HFConfiguration(:,:,1)).ne.int(Neutrons)) then
-            call stp('The hfconfiguration you wanted does not coincide with' &
-            &      //' the neutron number you wanted.',                      &
-            &        'HFConfig', sum(HFConfiguration(:,:,1)),                &
-            &        'Neutrons', Neutrons)
+        if(.not. TRC) then
+            if (sum(HFConfiguration(:,:,1)).ne.int(Neutrons)) then
+                call stp('The hfconfiguration you wanted does not coincide with' &
+                &      //' the neutron number you wanted.',                      &
+                &        'HFConfig', sum(HFConfiguration(:,:,1)),                &
+                &        'Neutrons', Neutrons)
+            endif
+
+            if (sum(HFConfiguration(:,:,2)).ne.int(Protons)) then
+                call stp('The hfconfiguration you wanted does not coincide with' &
+                &      //' the neutron number you wanted.',                      &
+                &        'HFConfig', sum(HFConfiguration(:,:,2)),                &
+                &        'Protons', Protons)
+            endif   
+        else
+            if (2*sum(HFConfiguration(:,:,1)).ne.int(Neutrons)) then
+                call stp('The hfconfiguration you wanted does not coincide with' &
+                &      //' the neutron number you wanted.',                      &
+                &        'HFConfig', 2*sum(HFConfiguration(:,:,1)),                &
+                &        'Neutrons', Neutrons)
+            endif
+
+            if (2*sum(HFConfiguration(:,:,2)).ne.int(Protons)) then
+                call stp('The hfconfiguration you wanted does not coincide with' &
+                &      //' the neutron number you wanted.',                      &
+                &        'HFConfig', 2*sum(HFConfiguration(:,:,2)),                &
+                &        'Protons', Protons)
+            endif   
         endif
-
-        if (sum(HFConfiguration(:,:,2)).ne.int(Protons)) then
-            call stp('The hfconfiguration you wanted does not coincide with' &
-            &      //' the neutron number you wanted.',                      &
-            &        'HFConfig', sum(HFConfiguration(:,:,2)),                &
-            &        'Protons', Protons)
-        endif
-
-
     end subroutine ReadHFConfig
 
   function HFEnergy( Delta) result(E)

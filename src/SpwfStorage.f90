@@ -701,6 +701,8 @@ contains
         do i=1,3
           TotalAngMom(i) = TotalAngMom(i) + &
           & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMoment(i)
+          JT(i)          = JT(i)          + & 
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%JT(i)
           J2Total(i)     = J2Total(i) +     &
           & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMomentSquared(i)
 
@@ -710,6 +712,8 @@ contains
 
           AMIsoblock(S,P,it,i) = AMIsoblock(S,P,it,i) +                  &
           & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMoment(i)
+          AMTIsoblock(S,P,it,i)= AMTIsoblock(S,P,it,i) +                 &
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%JT(i)
         enddo
       enddo
       !-------------------------------------------------------------------------

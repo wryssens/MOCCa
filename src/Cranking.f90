@@ -184,7 +184,11 @@ contains
   end subroutine ReadjustCranking
 
   subroutine PrintCranking
-    
+    !---------------------------------------------------------------------------
+    ! Prints all kinds of information about the expectation value of the 
+    ! angular momentum operator and all kinds of angles.
+    !
+    !---------------------------------------------------------------------------
     use Densities
 
     1 format (18('-'), ' Angular Momentum (hbar) ',17('-') )
@@ -192,6 +196,7 @@ contains
     3 format (3x,'J_',a1,'   ','|', 4f10.3 )
    31 format (3x,'Size  |', 3f10.3)
    32 format (3x,'JT',a1,'   ','|', 4f10.3 )
+   33 format (3x,'to',a1,'   ','|', 4f10.3
    
     4 format (3x,'Theta |', 3f10.3)
    41 format (3x,'Phi   |', 3f10.3)
@@ -214,7 +219,8 @@ contains
     do i=1,3
       CrankEnergy(i) =  - Omega(i) * TotalAngMom(i)
     enddo
-
+    !---------------------------------------------------------------------------
+    ! Print all info on the angular momentum
     print 1
     print *
     if(RealignOmega) then
@@ -230,8 +236,20 @@ contains
     endif
     print 3, 'z',TotalAngMom(3), CrankValues(3), Omega(3), CrankEnergy(3)
     print 6
-    print 31, sqrt(sum(totalangmom(1:3)**2)) , sqrt(sum(crankvalues(1:3)**2)),  &
+    print 31, sqrt(sum(totalangmom(1:3)**2)) , sqrt(sum(crankvalues(1:3)**2)), &
     &         sqrt(sum(omega(1:3)**2))
+    print 6
+    print 2
+    print 6
+    print 32, 'x',JT(1), 0.0, 0.0, 0.0
+    print 32, 'y',JT(2), 0.0, 0.0, 0.0
+    print 32, 'z',JT(3), 0.0, 0.0, 0.0
+    print 31, sqrt(sum(JT(:)**2)) ,0.0,0.0
+    print 6
+    print 33, 'x',TotalAngMom(1) + JT(1), 0.0, 0.0, 0.0
+    print 33, 'y',TotalAngMom(2) + JT(2), 0.0, 0.0, 0.0
+    print 33, 'z',TotalAngMom(3) + JT(3), 0.0, 0.0, 0.0
+
     if(.not. SC) then
         if(TSC) then
             print 4, atan2(TotalAngMom(1), TotalAngMom(3)) * 180.0/pi, &
@@ -246,15 +264,15 @@ contains
         endif
     endif
     if(.not. SC .and. .not. TSC) then
-        print 4, atan2(TotalAngMom(2), TotalAngMom(1)) * 180.0/pi, &
-        &        atan2(crankvalues(2), crankvalues(1)) * 180.0/pi, &
-        &        atan2(Omega(2), Omega(1)) * 180.0/pi
+        print 41, atan2(TotalAngMom(2), TotalAngMom(1)) * 180.0/pi, &
+        &         atan2(crankvalues(2), crankvalues(1)) * 180.0/pi, &
+        &         atan2(Omega(2), Omega(1)) * 180.0/pi
     endif
 
     print *
-    print *
     print 5
     print 6
+    !---------------------------------------------------------------------------
     ! Print the individual contributions to the angular momentum vector of all
     ! isospin-parity-signature blocks
     if(.not. SC) then
@@ -272,6 +290,7 @@ contains
     
     if(.not. SC) then
         if(TSC) then
+            print *
             theta(1) = atan2(AMIsoblock(1,1,1,1), AMIsoblock(1,1,1,3))
             theta(2) = atan2(AMIsoblock(2,1,1,1), AMIsoblock(2,1,1,3))
             theta(3) = atan2(AMIsoblock(1,2,1,1), AMIsoblock(1,2,1,3))
@@ -285,7 +304,7 @@ contains
             theta(4) = atan2(AMIsoblock(2,2,2,1), AMIsoblock(2,2,2,3))
             print 71, 'P', theta * 180.0/pi
         else
-            
+            print *
             theta(1) = acos(AMIsoblock(1,1,1,3)/sqrt(sum(AMIsoblock(1,1,1,:)**2)))
             theta(2) = acos(AMIsoblock(2,1,1,3)/sqrt(sum(AMIsoblock(2,1,1,:)**2)))
             theta(3) = acos(AMIsoblock(1,2,1,3)/sqrt(sum(AMIsoblock(1,2,1,:)**2)))
@@ -299,6 +318,7 @@ contains
         endif
     endif
     if( .not. TSC .and. .not. SC) then
+        print *
         phi(1) = atan2(AMIsoblock(1,1,1,2), AMIsoblock(1,1,1,1))
         phi(2) = atan2(AMIsoblock(2,1,1,2), AMIsoblock(2,1,1,1))
         phi(3) = atan2(AMIsoblock(1,2,1,2), AMIsoblock(1,2,1,1))
@@ -323,6 +343,7 @@ contains
     print 10    , 'Z', 0.5*sum(Density%vecs(:,:,:,3,1))*dv, 0.5*sum(Density%vecs(:,:,:,3,2))*dv
     print *
 
+    !---------------------------------------------------------------------------
   end subroutine PrintCranking
 
 !   subroutine PrintCranking

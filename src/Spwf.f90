@@ -603,7 +603,8 @@ contains
     ! Computes and set the correct values for the AngMoment.
     !---------------------------------------------------------------------------
     class(Spwf), intent(inout)    :: WaveFunction
-    real(KIND=dp)                 :: J(6,2), JT(6,2)
+    type(Spwf) :: temp 
+    real(KIND=dp)                 :: J(6,2), JT(6,2), alt(6,2)
     
     !---------------------------------------------------------------------------
     ! Calculation of angular momentum, without time-reversal
@@ -611,6 +612,20 @@ contains
     &                                                   .false.,.false.,.false.)
     JT= AngularMomentum(WaveFunction, WaveFunction, .true.,                    &
     &                                                   .true.,.true.,.true.   )
+  
+    temp = copywavefunction(WaveFunction) 
+    temp%Value = TimeReverse(temp%value)
+    temp%der(1) = TimeReverse(temp%der(1))
+    temp%der(2) = TimeReverse(temp%der(2))
+    temp%der(3) = TimeReverse(temp%der(3))
+
+    alt= AngularMomentum(WaveFunction,temp, .true.,                    &
+    &                                                   .false.,.false.,.false.   )
+
+    print *
+    print *, 'JT', JT(1:3,1)
+    print *, 'alt', alt(1:3,1)
+
     !Angular Momentum in the three directions
     WaveFunction%AngMoment   = J (1:3,1)
     WaveFunction%JT          = JT(1:3,1)
@@ -1082,19 +1097,19 @@ contains
             ! Action of J_y to the right
             r1 = - Mesh3D(1,i,1,1)* DerPhi(3)%Grid(i,1,1,2,1) &
             &    + Mesh3D(3,i,1,1)* DerPhi(1)%Grid(i,1,1,2,1) &
-            &    + 0.5_dp        * Phi%Grid(i,1,1,2,1)
+            &    + 0.5_dp        * Phi%Grid(i,1,1,4,1)
             ! 
             r2 =   Mesh3D(1,i,1,1)* DerPhi(3)%Grid(i,1,1,1,1) &
             &    - Mesh3D(3,i,1,1)* DerPhi(1)%Grid(i,1,1,1,1) &
-            &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+            &    - 0.5_dp        * Phi%Grid(i,1,1,3,1)
             ! 
             r3 = - Mesh3D(1,i,1,1)* DerPhi(3)%Grid(i,1,1,4,1) &
             &    + Mesh3D(3,i,1,1)* DerPhi(1)%Grid(i,1,1,4,1) &
-            &    + 0.5_dp        * Phi%Grid(i,1,1,4,1)
+            &    - 0.5_dp        * Phi%Grid(i,1,1,2,1)
             ! 
             r4 =   Mesh3D(1,i,1,1)* DerPhi(3)%Grid(i,1,1,3,1) &
             &    - Mesh3D(3,i,1,1)* DerPhi(1)%Grid(i,1,1,3,1) &
-            &    + 0.5_dp        * Phi%Grid(i,1,1,3,1)
+            &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
             ! 
             l1 =  Psi%Grid(i,1,1,1,1)
             l2 =  Psi%Grid(i,1,1,2,1)
@@ -1368,7 +1383,7 @@ contains
             print 11, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
             &           WF%Dispersion,J, WF%AngQuantum,WF%RMSRadius
         else
-            print 11, i,WF%ParityR,WF%SignatureR,WF%TimeSimplexR,         &
+            print 12, i,WF%ParityR,WF%SignatureR,WF%TimeSimplexR,         &
             &           PrintOcc,WF%Energy,      &
             &           WF%Dispersion,J, WF%AngQuantum,WF%RMSRadius
             !call stp('no printout defined yet.')

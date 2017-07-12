@@ -196,7 +196,7 @@ contains
     3 format (3x,'J_',a1,'   ','|', 4f10.3 )
    31 format (3x,'Size  |', 3f10.3)
    32 format (3x,'JT',a1,'   ','|', 4f10.3 )
-   33 format (3x,'to',a1,'   ','|', 4f10.3
+   33 format (3x,'to',a1,'   ','|', 4f10.3 )
    
     4 format (3x,'Theta |', 3f10.3)
    41 format (3x,'Phi   |', 3f10.3)

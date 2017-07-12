@@ -48,6 +48,7 @@ module WaveFunctions
     real(KIND=dp) :: Dispersion
     real(KIND=dp) :: Norm
     real(KIND=dp) :: AngMoment(3)
+    real(KIND=dp) :: JT(3)
     real(KIND=dp) :: J2(3)
     real(KIND=dp) :: AngQuantum
     !---------------------------------------------------------------------------
@@ -602,27 +603,25 @@ contains
     ! Computes and set the correct values for the AngMoment.
     !---------------------------------------------------------------------------
     class(Spwf), intent(inout)    :: WaveFunction
-    real(KIND=dp)                 :: Temp(6,2)
-    logical                       :: TRX=.false., TRY=.false., TRZ=.false.
-
-    if(SC)          TRX=.true.
-    if(TSC .or. SC) TRY=.true.
-    TRZ = .false.
-
-    Temp = 0.0_dp
-    Temp = AngularMomentum(WaveFunction, WaveFunction, .true.,TRX,TRY,TRZ)
-
+    real(KIND=dp)                 :: J(6,2), JT(6,2)
+    
+    !---------------------------------------------------------------------------
+    ! Calculation of angular momentum, without time-reversal
+    J = AngularMomentum(WaveFunction, WaveFunction, .true.,                    &
+    &                                                   .false.,.false.,.false.)
+    JT= AngularMomentum(WaveFunction, WaveFunction, .true.,                    &
+    &                                                   .true.,.true.,.true.   )
     !Angular Momentum in the three directions
-    !Note: only the real parts!
-    WaveFunction%AngMoment   = Temp(1:3,1)
-    WaveFunction%J2          = Temp(4:6,1)
+    WaveFunction%AngMoment   = J (1:3,1)
+    WaveFunction%JT          = JT(1:3,1)
+    WaveFunction%J2          = J (4:6,1)
+    
     !---------------------------------------------------------------------------
     ! Now find j so that <J^2> = j*(j+1)
     ! The solution is obviously:
     ! j = [- 1 + sqrt( 1 + 4 * <J^2>)]/2
     WaveFunction%AngQuantum=                                                    &
-    &                  - 0.5_dp*(1.0_dp-sqrt( 1.0_dp + 4.0_dp*sum(Temp(4:6,1))))
-!     InproductSpinorReal(AngMomOperator(Wavefunction,1), AngMomOperator(Wavefunction,1))
+    &                  - 0.5_dp*(1.0_dp-sqrt( 1.0_dp + 4.0_dp*sum(J(4:6,1))))
   end subroutine CompAngMoment
 
   subroutine SetEnergy(WaveFunction,Energy)
@@ -1115,48 +1114,48 @@ contains
         else
             do i=1,nx*ny*nz
                 ! Spin
-                AngMom(2,1) = AngMom(2,1) + 0.5_dp * (                              &
-                &                         + Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,4,1) &
-                &                         - Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,3,1) &
-                &                         - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,2,1) &
-                &                         + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,1,1))
+                AngMom(2,1) = AngMom(2,1) + 0.5_dp * (                         &
+                &                      Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,4,1) &
+                &                    - Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,3,1) &
+                &                    - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,2,1) &
+                &                    + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,1,1))
 
                 !Orbital
                 AngMom(2,1) = AngMom(2,1)    &
-                &           + Psi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
-                &           - Psi%Grid(i,1,1,2,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
+                & + Psi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
+                & - Psi%Grid(i,1,1,2,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
                 !
-                &           - Psi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
-                &           + Psi%Grid(i,1,1,1,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
+                & - Psi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
+                & + Psi%Grid(i,1,1,1,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
                 !
-                &           + Psi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
-                &           - Psi%Grid(i,1,1,4,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
+                & + Psi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
+                & - Psi%Grid(i,1,1,4,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
                 !
-                &           - Psi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
-                &           + Psi%Grid(i,1,1,3,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,4,1)
+                & - Psi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
+                & + Psi%Grid(i,1,1,3,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,4,1)
             enddo
         endif
 
         !-------------------------------------------------------------------------------
         ! Z-direction
         do i=1,nx*ny*nz
-            AngMom(3,1) = AngMom(3,1) + 0.5_dp * (                              &
-            &                           Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) &
-            &                         + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
-            &                         - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) &
-            &                         - Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
+            AngMom(3,1) = AngMom(3,1)+ 0.5_dp * (                              &
+            &                          Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) &
+            &                        + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
+            &                        - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) &
+            &                        - Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
             AngMom(3,1) = AngMom(3,1)    &
-            &           + Psi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
-            &           - Psi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
+            &  + Psi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
+            &  - Psi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
             !
-            &           - Psi%Grid(i,1,1,1,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
-            &           + Psi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
+            &  - Psi%Grid(i,1,1,1,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
+            &  + Psi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
             !
-            &           + Psi%Grid(i,1,1,4,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
-            &           - Psi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+            &  + Psi%Grid(i,1,1,4,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
+            &  - Psi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
             !
-            &           - Psi%Grid(i,1,1,3,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
-            &           + Psi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,4,1)
+            &  - Psi%Grid(i,1,1,3,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
+            &  + Psi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,4,1)
         enddo
 
         if(Quadratic) then
@@ -1261,9 +1260,7 @@ contains
 
                 AngMom(6,1) = AngMom(6,1) + l1*r1 + l2*r2 + l3*r3 + l4*r4
              enddo
-
          endif
-
         AngMom = AngMom * dv
 
   end function AngularMomentum
@@ -1319,31 +1316,41 @@ contains
   class(Spwf), intent(in) :: WF
   integer, intent(in)     :: i
   integer, intent(in)     :: PrintType
-  real(KIND =dp)          :: PrintOcc
+  real(KIND =dp)          :: PrintOcc, J(3)
 
   PrintOcc = WF%Occupation
   ! Don't print double the occupation number when Time-reversal is conserved.
   if(TRC) PrintOcc = PrintOcc/2
+  
+  ! Decide on which angular momentum to print
+  if(SC) then
+    J(1) = WF%JT(1)
+  else
+    J(1) = WF%AngMoment(1)
+  endif
+  if((.not.SC) .and. (.not. TSC)) then
+    J(2) = WF%Angmoment(2)
+  else
+    J(2) = WF%JT(2)
+  endif
+  J(3) = WF%AngMoment(3)
 
   select case(PrintType)
     case(1) !HF calculations
         !Time Reversal and signature conservation => <Rz> = 1
         if(TRC .and. SC .and. TSC) then
             print 1, i,WF%ParityR,PrintOcc,WF%Energy,WF%Dispersion,       &
-            &          WF%AngMoment(1:3), WF%AngQuantum, WF%RMSRadius
+            &          J, WF%AngQuantum, WF%RMSRadius
         elseif(SC.and.TSC) then
             print 11, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
-            &           WF%Dispersion,WF%AngMoment(1:3),WF%AngQuantum,    &
-            &           WF%RMSRadius
+            &           WF%Dispersion,J,WF%AngQuantum,WF%RMSRadius
         elseif(TSC) then
             ! No signature conservation
             print 11, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
-            &           WF%Dispersion,WF%AngMoment(1:3), WF%AngQuantum,   &
-            &           WF%RMSRadius
+            &           WF%Dispersion,J,WF%AngQuantum,WF%RMSRadius
         elseif(SC .and. .not. TSC) then
             print 11, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
-            &           WF%Dispersion,WF%AngMoment(1:3), WF%AngQuantum,   &
-            &           WF%RMSRadius
+            &           WF%Dispersion,J, WF%AngQuantum,WF%RMSRadius
         else
             !call stp('no printout defined yet.')
         endif
@@ -1351,25 +1358,22 @@ contains
     case(2) !BCS calculations
         if(TRC .and. SC) then
             print 2, i,WF%ParityR,PrintOcc,Real(WF%Delta), WF%Energy,     &
-            &          WF%Dispersion,WF%AngMoment(1:3),WF%AngQuantum,     &
-            &          WF%RMSRadius
+            &          WF%Dispersion,J,WF%AngQuantum, WF%RMSRadius
         elseif(TRC) then
             print 21, i,WF%ParityR,WF%SignatureR,PrintOcc,Real(WF%Delta), &
-            &          WF%Energy,WF%Dispersion,WF%AngMoment(1:3),         &
-            &          WF%AngQuantum, WF%RMSRadius
+            &          WF%Energy,WF%Dispersion,J,WF%AngQuantum, WF%RMSRadius
         else
             !call stp('No Printout defined yet.')
         endif
 
     case(3) !HFB calculations
         if(TRC .and. SC .and. TSC) then
-            print 3, i,WF%ParityR,PrintOcc,Real(WF%Delta),WF%PairPartner,        &
-            &          WF%Energy,WF%Dispersion,WF%AngMoment(1:3),                &
-            &          WF%AngQuantum,WF%RMSRadius
+            print 3, i,WF%ParityR,PrintOcc,Real(WF%Delta),WF%PairPartner,      &
+            &          WF%Energy,WF%Dispersion,J,WF%AngQuantum,WF%RMSRadius
         else
-            print 31,i,WF%ParityR,WF%SignatureR,WF%xsimplexR, PrintOcc,          &
-            &          Real(WF%Delta),                                           &
-            &          WF%PairPartner,WF%Energy,WF%Dispersion,WF%AngMoment(1:3), &
+            print 31,i,WF%ParityR,WF%SignatureR,WF%xsimplexR, PrintOcc,        &
+            &          Real(WF%Delta),                                         &
+            &          WF%PairPartner,WF%Energy,WF%Dispersion,J,               &
             &          WF%AngQuantum, WF%RMSRadius
         endif
     case DEFAULT

@@ -191,13 +191,17 @@ contains
     2 format (15x, 'Total', 4x, 'Desired', 4x, 'Omega', 4x, 'Energy')
     3 format (3x,'J_',a1,'   ','|', 4f10.3 )
    31 format (3x,'Size  |', 3f10.3)
+   32 format (3x,'JT',a1,'   ','|', 4f10.3 )
    
     4 format (3x,'Theta |', 3f10.3)
-   
+   41 format (3x,'Phi   |', 3f10.3)
+    
     5 format (3x,'P R_z ','|',6x,'++',8x,'-+',8x,'+-',8x,'--')
     6 format (2x,' ___________________________________________________' )
     7 format (3x,a1,'_',a1,3x,'|',4f10.3)
-   71 format (3x,'Theta_', a1' |'      , 4f10.3)
+   71 format (3x,'The_', a1' |'      , 4f10.3)
+   72 format (3x,'Phi_', a1' |'      , 4f10.3)
+   
     8 format (3x,'Open spin')
     9 format (2x,' ___________________________________________________' )
    10 format (3x,a1,1x,'|',3x,'|',4f10.3)
@@ -205,7 +209,7 @@ contains
    11 format (3x, 'Attention: Omega gets realigned to J.') 
     
     integer :: i
-    real(KIND=dp) :: theta(4)
+    real(KIND=dp) :: theta(4), phi(4), J(3)
 
     do i=1,3
       CrankEnergy(i) =  - Omega(i) * TotalAngMom(i)
@@ -225,47 +229,88 @@ contains
       print 3, 'y',TotalAngMom(2), CrankValues(2), Omega(2), CrankEnergy(2)
     endif
     print 3, 'z',TotalAngMom(3), CrankValues(3), Omega(3), CrankEnergy(3)
+    print 6
     print 31, sqrt(sum(totalangmom(1:3)**2)) , sqrt(sum(crankvalues(1:3)**2)),  &
     &         sqrt(sum(omega(1:3)**2))
     if(.not. SC) then
-        print 4, atan2(TotalAngMom(1), TotalAngMom(3)) * 180.0/pi, &
-        &        atan2(crankvalues(1), crankvalues(3)) * 180.0/pi, &
-        &        atan2(Omega(1), Omega(3)) * 180.0/pi
+        if(TSC) then
+            print 4, atan2(TotalAngMom(1), TotalAngMom(3)) * 180.0/pi, &
+            &        atan2(crankvalues(1), crankvalues(3)) * 180.0/pi, &
+            &        atan2(Omega(1), Omega(3)) * 180.0/pi
+        else
+            J = sqrt(sum(TotalAngMom(:)**2))  
+            
+            print 4, acos(TotalAngMom(3)/J) * 180.0/pi, &
+            &        acos(crankvalues(3)/J) * 180.0/pi, &
+            &        acos(Omega(3)/sqrt(sum(Omega**2))) * 180.0/pi
+        endif
+    endif
+    if(.not. SC .and. .not. TSC) then
+        print 4, atan2(TotalAngMom(2), TotalAngMom(1)) * 180.0/pi, &
+        &        atan2(crankvalues(2), crankvalues(1)) * 180.0/pi, &
+        &        atan2(Omega(2), Omega(1)) * 180.0/pi
     endif
 
     print *
     print *
     print 5
+    print 6
+    ! Print the individual contributions to the angular momentum vector of all
+    ! isospin-parity-signature blocks
     if(.not. SC) then
-      print 6
       print 7, 'N','x', AMIsoblock(:,:,1,1)
       print 7, 'P','x', AMIsoblock(:,:,2,1)
+      print *
     endif
-    if(.not. TSC) then
-      print 6
+    if((.not. TSC).and.(.not.SC)) then
       print 7, 'N','y', AMIsoblock(:,:,1,2)
       print 7, 'P','y', AMIsoblock(:,:,2,2)
+      print *
     endif
-
-    print 6
     print 7, 'N','z', AMIsoblock(:,:,1,3)
     print 7, 'P','z', AMIsoblock(:,:,2,3)
     
     if(.not. SC) then
-        theta(1) = atan2(AMIsoblock(1,1,1,1), AMIsoblock(1,1,1,3))
-        theta(2) = atan2(AMIsoblock(2,1,1,1), AMIsoblock(2,1,1,3))
-        theta(3) = atan2(AMIsoblock(1,2,1,1), AMIsoblock(1,2,1,3))
-        theta(4) = atan2(AMIsoblock(2,2,1,1), AMIsoblock(2,2,1,3))
-        
-        print 71, 'N', theta
-        
-        theta(1) = atan2(AMIsoblock(1,1,2,1), AMIsoblock(1,1,2,3))
-        theta(2) = atan2(AMIsoblock(2,1,2,1), AMIsoblock(2,1,2,3))
-        theta(3) = atan2(AMIsoblock(1,2,2,1), AMIsoblock(1,2,2,3))
-        theta(4) = atan2(AMIsoblock(2,2,2,1), AMIsoblock(2,2,2,3))
-        print 71, 'P', theta
+        if(TSC) then
+            theta(1) = atan2(AMIsoblock(1,1,1,1), AMIsoblock(1,1,1,3))
+            theta(2) = atan2(AMIsoblock(2,1,1,1), AMIsoblock(2,1,1,3))
+            theta(3) = atan2(AMIsoblock(1,2,1,1), AMIsoblock(1,2,1,3))
+            theta(4) = atan2(AMIsoblock(2,2,1,1), AMIsoblock(2,2,1,3))
+            
+            print 71, 'N', theta * 180.0/pi
+            
+            theta(1) = atan2(AMIsoblock(1,1,2,1), AMIsoblock(1,1,2,3))
+            theta(2) = atan2(AMIsoblock(2,1,2,1), AMIsoblock(2,1,2,3))
+            theta(3) = atan2(AMIsoblock(1,2,2,1), AMIsoblock(1,2,2,3))
+            theta(4) = atan2(AMIsoblock(2,2,2,1), AMIsoblock(2,2,2,3))
+            print 71, 'P', theta * 180.0/pi
+        else
+            
+            theta(1) = acos(AMIsoblock(1,1,1,3)/sqrt(sum(AMIsoblock(1,1,1,:)**2)))
+            theta(2) = acos(AMIsoblock(2,1,1,3)/sqrt(sum(AMIsoblock(2,1,1,:)**2)))
+            theta(3) = acos(AMIsoblock(1,2,1,3)/sqrt(sum(AMIsoblock(1,2,1,:)**2)))
+            theta(4) = acos(AMIsoblock(2,2,1,3)/sqrt(sum(AMIsoblock(2,2,1,:)**2)))
+            print 71, 'N', theta * 180.0/pi
+            theta(1) = acos(AMIsoblock(1,1,2,3)/sqrt(sum(AMIsoblock(1,1,2,:)**2)))
+            theta(2) = acos(AMIsoblock(2,1,2,3)/sqrt(sum(AMIsoblock(2,1,2,:)**2)))
+            theta(3) = acos(AMIsoblock(1,2,2,3)/sqrt(sum(AMIsoblock(1,2,2,:)**2)))
+            theta(4) = acos(AMIsoblock(2,2,2,3)/sqrt(sum(AMIsoblock(2,2,2,:)**2)))
+            print 71, 'P', theta * 180.0/pi
+        endif
     endif
-
+    if( .not. TSC .and. .not. SC) then
+        phi(1) = atan2(AMIsoblock(1,1,1,2), AMIsoblock(1,1,1,1))
+        phi(2) = atan2(AMIsoblock(2,1,1,2), AMIsoblock(2,1,1,1))
+        phi(3) = atan2(AMIsoblock(1,2,1,2), AMIsoblock(1,2,1,1))
+        phi(4) = atan2(AMIsoblock(2,2,1,2), AMIsoblock(2,2,1,1))
+        print 72, 'N', phi * 180.0/pi
+        
+        phi(1) = atan2(AMIsoblock(1,1,2,2), AMIsoblock(1,1,2,1))
+        phi(2) = atan2(AMIsoblock(2,1,2,2), AMIsoblock(2,1,2,1))
+        phi(3) = atan2(AMIsoblock(1,2,2,2), AMIsoblock(1,2,2,1))
+        phi(4) = atan2(AMIsoblock(2,2,2,2), AMIsoblock(2,2,2,1))
+        print 72, 'P', phi * 180.0/pi
+    endif
     print *
     print 8
     print 9

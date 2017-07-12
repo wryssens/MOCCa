@@ -66,6 +66,9 @@ module SpwfStorage
   !-----------------------------------------------------------------------------
   ! Ali-rotation to perform on every parity-isospin block on input of the spwfs.
   real(KIND=dp) :: aliy(2,2) = 0.0_dp
+  !-----------------------------------------------------------------------------
+  ! 
+  real(KIND=dp) :: JT(3) = 0.0_dp, AMTIsoBlock(2,2,2,3) = 0.0_dp
 
 contains
 
@@ -691,6 +694,7 @@ contains
       endif
     enddo
 
+    !---------------------------------------------------------------------------
     !Only compute angular momentum when TimeReversal is not conserved
     if(.not. TRC) then
       do wave=1,nwt
@@ -708,13 +712,14 @@ contains
           & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMoment(i)
         enddo
       enddo
+      !-------------------------------------------------------------------------
       ! Artificially set total J_x and J_y to zero when dictated by symmetries.
       ! In that case the above summation is not \sum v^2_i <Psi_i|J_x|\Psi_i>
       ! but rather \sum v^2_i <Psi_i|J_x T |\Psi_i>
       if(SC)          TotalAngMom(1) = 0.0
       if(SC .or. TSC) TotalAngMom(2) = 0.0
     endif
-
+    !---------------------------------------------------------------------------
   end subroutine UpdateAM
 
   function OrderSpwfs(Canonical) result(Indices)

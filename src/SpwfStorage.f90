@@ -684,7 +684,8 @@ contains
     endif
 
     TotalAngMom = 0.0_dp ; J2Total = 0.0_dp ; AMIsoblock = 0.0_dp
-
+    JT = 0.0_dp; AMTIsoblock = 0.0_dp 
+    
     do wave=1,nwt
       call HFBasis(wave)%CompAngMoment()
       ! When canonical basis is allocated we need to recalculate the angular

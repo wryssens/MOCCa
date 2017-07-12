@@ -214,7 +214,7 @@ contains
    11 format (3x, 'Attention: Omega gets realigned to J.') 
     
     integer :: i
-    real(KIND=dp) :: theta(4), phi(4), J(3)
+    real(KIND=dp) :: theta(4), phi(4), J
 
     do i=1,3
       CrankEnergy(i) =  - Omega(i) * TotalAngMom(i)
@@ -245,7 +245,7 @@ contains
             &        atan2(crankvalues(1), crankvalues(3)) * 180.0/pi, &
             &        atan2(Omega(1), Omega(3)) * 180.0/pi
         else
-            J = sqrt(sum(TotalAngMom(:)**2))  
+            J = sqrt(sum(TotalAngMom**2))  
             
             print 4, acos(TotalAngMom(3)/J) * 180.0/pi, &
             &        acos(crankvalues(3)/J) * 180.0/pi, &
@@ -264,12 +264,14 @@ contains
     print 32, 'x',JT(1), 0.0, 0.0, 0.0
     print 32, 'y',JT(2), 0.0, 0.0, 0.0
     print 32, 'z',JT(3), 0.0, 0.0, 0.0
+    print 6
     print 31, sqrt(sum(JT(:)**2)) ,0.0,0.0
     print 6
     print 33, 'x',TotalAngMom(1) + JT(1), 0.0, 0.0, 0.0
     print 33, 'y',TotalAngMom(2) + JT(2), 0.0, 0.0, 0.0
     print 33, 'z',TotalAngMom(3) + JT(3), 0.0, 0.0, 0.0
-   
+    print 6
+    print 31, sqrt(sum((TotalAngMom + JT)**2)), 0.0,0.0
     print *
     print 5
     print 6

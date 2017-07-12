@@ -197,6 +197,7 @@ contains
    31 format (3x,'Size  |', 3f10.3)
    32 format (3x,'JT',a1,'   ','|', 4f10.3 )
    33 format (3x,'to',a1,'   ','|', 4f10.3 )
+   34 format (3x,'ta',a1,'   ','|', 4f10.3 )
    
     4 format (3x,'Theta |', 3f10.3)
    41 format (3x,'Phi   |', 3f10.3)
@@ -270,8 +271,13 @@ contains
     print 33, 'x',TotalAngMom(1) + JT(1), 0.0, 0.0, 0.0
     print 33, 'y',TotalAngMom(2) + JT(2), 0.0, 0.0, 0.0
     print 33, 'z',TotalAngMom(3) + JT(3), 0.0, 0.0, 0.0
-    print 6
     print 31, sqrt(sum((TotalAngMom + JT)**2)), 0.0,0.0
+    print 6
+    print 34, 'x',sqrt(TotalAngMom(1)**2 + JT(1)**2), 0.0, 0.0, 0.0
+    print 34, 'y',sqrt(TotalAngMom(2)**2 + JT(2)**2), 0.0, 0.0, 0.0
+    print 34, 'z',sqrt(TotalAngMom(3)**2 + JT(3)**2), 0.0, 0.0, 0.0
+    print 31, sqrt(sum((TotalAngMom**2 + JT**2))), 0.0,0.0
+    print 6
     print *
     print 5
     print 6

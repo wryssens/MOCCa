@@ -1138,25 +1138,47 @@ contains
 
         !-------------------------------------------------------------------------------
         ! Z-direction
-        do i=1,nx*ny*nz
-            AngMom(3,1) = AngMom(3,1)+ 0.5_dp * (                              &
-            &                          Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) &
-            &                        + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
-            &                        - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) &
-            &                        - Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
-            AngMom(3,1) = AngMom(3,1)    &
-            &  + Psi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
-            &  - Psi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
-            !
-            &  - Psi%Grid(i,1,1,1,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
-            &  + Psi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
-            !
-            &  + Psi%Grid(i,1,1,4,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
-            &  - Psi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
-            !
-            &  - Psi%Grid(i,1,1,3,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
-            &  + Psi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,4,1)
-        enddo
+        if(TRZ) then
+            do i=1,nx*ny*nz
+                AngMom(3,1) = AngMom(3,1)+ 0.5_dp * (                              &
+                &                          Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,3,1) &
+                &                        - Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,4,1) &
+                &                        + Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,1,1) &
+                &                        - Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,2,1))
+                AngMom(3,1) = AngMom(3,1)    &
+                &  + Psi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
+                &  - Psi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+                !
+                &  + Psi%Grid(i,1,1,1,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
+                &  - Psi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,4,1) &
+                !
+                &  - Psi%Grid(i,1,1,4,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
+                &  + Psi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
+                !
+                &  - Psi%Grid(i,1,1,3,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
+                &  + Psi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,2,1)
+            enddo
+        else
+            do i=1,nx*ny*nz
+                AngMom(3,1) = AngMom(3,1)+ 0.5_dp * (                              &
+                &                          Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) &
+                &                        + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
+                &                        - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) &
+                &                        - Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
+                AngMom(3,1) = AngMom(3,1)    &
+                &  + Psi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
+                &  - Psi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
+                !
+                &  - Psi%Grid(i,1,1,1,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
+                &  + Psi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
+                !
+                &  + Psi%Grid(i,1,1,4,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
+                &  - Psi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+                !
+                &  - Psi%Grid(i,1,1,3,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
+                &  + Psi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,4,1)
+            enddo
+        endif
 
         if(Quadratic) then
              !---------------------------------------------------------------------------

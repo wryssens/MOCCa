@@ -239,17 +239,6 @@ contains
     print 31, sqrt(sum(totalangmom(1:3)**2)) , sqrt(sum(crankvalues(1:3)**2)), &
     &         sqrt(sum(omega(1:3)**2))
     print 6
-    print 2
-    print 6
-    print 32, 'x',JT(1), 0.0, 0.0, 0.0
-    print 32, 'y',JT(2), 0.0, 0.0, 0.0
-    print 32, 'z',JT(3), 0.0, 0.0, 0.0
-    print 31, sqrt(sum(JT(:)**2)) ,0.0,0.0
-    print 6
-    print 33, 'x',TotalAngMom(1) + JT(1), 0.0, 0.0, 0.0
-    print 33, 'y',TotalAngMom(2) + JT(2), 0.0, 0.0, 0.0
-    print 33, 'z',TotalAngMom(3) + JT(3), 0.0, 0.0, 0.0
-
     if(.not. SC) then
         if(TSC) then
             print 4, atan2(TotalAngMom(1), TotalAngMom(3)) * 180.0/pi, &
@@ -269,6 +258,18 @@ contains
         &         atan2(Omega(2), Omega(1)) * 180.0/pi
     endif
 
+    print 6
+    print 2
+    print 6
+    print 32, 'x',JT(1), 0.0, 0.0, 0.0
+    print 32, 'y',JT(2), 0.0, 0.0, 0.0
+    print 32, 'z',JT(3), 0.0, 0.0, 0.0
+    print 31, sqrt(sum(JT(:)**2)) ,0.0,0.0
+    print 6
+    print 33, 'x',TotalAngMom(1) + JT(1), 0.0, 0.0, 0.0
+    print 33, 'y',TotalAngMom(2) + JT(2), 0.0, 0.0, 0.0
+    print 33, 'z',TotalAngMom(3) + JT(3), 0.0, 0.0, 0.0
+   
     print *
     print 5
     print 6

@@ -603,8 +603,7 @@ contains
     ! Computes and set the correct values for the AngMoment.
     !---------------------------------------------------------------------------
     class(Spwf), intent(inout)    :: WaveFunction
-    type(Spwf) :: temp 
-    real(KIND=dp)                 :: J(6,2), JT(6,2), alt(6,2)
+    real(KIND=dp)                 :: J(6,2), JT(6,2)
     
     !---------------------------------------------------------------------------
     ! Calculation of angular momentum, without time-reversal
@@ -613,19 +612,6 @@ contains
     JT= AngularMomentum(WaveFunction, WaveFunction, .true.,                    &
     &                                                   .true.,.true.,.true.   )
   
-    temp = copywavefunction(WaveFunction) 
-    temp%Value = TimeReverse(temp%value)
-    temp%der(1) = TimeReverse(temp%der(1))
-    temp%der(2) = TimeReverse(temp%der(2))
-    temp%der(3) = TimeReverse(temp%der(3))
-
-    alt= AngularMomentum(WaveFunction,temp, .true.,                    &
-    &                                                   .false.,.false.,.false.   )
-
-    print *
-    print *, 'JT', JT(1:3,1)
-    print *, 'alt', alt(1:3,1)
-
     !Angular Momentum in the three directions
     WaveFunction%AngMoment   = J (1:3,1)
     WaveFunction%JT          = JT(1:3,1)

@@ -930,14 +930,14 @@ END{
             m = 0
             while ( m < l+1 ) {
                 if( Qlm[iq,"Re",l,m,3] != "" ) {
-                    printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.qlm.tab"
-                    printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.qlm.tab"
-                    printf("%12.3e %10.3f", Qlm[iq,"Re",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.qlm.tab"
+                    printf("%12.3e %13.6f", Qlm[iq,"Re",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.qlm.tab"
+                    printf("%12.3e %13.6f", Qlm[iq,"Re",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.qlm.tab"
+                    printf("%12.3e %13.6f", Qlm[iq,"Re",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.qlm.tab"
                 }
                 if( Qlm[iq,"Im",l,m,3] != "" ) {
-                    printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.qlm.tab"
-                    printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.qlm.tab"
-                    printf("%12.3e %10.3f", Qlm[iq,"Im",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.qlm.tab"
+                    printf("%12.3e %13.5f", Qlm[iq,"Im",l,m,1],Beta[iq,"Re",l,m,1])>> "tmp.n.qlm.tab"
+                    printf("%12.3e %13.6f", Qlm[iq,"Im",l,m,2],Beta[iq,"Re",l,m,2])>> "tmp.p.qlm.tab"
+                    printf("%12.3e %13.6f", Qlm[iq,"Im",l,m,3],Beta[iq,"Re",l,m,3])>> "tmp.t.qlm.tab"
                 }
                 m +=1
             }

@@ -27,7 +27,7 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
     alty = 0
     absy = 0
     fac  = 1
-    
+    divy = 0
     if(XARG=='Q20') :
         xlabel =r'$\langle \hat{Q}_{20} \rangle$ (fm$^2$)'
         xfname =PREFIX + '.t.qlm.tab'
@@ -170,6 +170,14 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         yfname =PREFIX + '.e.tab'
         ycolumn= 11
         derivY = 1
+    elif(YARG=='I1X') :
+        # Dynamical moment of inertia.
+        ylabel =r'$\mathcal{I}^{(1)}$ ($\hbar^2$ MeV$^{-1}$)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn= 11
+        divy = 1
+        derivY = 0
+
     elif(YARG=='B20') :
         ylabel =r'$\beta_{20}$ '
         yfname =PREFIX + '.t.qlm.tab'
@@ -261,14 +269,14 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         sortcolumn = xcolumn        
 
 
-    return(xlabel, ylabel, xfname,yfname,sortfname,xcolumn,ycolumn,sortcolumn,derivY,altx,alty, absy, fac)
+    return(xlabel, ylabel, xfname,yfname,sortfname,xcolumn,ycolumn,sortcolumn,derivY,altx,alty, divy, absy, fac)
 
 def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1, 
               AXIS     =None,  INTERPOLATE=-1, INTERMIN=None,    
               INTERMAX =None,  LABEL=None, NORMY=1, SPHERNORM=0, 
               LINESTYLE='-' ,  MARKER='', COLOR='', OFFSET=None, 
               XMIN     =None,  XMAX=None, MINRANGE=None, MAXRANGE=None,
-              LINEWIDTH=1.0, INTERKIND='cubic', SORT=''):
+              LINEWIDTH=1.0, INTERKIND='cubic', SORT='', INVERTINTERPOL=0):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
@@ -283,7 +291,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
 
     if(isinstance(PREFIX, list)):
         for i in range(len(PREFIX)):
-            (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn,derivY,altx,alty, absy, fac) = Determinedata(PREFIX[i], XARG, YARG,PC[i],SC[i], SORT)
+            (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn,derivY,altx,alty, divy, absy, fac) = Determinedata(PREFIX[i], XARG, YARG,PC[i],SC[i], SORT)
     
             dataX=np.loadtxt(xfname,skiprows=1)
             dataY=np.loadtxt(yfname,skiprows=1)
@@ -323,12 +331,11 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
                 ydata = abs(ydata)
             
     else:
-        (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn, derivY,altx,alty, absy,fac) = Determinedata(PREFIX, XARG, YARG,PC,SC, SORT)
+        (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn, derivY,altx,alty, divy, absy,fac) = Determinedata(PREFIX, XARG, YARG,PC,SC, SORT)
     
         dataX=np.loadtxt(xfname,skiprows=1)
         dataY=np.loadtxt(yfname,skiprows=1)
         sortdata = np.loadtxt(sortname, skiprows=1)
-
         xdata=dataX[:,xcolumn]
         sortdata = sortdata[:,sortcolumn]
         if( ycolumn != -1): 
@@ -358,15 +365,21 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         if(alty != 0):
             altydata = dataY[:, alty]
             ydata    =  altydata - ydata
-            
+        
         if(absy == 1):
             ydata = abs(ydata)
         
         ydata = fac * ydata
         
+        if(divy !=0):
+            ydata = ydata/xdata
+        
     # Sort along sort-data for surety
     sortdata, xdata, ydata = zip(*sorted(zip(sortdata,xdata, ydata)))
-
+    
+    xdata = list(xdata)
+    ydata = list(ydata)
+    
     if(derivY == 1) :
         #=====================================================
         #Flag that tells us to take the finite difference of Y
@@ -374,19 +387,30 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         deriv = np.zeros((len(ydata)-1))
         for i in range(0,len(ydata)-1):
             deriv[i] = ( ydata[i+1] - ydata[i])/(xdata[i+1] - xdata[i])
-        ydata = deriv
+        ydata = abs(deriv)
         xdata = xdata[0:-1]
-
+        
     if(INTERPOLATE > 0):
-        f     = interp1d(xdata, ydata,kind=INTERKIND)
+        if(INVERTINTERPOL == 0):
+            f     = interp1d(sortdata, ydata,kind=INTERKIND)
+            g     = interp1d(sortdata, xdata,kind=INTERKIND)
+            if(INTERMIN == None and INTERMAX == None):  
+                interx= np.arange(min(sortdata), max(sortdata), INTERPOLATE)
+            else:
+                interx= np.arange(INTERMIN, INTERMAX, INTERPOLATE)
 
-        if(INTERMIN == None and INTERMAX == None):  
-            interx= np.arange(min(xdata), max(xdata), INTERPOLATE)
+            ydata = f(interx)
+            xdata = g(interx)
         else:
-            interx= np.arange(INTERMIN, INTERMAX, INTERPOLATE)
+            f     = interp1d(ydata, sortdata, kind=INTERKIND)
+            g     = interp1d(xdata, sortdata, kind=INTERKIND)
+            if(INTERMIN == None and INTERMAX == None):  
+                interx= np.arange(min(ydata), max(ydata), INTERPOLATE)
+            else:
+                interx= np.arange(INTERMIN, INTERMAX, INTERPOLATE)
 
-        ydata = f(interx)
-        xdata = interx
+            xdata = f(interx)
+            ydata = g(interx)
 
     
     if(MINRANGE == None):
@@ -416,15 +440,6 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         ydata = ydata -OFFSET
             
  
-    if(MINRANGE == None):
-        ymin = min(ydata)
-    else:
-        ymin = + 100000000
-        for i in range(len(ydata)):
-            if( MINRANGE[0] < xdata[i] < MINRANGE[1]):
-                if( ydata[i] < ymin):
-                    ymin = ydata[i]
-  
 
     if(COLOR != ""):
     	AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER, color=COLOR, linewidth=LINEWIDTH)
@@ -467,7 +482,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         emax = max(ydata[maskmax])
     
 
-    return (minx, emin, maxx, emax)
+    return (minx, ymin, maxx, emax)
 
 #################################################################################
 def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[]):

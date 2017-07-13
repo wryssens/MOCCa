@@ -193,24 +193,24 @@ contains
 
     1 format (18('-'), ' Angular Momentum (hbar) ',17('-') )
     2 format (15x, 'Total', 4x, 'Desired', 4x, 'Omega', 4x, 'Energy')
-    3 format (3x,'J_',a1,'   ','|', 4f10.3 )
+    3 format (3x,'J_',a1,'   ','|', 4f12.5 )
    31 format (3x,'Size  |', 3f10.3)
-   32 format (3x,'JT',a1,'   ','|', 4f10.3 )
-   33 format (3x,'to',a1,'   ','|', 4f10.3 )
-   34 format (3x,'ta',a1,'   ','|', 4f10.3 )
+   32 format (3x,'JT',a1,'   ','|', 4f12.5 )
+   33 format (3x,'to',a1,'   ','|', 4f12.5 )
+   34 format (3x,'ta',a1,'   ','|', 4f12.5 )
    
-    4 format (3x,'Theta |', 3f10.3)
-   41 format (3x,'Phi   |', 3f10.3)
+    4 format (3x,'Theta |', 3f12.5)
+   41 format (3x,'Phi   |', 3f12.5)
     
     5 format (3x,'P R_z ','|',6x,'++',8x,'-+',8x,'+-',8x,'--')
     6 format (2x,' ___________________________________________________' )
-    7 format (3x,a1,'_',a1,3x,'|',4f10.3)
-   71 format (3x,'The_', a1' |'      , 4f10.3)
-   72 format (3x,'Phi_', a1' |'      , 4f10.3)
+    7 format (3x,a1,'_',a1,3x,'|',4f12.5)
+   71 format (3x,'The_', a1' |'      , 4f12.5)
+   72 format (3x,'Phi_', a1' |'      , 4f12.5)
    
     8 format (3x,'Open spin')
     9 format (2x,' ___________________________________________________' )
-   10 format (3x,a1,1x,'|',3x,'|',4f10.3)
+   10 format (3x,a1,1x,'|',3x,'|',4f12.5)
     
    11 format (3x, 'Attention: Omega gets realigned to J.') 
     

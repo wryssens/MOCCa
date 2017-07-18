@@ -560,23 +560,15 @@ contains
 
     !---------------------------------------------------------------------------
     ! HFB calculations
-    3  format (6x,'n',3x,'<P>',3x,'Rhoii',3x,'Delta',3x,'m',4x,'E_sp',4x,      &
-    &          'Var(h)',3x,'<Jx|T>',1x, '<Jy|T>', 2x, '<Jz>',5x,'J',3x,'<r^2>')
-    31 format (6x,'n',3x,'<P>',2x,'<Rz>',2x,'Rhoii',2x,'Delta',5x,'m',4x,'E_sp'&
-    &         ,4x,'Var(h)',3x,'<Jx|T>',1x,'<Jy|T>',2x,'<Jz>',5x,'J',3x,'<r^2>')
-    32 format (5x, ' n ' ,1x, ' <P> ',1x, '<Rz> ', '<Sx> ', 1x, ' Rhoii ',1x,  &
-    &              ' Delta ',1x, ' m ', 1x, '  E_sp  ', 1x, ' Var(h) ', 1x,    &
-    &              ' <Jx> ', 1x ,'   J  ', 1x, ' <Jz> ', 1x ,' <r^2> ')
+    3 format (5x, ' n ' ,1x, ' <P> ',1x, '<Rz> ', ' Rhoii ',1x,               &
+    &             ' Delta ',1x, ' m ', 1x, '  E_sp  ', 1x, ' Var(h) ','r^2',  &
+    &             'Jx', 'JxT', 'JY', 'JyT','Jz', 'JzT', 'J')
 
     ! Headers for Canonical basis
     !---------------------------------------------------------------------------
-    4  format (6x,'n',3x,'<P>',4x,'v^2',5x,'E_sp',3x,'<Jx|T>',1x,'<Jy|T>',2x,&
-    &          '<Jz>',4x,'J',4x,'<r^2> ')
-    41 format (6x,'n',3x,'<P>',2x,'<Rz>',4x,'v^2',5x,'E_sp',3x,'<Jx|T>',1x,  &
-    &         '<Jy|T>',2x,'<Jz>',4x,'J',4x,'<r^2> ')
-    42 format (5x,' n ', 1x, ' <P> ', 1x,'<Rz> ', 1x,'  v^2  ',  1x,'  E_sp  ',&
-    &           1x,' <Jx> ',1x,' <Jz> ',1x,'   J  ', 1x,' <r^2> ')
-
+    4 format (6x, 'n',1x, '<P>',1x, '<Rz> ', 'v^2',1x,'E_sp','r^2',           &
+    &             'Jx', 'JxT', 'JY', 'JyT','Jz', 'JzT', 'J')    
+    
     100 format (94('_'))
 
     print 10
@@ -602,16 +594,8 @@ contains
       endif
       PrintType = 2
     case(2)
-       if(TSC .and. TRC .and. SC) then
-        write(HFheader, fmt=3)
-        write(CanHeader,fmt=4)
-       elseif(TSC.and.SC) then
-        write(HFHeader, fmt=31)
-        write(CanHeader,fmt=41)
-       elseif(TSC) then
-        write(HFHeader, fmt=32)
-        write(CanHeader,fmt=42)
-       endif
+       write(HFheader, fmt=3)
+       write(CanHeader,fmt=4)
        PrintType = 3
     end select
 

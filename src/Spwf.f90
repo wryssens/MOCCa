@@ -1013,7 +1013,7 @@ contains
 
     AngMom = 0.0_dp
 
-    if(WF1%GetParity().ne.WF2%GetParity())   return
+    if(WF1%GetParity() .ne.WF2%GetParity())  return
     if(WF1%GetIsospin().ne.WF2%GetIsospin()) return
 
     ! Get the signatures for checking in every Cartesian direction
@@ -1301,101 +1301,50 @@ contains
 
   !-----------------------------------------------------------------------------
   ! Hartree-Fock calculations
-  !           n        <P>        v^2       E_sp      d2H   <Jx/y/z> , J, < r^2 >
-  1  format ( i3, 1x, f5.2, 1x, f7.4, 1x, f8.3, 1x, e9.2, 1x, 5(f7.2) )
-  !           n        <P>       <S>        v^2       E_sp      d2H
-  11 format ( i3, 1x, f5.2, 1x, f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2, 1x,       &
-  !           <Jx/y/z>, J, <r^2>
-  &           5(f6.2))
-  12 format ( i3, 1x, f5.2, 1x, f5.2, 1x, f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2, &
+  !           n        <P>        v^2       E_sp      d2H  
+  1 format ( i3, 1x, f5.2, 1x, f5.2, 1x, f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2, &
   !           <Jx/y/z>, J, <r^2>
   &           1x,5(f6.2))
 
   !-----------------------------------------------------------------------------
   ! BCS calculations
-  !           n        <P> <S>   v^2       Delta     E_sp   d2H <Jx/y/z>,J,<r^2>
   2  format (i3,1x, f5.2,  1x, f7.4, 1x, f7.2 ,1x, f8.3, 1x, e9.2, 5(f7.2))
-  !           n     <P> <S>    v^2  Delta     E_sp      d2H     <Jx/y/z>J<r^2>
-  21 format (i3,2(1x, f5.2), 1x,f7.4,1x,f7.2,1x, f8.3, 1x, e9.2, 5(f7.2) )
-
-  !-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------
   ! HFB calculations
-  !           n      <P>    RhoII  Delta PairPartner E_spd2H <Jx/y/z> ,J,<r^2>
-  3  format ( i3,1x,f5.2,1x,f7.4,1x,f7.2,1x, i3, 1x,f8.3,1x,e9.2,5(f7.2))
-  !           n      <P>     <Rz>    <Sx>   RhoII   Delta , PairPartner E_sp d2H
-  31 format ( i3,1x,f5.2,1x,f5.2,1x,f5.2,1x f7.4,1x,f7.2,1x,i3,1x,f8.3,1x,e9.2,&
-  &           5(f7.2))
-  !           <Jx/y/z>,J, <r^2>
-  !           n      <P>     <Rz>   <Sx>   RhoII   Delta , PairPartner E_sp  d2H
-  32 format ( i3,1x,f5.2,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x,f8.3,1x,e9.2,&
-  &           5(f7.2))
-  !           <Jx/y/z>J, <r^2>
+  !           n      <P>  <Rz>  RhoII               Delta  Partner E d2H <Jx/y/z> 
+  3 format ( i3,1x,f5.2,1x,f5.2,1x,f5.2,1x f7.4,1x,f7.2,1x,i3,1x,  f8.3,1x,e9.2, &
+  !  <r^2> Jmu Jmu_T J
+  & 8f7.3)
+
   class(Spwf), intent(in) :: WF
   integer, intent(in)     :: i
   integer, intent(in)     :: PrintType
-  real(KIND =dp)          :: PrintOcc, J(3)
+  real(KIND =dp)          :: PrintOcc, J(6)
 
   PrintOcc = WF%Occupation
   ! Don't print double the occupation number when Time-reversal is conserved.
   if(TRC) PrintOcc = PrintOcc/2
   
-  ! Decide on which angular momentum to print
-  if(SC) then
-    J(1) = WF%JT(1)
-  else
-    J(1) = WF%AngMoment(1)
-  endif
-  if((.not.SC) .and. (.not. TSC)) then
-    J(2) = WF%Angmoment(2)
-  else
-    J(2) = WF%JT(2)
-  endif
-  J(3) = WF%AngMoment(3)
+
+  J(1) = WF%AngMoment(1)
+  J(3) = WF%AngMoment(2)
+  J(5) = WF%AngMoment(3)
+  J(2) = WF%JT(1)
+  J(4) = WF%JT(2)
+  J(6) = WF%JT(3)
 
   select case(PrintType)
     case(1) !HF calculations
-        !Time Reversal and signature conservation => <Rz> = 1
-        if(TRC .and. SC .and. TSC) then
-            print 1, i,WF%ParityR,PrintOcc,WF%Energy,WF%Dispersion,       &
-            &          J, WF%AngQuantum, WF%RMSRadius
-        elseif(SC.and.TSC) then
-            print 11, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
-            &           WF%Dispersion,J,WF%AngQuantum,WF%RMSRadius
-        elseif(TSC) then
-            ! No signature conservation
-            print 11, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
-            &           WF%Dispersion,J,WF%AngQuantum,WF%RMSRadius
-        elseif(SC .and. .not. TSC) then
-            print 11, i,WF%ParityR,WF%SignatureR,PrintOcc,WF%Energy,      &
-            &           WF%Dispersion,J, WF%AngQuantum,WF%RMSRadius
-        else
-            print 12, i,WF%ParityR,WF%SignatureR,WF%TimeSimplexR,         &
-            &           PrintOcc,WF%Energy,      &
-            &           WF%Dispersion,J, WF%AngQuantum,WF%RMSRadius
-            !call stp('no printout defined yet.')
-        endif
-
+      print 1, i,WF%ParityR,WF%SignatureR,WF%TimeSimplexR, PrintOcc,   &
+      &          WF%Energy, WF%Dispersion,WF%RMSRadius,J, WF%AngQuantum    
     case(2) !BCS calculations
-        if(TRC .and. SC) then
-            print 2, i,WF%ParityR,PrintOcc,Real(WF%Delta), WF%Energy,     &
-            &          WF%Dispersion,J,WF%AngQuantum, WF%RMSRadius
-        elseif(TRC) then
-            print 21, i,WF%ParityR,WF%SignatureR,PrintOcc,Real(WF%Delta), &
-            &          WF%Energy,WF%Dispersion,J,WF%AngQuantum, WF%RMSRadius
-        else
-            !call stp('No Printout defined yet.')
-        endif
-
+      print 2, i,WF%ParityR,PrintOcc,Real(WF%Delta), WF%Energy,        &
+      &          WF%Dispersion, WF%RMSRadius, J,WF%AngQuantum 
+        
     case(3) !HFB calculations
-        if(TRC .and. SC .and. TSC) then
-            print 3, i,WF%ParityR,PrintOcc,Real(WF%Delta),WF%PairPartner,      &
-            &          WF%Energy,WF%Dispersion,J,WF%AngQuantum,WF%RMSRadius
-        else
-            print 31,i,WF%ParityR,WF%SignatureR,WF%xsimplexR, PrintOcc,        &
-            &          Real(WF%Delta),                                         &
-            &          WF%PairPartner,WF%Energy,WF%Dispersion,J,               &
-            &          WF%AngQuantum, WF%RMSRadius
-        endif
+      print 3,   i,WF%ParityR,WF%SignatureR, PrintOcc, Real(WF%Delta), &
+      &          WF%PairPartner,WF%Energy,WF%Dispersion,WF%RMSRadius,  &
+      &          J, WF%angquantum
     case DEFAULT
         !call stp('Undefined printtype in subroutine PrintHF.')
   end select

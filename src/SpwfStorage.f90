@@ -542,28 +542,19 @@ contains
     ! Headers for Hartree-fock basis
     !---------------------------------------------------------------------------
     ! Hartree-Fock calculations
-    1  format (5x, ' n ' ,1x, ' <P> ',1x, '  v^2  ',1x, '  E_sp ', 2x,'Var(h)',&
-    &          4x, '<Jx|T>',1x, '<Jy|T>', 3x, '<Jz>', 4x,'J',4x,'<r^2>')
-    11 format (5x, ' n ' ,2x,'<P>',2x, '<Rz>',4x,'v^2',5x,'E_sp',4x,'Var(h)',  &
-    &          3x, '<Jx>',2x, '<Jy|T>', 1x, '<Jz>', 3x , 'J',4x ,'<r^2>',1x)
-    12 format (5x, ' n ' ,2x,'<P>',2x, '<Rz>',4x,'v^2',5x,'E_sp',4x,'Var(h)',  &
-    &          3x, '<Jx|T>',1x, '<Jy>', 2x, '<Jz>', 3x , 'J',4x ,'<r^2>',1x)
-    13 format (5x, ' n ' ,2x,'<P>',2x, '<Rz>',4x,'v^2',5x,'E_sp',4x,'Var(h)',  &
-    &          3x, '<Jx>',1x, '<Jy>', 2x, '<Jz>', 3x , 'J',4x ,'<r^2>',1x)
-
+    1  format (5x,'n',1x,'<P>','<Rz>',1x,'v^2',1x,'E_sp', 2x,'Var(h)',4x,     &
+    & 'r^2',1x, 'Jx',1x,'JxT',1x, 'Jy',1x,'JyT',1x,'Jz',1x,'JzT',1x,'J')
     !---------------------------------------------------------------------------
     ! BCS calculations
-    2  format (6x,'n',3x,'<P>',4x,'v^2',4x,'Delta',4x,'E_sp',4x,'Var(h)',3x,   &
-      &        '<Jx|T>',1x, '<Jy|T>', 2x, '<Jz>', 4x,'J',4x,'<r^2>')
-    21 format (6x,'n',3x,'<P>',2x,'<Rz>',3x,'v^2',4x,'Delta',4x,'E_sp',4x,     &
-      &        'Var(h)',5x,'<Jx>',2x,'<Jy|T>', 2x, '<Jz>', 4x,'J',4x,'<r^2>')
-
+    2  format (6x,'n',3x,'<P>', 4x,'<Rz>',4x,'v^2',4x,'Delta',4x,'E_sp',4x,   &
+    &          'Var(h)',3x,'r^2',1x, 'Jx',1x,'JxT',1x, 'Jy',1x,'JyT',1x,'Jz', &
+    &          1x,'JzT',1x,'J')
     !---------------------------------------------------------------------------
     ! HFB calculations
     3 format (5x, ' n ' ,1x, ' <P> ',1x, '<Rz> ', ' Rhoii ',1x,               &
     &             ' Delta ',1x, ' m ', 1x, '  E_sp  ', 1x, ' Var(h) ','r^2',  &
-    &             'Jx', 'JxT', 'JY', 'JyT','Jz', 'JzT', 'J')
-
+    &             1x,'Jx',1x, 'JxT',1x, 'JY',1x, 'JyT',1x,'Jz',1x, 'JzT',1x,  &
+    &             'J',1x)
     ! Headers for Canonical basis
     !---------------------------------------------------------------------------
     4 format (6x, 'n',1x, '<P>',1x, '<Rz> ', 'v^2',1x,'E_sp','r^2',           &
@@ -576,23 +567,11 @@ contains
     select case(PairingType)
 
     case(0)
-       if(TSC .and. SC.and.TRC) then
-        write(HFheader, fmt=1)
-       elseif(TSC) then
-        write(HFHeader, fmt=11)
-       elseif(SC) then
-        write(HFHeader, fmt=12)
-       else
-        write(HFHeader, fmt=13)
-       endif
+       write(HFheader, fmt=1)
        printType = 1
     case(1)
-      if(TSC .and. SC) then
-        Write(HFheader, fmt=2)
-      elseif(TSC) then
-        Write(HFheader, fmt=21)
-      endif
-      PrintType = 2
+       write(HFheader, fmt=2)
+       PrintType = 2
     case(2)
        write(HFheader, fmt=3)
        write(CanHeader,fmt=4)

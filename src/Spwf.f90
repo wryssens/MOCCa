@@ -1301,18 +1301,16 @@ contains
 
   !-----------------------------------------------------------------------------
   ! Hartree-Fock calculations
-  !           n        <P>     <Rz>      v^2       E_sp      d2H  
-  1 format ( i3, 1x, f5.2, 1x, f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2,1x,7(f6.2))
-
+  !           n        <P>     <Rz>      v^2        E_sp      d2H  
+  1 format ( i3, 1x, f5.2, 1x, f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2,1x,8(f6.2))
   !-----------------------------------------------------------------------------
   ! BCS calculations
-  2  format (i3,1x, f5.2,  1x, f7.4, 1x, f7.2 ,1x, f8.3, 1x, e9.2, 5(f7.2))
-!-----------------------------------------------------------------------------
+  !           n        <P>     <Rz>  v^2    Delta    E_sp      d2H  
+  2 format (i3,1x, f5.2,1x,f7.4,1x,f7.2,1x,f7.2,1x, f8.3, 1x,e9.2, 8(f7.2))
+  !-----------------------------------------------------------------------------
   ! HFB calculations
-  !           n      <P>  <Rz>  RhoII               Delta  Partner E d2H <Jx/y/z> 
-  3 format ( i3,1x,f5.2,1x,f5.2,1x,f5.2,1x f7.4,1x,f7.2,1x,i3,1x,  f8.3,1x,e9.2, &
-  !  <r^2> Jmu Jmu_T J
-  & 8f7.3)
+  !           n      <P>  <Rz>     RhoII   Delta  Partner E d2H 
+  3 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x, f8.3,1x,e9.2,8f7.3)
 
   class(Spwf), intent(in) :: WF
   integer, intent(in)     :: i
@@ -1333,11 +1331,11 @@ contains
 
   select case(PrintType)
     case(1) !HF calculations
-      print 1, i,WF%ParityR,WF%SignatureR,WF%TimeSimplexR, PrintOcc,   &
+      print 1, i,WF%ParityR,WF%SignatureR, PrintOcc,                   &
       &          WF%Energy, WF%Dispersion,WF%RMSRadius,J, WF%AngQuantum    
     case(2) !BCS calculations
-      print 2, i,WF%ParityR,PrintOcc,Real(WF%Delta), WF%Energy,        &
-      &          WF%Dispersion, WF%RMSRadius, J,WF%AngQuantum 
+      print 2, i,WF%ParityR,WF%SignatureR,PrintOcc,Real(WF%Delta),     &
+      &          WF%Energy,WF%Dispersion, WF%RMSRadius, J,WF%AngQuantum 
         
     case(3) !HFB calculations
       print 3,   i,WF%ParityR,WF%SignatureR, PrintOcc, Real(WF%Delta), &

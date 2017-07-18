@@ -1080,28 +1080,24 @@ contains
     ! Y-direction
     if(TRY) then
         do i=1,nx*ny*nz
-            ! Action of J_y to the right
-            ! Spin
             AngMom(2,1) = AngMom(2,1) + 0.5_dp * (                             &
-            &                      Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,2,1)     &
-            &                    + Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,1,1)     &
-            &                    + Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,4,1)     &
-            &                    + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,3,1))
+            &                    + Psi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1)     &
+            &                    - Psi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1)     &
+            &                    - Psi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1)     &
+            &                    + Psi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
 
-            !Orbital
             AngMom(2,1) = AngMom(2,1)    &
-            & + Psi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,3,1)  &
-            & - Psi%Grid(i,1,1,2,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,3,1)  &
+            & - Psi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,4,1)  &
+            & + Psi%Grid(i,1,1,2,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,4,1)  &
             !
-            & + Psi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,4,1)  &
-            & - Psi%Grid(i,1,1,1,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,4,1)  &
+            & + Psi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,3,1)  &
+            & - Psi%Grid(i,1,1,1,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,3,1)  &
             !
-            & - Psi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,1,1)  &
-            & + Psi%Grid(i,1,1,4,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,1,1)  &
+            & + Psi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,2,1)  &
+            & - Psi%Grid(i,1,1,4,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,2,1)  &
             !
-            & - Psi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,2,1)  &
-            & + Psi%Grid(i,1,1,3,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,2,1)
-
+            & - Psi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,1,1)  &
+            & + Psi%Grid(i,1,1,3,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,1,1)
         enddo
     else
         do i=1,nx*ny*nz
@@ -1302,11 +1298,11 @@ contains
   !-----------------------------------------------------------------------------
   ! Hartree-Fock calculations
   !           n        <P>     <Rz>      v^2        E_sp      d2H  
-  1 format ( i3, 1x, f5.2, 1x, f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2,1x,8(f6.2))
+  1 format (i3,4x,f5.2,1x,f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2,1x,8(f6.2))
   !-----------------------------------------------------------------------------
   ! BCS calculations
   !           n        <P>     <Rz>  v^2    Delta    E_sp      d2H  
-  2 format (i3,1x, f5.2,1x,f7.4,1x,f7.2,1x,f7.2,1x, f8.3, 1x,e9.2, 8(f7.2))
+  2 format (i3,1x,f5.2,1x,f7.4,1x,f7.2,1x,f7.2,1x, f8.3, 1x,e9.2, 8(f7.2))
   !-----------------------------------------------------------------------------
   ! HFB calculations
   !           n      <P>  <Rz>     RhoII   Delta  Partner E d2H 

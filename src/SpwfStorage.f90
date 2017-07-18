@@ -542,8 +542,8 @@ contains
     ! Headers for Hartree-fock basis
     !---------------------------------------------------------------------------
     ! Hartree-Fock calculations
-    1  format (5x,'n',4x,'<P>',4x,'<Rz>',4x,'v^2',4x,'E_sp', 2x,'Var(h)',4x,     &
-    & 'r^2',1x, 'Jx',1x,'JxT',1x, 'Jy',1x,'JyT',1x,'Jz',1x,'JzT',1x,'J')
+    1  format (5x,'n',3x,'<P>',3x,'<Rz>',4x,'v^2',5x,'E_sp', 4x,'Var(h)',4x,     &
+    & 'r^2',4x, 'Jx',4x,'JxT',4x, 'Jy',4x,'JyT',4x,'Jz',4x,'JzT',4x,'J')
     !---------------------------------------------------------------------------
     ! BCS calculations
     2  format (6x,'n',4x,'<P>', 4x,'<Rz>',4x,'v^2',4x,'Delta',4x,'E_sp',4x,   &

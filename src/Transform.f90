@@ -159,7 +159,7 @@ contains
     Dispersion  = wf%GetDispersion()
 
     do i=1,3
-        AngMom(i) = wf%GetAngMoment(i)
+        AngMom(i) = wf%J(i)
     enddo
 
     Value = wf%GetValue()
@@ -195,7 +195,7 @@ contains
     call wf%SetEnergy(Energy)
     call wf%SetOcc(Occ)
     call wf%SetDispersion(Dispersion)
-    call wf%SetAngMoment(AngMom)
+    wf%J = Angmom
   end subroutine BreakParity
 
   subroutine BreakSignature(wf)
@@ -220,7 +220,7 @@ contains
     Dispersion  = wf%GetDispersion()
 
     do i=1,3
-      AngMom(i) = wf%GetAngMoment(i)
+      AngMom(i) = wf%J(i)
     enddo
 
     Value = wf%GetValue()
@@ -254,7 +254,7 @@ contains
     call wf%SetEnergy(Energy)
     call wf%SetOcc(Occ)
     call wf%SetDispersion(Dispersion)
-    call wf%SetAngMoment(AngMom)
+    wf%J = AngMom
   end subroutine BreakSignature
 
   subroutine BreakTimeSimplex(wf)
@@ -279,7 +279,7 @@ contains
     Dispersion  = wf%GetDispersion()
 
     do i=1,3
-      AngMom(i) = wf%GetAngMoment(i)
+      AngMom(i) = wf%J(i)
     enddo
 
     Value = wf%GetValue()
@@ -313,7 +313,7 @@ contains
     call wf%SetEnergy(Energy)
     call wf%SetOcc(Occ)
     call wf%SetDispersion(Dispersion)
-    call wf%SetAngMoment(AngMom)
+    wf%J = AngMom
   end subroutine BreakTimeSimplex
 
   subroutine TransformDensities(inSC, inTSC, inPC, filenx,fileny,filenz)

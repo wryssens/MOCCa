@@ -27,7 +27,7 @@ module WaveFunctions
     !   Dispersion of the energy of the Spwf.
     ! Norm
     !   Norm of the wavefunction
-    ! Angmoment
+    ! J
     !  Expectation value of the angular moment, in the three directions(x/y/z)
     !  ATTENTION: when the matrix element <Psi | J_i | Psi > is constrained by
     !  symmetry, then we calculate <Psi| J_i \check{T} | Psi > instead!
@@ -47,8 +47,11 @@ module WaveFunctions
     real(KIND=dp) :: Energy
     real(KIND=dp) :: Dispersion
     real(KIND=dp) :: Norm
-    real(KIND=dp) :: AngMoment(3)
-    real(KIND=dp) :: JT(3)
+    ! Real and imaginary parts of the expectation value of the angular momentum
+    real(KIND=dp) :: J(3)
+    ! Real and imaginary parts of the expectation value of the JT.
+    real(KIND=dp) :: JTR(3), JTI(3)
+    ! Expectation value of J2
     real(KIND=dp) :: J2(3)
     real(KIND=dp) :: AngQuantum
     !---------------------------------------------------------------------------
@@ -118,10 +121,7 @@ module WaveFunctions
     procedure, pass, public :: GetTimeSimplex
     procedure, pass, public :: GetTimeReversal
     procedure, pass, public :: GetValue
-    procedure, pass, public :: GetAngMoment
     procedure, pass, public :: GetEqp
-    procedure, pass, public :: GetAngQuantum
-    procedure, pass, public :: GetAngMomentSquared
     !---------------------------------------------------------------------------
     !Setter Procedures
     !---------------------------------------------------------------------------
@@ -135,8 +135,6 @@ module WaveFunctions
     procedure, pass, public :: SetGridMesh
     procedure, pass, public :: SetGridSpinor
     procedure, pass, public :: SetGridComponent
-    procedure, pass, public :: SetAngMoment
-    procedure, pass, public :: SetAngMomentSquared
     procedure, pass, public :: Seteqp
     procedure, pass, public :: SetDelta
     procedure, pass, public :: SetPairPartner
@@ -174,10 +172,10 @@ module WaveFunctions
     procedure, pass, public :: SetOcc
     procedure, pass, public :: CompDer
     procedure, pass, public :: CompSecondDer
-    procedure, pass, public :: CompAngMoment
     procedure, pass, public :: SymmetryOperators
     procedure, pass, public :: CalcRMSRadius
     procedure, pass, public :: ResetWf
+    procedure, pass, public :: DiagAng
     !---------------------------------------------------------------------------
     !In/Output
     !---------------------------------------------------------------------------
@@ -245,7 +243,9 @@ contains
     SumWF%Energy       = 0.0_dp
     SumWF%Occupation   = 0.0_dp
     SumWF%Dispersion   = 0.0_dp
-    SumWF%AngMoment    = 0.0_dp
+    SumWF%J            = 0.0_dp
+    SumWF%JTI          = 0.0_dp
+    SumWF%JTR          = 0.0_dp
     SumWF%J2           = 0.0_dp
   end function AddSpwf
 
@@ -322,7 +322,7 @@ contains
     Chi%Energy       = 0.0_dp
     Chi%Occupation   = 0.0_dp
     Chi%Dispersion   = 0.0_dp
-    Chi%AngMoment    = 0.0_dp
+    Chi%J            = 0.0_dp
     Chi%J2           = 0.0_dp
 
   end function SaxPyWF
@@ -364,7 +364,7 @@ contains
     DiffWF%Energy=0.0_dp
     DiffWF%Occupation=0.0_dp
     DiffWF%Dispersion=0.0_dp
-    DiffWF%AngMoment = 0.0_dp
+    DiffWF%J = 0.0_dp
     Diffwf%J2        = 0.0_dp
   end function MinusSpwf
 
@@ -390,7 +390,7 @@ contains
     TPsi%Energy     = WF%Energy
     TPsi%Norm       = WF%Norm
     TPsi%Dispersion = WF%Dispersion
-    TPsi%AngMoment  = - WF%AngMoment
+    TPsi%J  = - WF%J
     TPsi%J2         = WF%J2
     TPsi%eqp        = WF%eqp
     TPsi%IsospinR   = WF%IsospinR
@@ -432,7 +432,7 @@ contains
     WaveFunction%Energy        = 0.0_dp
     WaveFunction%Occupation    = 0.0_dp
     WaveFunction%Dispersion    = 0.0_dp
-    WaveFunction%AngMoment     = 0.0_dp
+    WaveFunction%J     = 0.0_dp
     WaveFunction%IsospinR      = 0.0_dp
     WaveFunction%SignatureR    = 0.0_dp
     WaveFunction%ParityR       = 0.0_dp
@@ -457,7 +457,7 @@ contains
     Copy%Energy     = WF%Energy
     Copy%Norm       = WF%Norm
     Copy%Dispersion = WF%Dispersion
-    Copy%AngMoment  = WF%AngMoment
+    Copy%J  = WF%J
     Copy%J2         = WF%J2
     Copy%J2         = WF%J2
     Copy%eqp        = WF%eqp
@@ -565,65 +565,6 @@ contains
     class (Spwf), intent (in) :: WaveFunction
     Dispersion=WaveFunction%Dispersion
   end function GetDispersion
-
-  real(KIND=dp) function GetAngMoment(WaveFunction, Direction) result(AngMoment)
-    class (Spwf), intent (in) :: WaveFunction
-    integer, intent(in)       :: Direction
-    AngMoment=WaveFunction%AngMoment(Direction)
-    return
-  end function GetAngMoment
-
-  real(KIND=dp) function GetAngMomentSquared(Wavefunction, Direction) result(J2)
-    class (Spwf), intent (in) :: WaveFunction
-    integer, intent(in)       :: Direction
-    J2=WaveFunction%J2(Direction)
-    return
-  end function GetAngMomentSquared
-
- real(KIND=dp) function GetAngQuantum(Wavefunction) result(J)
-    class (Spwf), intent (in) :: WaveFunction
-    J =WaveFunction%AngQuantum
-    return
-  end function GetAngQuantum
-
-  subroutine SetAngMoment(WaveFunction, AngMoment)
-    class(Spwf), intent(inout) :: WaveFunction
-    real(KIND=dp), intent(in)  :: AngMoment(3)
-    WaveFunction%AngMoment     = AngMoment
-  end subroutine SetAngMoment
-
-  subroutine SetAngMomentSquared(WaveFunction, AngMoment)
-    class(Spwf), intent(inout) :: WaveFunction
-    real(KIND=dp), intent(in)  :: AngMoment(3)
-    WaveFunction%J2     = AngMoment
-  end subroutine SetAngMomentSquared
-
-  subroutine CompAngMoment(WaveFunction)
-    !---------------------------------------------------------------------------
-    ! Computes and set the correct values for the AngMoment.
-    !---------------------------------------------------------------------------
-    class(Spwf), intent(inout)    :: WaveFunction
-    real(KIND=dp)                 :: J(6,2), JT(6,2)
-    
-    !---------------------------------------------------------------------------
-    ! Calculation of angular momentum, without time-reversal
-    J = AngularMomentum(WaveFunction, WaveFunction, .true.,                    &
-    &                                                   .false.,.false.,.false.)
-    JT= AngularMomentum(WaveFunction, WaveFunction, .true.,                    &
-    &                                                   .true.,.true.,.true.   )
-  
-    !Angular Momentum in the three directions
-    WaveFunction%AngMoment   = J (1:3,1)
-    WaveFunction%JT          = JT(1:3,1)
-    WaveFunction%J2          = J (4:6,1)
-    
-    !---------------------------------------------------------------------------
-    ! Now find j so that <J^2> = j*(j+1)
-    ! The solution is obviously:
-    ! j = [- 1 + sqrt( 1 + 4 * <J^2>)]/2
-    WaveFunction%AngQuantum=                                                    &
-    &                  - 0.5_dp*(1.0_dp-sqrt( 1.0_dp + 4.0_dp*sum(J(4:6,1))))
-  end subroutine CompAngMoment
 
   subroutine SetEnergy(WaveFunction,Energy)
     !---------------------------------------------------------------------------
@@ -989,6 +930,360 @@ contains
     ActionOfJ = Temp1 + Temp4
   end function AngMomOperator
 
+!  subroutine CompAngMoment(WaveFunction)
+!    !---------------------------------------------------------------------------
+!    ! Computes and set the correct values for the AngMoment.
+!    !---------------------------------------------------------------------------
+!    class(Spwf), intent(inout)    :: WaveFunction
+!    real(KIND=dp)                 :: J(3,2), JT(3,2), J2(3)
+!    
+!!    !---------------------------------------------------------------------------
+!!    ! Calculation of angular momentum, without time-reversal
+!!    J = AngularMomentum(WaveFunction, WaveFunction, .true.,                    &
+!!    &                                                   .false.,.false.,.false.)
+!!    JT= AngularMomentum(WaveFunction, WaveFunction, .true.,                    &
+!!    &                                                   .true.,.true.,.true.   )
+!!  
+!!    !Angular Momentum in the three directions
+!!    WaveFunction%AngMoment   = J (1:3,1)
+!!    WaveFunction%JT          = JT(1:3,1)
+!!    WaveFunction%J2          = J (4:6,1)
+!    
+!    !---------------------------------------------------------------------------
+!    ! Now find j so that <J^2> = j*(j+1)
+!    ! The solution is obviously:
+!    ! j = [- 1 + sqrt( 1 + 4 * <J^2>)]/2
+!    WaveFunction%AngQuantum=                                                    &
+!    &                  - 0.5_dp*(1.0_dp-sqrt( 1.0_dp + 4.0_dp*sum(J(4:6,1))))
+!  end subroutine CompAngMoment
+  
+  subroutine DiagAng(WF)
+    !---------------------------------------------------------------------------
+    ! Calculates the diagonal matrix element of the angular momentum operator
+    ! J and JT.
+    !---------------------------------------------------------------------------
+    class(spwf)   :: WF
+    type(Spinor)  :: phi, derphi(3)
+    real(KIND=dp) :: J(3), JTR(3), JTI(3), J2(3), l1,l2,l3,l4,r1,r2,r3,r4
+    integer       :: i
+    
+    phi       = WF%GetValue()
+    derphi(1) = WF%GetDer(1)
+    derphi(2) = WF%GetDer(2)
+    derphi(3) = WF%GetDer(3) 
+    
+    !---------------------------------------------------------------------------
+    ! First the matrix elements of J
+    !---------------------------------------------------------------------------
+    ! X-direction
+    if(SC) then
+        J(1) = 0
+    else 
+        !-----------------------------------------------------------------------
+        ! Real part of <Jx>
+        J(1) = 0.0_dp
+        do i=1,nx*ny*nz
+            !-------------------------------------------------------------------
+            ! Spin part
+            J(1) = J(1) + 0.5_dp * (                                           &
+            &                          Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,3,1) &
+            &                        + Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,4,1) &
+            &                        + Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,1,1) &
+            &                        + Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,2,1))
+            !-------------------------------------------------------------------
+            ! Angular momentum part
+            J(1) = J(1)        &
+            &  + Phi%Grid(i,1,1,2,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
+            &  - Phi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
+            !
+            &  - Phi%Grid(i,1,1,1,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
+            &  + Phi%Grid(i,1,1,1,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
+            !
+            &  + Phi%Grid(i,1,1,4,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+            &  - Phi%Grid(i,1,1,4,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
+            !
+            &  - Phi%Grid(i,1,1,3,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,4,1) &
+            &  + Phi%Grid(i,1,1,3,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,4,1)
+        enddo
+    endif
+    !---------------------------------------------------------------------------
+    ! Y-direction
+    if(SC .or. TSC) then
+        J(2) = 0
+    else 
+        !-----------------------------------------------------------------------
+        ! Real part of <Jy>
+        do i=1,nx*ny*nz
+            ! Spin
+            J(2) = J(2) + 0.5_dp * (                                           &
+            &                      Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,4,1)     &
+            &                    - Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,3,1)     &
+            &                    - Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,2,1)     &
+            &                    + Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,1,1))
+
+            !Orbital
+            J(2) = J(2)                                                        &
+            & + Phi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,1,1)  &
+            & - Phi%Grid(i,1,1,2,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,1,1)  &
+            !
+            & - Phi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,2,1)  &
+            & + Phi%Grid(i,1,1,1,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,2,1)  &
+            !
+            & + Phi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,3,1)  &
+            & - Phi%Grid(i,1,1,4,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,3,1)  &
+            !
+            & - Phi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,4,1)  &
+            & + Phi%Grid(i,1,1,3,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,4,1)
+        enddo
+    endif
+    
+    !---------------------------------------------------------------------------
+    ! Z-direction
+    !---------------------------------------------------------------------------
+    ! Real part of <Jz>
+    J(3) = 0
+    
+    do i=1,nx*ny*nz
+            J(3) = J(3)+ 0.5_dp * (                              &
+            &                          Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) &
+            &                        + Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
+            &                        - Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) &
+            &                        - Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
+            J(3) = J(3)    &
+            &  + Phi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
+            &  - Phi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
+            !
+            &  - Phi%Grid(i,1,1,1,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
+            &  + Phi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
+            !
+            &  + Phi%Grid(i,1,1,4,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
+            &  - Phi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+            !
+            &  - Phi%Grid(i,1,1,3,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
+            &  + Phi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,4,1)
+    enddo
+    !---------------------------------------------------------------------------
+    ! Setting the values
+    WF%J = J * dv
+    
+    !---------------------------------------------------------------------------
+    ! Matrix elements of JT
+    ! X-direction
+    JTR(1) = 0.0d0
+    do i=1,nx*ny*nz
+        JTR(1) = JTR(1) + 0.5_dp * (                                           &
+        &                            - Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) &
+        &                            + Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
+        &                            + Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) &
+        &                            - Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
+        JTR(1) = JTR(1)    &
+        &      + Phi%Grid(i,1,1,2,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+        &      - Phi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
+        !
+        &      + Phi%Grid(i,1,1,1,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,4,1) &
+        &      - Phi%Grid(i,1,1,1,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
+        !
+        &      - Phi%Grid(i,1,1,4,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
+        &      + Phi%Grid(i,1,1,4,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,1,1) &
+        !
+        &      - Phi%Grid(i,1,1,3,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
+        &      + Phi%Grid(i,1,1,3,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,2,1)
+    enddo
+    JTI(1) = 0.0d0
+    if(.not. TSC) then
+     do i=1,nx*ny*nz
+        JTI(1) = JTI(1) + 0.5_dp * (                                           &
+        &                            - Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,2,1) &
+        &                            - Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,1,1) &
+        &                            + Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,4,1) &
+        &                            + Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,3,1))
+        JTI(1) = JTI(1)    &
+        &      + Phi%Grid(i,1,1,2,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,4,1) &
+        &      - Phi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,4,1) &
+        !
+        &      - Phi%Grid(i,1,1,1,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+        &      + Phi%Grid(i,1,1,1,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,3,1) &
+        !
+        &      - Phi%Grid(i,1,1,4,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,2,1) &
+        &      + Phi%Grid(i,1,1,4,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,2,1) &
+        !
+        &      + Phi%Grid(i,1,1,3,1)*Mesh3D(3,i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
+        &      - Phi%Grid(i,1,1,3,1)*Mesh3D(2,i,1,1)*derphi(3)%Grid(i,1,1,1,1)
+     enddo
+    endif
+    ! Y-direction
+    JTI(2) = 0.0_dp
+    do i=1,nx*ny*nz
+        JTI(2) = JTI(2) + 0.5_dp * (                                       &
+        &                    - Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1)     &
+        &                    + Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1)     &
+        &                    - Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1)     &
+        &                    + Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
+
+        JTI(2) = JTI(2)    &
+        & + Phi%Grid(i,1,1,1,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,3,1)  &
+        & - Phi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,3,1)  &
+        !
+        & - Phi%Grid(i,1,1,2,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,4,1)  &
+        & + Phi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,4,1)  &
+        !
+        & - Phi%Grid(i,1,1,3,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,1,1)  &
+        & + Phi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,1,1)  &
+        !
+        & + Phi%Grid(i,1,1,4,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,2,1)  &
+        & - Phi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,2,1) 
+    enddo
+
+    JTR(2) = 0.0_dp
+    if(.not. TSC) then
+      do i=1,nx*ny*nz
+        ! Not implemented yet
+      enddo 
+    endif
+    
+    ! Z-direction
+    JTR(3) = 0.0_dp
+    if(.not. SC) then
+        do i=1,nx*ny*nz
+            JTR(3) = JTR(3) + 0.5_dp * (                                       &
+            &                          Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,3,1) &
+            &                        - Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,4,1) &
+            &                        + Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,1,1) &
+            &                        - Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,2,1))
+            JTR(3) = JTR(3)                                                    &
+            &  + Phi%Grid(i,1,1,2,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,3,1) &
+            &  - Phi%Grid(i,1,1,2,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,3,1) &
+            !
+            &  + Phi%Grid(i,1,1,1,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,4,1) &
+            &  - Phi%Grid(i,1,1,1,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,4,1) &
+            !
+            &  - Phi%Grid(i,1,1,4,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,1,1) &
+            &  + Phi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,1,1) &
+            !
+            &  - Phi%Grid(i,1,1,3,1)*Mesh3D(2,i,1,1)*derphi(1)%Grid(i,1,1,2,1) &
+            &  + Phi%Grid(i,1,1,3,1)*Mesh3D(1,i,1,1)*derphi(2)%Grid(i,1,1,2,1)
+        enddo
+    endif
+    JTI(3) = 0.0_dp
+    if(.not.TSC) then
+        ! Not implemented yet.
+    endif
+    
+    ! Setting values
+    WF%JTR = JTR * dv
+    WF%JTI = JTI * dv
+    
+    !---------------------------------------------------------------------------
+    ! Quadratic
+    !---------------------------------------------------------------------------
+    ! X direction
+    J2(1) =0
+    do i=1,nx*ny*nz
+       ! Action of J_x to the right
+       r1 = - Mesh3D(3,i,1,1)* DerPhi(2)%Grid(i,1,1,2,1) &
+       &    + Mesh3D(2,i,1,1)* DerPhi(3)%Grid(i,1,1,2,1) &
+       &    + 0.5_dp        * Phi%Grid(i,1,1,3,1)
+       r2 =   Mesh3D(3,i,1,1)* DerPhi(2)%Grid(i,1,1,1,1) &
+       &    - Mesh3D(2,i,1,1)* DerPhi(3)%Grid(i,1,1,1,1) &
+       &    + 0.5_dp        * Phi%Grid(i,1,1,4,1)
+       r3 = - Mesh3D(3,i,1,1)* DerPhi(2)%Grid(i,1,1,4,1) &
+       &    + Mesh3D(2,i,1,1)* DerPhi(3)%Grid(i,1,1,4,1) &
+       &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+       r4 =   Mesh3D(3,i,1,1)* DerPhi(2)%Grid(i,1,1,3,1) &
+       &    - Mesh3D(2,i,1,1)* DerPhi(3)%Grid(i,1,1,3,1) &
+       &    + 0.5_dp        * Phi%Grid(i,1,1,2,1)
+       !Action of J_x to the left
+       l1 = - Mesh3D(3,i,1,1)* DerPhi(2)%Grid(i,1,1,2,1) &
+       &    + Mesh3D(2,i,1,1)* DerPhi(3)%Grid(i,1,1,2,1) &
+       &    + 0.5_dp        * Phi%Grid(i,1,1,3,1)
+       l2 =   Mesh3D(3,i,1,1)* DerPhi(2)%Grid(i,1,1,1,1) &
+       &    - Mesh3D(2,i,1,1)* DerPhi(3)%Grid(i,1,1,1,1) &
+       &    + 0.5_dp        * Phi%Grid(i,1,1,4,1)
+       l3 = - Mesh3D(3,i,1,1)* DerPhi(2)%Grid(i,1,1,4,1) &
+       &    + Mesh3D(2,i,1,1)* DerPhi(3)%Grid(i,1,1,4,1) &
+       &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+       l4 =   Mesh3D(3,i,1,1)* DerPhi(2)%Grid(i,1,1,3,1) &
+       &    - Mesh3D(2,i,1,1)* DerPhi(3)%Grid(i,1,1,3,1) &
+       &    + 0.5_dp        * Phi%Grid(i,1,1,2,1)
+
+       J2(1) = J2(1) + l1*r1 + l2*r2 + l3*r3 + l4*r4
+    enddo
+    !---------------------------------------------------------------------------
+    ! Y direction
+    J2(2) =0
+    do i=1,nx*ny*nz
+       ! Action of J_y to the right
+       r1 = - Mesh3D(1,i,1,1)* DerPhi(3)%Grid(i,1,1,2,1) &
+       &    + Mesh3D(3,i,1,1)* DerPhi(1)%Grid(i,1,1,2,1) &
+       &    + 0.5_dp        * Phi%Grid(i,1,1,4,1)
+       r2 =   Mesh3D(1,i,1,1)* DerPhi(3)%Grid(i,1,1,1,1) &
+       &    - Mesh3D(3,i,1,1)* DerPhi(1)%Grid(i,1,1,1,1) &
+       &    - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+       r3 = - Mesh3D(1,i,1,1)* DerPhi(3)%Grid(i,1,1,4,1) &
+       &    + Mesh3D(3,i,1,1)* DerPhi(1)%Grid(i,1,1,4,1) &
+       &    - 0.5_dp        * Phi%Grid(i,1,1,2,1)
+       r4 =   Mesh3D(1,i,1,1)* DerPhi(3)%Grid(i,1,1,3,1) &
+       &    - Mesh3D(3,i,1,1)* DerPhi(1)%Grid(i,1,1,3,1) &
+       &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+       !Action of J_y to the left
+       l1 = - Mesh3D(1,i,1,1)* DerPhi(3)%Grid(i,1,1,2,1) &
+       &    + Mesh3D(3,i,1,1)* DerPhi(1)%Grid(i,1,1,2,1) &
+       &    + 0.5_dp        * Phi%Grid(i,1,1,4,1)
+       l2 =   Mesh3D(1,i,1,1)* DerPhi(3)%Grid(i,1,1,1,1) &
+       &    - Mesh3D(3,i,1,1)* DerPhi(1)%Grid(i,1,1,1,1) &
+       &    - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+       l3 = - Mesh3D(1,i,1,1)* DerPhi(3)%Grid(i,1,1,4,1) &
+       &    + Mesh3D(3,i,1,1)* DerPhi(1)%Grid(i,1,1,4,1) &
+       &    - 0.5_dp        * Phi%Grid(i,1,1,2,1)
+       l4 =   Mesh3D(1,i,1,1)* DerPhi(3)%Grid(i,1,1,3,1) &
+       &    - Mesh3D(3,i,1,1)* DerPhi(1)%Grid(i,1,1,3,1) &
+       &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+
+       J2(2) = J2(2) + l1*r1 + l2*r2 + l3*r3 + l4*r4
+    enddo
+
+    !---------------------------------------------------------------------------
+    ! Z direction
+    J2(3) = 0
+    do i=1,nx*ny*nz
+        ! Action of J_z to the right
+        r1 = - Mesh3D(2,i,1,1)* DerPhi(1)%Grid(i,1,1,2,1) &
+        &    + Mesh3D(1,i,1,1)* DerPhi(2)%Grid(i,1,1,2,1) &
+        &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+        r2 =   Mesh3D(2,i,1,1)* DerPhi(1)%Grid(i,1,1,1,1) &
+        &    - Mesh3D(1,i,1,1)* DerPhi(2)%Grid(i,1,1,1,1) &
+        &    + 0.5_dp        * Phi%Grid(i,1,1,2,1)
+        r3 = - Mesh3D(2,i,1,1)* DerPhi(1)%Grid(i,1,1,4,1) &
+        &    + Mesh3D(1,i,1,1)* DerPhi(2)%Grid(i,1,1,4,1) &
+        &    - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+        r4 =   Mesh3D(2,i,1,1)* DerPhi(1)%Grid(i,1,1,3,1) &
+        &    - Mesh3D(1,i,1,1)* DerPhi(2)%Grid(i,1,1,3,1) &
+        &    - 0.5_dp        * Phi%Grid(i,1,1,4,1)
+
+        !Action of J_z to the left
+        l1 = - Mesh3D(2,i,1,1)* DerPhi(1)%Grid(i,1,1,2,1) &
+        &    + Mesh3D(1,i,1,1)* DerPhi(2)%Grid(i,1,1,2,1) &
+        &    + 0.5_dp        * Phi%Grid(i,1,1,1,1)
+        l2 =   Mesh3D(2,i,1,1)* DerPhi(1)%Grid(i,1,1,1,1) &
+        &    - Mesh3D(1,i,1,1)* DerPhi(2)%Grid(i,1,1,1,1) &
+        &    + 0.5_dp        * Phi%Grid(i,1,1,2,1)
+        l3 = - Mesh3D(2,i,1,1)* DerPhi(1)%Grid(i,1,1,4,1) &
+        &    + Mesh3D(1,i,1,1)* DerPhi(2)%Grid(i,1,1,4,1) &
+        &    - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+        l4 =   Mesh3D(2,i,1,1)* DerPhi(1)%Grid(i,1,1,3,1) &
+        &    - Mesh3D(1,i,1,1)* DerPhi(2)%Grid(i,1,1,3,1) &
+        &    - 0.5_dp        * Phi%Grid(i,1,1,4,1)
+
+        J2(3) = J2(3) + l1*r1 + l2*r2 + l3*r3 + l4*r4
+    enddo
+    
+    !---------------------------------------------------------------------------
+    ! Setting values
+    WF%J2 = J2 * dv
+    
+    WF%AngQuantum= - 0.5_dp*(1.0_dp-sqrt( 1.0_dp + 4.0_dp*sum(WF%J2)))
+  end subroutine DiagAng
+
   function AngularMomentum(WF2,WF1, quadratic,TRX,TRY,TRZ) result(AngMom)
     !---------------------------------------------------------------------------
     ! Optimized routine for the computation of angularmomentum.
@@ -1298,7 +1593,7 @@ contains
   !-----------------------------------------------------------------------------
   ! Hartree-Fock calculations
   !           n        <P>     <Rz>      v^2        E_sp      d2H  
-  1 format (i3,4x,f5.2,1x,f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2,1x,8(f6.2))
+  1 format (i3,1x,f5.2,1x,f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2,1x,8(f6.2))
   !-----------------------------------------------------------------------------
   ! BCS calculations
   !           n        <P>     <Rz>  v^2    Delta    E_sp      d2H  
@@ -1318,12 +1613,12 @@ contains
   if(TRC) PrintOcc = PrintOcc/2
   
 
-  J(1) = WF%AngMoment(1)
-  J(3) = WF%AngMoment(2)
-  J(5) = WF%AngMoment(3)
-  J(2) = WF%JT(1)
-  J(4) = WF%JT(2)
-  J(6) = WF%JT(3)
+  J(1) = WF%J(1)
+  J(3) = WF%J(2)
+  J(5) = WF%J(3)
+  J(2) = WF%JTR(1)
+  J(4) = WF%JTI(2)
+  J(6) = WF%JTR(3)
 
   select case(PrintType)
     case(1) !HF calculations
@@ -1375,11 +1670,11 @@ contains
   select case(PrintType)
   case(3)
     if(TRC.and.SC.and.TSC) then
-        print 3, i , WF%ParityR, PrintOcc, WF%Energy, WF%AngMoment(1:3),  &
+        print 3, i , WF%ParityR, PrintOcc, WF%Energy, WF%J(1:3),  &
         &            WF%AngQuantum, WF%RMSRadius
     else
         print 31, i , WF%ParityR, WF%SignatureR,WF%xsimplexR, PrintOcc,   &
-        &             WF%Energy,WF%AngMoment(1:3), WF%AngQuantum, WF%RMSRadius
+        &             WF%Energy,WF%J(1:3), WF%AngQuantum, WF%RMSRadius
     endif
   case DEFAULT
     call stp('Undefined printtype in PrintCanonical.')
@@ -1753,7 +2048,7 @@ contains
     !It is of no use to store the derivatives, unless asking for all the output
 
     write(unit) wf%Occupation, &
-    &       wf%Energy, wf%Dispersion, wf%Norm, wf%AngMoment, &
+    &       wf%Energy, wf%Dispersion, wf%Norm, wf%J, &
     &       wf%Isospin,wf%TimeSimplex,wf%Parity,wf%Signature,wf%TimeReversal
 
   end subroutine WriteSpwf
@@ -1774,7 +2069,7 @@ contains
     enddo
     wf%Lap = NewSpinor()
     Read(unit) wf%Occupation, &
-    &       wf%Energy, wf%Dispersion, wf%Norm, wf%AngMoment, &
+    &       wf%Energy, wf%Dispersion, wf%Norm, wf%J, &
     &       wf%Isospin,wf%TimeSimplex,wf%Parity,wf%Signature,wf%TimeReversal
 
     if(abs(wf%Isospin).ne.1) then

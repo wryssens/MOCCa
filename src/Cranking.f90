@@ -192,24 +192,23 @@ contains
     use Densities
 
     1 format (18('-'), ' Angular Momentum (hbar) ',17('-') )
-    2 format (15x, 'Total', 4x, 'Desired', 4x, 'Omega', 4x, 'Energy')
+    2 format (15x, 'Total', 7x, 'Desired', 5x, 'Omega', 7x, 'Energy')
     3 format (3x,'J_',a1,'   ','|', 4f12.5 )
-   31 format (3x,'Size  |', 3f10.3)
-   32 format (3x,'JT',a1,'   ','|', 4f12.5 )
-   33 format (3x,'to',a1,'   ','|', 4f12.5 )
-   34 format (3x,'ta',a1,'   ','|', 4f12.5 )
+   31 format (3x,'Size  |', 3f12.5)
+   32 format (1x,'ReJT',a1,'   ','|', 4f12.5 )
+   33 format (1x,'ImJT',a1,'   ','|', 4f12.5 )
+   34 format (2x,'|J|',a1,'   ','|', 4f12.5 )
    
     4 format (3x,'Theta |', 3f12.5)
    41 format (3x,'Phi   |', 3f12.5)
     
-    5 format (3x,'P R_z ','|',6x,'++',8x,'-+',8x,'+-',8x,'--')
-    6 format (2x,' ___________________________________________________' )
+    5 format (3x,'P R_z ','|',6x,'++',10x,'-+',10x,'+-',10x,'--')
+    6 format (2x,' _______________________________________________________' )
     7 format (3x,a1,'_',a1,3x,'|',4f12.5)
    71 format (3x,'The_', a1' |'      , 4f12.5)
    72 format (3x,'Phi_', a1' |'      , 4f12.5)
    
     8 format (3x,'Open spin')
-    9 format (2x,' ___________________________________________________' )
    10 format (3x,a1,1x,'|',3x,'|',4f12.5)
     
    11 format (3x, 'Attention: Omega gets realigned to J.') 
@@ -239,6 +238,7 @@ contains
     print 6
     print 31, sqrt(sum(totalangmom(1:3)**2)) , sqrt(sum(crankvalues(1:3)**2)), &
     &         sqrt(sum(omega(1:3)**2))
+    print *
     print 6
     if(.not. SC) then
         if(TSC) then
@@ -260,23 +260,27 @@ contains
     endif
 
     print 6
-    print 2
+    print 32, 'x',JTR(1), 0.0, 0.0, 0.0
+    print 32, 'y',JTR(2), 0.0, 0.0, 0.0
+    print 32, 'z',JTR(3), 0.0, 0.0, 0.0
     print 6
-    print 32, 'x',JT(1), 0.0, 0.0, 0.0
-    print 32, 'y',JT(2), 0.0, 0.0, 0.0
-    print 32, 'z',JT(3), 0.0, 0.0, 0.0
+    print 33, 'x',JTI(1), 0.0, 0.0, 0.0
+    print 33, 'y',JTI(2), 0.0, 0.0, 0.0
+    print 33, 'z',JTI(3), 0.0, 0.0, 0.0
     print 6
-    print 31, sqrt(sum(JT(:)**2)) ,0.0,0.0
+    print 31, sqrt(sum(JTR(:)**2 + JTI(:)**2)) ,0.0,0.0
     print 6
-    print 33, 'x',TotalAngMom(1) + JT(1), 0.0, 0.0, 0.0
-    print 33, 'y',TotalAngMom(2) + JT(2), 0.0, 0.0, 0.0
-    print 33, 'z',TotalAngMom(3) + JT(3), 0.0, 0.0, 0.0
-    print 31, sqrt(sum((TotalAngMom + JT)**2)), 0.0,0.0
+!    print 33, 'x',TotalAngMom(1) + JT(1), 0.0, 0.0, 0.0
+!    print 33, 'y',TotalAngMom(2) + JT(2), 0.0, 0.0, 0.0
+!    print 33, 'z',TotalAngMom(3) + JT(3), 0.0, 0.0, 0.0
+!    print 6
+!    print 31, sqrt(sum((TotalAngMom + JT)**2)), 0.0,0.0
     print 6
-    print 34, 'x',sqrt(TotalAngMom(1)**2 + JT(1)**2), 0.0, 0.0, 0.0
-    print 34, 'y',sqrt(TotalAngMom(2)**2 + JT(2)**2), 0.0, 0.0, 0.0
-    print 34, 'z',sqrt(TotalAngMom(3)**2 + JT(3)**2), 0.0, 0.0, 0.0
-    print 31, sqrt(sum((TotalAngMom**2 + JT**2))), 0.0,0.0
+    print 34, 'x',sqrt(TotalAngMom(1)**2 + JTR(1)**2 + JTI(1)**2), 0.0, 0.0, 0.0
+    print 34, 'y',sqrt(TotalAngMom(2)**2 + JTR(2)**2 + JTI(2)**2), 0.0, 0.0, 0.0
+    print 34, 'z',sqrt(TotalAngMom(3)**2 + JTR(3)**2 + JTI(3)**2), 0.0, 0.0, 0.0
+    print 6
+    print 31, sqrt(sum((TotalAngMom**2 + JTR**2 + JTI**2))), 0.0,0.0
     print 6
     print *
     print 5
@@ -342,7 +346,7 @@ contains
     endif
     print *
     print 8
-    print 9
+    print 6
     if(.not. SC) then
         print 10, 'X', 0.5*sum(Density%vecs(:,:,:,1,1))*dv, 0.5*sum(Density%vecs(:,:,:,1,2))*dv
     endif
@@ -350,8 +354,7 @@ contains
         print 10, 'Y', 0.5*sum(Density%vecs(:,:,:,2,1))*dv, 0.5*sum(Density%vecs(:,:,:,2,1))*dv
     endif
     print 10    , 'Z', 0.5*sum(Density%vecs(:,:,:,3,1))*dv, 0.5*sum(Density%vecs(:,:,:,3,2))*dv
-    print *
-
+    print 6
     !---------------------------------------------------------------------------
   end subroutine PrintCranking
 

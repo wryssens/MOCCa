@@ -44,8 +44,9 @@ module SpwfStorage
   ! AMIsoBlock separates the different contributions along as much blocks as
   ! possible.
   !-----------------------------------------------------------------------------
-  real(KIND=dp), public :: TotalAngMom(3)=0.0_dp, AngMomOld(3)=0.0_dp
-  real(KIND=dp), public :: J2(3) = 0.0_dp,        AMIsoBlock(2,2,2,3)=0.0_dp
+  real(KIND=dp), public :: TotalAngMom(3)= 0.0_dp, AngMomOld(3)         = 0.0_dp
+  real(KIND=dp), public :: J2(3)         = 0.0_dp, AMIsoBlock(2,2,2,3)  = 0.0_dp
+  real(KIND=dp), public :: JTR(3)        = 0.0_dp, JTI(3)               = 0.0_dp
   !-----------------------------------------------------------------------------
   !Memory for the total dispersion of the occupied(!) spwfs
   !-----------------------------------------------------------------------------
@@ -66,9 +67,6 @@ module SpwfStorage
   !-----------------------------------------------------------------------------
   ! Ali-rotation to perform on every parity-isospin block on input of the spwfs.
   real(KIND=dp) :: aliy(2,2) = 0.0_dp
-  !-----------------------------------------------------------------------------
-  ! 
-  real(KIND=dp) :: JT(3) = 0.0_dp, AMTIsoBlock(2,2,2,3) = 0.0_dp
 
 contains
 
@@ -530,11 +528,11 @@ contains
     logical, intent(in)           :: PrintAllSpwf
 
     10 format (21 ('-'), ' Sp wavefunctions ', 41('-'))
-    20 format (94 ('-'))
-    30 format (94 ('_'),/,3x , 'Neutron wavefunctions')
-    40 format (94 ('_'),/,3x , 'Proton  wavefunctions')
-    50 format (94 ('_'),/,3x , 'HF Basis')
-    60 format (94 ('_'),/,3x , 'Canonical Basis' )
+    20 format (97 ('-'))
+    30 format (97 ('_'),/,3x , 'Neutron wavefunctions')
+    40 format (97 ('_'),/,3x , 'Proton  wavefunctions')
+    50 format (97 ('_'),/,3x , 'HF Basis')
+    60 format (97 ('_'),/,3x , 'Canonical Basis' )
     !---------------------------------------------------------------------------
     ! Different explanatory headers, who match with the formats in subroutine
     ! PrintHF and PrintCanonical.
@@ -542,8 +540,8 @@ contains
     ! Headers for Hartree-fock basis
     !---------------------------------------------------------------------------
     ! Hartree-Fock calculations
-    1  format (5x,'n',3x,'<P>',3x,'<Rz>',4x,'v^2',5x,'E_sp', 4x,'Var(h)',4x,     &
-    & 'r^2',4x, 'Jx',4x,'JxT',4x, 'Jy',4x,'JyT',4x,'Jz',4x,'JzT',4x,'J')
+    1  format (5x,'n',3x,'<P>',3x,'<Rz>',4x,'v^2',5x,'E_sp', 4x,'Var(h)',4x,   &
+    &         'r^2',4x, 'Jx',4x,'JxT',3x,'Jy',4x,'JyT',3x,'Jz',4x,'JzT',3x,'J')
     !---------------------------------------------------------------------------
     ! BCS calculations
     2  format (6x,'n',4x,'<P>', 4x,'<Rz>',4x,'v^2',4x,'Delta',4x,'E_sp',4x,   &
@@ -560,7 +558,7 @@ contains
     4 format (6x, 'n',4x,'<P>',5x,'<Rz>', 'v^2',1x,'E_sp','r^2',           &
     &             'Jx', 'JxT', 'JY', 'JyT','Jz', 'JzT', 'J')    
     
-    100 format (94('_'))
+    100 format (97('_'))
 
     print 10
 
@@ -647,14 +645,14 @@ contains
     endif
 
     TotalAngMom = 0.0_dp ; J2Total = 0.0_dp ; AMIsoblock = 0.0_dp
-    JT = 0.0_dp; AMTIsoblock = 0.0_dp 
+    JTR = 0.0_dp  ; JTI = 0.0_dp     !;  AMTIsoblock = 0.0_dp 
     
     do wave=1,nwt
-      call HFBasis(wave)%CompAngMoment()
+      call HFBasis(wave)%DiagAng()
       ! When canonical basis is allocated we need to recalculate the angular
       ! momentum for that basis too.
       if(allocated(CanBasis)) then
-        call CanBasis(wave)%CompAngMoment()
+        call  CanBasis(wave)%DiagAng()
       endif
     enddo
 
@@ -664,20 +662,22 @@ contains
       do wave=1,nwt
         do i=1,3
           TotalAngMom(i) = TotalAngMom(i) + &
-          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMoment(i)
-          JT(i)          = JT(i)          + & 
-          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%JT(i)
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%J(i)
+          JTR(i)          = JTR(i)    +     & 
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%JTR(i)
+          JTI(i)          = JTI(i)    +     & 
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%JTI(i)
           J2Total(i)     = J2Total(i) +     &
-          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMomentSquared(i)
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%J2(i)
 
           S = (DensityBasis(wave)%GetSignature() + 3)/2
           P = (DensityBasis(wave)%GetParity()    + 3)/2
           it= (DensityBasis(wave)%GetIsospin()   + 3)/2
 
           AMIsoblock(S,P,it,i) = AMIsoblock(S,P,it,i) +                  &
-          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%GetAngMoment(i)
-          AMTIsoblock(S,P,it,i)= AMTIsoblock(S,P,it,i) +                 &
-          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%JT(i)
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%J(i)
+!          AMTIsoblock(S,P,it,i)= AMTIsoblock(S,P,it,i) +                 &
+!          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%JTR(i)
         enddo
       enddo
       !-------------------------------------------------------------------------

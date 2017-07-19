@@ -4044,7 +4044,7 @@ subroutine PrintBlocking
                 JMatrix(j+nwt,i+nwt,:,2)   =   JMatrix(i+nwt,j+nwt,:,2)
             enddo
         enddo
-	if(.not.SC) call stp('Calculation of J matrix elements not yet' &
+	    if(.not.SC) call stp('Calculation of J matrix elements not yet' &
         &                  //' correctly implemented for signature'     &
         &                  //' breaking and Time Reversal conserving'   &
         &                  //' calculations.')

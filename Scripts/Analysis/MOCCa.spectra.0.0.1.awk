@@ -189,54 +189,56 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
     # Depending on the pairingtype and symmetries, correctly order the Spwf info
     #===========================================================================
     
-    Eind=0
-    #Spenergy
-    if(PairingType == "HFB" && basis =="hf")
-    {
-        Eind=7
-        if( TRC != 1.0 || SC != 1.0 ){
-            Eind = 9
-        }
-    }
-    if(PairingType == "HFB" && basis =="can")
-    {
-        Eind=5
-    }
-    else if (PairingType=="BCS")
-    {
-        Eind=6
-    }
-    else if (PairingType =="HF")
-    {
-        Eind=5
-        if( TRC != 1.0 || SC != 1.0 ){
-            Eind = 6
-        }
-    }
-         
+#    Eind=0
+#    #Spenergy
+#    if(PairingType == "HFB" && basis =="hf")
+#    {
+#        Eind=7
+#        if( TRC != 1.0 || SC != 1.0 ){
+#            Eind = 9
+#        }
+#    }
+#    if(PairingType == "HFB" && basis =="can")
+#    {
+#        Eind=5
+#    }
+#    else if (PairingType=="BCS")
+#    {
+#        Eind=6
+#    }
+#    else if (PairingType =="HF")
+#    {
+#        Eind=5
+#        if( TRC != 1.0 || SC != 1.0 ){
+#            Eind = 6
+#        }
+#    }
+      
+      
+    Eind = 6
     #index of the state
     sorted[1] = $2
         
     # Expected value of parity
     sorted[2] = $3
     
-    if( TRC != 1.0 || SC != 1.0 ){
-        # Expected value of signature
-        sorted[3] = $4
-        #Occupation number or Rho_ii
-        sorted[4] = $6
-    }
-    else {
-        #Automatically positive signature
-        sorted[3] =  1
-        sorted[4] = $4
-    }
+#    if( TRC != 1.0 || SC != 1.0 ){
+    # Expected value of signature
+    sorted[3] = $4
+    #Occupation number or Rho_ii
+    sorted[4] = $5
+#    }
+#    else {
+#        #Automatically positive signature
+#        sorted[3] =  1
+#        sorted[4] = $4
+#    }
 
     sorted[5] = $Eind
     # Angular momentum quantum numbers Jx, Jy, Jz and J
     k = 1
-    while (k < 6){
-        sorted[5+k] = $(Eind + k +1 )
+    while (k < 8){
+        sorted[5+k] = $(Eind + k +2 )
         k+=1
     }
 

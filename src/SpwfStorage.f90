@@ -549,14 +549,14 @@ contains
     &          1x,'JzT',1x,'J')
     !---------------------------------------------------------------------------
     ! HFB calculations
-    3 format (5x, 'n' ,4x, ' <P> ',1x, '<Rz> ', ' Rhoii ',1x,               &
-    &             ' Delta ',1x, ' m ', 1x, '  E_sp  ', 1x, ' Var(h) ','r^2',  &
-    &             1x,'Jx',1x, 'JxT',1x, 'JY',1x, 'JyT',1x,'Jz',1x, 'JzT',1x,  &
-    &             'J',1x)
+    3  format (5x,'n',3x,'<P>',3x,'<Rz>',3x,'Rhoii',1x,' Delta ', 1x, ' m ', 4x,&
+    &          'E_sp', 4x,'Var(h)',4x,   &
+    &         'r^2',4x, 'Jx',4x,'JxT',3x,'Jy',4x,'JyT',3x,'Jz',4x,'JzT',3x,'J')
+    
     ! Headers for Canonical basis
     !---------------------------------------------------------------------------
-    4 format (6x, 'n',4x,'<P>',5x,'<Rz>', 'v^2',1x,'E_sp','r^2',           &
-    &             'Jx', 'JxT', 'JY', 'JyT','Jz', 'JzT', 'J')    
+    4  format (5x,'n',3x,'<P>',3x,'<Rz>',4x,'v^2', 4x,'E_sp', 4x,  &
+    &         'r^2',4x, 'Jx',4x,'JxT',3x,'Jy',4x,'JyT',3x,'Jz',4x,'JzT',3x,'J')
     
     100 format (97('_'))
 

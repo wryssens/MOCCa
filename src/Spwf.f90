@@ -1592,15 +1592,15 @@ contains
 
   !-----------------------------------------------------------------------------
   ! Hartree-Fock calculations
-  !           n        <P>     <Rz>      v^2        E_sp      d2H  
+  !           n   <P>     <Rz>      v^2        E_sp      d2H  
   1 format (i3,1x,f5.2,1x,f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2,1x,8(f6.2))
   !-----------------------------------------------------------------------------
   ! BCS calculations
-  !           n        <P>     <Rz>  v^2    Delta    E_sp      d2H  
-  2 format (i3,1x,f5.2,1x,f7.4,1x,f7.2,1x,f7.2,1x, f8.3, 1x,e9.2, 8(f7.2))
+  !           n   <P>     <Rz>     v^2    Delta    E_sp      d2H  
+  2 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x, f8.3, 1x,e9.2, 8(f7.2))
   !-----------------------------------------------------------------------------
   ! HFB calculations
-  !           n      <P>  <Rz>     RhoII   Delta  Partner E d2H 
+  !           n      <P>  <Rz>    RhoII   Delta  Partner E d2H 
   3 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x, f8.3,1x,e9.2,8f7.3)
 
   class(Spwf), intent(in) :: WF
@@ -1653,13 +1653,11 @@ contains
   class(Spwf), intent(in) :: WF
   integer, intent(in)     :: i
   integer, intent(in)     :: PrintType
-
+  real(KIND=dp) :: J(6)
   !-----------------------------------------------------------------------------
   ! HFB calculations
-  !           n      <P>    v^2      E_sp   <Jx/y/z> ,J,<r^2>
-  3  format ( i3,1x,f5.2,1x,f7.4,1x,f8.3,5(f7.2))
-  !           n  <P>  <Rz> <Sx>   v^2      E_sp   <Jx/y/z> J <r^2>
-  31 format ( i3, 3(1x,f5.2) ,1x,f7.4,1x,f8.3,5(f7.2))
+  !           n  <P>  <Rz>       v^2      E_sp  
+  3 format ( i3, 2(1x,f5.2) ,1x,f7.4,1x,f8.3,8(f7.2))
 
   real(KIND =dp)          :: PrintOcc
 
@@ -1667,19 +1665,16 @@ contains
   ! Don't print double the occupation number when Time-reversal is conserved.
   if(TRC) PrintOcc = PrintOcc/2
 
-  select case(PrintType)
-  case(3)
-    if(TRC.and.SC.and.TSC) then
-        print 3, i , WF%ParityR, PrintOcc, WF%Energy, WF%J(1:3),  &
-        &            WF%AngQuantum, WF%RMSRadius
-    else
-        print 31, i , WF%ParityR, WF%SignatureR,WF%xsimplexR, PrintOcc,   &
-        &             WF%Energy,WF%J(1:3), WF%AngQuantum, WF%RMSRadius
-    endif
-  case DEFAULT
-    call stp('Undefined printtype in PrintCanonical.')
-  end select
+  J(1) = WF%J(1)
+  J(3) = WF%J(2)
+  J(5) = WF%J(3)
+  J(2) = WF%JTR(1)
+  J(4) = WF%JTI(2)
+  J(6) = WF%JTR(3)
 
+  print 3, i , WF%ParityR, WF%SignatureR,WF%xsimplexR, PrintOcc,   &
+  &            WF%Energy, WF%RMSRadius,  J, WF%AngQuantum
+  
   end subroutine PrintCanonical
 
 !-------------------------------------------------------------------------------

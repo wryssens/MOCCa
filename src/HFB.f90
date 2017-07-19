@@ -3993,7 +3993,7 @@ subroutine PrintBlocking
 
             print 99, i, QuasiSignatures(i,P,it), QuasiEnergies(i,P,it)    &
             &      ,blockindices(domU(1),P,it), blockindices(domV(1),P,it)&
-            &      ,u2mv2, align(1:3,i,P,it), angquantum
+            &      ,u2mv2, 0.0d0, 0.0d0, align(3,i,P,it), angquantum
           enddo
         enddo
     enddo
@@ -4027,7 +4027,8 @@ subroutine PrintBlocking
         do i=1,j
             ! Care for the indices here; Angularmomentum takes !reversed!
             ! indices
-            JMatrix(i,j,:,:) =   AngularMomentum(HFBasis(j),HFBasis(i), .true.,TRX,TRY,TRZ)
+            JMatrix(i,j,:,:) =   AngularMomentum(HFBasis(j),HFBasis(i),.true.,&
+            &                                                       TRX,TRY,TRZ)
             JMatrix(j,i,:,1) =   JMatrix(i,j,:,1)
             JMatrix(j,i,:,2) = - JMatrix(i,j,:,2)
         enddo

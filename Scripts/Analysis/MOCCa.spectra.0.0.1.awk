@@ -73,7 +73,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
     # We use the extra awk script Spwf.sort.awk to sort on a specific column.
     #===========================================================================
         
-    if (PC == 1) {
+    if (PC == 1 || AssumeParity == 1) {
         # Sort the spwfs according to parity
         command = "awk -f Spwf.sort.awk 'column=5' 'points=" iqmax "' < " file;
         system(command);
@@ -133,7 +133,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
     }
     else if ( TRC == 1 && SC == 1) {
         #Only signature = +1 states are printed
-       if(PC == 1) {
+       if(PC == 1 || AssumeParity == 1) {
             command =  "mv spwf.par=+1 spwf.par=+1.sig=+1"
             system(command)
             command =  "mv spwf.par=-1 spwf.par=-1.sig=+1"
@@ -185,65 +185,101 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
 
 function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
 {
+
+    # Check whether we are reading old or new files
+    legacy = 1
+    if( NF > 13){
+        legacy = 0
+    }
+    
     #===========================================================================
     # Depending on the pairingtype and symmetries, correctly order the Spwf info
     #===========================================================================
+    if(legacy == 0) {
+        if(PairingType == "HFB" && basis =="hf")
+        {
+            Eind=8
+        }
+        if(PairingType == "HFB" && basis =="can")
+        {
+            Eind=6
+        }
+        else if (PairingType=="BCS")
+        {
+            Eind=6
+        }
+        else if (PairingType =="HF")
+        {
+            Eind=6
+        }
+    }
+    else {
+        if(PairingType == "HFB" && basis =="hf")
+        {
+            Eind=7
+        }
     
-    if(PairingType == "HFB" && basis =="hf")
-    {
-        Eind=8
+        if(PairingType == "HFB" && basis =="can")
+        {
+            Eind=5
+        }
     }
-    if(PairingType == "HFB" && basis =="can")
-    {
-        Eind=6
-    }
-    else if (PairingType=="BCS")
-    {
-        Eind=6
-    }
-    else if (PairingType =="HF")
-    {
-        Eind=6
-    }
+    
       
       
     #index of the state
     sorted[1] = $2
-        
     # Expected value of parity
     sorted[2] = $3
-    
-#    if( TRC != 1.0 || SC != 1.0 ){
-    # Expected value of signature
-    sorted[3] = $4
-    #Occupation number or Rho_ii
-    sorted[4] = $5
-#    }
-#    else {
-#        #Automatically positive signature
-#        sorted[3] =  1
-#        sorted[4] = $4
-#    }
+    if(legacy == 1) {
+          if( TRC != 1.0 || SC != 1.0 ){
+            sorted[3] = $4
+            sorted[4] = $5
+          }
+          else {
+            sorted[3] = 1
+            sorted[4] = $4
+          }
+    }
+    else{
+        sorted[3] = $4
+        #Occupation number or Rho_ii
+        sorted[4] = $5
+        }
 
     sorted[5] = $Eind
     # Angular momentum quantum numbers Jx, Jy, Jz and J
     if(basis == "hf") {
         k = 1
-        while (k < 8){
-                sorted[5+k] = $(Eind + k +2 )
+        if(legacy == 0){
+            while (k < 8){
+                sorted[5+k] = $(Eind + k +2)
                 k+=1
+            }
         }
-    }
+        else{
+            while (k < 8){
+                sorted[5+k] = $(Eind + k +1)
+                k+=1
+            }
+        }
 
+    }
     if(basis == "can") {
         k = 1
-        while (k < 8){
-                sorted[5+k] = $(Eind + k +1 )
+        if(legacy == 0){
+            while (k < 8){
+                sorted[5+k] = $(Eind + k +1)
                 k+=1
+            }
+        }
+        else{
+            while (k < 8){
+                sorted[5+k] = $(Eind + k)
+                k+=1
+            }
         }
     }
-
-
     return 
 }
 
@@ -260,7 +296,7 @@ BEGIN{
         QPBasisflag    =0
         #Only detect the first mention of HF(B)
         pairingtypeflag=1
-    
+        
 }
 
 {
@@ -274,6 +310,7 @@ BEGIN{
         if ( NR == 1 ) {
                 lengthfilename = length(FILENAME);
                 prefix = substr(FILENAME,1,lengthfilename-4);
+                print "Assuming Parity? ", AssumeParity
         }
         #-----------------------------------------------------------------------
         # Some parameters to get from the start of the files, that are necessary
@@ -399,10 +436,16 @@ BEGIN{
         #-----------------------------------------------------------------------
         # Reading the SPWF info
         if( $2 == "Sp" && (CanBasisflag || HFBasisflag) ){
+            if( TRC == 0) {
             while( $1 != "1"){
                 getline;
             }
-
+            }
+            if( TRC == 1){
+            while( $1 != "2"){
+                getline;
+            }            
+            }
             #----------------------------------
             # Neutron states in the HF basis
             N = 1
@@ -413,7 +456,7 @@ BEGIN{
                      while( i < NF +1 ){
                         neutronhf[iq,N,i] = line[i]
                         i+=1
-                     }
+                    }
                     N +=1
                     getline;
                 }
@@ -422,8 +465,15 @@ BEGIN{
             # Neutron states in the canonical basis
             N = 1
             if(CanBasisflag == 1){
+                if( TRC == 0) {
                 while( $1 != "1"){
-                    getline; 
+                    getline;
+                }
+                }
+                if( TRC == 1){
+                while( $1 != "2"){
+                    getline;
+                }            
                 }
                 while(  NF != 1){
                     i=1 
@@ -441,8 +491,15 @@ BEGIN{
             # Proton states in the HF basis
             P = 1
             if(HFBasisflag == 1){
+                if( TRC == 0) {
                 while( $1 != "1"){
-                    getline; 
+                    getline;
+                }
+                }
+                if( TRC == 1){
+                while( $1 != "2"){
+                    getline;
+                }            
                 }
 
                 while( NF != 1){
@@ -462,8 +519,15 @@ BEGIN{
             # proton states in the canonical basis
             P = 1
             if(CanBasisflag == 1){
+                if( TRC == 0) {
                 while( $1 != "1"){
-                    getline; 
+                    getline;
+                }
+                }
+                if( TRC == 1){
+                while( $1 != "2"){
+                    getline;
+                }            
                 }
 
                 while(  NF != 1){
@@ -1154,18 +1218,31 @@ END{
     if(PairingType == "HFB") {
         SortSpwfs("tmp.n.can.tab", "neutron", "ca", prefix, PC, SC, TRC,iqmax) ;
         SortSpwfs("tmp.p.can.tab", "proton" , "ca", prefix, PC, SC, TRC,iqmax) ;
+    
+        command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' <  tmp.n.qp.P=-1.tab";
+        system(command)
+        command = " mv tmp.zero tmp.n.qp.P=-1.tab"
+        system(command)
+
+        command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' <  tmp.n.qp.P=+1.tab";
+        system(command)
+        command = " mv tmp.zero tmp.n.qp.P=+1.tab"
+        system(command)
+
+
+        command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' <  tmp.p.qp.P=-1.tab";
+        system(command)
+        command = " mv tmp.zero tmp.p.qp.P=-1.tab"
+        system(command)
+
+        command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' <  tmp.p.qp.P=+1.tab";
+        system(command)
+        command = " mv tmp.zero tmp.p.qp.P=+1.tab"
+        system(command)
     }
 
 
-    command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' <  tmp.n.qp.P=-1.tab";
-    system(command)
-    command = " mv tmp.zero tmp.n.qp.P=-1.tab"
-    system(command)
 
-    command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' <  tmp.n.qp.P=+1.tab";
-    system(command)
-    command = " mv tmp.zero tmp.n.qp.P=+1.tab"
-    system(command)
 
 
     #---------------------------------------------------------------------------

@@ -69,6 +69,7 @@ def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1, LA
     else:
         contour = AXIS.contourf(X,Y,Z - off, cmap=CMAP)
 
+    print 'surface minimum at ', xmin, ymin
     AXIS.plot(xmin,ymin,'kd')
     AXIS.set_xlim(min(data[:,0]),max(data[:,0]))
     AXIS.set_ylim(min(data[:,1]),max(data[:,1]))

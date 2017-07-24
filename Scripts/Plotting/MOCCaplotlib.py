@@ -561,13 +561,15 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[]):
     return (minx, miny)
 ################################################################################
 def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, 
-            PLOTDATA=-1, MARKER='', FERMIWINDOW=-1, XARG='B20', PC=1, SC=1, HF=0):
+            PLOTDATA=-1, MARKER='', FERMIWINDOW=-1, XARG='B20', PC=1, SC=1, HF=0
+            , LINESTYLES=['-.','-', '--'], LINEWIDTH=1, DASHES=None):
 
     #Default to current axis
     if AXIS is None:
         AXIS = plt.gca()
 
-    (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn, derivY,altx,alty, absy,fac)= Determinedata(PREFIX, XARG,'E' ,PC,SC, SORT='')
+    
+    (xlabel, ylabel, xfname,yfname,sortfname,xcolumn,ycolumn,sortcolumn,derivY,altx,alty, divy, absy, fac)= Determinedata(PREFIX, XARG,'E' ,PC,SC, SORT='')
     
     dataX=np.loadtxt(xfname,skiprows=1)
     xdata = dataX[:,xcolumn]
@@ -581,7 +583,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
     fermi     = fermidata[:,fermicolumn]
 
     xdata, fermi = zip(*sorted(zip(xdata, fermi)))
-    AXIS.plot(xdata, fermi, 'k-.', label='$e_f$')
+    AXIS.plot(xdata, fermi, 'k'+LINESTYLES[0], label='$\epsilon_{\\rm fermi}$')
     xdata = dataX[:,xcolumn]
 
     minx = 10000000.0
@@ -606,9 +608,9 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
     for P in PAR:
         shells[P] = {}
         if (P == '-1'):
-            linestyle = '--'
+            linestyle = LINESTYLES[2]
         else:
-            linestyle = '-'
+            linestyle = LINESTYLES[1]
 
         for S in SIG:
             fnametemp=PREFIX + '.' + BASIS + '.' + ISO + '.' + 'par=' + P + '.' + 'sig=' + S 
@@ -651,10 +653,17 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                             
                         xdata, ydata = zip(*sorted(zip(xdata, ydata)))
                         if(i == 0 and P == PAR[0] ):
-                            AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=MARKER)
+                            if(DASHES != None):
+                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=MARKER,linewidth=LINEWIDTH, dashes=DASHES)
+                            else :
+                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=MARKER,linewidth=LINEWIDTH)
+                        
                         else:
-                            AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, marker=MARKER)
-                            
+                            if(DASHES != None):
+                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, marker=MARKER, linewidth=LINEWIDTH, dashes=DASHES)
+                            else:
+                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, marker=MARKER, linewidth=LINEWIDTH)
+                                
                         # Find the point of the spwf closest to x = 0 and add it
                         # to shells
                         minx = 10000000.0

@@ -40,7 +40,7 @@ BEGIN{
             if( $2 > qmax) {
             qmax = $2
             }
-            if( $column == 1.0) {
+            if( $column > 0.0) {
                 
                 if(NP[$2] == "") {
                     NP[$2] = 0 
@@ -48,7 +48,7 @@ BEGIN{
                 NP[$2] += 1
                 plus[$2, NP[$2]] = $0
             }
-            else if( $column == -1.0) {
+            else if( $column < 0.0) {
                 
                 if(NM[$2] == "") {
                     NM[$2] = 0 
@@ -93,7 +93,6 @@ END{
         close("tmp.m")
     }
     else {
-    
         printf(header "\n") > "tmp.zero"
     
         i = 1
@@ -107,7 +106,6 @@ END{
             printf("*\n") >> "tmp.zero"
             i +=1 
         }
-    
     }
 }
 

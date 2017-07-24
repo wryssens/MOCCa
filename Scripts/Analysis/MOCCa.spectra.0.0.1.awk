@@ -1211,6 +1211,56 @@ END{
         }
     close("tmp.p.can.tab")    
     }
+    
+    #---------------------------------------------------------------------------
+    # Proton qps (if HFB is active)
+    if(PairingType == "HFB") {
+        iq = 1;
+        printf(qpheader) > "tmp.p.qp.P=-1.tab"
+        while ( iq < iqmax +1  ) {
+            
+            N = 1;
+            while ( protonqp[iq,N,-1] != "" ){
+                energy[N] = protonqp[iq,N,-1] 
+                N+=1
+            }
+            #ind = asort(energy)
+
+            N = 1;
+            while ( protonqp[iq,N,-1] != "" ){
+                    printf("%4i %4i %4i", N, iq, 0) >> "tmp.p.qp.P=-1.tab"
+                    printf("%10.3f \n", energy[N])  >> "tmp.p.qp.P=-1.tab"
+                    N+=1
+            }
+            printf("* \n") >> "tmp.p.qp.P=-1.tab"                
+            iq+=1
+        }        
+        close("tmp.p.qp.P=-1.tab")
+
+        iq = 1;
+        printf(qpheader) > "tmp.p.qp.P=+1.tab"
+
+        while ( iq < iqmax +1  ) {
+
+            N = 1;
+            while ( protonqp[iq,N,-1] != "" ){
+                energy[N] = protonqp[iq,N,-1] 
+                N+=1
+            }
+            #ind = asort(energy)
+
+            N = 1;
+            while ( protonqp[iq,N,+1] != "" ){
+                    printf("%4i %4i %4i", N, iq, 0) >> "tmp.p.qp.P=+1.tab"
+                    printf("%10.3f \n", energy[N])  >> "tmp.p.qp.P=+1.tab"
+                    N+=1
+            }
+            printf("* \n") >> "tmp.p.qp.P=+1.tab"                
+            iq+=1
+        }        
+        close("tmp.p.qp.P=+1.tab")
+    }
+
     #---------------------------------------------------------------------------
     #Sort all of the SPWFs into blocks by their quantum number
     SortSpwfs("tmp.n.hf.tab", "neutron", "hf", prefix, PC, SC, TRC,iqmax) ;
@@ -1228,7 +1278,6 @@ END{
         system(command)
         command = " mv tmp.zero tmp.n.qp.P=+1.tab"
         system(command)
-
 
         command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' <  tmp.p.qp.P=-1.tab";
         system(command)

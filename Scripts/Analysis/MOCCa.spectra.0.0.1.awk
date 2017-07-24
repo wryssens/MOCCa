@@ -189,33 +189,24 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
     # Depending on the pairingtype and symmetries, correctly order the Spwf info
     #===========================================================================
     
-#    Eind=0
-#    #Spenergy
-#    if(PairingType == "HFB" && basis =="hf")
-#    {
-#        Eind=7
-#        if( TRC != 1.0 || SC != 1.0 ){
-#            Eind = 9
-#        }
-#    }
-#    if(PairingType == "HFB" && basis =="can")
-#    {
-#        Eind=5
-#    }
-#    else if (PairingType=="BCS")
-#    {
-#        Eind=6
-#    }
-#    else if (PairingType =="HF")
-#    {
-#        Eind=5
-#        if( TRC != 1.0 || SC != 1.0 ){
-#            Eind = 6
-#        }
-#    }
+    if(PairingType == "HFB" && basis =="hf")
+    {
+        Eind=8
+    }
+    if(PairingType == "HFB" && basis =="can")
+    {
+        Eind=6
+    }
+    else if (PairingType=="BCS")
+    {
+        Eind=6
+    }
+    else if (PairingType =="HF")
+    {
+        Eind=6
+    }
       
       
-    Eind = 6
     #index of the state
     sorted[1] = $2
         
@@ -236,11 +227,22 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
 
     sorted[5] = $Eind
     # Angular momentum quantum numbers Jx, Jy, Jz and J
-    k = 1
-    while (k < 8){
-        sorted[5+k] = $(Eind + k +2 )
-        k+=1
+    if(basis == "hf") {
+        k = 1
+        while (k < 8){
+                sorted[5+k] = $(Eind + k +2 )
+                k+=1
+        }
     }
+
+    if(basis == "can") {
+        k = 1
+        while (k < 8){
+                sorted[5+k] = $(Eind + k +1 )
+                k+=1
+        }
+    }
+
 
     return 
 }
@@ -397,13 +399,9 @@ BEGIN{
         #-----------------------------------------------------------------------
         # Reading the SPWF info
         if( $2 == "Sp" && (CanBasisflag || HFBasisflag) ){
-            getline;
-            getline;
-            getline;
-            getline;
-            getline;
-            getline;
-            getline;
+            while( $1 != "1"){
+                getline;
+            }
 
             #----------------------------------
             # Neutron states in the HF basis
@@ -424,10 +422,9 @@ BEGIN{
             # Neutron states in the canonical basis
             N = 1
             if(CanBasisflag == 1){
-                getline;
-                getline;
-                getline;
-                getline
+                while( $1 != "1"){
+                    getline; 
+                }
                 while(  NF != 1){
                     i=1 
                     ReadSpwf("can", PairingType, SC, TSC, PC, TRC, line)
@@ -439,17 +436,15 @@ BEGIN{
                     getline;
                 }
             }
-            getline;
-            getline;
-            getline;
-            getline;
-            getline;
-            getline;
 
             #----------------------------------
             # Proton states in the HF basis
             P = 1
             if(HFBasisflag == 1){
+                while( $1 != "1"){
+                    getline; 
+                }
+
                 while( NF != 1){
                     i=1
                     ReadSpwf("hf", PairingType, SC, TSC, PC, TRC, line)
@@ -467,10 +462,10 @@ BEGIN{
             # proton states in the canonical basis
             P = 1
             if(CanBasisflag == 1){
-                getline;
-                getline;
-                getline;
-                getline;
+                while( $1 != "1"){
+                    getline; 
+                }
+
                 while(  NF != 1){
                     i=1 
                     ReadSpwf("can", PairingType, SC, TSC, PC, TRC, line)

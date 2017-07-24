@@ -218,7 +218,6 @@ subroutine Evolve(MaxIterations, iprint)
     enddo
   endif
   
-  call SolvePairing
   !Calculating  The Energy
   call CompEnergy()
   

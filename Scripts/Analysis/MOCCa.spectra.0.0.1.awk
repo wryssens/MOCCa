@@ -77,7 +77,6 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
         # Sort the spwfs according to parity
         command = "awk -f Spwf.sort.awk 'column=5' 'points=" iqmax "' < " file;
         system(command);
-        #exit
         # Moving 
         command = " mv tmp.p spwf.par=+1"
         system(command)
@@ -91,9 +90,6 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
         command = " mv tmp.zero spwf.par=0"
         system(command)
     }
-    
-    # Remove the original file
-    system("rm " file)
     
     if (TRC == 0 && SC == 1) {
         # only distinguish between positive and negative signature when 
@@ -146,15 +142,16 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
     }
     else if ( SC == 0) {
         #No signature sorting
-        if(PC == 1) {
+        if(PC == 1 || AssumeParity == 1) {
             command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' < spwf.par=+1";
             system(command)
-            command = " mv tmp.p spwf.par=+1.sig=0"
+            
+            command = " mv tmp.zero spwf.par=+1.sig=0"
             system(command)
             
             command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' < spwf.par=-1";
             system(command)
-            command = " mv tmp.p spwf.par=-1.sig=0"
+            command = " mv tmp.zero spwf.par=-1.sig=0"
             system(command)
     
             command="rm spwf.par=-1"
@@ -170,6 +167,9 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
             system(command)
         }         
     }
+    
+    # Remove the original file
+    system("rm " file)
     
     # Clearly name all of the files
     # Do this via a temporary script in order to get the correct bash shell. 
@@ -188,7 +188,7 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
 
     # Check whether we are reading old or new files
     legacy = 1
-    if( NF > 13){
+    if( NF > 16){
         legacy = 0
     }
     
@@ -214,15 +214,29 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
         }
     }
     else {
-        if(PairingType == "HFB" && basis =="hf")
-        {
-            Eind=7
-        }
+        if(TRC == 1 && SC == 1){
+            if(PairingType == "HFB" && basis =="hf")
+            {
+                Eind=7
+            }
     
-        if(PairingType == "HFB" && basis =="can")
-        {
-            Eind=5
+            if(PairingType == "HFB" && basis =="can")
+            {
+                Eind=5
+            }
         }
+        else{
+            if(PairingType == "HFB" && basis =="hf")
+            {
+                Eind=9
+            }
+    
+            if(PairingType == "HFB" && basis =="can")
+            {
+                Eind=7
+            }
+        }
+        
     }
     
       

@@ -1659,7 +1659,7 @@ contains
   !-----------------------------------------------------------------------------
   ! HFB calculations
   !           n  <P>  <Rz>       v^2    E_sp  
-  3 format ( i3, 2(1x,f5.2) ,1x,f7.4,1x,f8.3,8(f7.2))
+  3 format ( i3, 2(1x,f5.2) ,1x,f7.4,1x,f8.3,9(f7.2))
 
   real(KIND =dp)          :: PrintOcc
 
@@ -1675,7 +1675,7 @@ contains
   J(6) = WF%JTR(3)
 
   print 3, i , WF%ParityR, WF%SignatureR, PrintOcc,   &
-  &            WF%Energy, WF%RMSRadius,  J, WF%AngQuantum
+  &            WF%Energy, WF%RMSRadius,  J, WF%AngQuantum, WF%xsimplexr
   
   end subroutine PrintCanonical
 

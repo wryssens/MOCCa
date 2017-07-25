@@ -4106,12 +4106,16 @@ subroutine PrintBlocking
     ! the RhoHFB matrix.
     !---------------------------------------------------------------------------
 
-    integer :: NP(2,2), P, it,j
+    integer :: NP(2,2), P, it,j,i
+    integer :: NS(2,2), S
 
     1 format(' Number Parities')
     3 format(' P =+1', 17x, i5,5x,i5)
     2 format(' P =-1', 17x, i5,5x,i5)
     4 format(' P = 0', 17x, i5,5x,i5)
+    
+    5 format(' Sx=+i', 17x, i5,5x,i5)
+    6 format(' Sx=-i', 17x, i5,5x,i5)
 
     NP = 0
     do it=1,Iindex
@@ -4143,6 +4147,26 @@ subroutine PrintBlocking
       print 3, NP(2,:)
     else
       print 4, NP(1,:)
+    endif
+
+    if((.not. SC).and.(.not.PC)) then
+        ! Check for the number parities in the 
+        NS = 0
+        do it=1,Iindex
+            do j = 1,blocksizes(1,it)
+                i = blockindices(j,1,it)
+                if(abs(Occupations(j,P,it)).lt.1d-6)  then
+                    if(CanBasis(i)%xsimplexr > 0) then
+                        NS(2,it) = NS(2,it) + 1 
+                    else
+                        NS(1,it) = NS(1,it) + 1
+                    endif
+                endif
+            enddo
+        enddo
+        print 1
+        print 5, NS(2,:)
+        print 6, NS(1,:)
     endif
 
   end subroutine PrintNumberParities

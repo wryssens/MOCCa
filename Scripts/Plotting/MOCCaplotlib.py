@@ -725,21 +725,22 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
     return (fermispher,shells)
 
 ################################################################################
-def Qps(PREFIX, PAR, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER='', COLOR='' ):
+def Qps(PREFIX, PAR, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER=''):
     
     #Default to current axis
     if AXIS is None:
         AXIS = plt.gca()
 
-    xfname=PREFIX + '.t.qlm.tab'
+    xfname=PREFIX + '.e.tab'
     dataX=np.loadtxt(xfname,skiprows=1)
-    xdata = dataX[:,2]
+    xdata = dataX[:,11]
+    
     
     for P in PAR:
         if (P == '-1'):
-            linestyle = '--'
-        else:
             linestyle = '-'
+        else:
+            linestyle = ' '
 
         fname =PREFIX + '.n.qp.' + 'P=' + P + '.tab'
         efname=PREFIX + '.ef.tab'
@@ -762,8 +763,12 @@ def Qps(PREFIX, PAR, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER='', COLOR=''
             except IndexError:
                 # Just ignore spwfs that are a single point
                 continue
-            xdata   = dataX[indexes,2]
-            print xdata
+            xdata   = dataX[indexes,11]
+            
+            xdata, ydata = zip(*sorted(zip(xdata,ydata)))
+            xdata = np.asarray(xdata)
+            ydata = np.asarray(ydata)
+
             if(PLOTDATA == 1):
                 AXIS.plot(xdata, ydata, c +'x')
             if(INTERPOLATE > 0):
@@ -775,10 +780,11 @@ def Qps(PREFIX, PAR, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER='', COLOR=''
                 ydata = f(interx)
                 xdata = interx
             if(i == 0 and P == PAR[0] ):
-                AXIS.plot(xdata, ydata, COLOR+linestyle, marker=MARKER)
+                AXIS.plot(xdata,  ydata, linestyle=linestyle, marker=MARKER)
+#                AXIS.plot(xdata, -ydata, linestyle=linestyle, marker=MARKER)
             else:
-                AXIS.plot(xdata, ydata, COLOR+linestyle, marker=MARKER)
+                AXIS.plot(xdata,  ydata, linestyle=linestyle, marker=MARKER)
+#                AXIS.plot(xdata, -ydata, linestyle=linestyle, marker=MARKER)
 
-    AXIS.set_xlabel(r'$\beta_{20}$')
     AXIS.set_ylabel(r'$E_{qp}$ (MeV)')
 

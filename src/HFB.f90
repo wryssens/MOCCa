@@ -218,7 +218,8 @@ contains
       allocate(QuasiSignatures(2*HFBSize,Pindex,Iindex))  ; QuasiSignatures= 0.0_dp
     endif
     if(.not.allocated(HFBColumns)) then
-      allocate(HFBColumns(HFBSize,Pindex,Iindex))         ; HFBColumns     = 0
+      allocate(HFBColumns(HFBSize,Pindex,Iindex))     ; HFBColumns     = 0
+      allocate(QuasiSimplex(2*HFBSize,Pindex,Iindex)) ; Quasisimplex = 0.0_dp
     endif
 
     
@@ -2309,7 +2310,6 @@ subroutine DiagonaliseHFBHamiltonian_NoSignature
         allocate(Work(Nmax))              ; Work = 0.0_dp
         allocate(Eigenvectors(Nmax,Nmax)) ; Eigenvectors=0.0_dp
         allocate(Eigenvalues(Nmax))       ; Eigenvalues=0.0_dp
-        allocate(QuasiSimplex(Nmax,Pindex,Iindex)) ; Quasisimplex = 0.0_dp
     endif
 
     U = 0.0_dp
@@ -2336,17 +2336,6 @@ subroutine DiagonaliseHFBHamiltonian_NoSignature
             U(      1:N/2, 1:N ,P,it) = Eigenvectors(      1:N/2,  1:N  )
             V(      1:N/2, 1:N ,P,it) = Eigenvectors(  N/2+1:N  ,  1:N  )
             QuasiEnergies(1:N,P,it)   = EigenValues(1:N)
-            
-            QuasiSimplex(:,P,it) = 0.0
-            do j=1,N
-                do i=1,N/2
-                    Quasisimplex(j,P,it) = Quasisimplex(j,P,it)                &
-                    & +HFBasis(blockindices(i,P,it))%xsimplexr*                &
-                    & (dble(U(i,j,P,it)) - dble(V(i,j,P,it)) ) 
-                    
-                enddo
-            enddo
-            
         enddo
     enddo
 end subroutine DiagonaliseHFBHamiltonian_NoSignature
@@ -2600,6 +2589,17 @@ subroutine InsertionSortQPEnergies
 
             ! If the number-parity is even, no problem.
             if((-1)**NullDimension(P,it) .eq. HFBNumberParity(P,it)) cycle
+           
+
+            QuasiSimplex(:,P,it) = 0.0
+            do j=1,2*blocksizes(P,it)
+                do i=1,blocksizes(P,it)
+                    Quasisimplex(j,P,it) = Quasisimplex(j,P,it)                &
+                    & +HFBasis(blockindices(i,P,it))%xsimplexr*                &
+                    & (dble(U(i,j,P,it))**2 - dble(V(i,j,P,it))**2) 
+                enddo
+            enddo
+
             !-------------------------------------------------------------------
             ! Now for the fixing part: if a block has wrong number parity, we
             ! check for the lowest positive quasiparticle energy of that block
@@ -2607,12 +2607,6 @@ subroutine InsertionSortQPEnergies
             ! Of course we need to check that we excite the qp with the correct
             ! signature.
             !-------------------------------------------------------------------
-            !-------------------------------------------------------------------
-            ! Now check for total signature
-            do i=1,blocksizes(P,it)
-              C = HFBColumns(i,P,it)
-              TotalSignature(P,it)=TotalSignature(P,it)+QuasiSignatures(C,P,it)
-            enddo
 
             do i=1,blocksizes(P,it)
               C = HFBColumns(i,P,it)

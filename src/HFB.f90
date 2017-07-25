@@ -3942,7 +3942,7 @@ subroutine PrintBlocking
      4  format ('  n   <Rz>    E_qp      U    V   u^2-v^2 ',2x,      &
         &       '<Jx>',5x,'<Jy>',5x,'<Jz>', 5x, ' J ', 5x, 'Sx')
      !           n   <Rz>   E_qp
-    99  format ( i3, f7.2 , f10.5,2x, i3,2x, i3, 5(3x, f7.2))
+    99  format ( i3, f7.2 , f10.5,2x, i3,2x, i3, 6(3x, f7.2))
 
     if(.not.allocated(quasisimplex)) then
          allocate(QuasiSimplex(2*HFBSize,Pindex,Iindex)) ; Quasisimplex = 0.0_dp

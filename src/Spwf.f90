@@ -1593,15 +1593,15 @@ contains
   !-----------------------------------------------------------------------------
   ! Hartree-Fock calculations
   !           n   <P>     <Rz>      v^2        E_sp      d2H  
-  1 format (i3,1x,f5.2,1x,f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2,1x,8(f6.2))
+  1 format (i3,1x,f5.2,1x,f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2,1x,9(f6.2))
   !-----------------------------------------------------------------------------
   ! BCS calculations
   !           n   <P>     <Rz>     v^2    Delta    E_sp      d2H  
-  2 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x, f8.3, 1x,e9.2, 8(f7.2))
+  2 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x, f8.3, 1x,e9.2, 9(f7.2))
   !-----------------------------------------------------------------------------
   ! HFB calculations
   !           n      <P>  <Rz>    RhoII   Delta  Partner E d2H 
-  3 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x, f8.3,1x,e9.2,8f7.3)
+  3 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x, f8.3,1x,e9.2,9f7.3)
 
   class(Spwf), intent(in) :: WF
   integer, intent(in)     :: i
@@ -1622,16 +1622,18 @@ contains
 
   select case(PrintType)
     case(1) !HF calculations
-      print 1, i,WF%ParityR,WF%SignatureR, PrintOcc,                   &
-      &          WF%Energy, WF%Dispersion,WF%RMSRadius,J, WF%AngQuantum    
+      print 1, i,WF%ParityR,WF%SignatureR, PrintOcc,                    &
+      &          WF%Energy, WF%Dispersion,WF%RMSRadius,J, WF%AngQuantum &
+      &          , wf%xsimplexr    
     case(2) !BCS calculations
       print 2, i,WF%ParityR,WF%SignatureR,PrintOcc,Real(WF%Delta),     &
-      &          WF%Energy,WF%Dispersion, WF%RMSRadius, J,WF%AngQuantum 
+      &          WF%Energy,WF%Dispersion, WF%RMSRadius, J,WF%AngQuantum&
+      &          , wf%xsimplexr 
         
     case(3) !HFB calculations
       print 3,   i,WF%ParityR,WF%SignatureR, PrintOcc, Real(WF%Delta), &
       &          WF%PairPartner,WF%Energy,WF%Dispersion,WF%RMSRadius,  &
-      &          J, WF%angquantum
+      &          J, WF%angquantum, wf%xsimplexr
     case DEFAULT
         !call stp('Undefined printtype in subroutine PrintHF.')
   end select
@@ -2112,7 +2114,7 @@ contains
 
     ! Expectation of xsimplex
     if(wf%signature.eq.0 .and. wf%parity.eq.0) then
-        wf%xsimplexr = InproductSpinorReal(wf%value, ActionofXsimplex(wf%value))
+        wf%xsimplexr = InproductSpinorImaginary(wf%value, ActionofXsimplex(wf%value))
     else
         wf%xsimplexr = 0
     endif

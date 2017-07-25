@@ -541,17 +541,19 @@ contains
     !---------------------------------------------------------------------------
     ! Hartree-Fock calculations
     1  format (5x,'n',3x,'<P>',3x,'<Rz>',4x,'v^2',5x,'E_sp', 4x,'Var(h)',4x,   &
-    &         'r^2',4x, 'Jx',4x,'JxT',3x,'Jy',4x,'JyT',3x,'Jz',4x,'JzT',3x,'J')
+    &         'r^2',4x, 'Jx',4x,'JxT',3x,'Jy',4x,'JyT',3x,'Jz',4x,'JzT',3x,'J' &
+    &          ,3x, 'Sx')
     !---------------------------------------------------------------------------
     ! BCS calculations
     2  format (6x,'n',4x,'<P>', 4x,'<Rz>',4x,'v^2',4x,'Delta',4x,'E_sp',4x,   &
     &          'Var(h)',3x,'r^2',1x, 'Jx',1x,'JxT',1x, 'Jy',1x,'JyT',1x,'Jz', &
-    &          1x,'JzT',1x,'J')
+    &          1x,'JzT',1x,'J', 3x, 'Sx' )
     !---------------------------------------------------------------------------
     ! HFB calculations
-    3  format (5x,'n',3x,'<P>',3x,'<Rz>',3x,'Rhoii',1x,' Delta ', 1x, ' m ', 4x,&
+    3  format (5x,'n',3x,'<P>',3x,'<Rz>',3x,'Rhoii',2x,' Delta ', 1x, ' m ',3x,&
     &          'E_sp', 4x,'Var(h)',4x,   &
-    &         'r^2',4x, 'Jx',4x,'JxT',3x,'Jy',4x,'JyT',3x,'Jz',4x,'JzT',3x,'J')
+    &         'r^2',4x, 'Jx',4x,'JxT',4x,'Jy',4x,'JyT',4x,'Jz',4x,'JzT',3x,'J',&
+    &         3x, 'Sx' )
     
     ! Headers for Canonical basis
     !---------------------------------------------------------------------------

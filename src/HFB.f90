@@ -4155,7 +4155,7 @@ subroutine PrintBlocking
         do it=1,Iindex
             do j = 1,blocksizes(1,it)
                 i = blockindices(j,1,it)
-                if(abs(Occupations(j,P,it)).lt.1d-6)  then
+                if(abs(Occupations(j,1,it)).lt.1d-6)  then
                     if(CanBasis(i)%xsimplexr > 0) then
                         NS(2,it) = NS(2,it) + 1 
                     else

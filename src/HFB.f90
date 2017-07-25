@@ -219,7 +219,6 @@ contains
     endif
     if(.not.allocated(HFBColumns)) then
       allocate(HFBColumns(HFBSize,Pindex,Iindex))     ; HFBColumns     = 0
-      allocate(QuasiSimplex(2*HFBSize,Pindex,Iindex)) ; Quasisimplex = 0.0_dp
     endif
 
     
@@ -2589,16 +2588,6 @@ subroutine InsertionSortQPEnergies
 
             ! If the number-parity is even, no problem.
             if((-1)**NullDimension(P,it) .eq. HFBNumberParity(P,it)) cycle
-           
-
-            QuasiSimplex(:,P,it) = 0.0
-            do j=1,2*blocksizes(P,it)
-                do i=1,blocksizes(P,it)
-                    Quasisimplex(j,P,it) = Quasisimplex(j,P,it)                &
-                    & +HFBasis(blockindices(i,P,it))%xsimplexr*                &
-                    & (dble(U(i,j,P,it))**2 - dble(V(i,j,P,it))**2) 
-                enddo
-            enddo
 
             !-------------------------------------------------------------------
             ! Now for the fixing part: if a block has wrong number parity, we
@@ -3954,6 +3943,23 @@ subroutine PrintBlocking
         &       '<Jx>',5x,'<Jy>',5x,'<Jz>', 5x, ' J ', 5x, 'Sx')
      !           n   <Rz>   E_qp
     99  format ( i3, f7.2 , f10.5,2x, i3,2x, i3, 5(3x, f7.2))
+
+    if(.not.allocated(quasisimplex)) then
+         allocate(QuasiSimplex(2*HFBSize,Pindex,Iindex)) ; Quasisimplex = 0.0_dp
+    endif
+    
+    do it=1,Iindex
+        do P=1,Pindex
+            QuasiSimplex(:,P,it) = 0.0
+            do j=1,2*blocksizes(P,it)
+                do i=1,blocksizes(P,it)
+                    Quasisimplex(j,P,it) = Quasisimplex(j,P,it)                &
+                    & +HFBasis(blockindices(i,P,it))%xsimplexr*                &
+                    & (dble(U(i,j,P,it))**2 - dble(V(i,j,P,it))**2) 
+                enddo
+            enddo
+        enddo
+    enddo
 
     !align = QPalignment()
     do it=1,Iindex

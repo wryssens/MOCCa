@@ -2309,7 +2309,7 @@ subroutine DiagonaliseHFBHamiltonian_NoSignature
         allocate(Work(Nmax))              ; Work = 0.0_dp
         allocate(Eigenvectors(Nmax,Nmax)) ; Eigenvectors=0.0_dp
         allocate(Eigenvalues(Nmax))       ; Eigenvalues=0.0_dp
-        allocate(QuasiSimplex(Nmax/2,Pindex,Iindex)) ; Quasisimplex = 0.0_dp
+        allocate(QuasiSimplex(Nmax,Pindex,Iindex)) ; Quasisimplex = 0.0_dp
     endif
 
     U = 0.0_dp
@@ -2338,7 +2338,7 @@ subroutine DiagonaliseHFBHamiltonian_NoSignature
             QuasiEnergies(1:N,P,it)   = EigenValues(1:N)
             
             QuasiSimplex(:,P,it) = 0.0
-            do j=1,N/2
+            do j=1,N
                 do i=1,N/2
                     Quasisimplex(j,P,it) = Quasisimplex(j,P,it)                &
                     & +HFBasis(blockindices(i,P,it))%xsimplexr*                &

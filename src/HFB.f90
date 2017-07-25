@@ -104,6 +104,7 @@ module HFB
   ! Also the signatures of the quasiparticles are stored, since they are quite
   ! a bore to get everytime they are needed.
   real(KIND=dp), allocatable :: QuasiEnergies(:,:,:), QuasiSignatures(:,:,:)
+  real(KIND=dp), allocatable :: Quasisimplex(:,:,:)
   !-----------------------------------------------------------------------------
   ! Maximum number of iterations that the Fermi solver can take
   ! Default is -1 so that MOCCa can detect if it has been read.
@@ -2308,6 +2309,7 @@ subroutine DiagonaliseHFBHamiltonian_NoSignature
         allocate(Work(Nmax))              ; Work = 0.0_dp
         allocate(Eigenvectors(Nmax,Nmax)) ; Eigenvectors=0.0_dp
         allocate(Eigenvalues(Nmax))       ; Eigenvalues=0.0_dp
+        allocate(QuasiSimplex(Nmax/2,Pindex,Iindex)) ; Quasisimplex = 0.0_dp
     endif
 
     U = 0.0_dp
@@ -2334,6 +2336,17 @@ subroutine DiagonaliseHFBHamiltonian_NoSignature
             U(      1:N/2, 1:N ,P,it) = Eigenvectors(      1:N/2,  1:N  )
             V(      1:N/2, 1:N ,P,it) = Eigenvectors(  N/2+1:N  ,  1:N  )
             QuasiEnergies(1:N,P,it)   = EigenValues(1:N)
+            
+            QuasiSimplex(:,P,it) = 0.0
+            do j=1,N/2
+                do i=1,N/2
+                    Quasisimplex(j,P,it) = Quasisimplex(j,P,it)                &
+                    & +HFBasis(blockindices(i,P,it))%xsimplexr*                &
+                    & (dble(U(i,j,P,it)) - dble(V(i,j,P,it)) ) 
+                    
+                enddo
+            enddo
+            
         enddo
     enddo
 end subroutine DiagonaliseHFBHamiltonian_NoSignature
@@ -2894,7 +2907,7 @@ subroutine InsertionSortQPEnergies
               N             = blocksizes(P,it)
               Temp(1:N,1:N) = DBLE(RhoHFB(1:N,1:N,P,it))
 
-              !-------------------------------------------------------------------
+              !-----------------------------------------------------------------
               ! Since our matrices are not split into signature blocks, and in
               ! general the eigenvalues of the density matrix are degenerate,
               ! we need to ensure that states of different signature do not get
@@ -2911,6 +2924,7 @@ subroutine InsertionSortQPEnergies
               ! diagonal elements, thus putting the negative signature
               ! eigenvalues in the (-2,-1) range, well separated from the
               ! positive signature eigenvalues in the (0,1) range.
+              !-----------------------------------------------------------------
               if(SC) then
                 do i=1,N
                   ii  = blockindices(i,P,it)
@@ -2921,7 +2935,8 @@ subroutine InsertionSortQPEnergies
                 enddo
               endif
 
-              call diagoncr8(temp,Nmax,N,Eigenvectors,Eigenvalues, Work, 'DiagRho   ',ifail)
+              call diagoncr8(temp,Nmax,N,Eigenvectors,Eigenvalues, Work,       &
+              &                                              'DiagRho   ',ifail)
 
               CanTransfo (1:N,1:N,P,it) = Eigenvectors(1:N,1:N)
               Occupations(1:N,P,it)     = Eigenvalues(1:N)
@@ -3101,12 +3116,12 @@ subroutine InsertionSortQPEnergies
         Energy = 0.0_dp
         !-----------------------------------------------------------------------
         ! Detect if the canonical basis level is just a level in the HF basis
-        mx  = abs(CanTransfo(loc(1),C,P,it))
-        if(abs(mx - 1).lt.HFBNumcut) then
-            CanDeriv(index)           = mod(blockindices(loc(1),P,it)-1,nwt)+1
-        else
-            CanDeriv(index)           = 0
-        endif
+!        mx  = abs(CanTransfo(loc(1),C,P,it))
+!        if(abs(mx - 1).lt.HFBNumcut) then
+!            CanDeriv(index)           = mod(blockindices(loc(1),P,it)-1,nwt)+1
+!        else
+!            CanDeriv(index)           = 0
+!        endif
         !-----------------------------------------------------------------------
         ! Make the transformation
         do j=1,blocksizes(P,it)
@@ -3119,9 +3134,9 @@ subroutine InsertionSortQPEnergies
           if(CanDeriv(index).ne.0) then
             CanTransfo(j,C,P,it) = abs(CanTransfo(j,C,P,it))
           endif
-          !----------------------------------------------------------------------
+          !---------------------------------------------------------------------
           !Transformation
-          !----------------------------------------------------------------------
+          !---------------------------------------------------------------------
           ! Note that the time-reversing here is kinda wasting cpu cycles
           ! since we apply it on the entire wavefunction. However, I prefer
           ! this routine to act on wavefunctions, not the (more efficient)
@@ -3934,15 +3949,15 @@ subroutine PrintBlocking
     real(KIND=dp)       :: angquantum
 
 
-    10  format (80 ('_'))
-    20  format (80 ('-'))
+    10  format (90 ('_'))
+    20  format (90 ('-'))
      1  format ( a7, ' P=', i2 ' quasiparticles')
-     2  format ('  n   <Rz>   E_qp       U    V   u^2-v^2 ',3x,      &
-        &       '<Jx|T>',4x,'<Jy|T>',6x,'<Jz>', 5x, ' J ')
-     3  format ('  n   <Rz>   E_qp       U    V   u^2-v^2 ',2x,      &
-        &       '<Jx>',5x,'<Jy|T>',3x,'<Jz>', 5x, ' J ')
-     4  format ('  n   <Rz>   E_qp       U    V   u^2-v^2 ',2x,      &
-        &       '<Jx>',5x,'<Jy>',5x,'<Jz>', 5x, ' J ')
+     2  format ('  n   <Rz>    E_qp      U    V   u^2-v^2 ',3x,      &
+        &       '<Jx|T>',4x,'<Jy|T>',6x,'<Jz>', 5x, ' J ',  5x, 'Sx')
+     3  format ('  n   <Rz>    E_qp      U    V   u^2-v^2 ',4x,      &
+        &       '<Jx>',5x,'<Jy|T>',5x,'<Jz>', 5x, ' J ',  5x, 'Sx')
+     4  format ('  n   <Rz>    E_qp      U    V   u^2-v^2 ',2x,      &
+        &       '<Jx>',5x,'<Jy>',5x,'<Jz>', 5x, ' J ', 5x, 'Sx')
      !           n   <Rz>   E_qp
     99  format ( i3, f7.2 , f10.5,2x, i3,2x, i3, 5(3x, f7.2))
 
@@ -3992,8 +4007,9 @@ subroutine PrintBlocking
             &-0.5_dp*(1.0_dp-sqrt( 1.0_dp + 4.0_dp*sum(align(4:6,i,P,it))))
 
             print 99, i, QuasiSignatures(i,P,it), QuasiEnergies(i,P,it)    &
-            &      ,blockindices(domU(1),P,it), blockindices(domV(1),P,it)&
-            &      ,u2mv2, 0.0d0, 0.0d0, align(3,i,P,it), angquantum
+            &      ,blockindices(domU(1),P,it), blockindices(domV(1),P,it) &
+            &      ,u2mv2, 0.0d0, 0.0d0, align(3,i,P,it), angquantum,      &
+            &      quasisimplex(i,P,it)
           enddo
         enddo
     enddo

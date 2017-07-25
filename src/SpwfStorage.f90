@@ -557,9 +557,9 @@ contains
     
     ! Headers for Canonical basis
     !---------------------------------------------------------------------------
-    4  format (5x,'n',3x,'<P>',3x,'<Rz>',4x,'v^2', 4x,'E_sp', 4x,  &
-    &         'r^2',4x, 'Jx',4x,'JxT',3x,'Jy',4x,'JyT',3x,'Jz',4x,'JzT',3x,'J')
-    
+    4  format (5x,'n',3x,'<P>',3x,'<Rz>',4x,'v^2', 5x,'E_sp', 5x,  &
+    &         'r^2',4x, 'Jx',4x,'JxT',5x,'Jy',4x,'JyT',5x,'Jz',4x,'JzT',4x,'J',&
+    &         6x,'Sx')
     100 format (97('_'))
 
     print 10

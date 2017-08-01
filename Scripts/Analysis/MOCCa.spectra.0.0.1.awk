@@ -236,10 +236,7 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
                 Eind=7
             }
         }
-        
     }
-    
-      
       
     #index of the state
     sorted[1] = $2
@@ -266,18 +263,22 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
     if(basis == "hf") {
         k = 1
         if(legacy == 0){
-            while (k < 8){
-                sorted[5+k] = $(Eind + k +2)
-                k+=1
-            }
+#            while (k < 8){
+#                sorted[5+k] = $(Eind + k +2)
+#                k+=1
+#            }
+            sorted[5+1] = $(Eind + 3)
+            sorted[5+2] = $(Eind + 5)
+            sorted[5+3] = $(Eind + 7)
+            sorted[5+4] = $(Eind + 9)
+#            sorted[5+5] = $(Eind + 1)
         }
         else{
-            while (k < 8){
+            while (k < 5){
                 sorted[5+k] = $(Eind + k +1)
                 k+=1
             }
         }
-
     }
     if(basis == "can") {
         k = 1
@@ -288,7 +289,7 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
             }
         }
         else{
-            while (k < 8){
+            while (k < 5){
                 sorted[5+k] = $(Eind + k)
                 k+=1
             }

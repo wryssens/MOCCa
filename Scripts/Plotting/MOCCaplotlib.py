@@ -603,8 +603,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
         AXIS.set_ylim((ymin-FERMIWINDOW, yplus + FERMIWINDOW))
 
     colors   = ['b', 'r', 'c', 'g', 'k', 'm', 'y', 'salmon', 'y' ]  
-
-
+    
     for P in PAR:
         shells[P] = {}
         if (P == '-1'):
@@ -683,7 +682,11 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                 try:
                     tokens = tokenizer(fname)
                     tokens.next()
-                    spwfs = [np.loadtxt(A) for A in tokens]
+                    try:
+                        spwfs = [np.loadtxt(A) for A in tokens]
+                    except ValueError:
+                        print tokens.next()
+                        exit()
                 except IOError:
                     break
                 for i in range(len(spwfs)):
@@ -701,7 +704,6 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                         # Just ignore spwfs that are a single point
                         continue
                     xdata   = dataX[indexes,xcolumn]
-                    
                     if(PLOTDATA == 1):
                         AXIS.plot(xdata, ydata, c +'x')
                     if(INTERPOLATE > 0):

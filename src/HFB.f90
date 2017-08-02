@@ -3938,7 +3938,7 @@ subroutine PrintBlocking
      2  format ('  n   <Rz>    E_qp      U    V   u^2-v^2 ',3x,      &
         &       '<Jx|T>',4x,'<Jy|T>',6x,'<Jz>', 5x, ' J ',  5x, 'Sx')
      3  format ('  n   <Rz>    E_qp      U    V   u^2-v^2 ',4x,      &
-        &       '<Jx>',5x,'<Jy|T>',5x,'<Jz>', 5x, ' J ',  5x, 'Sx')
+        &       '<Jx>',5x,'<Jy|T>',5x,'<Jz>', 7x, ' J ',  8x, 'Sx')
      4  format ('  n   <Rz>    E_qp      U    V   u^2-v^2 ',2x,      &
         &       '<Jx>',5x,'<Jy>',5x,'<Jz>', 5x, ' J ', 5x, 'Sx')
      !           n   <Rz>   E_qp

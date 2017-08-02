@@ -2113,7 +2113,7 @@ contains
     endif
 
     ! Expectation of xsimplex
-    if(wf%signature.eq.0 .and. wf%parity.eq.0) then
+    if(wf%signature.eq.0) then
         wf%xsimplexr = InproductSpinorImaginary(wf%value, ActionofXsimplex(wf%value))
     else
         wf%xsimplexr = 0

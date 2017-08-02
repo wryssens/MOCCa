@@ -727,7 +727,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
     return (fermispher,shells)
 
 ################################################################################
-def Qps(PREFIX, PAR, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER=''):
+def Qps(PREFIX, PAR, ISO, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER=''):
     
     #Default to current axis
     if AXIS is None:
@@ -740,22 +740,22 @@ def Qps(PREFIX, PAR, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER=''):
     
     for P in PAR:
         if (P == '-1'):
-            linestyle = '-'
+            linestyle = '--'
         else:
-            linestyle = ' '
+            linestyle = '-'
 
-        fname =PREFIX + '.n.qp.' + 'P=' + P + '.tab'
+        fname =PREFIX + '.%s.qp.'%ISO + 'P=' + P + '.tab'
         efname=PREFIX + '.ef.tab'
-
+       
         l2data = np.loadtxt(efname, skiprows=1)
         l2     = l2data[:,3]
 
-        try:
-            tokens = tokenizer(fname)
-            tokens.next()
-            spwfs = [np.loadtxt(A) for A in tokens]
-        except IndexError:
-            continue
+#        try:
+        tokens = tokenizer(fname)
+        tokens.next()
+        spwfs = [np.loadtxt(A) for A in tokens]
+#        except IndexError:
+#            continue
 
         for i in range(len(spwfs)):
             spwf = spwfs[i]
@@ -783,10 +783,10 @@ def Qps(PREFIX, PAR, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER=''):
                 xdata = interx
             if(i == 0 and P == PAR[0] ):
                 AXIS.plot(xdata,  ydata, linestyle=linestyle, marker=MARKER)
-#                AXIS.plot(xdata, -ydata, linestyle=linestyle, marker=MARKER)
+                AXIS.plot(xdata, -ydata, linestyle=linestyle, marker=MARKER)
             else:
                 AXIS.plot(xdata,  ydata, linestyle=linestyle, marker=MARKER)
-#                AXIS.plot(xdata, -ydata, linestyle=linestyle, marker=MARKER)
+                AXIS.plot(xdata, -ydata, linestyle=linestyle, marker=MARKER)
 
     AXIS.set_ylabel(r'$E_{qp}$ (MeV)')
 

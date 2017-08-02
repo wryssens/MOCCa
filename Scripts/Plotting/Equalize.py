@@ -23,10 +23,6 @@ def copyassignments( fexample, ftarget ):
 #            tasp[column] = exsp[column]
             if(tasp[column] != exsp[column]):
                 tarline=tarline.replace(' '+tasp[column]+' ', ' '+exsp[column]+' ',1)
-                
-#        for i in range(len(tasp)):
-#            out.write(tasp[i] + ' ') 
-#        out.write('\n')
         
         out.write(tarline)
         

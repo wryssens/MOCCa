@@ -298,6 +298,25 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
     return 
 }
 
+
+function qsort(A, left, right,   i, last) {
+	if (left >= right)
+		return
+	swap(A, left, left+int((right-left+1)*rand()))
+	last = left
+	for (i = left+1; i <= right; i++)
+		if (A[i] < A[left])
+			swap(A, ++last, i)
+	swap(A, left, last)
+	qsort(A, left, last-1)
+	qsort(A, last+1, right)
+}
+
+function swap(A, i, j,   t) {
+	t = A[i]; A[i] = A[j]; A[j] = t
+}
+
+
 BEGIN{
         iq = 0
         flag[multipole]=0
@@ -311,7 +330,6 @@ BEGIN{
         QPBasisflag    =0
         #Only detect the first mention of HF(B)
         pairingtypeflag=1
-        
 }
 
 {
@@ -563,11 +581,9 @@ BEGIN{
             # Neutron qps
             N = 1
             if(QPBasisflag == 1){
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
+                while( $1 != "1"){
+                    getline;
+                }
                 i = 1
                 # FIRST BLOCK
                 while(  NF != 1){
@@ -575,12 +591,11 @@ BEGIN{
                     i = i+1                    
                     getline;
                 }
-                if ( Pc == 1) {
-                    getline;
-                    getline;
-                    getline;
+                if ( PC == 1) {
+                    while( $1 != "1"){
+                     getline;
+                    }
                     i = 1
-                    getline;
                     # SECOND BLOCK
                     while(  NF != 1){
                         neutronqp[iq,i,+1]=$3 
@@ -588,12 +603,9 @@ BEGIN{
                         getline;
                     }
                 }
-                
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
+                while( $1 != "1"){
+                    getline;
+                }
                 i = 1
                 #THIRD BLOCK
                 while(  NF != 1){
@@ -601,12 +613,11 @@ BEGIN{
                     i = i+1                    
                     getline;
                 }
-                if(PC==1) {
-                    getline;
-                    getline;
-                    getline;
-                    getline;
-                    
+                if(PC == 1) {
+                    while( $1 != "1"){
+                        getline;
+                    }
+                    i = 1
                     #FOURTH BLOCK
                     while(  NF != 1){
                         protonqp[iq,i,+1]=$3 
@@ -1149,6 +1160,8 @@ END{
             }
             #ind = asort(energy)
 
+            qsort(energy, 1, N)
+
             N = 1;
             while ( neutronqp[iq,N,-1] != "" ){
                     printf("%4i %4i %4i", N, iq, 0) >> "tmp.n.qp.P=-1.tab"
@@ -1165,20 +1178,20 @@ END{
 
         while ( iq < iqmax +1  ) {
 
-            N = 1;
-            while ( neutronqp[iq,N,-1] != "" ){
-                energy[N] = neutronqp[iq,N,-1] 
-                N+=1
-            }
-            #ind = asort(energy)
-
+            
             N = 1;
             while ( neutronqp[iq,N,+1] != "" ){
-                    printf("%4i %4i %4i", N, iq, 0) >> "tmp.n.qp.P=+1.tab"
-                    printf("%10.3f \n", energy[N])  >> "tmp.n.qp.P=+1.tab"
+                energy[N] = neutronqp[iq,N,+1] 
+                N+=1
+            }
+            qsort(energy, 1, N)
+            
+            N = 1;
+            while ( neutronqp[iq,N,+1] != "" ){
+                    printf("%4i %4i %4i %10.3f \n", N, iq, 0,energy[N]) >> "tmp.n.qp.P=+1.tab"
                     N+=1
             }
-            printf("* \n") >> "tmp.n.qp.P=+1.tab"                
+            printf("* \n") >> "tmp.n.qp.P=+1.tab" 
             iq+=1
         }        
         close("tmp.n.qp.P=+1.tab")
@@ -1240,7 +1253,7 @@ END{
                 N+=1
             }
             #ind = asort(energy)
-
+            qsort(energy, 1, N)
             N = 1;
             while ( protonqp[iq,N,-1] != "" ){
                     printf("%4i %4i %4i", N, iq, 0) >> "tmp.p.qp.P=-1.tab"
@@ -1256,14 +1269,13 @@ END{
         printf(qpheader) > "tmp.p.qp.P=+1.tab"
 
         while ( iq < iqmax +1  ) {
-
             N = 1;
-            while ( protonqp[iq,N,-1] != "" ){
-                energy[N] = protonqp[iq,N,-1] 
+            while ( protonqp[iq,N,+1] != "" ){
+                energy[N] = protonqp[iq,N,+1] 
                 N+=1
             }
             #ind = asort(energy)
-
+            qsort(energy, 1, N)
             N = 1;
             while ( protonqp[iq,N,+1] != "" ){
                     printf("%4i %4i %4i", N, iq, 0) >> "tmp.p.qp.P=+1.tab"

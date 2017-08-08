@@ -206,7 +206,7 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
         }
         else if (PairingType=="BCS")
         {
-            Eind=6
+            Eind=7
         }
         else if (PairingType =="HF")
         {

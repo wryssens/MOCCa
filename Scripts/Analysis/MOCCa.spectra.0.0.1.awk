@@ -597,8 +597,15 @@ BEGIN{
                     getline;
                 }
                 if ( PC == 1) {
-                    while( $1 != "1"){
-                     getline;
+                    if( TRC == 0) {
+                        while( $1 != "1"){
+                            getline;
+                        }
+                        }
+                    if( TRC == 1){
+                        while( $1 != "2"){
+                            getline;
+                        }            
                     }
                     i = 1
                     # SECOND BLOCK
@@ -617,7 +624,8 @@ BEGIN{
                 while( $1 != "2"){
                     getline;
                 }            
-                }                i = 1
+                }
+                i = 1
                 #THIRD BLOCK
                 while(  NF != 1){
                     protonqp[iq,i,-1]=$3 
@@ -625,8 +633,15 @@ BEGIN{
                     getline;
                 }
                 if(PC == 1) {
-                    while( $1 != "1"){
-                        getline;
+                    if( TRC == 0) {
+                        while( $1 != "1"){
+                            getline;
+                        }
+                        }
+                    if( TRC == 1){
+                        while( $1 != "2"){
+                            getline;
+                        }            
                     }
                     i = 1
                     #FOURTH BLOCK

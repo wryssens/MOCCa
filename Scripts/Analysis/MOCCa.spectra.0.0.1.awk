@@ -32,7 +32,7 @@
 #-------------------------------------------------------------------------------
 # This script generates the following files (see headers for detailed content) #
 #                                                                              #
-# - PREFIX.e.tab      total energies and energy of tensor terms                #
+# - PREFIX.e.tab      total energies                 #
 # - PREFIX.ef.tab     Fermi energies and quantities related to the LN scheme   #
 # - PREFIX.[iso].qlm.tab    Multipole moments <Q_lm>  and related \beta_lm for #
 #                           neutrons (n), protons(p) and total(t).             #
@@ -42,6 +42,7 @@
 #                           numbers, mesh parameters, force name               #
 # - PREFIX.block.tab        Details about the blocking, currently only         #
 #                           alirotation angle.                                 #
+# - PREFIX.edecomp.tab      More detailed decomposition of energy contributions#
 # - PREFIX.[base].[iso].par=[par].sig=[sig].tab                                #   
 #                                                                              #
 #  where                                                                       #
@@ -448,7 +449,7 @@ BEGIN{
             if(PairingType == "HFB") {
                 HFBasisflag =1
                 CanBasisflag=1
-                QPBasisflag =1
+                QPBasisflag =0
             }
             angmomflag=1
             
@@ -499,14 +500,14 @@ BEGIN{
             N = 1
             if(CanBasisflag == 1){
                 if( TRC == 0) {
-                while( $1 != "1"){
-                    getline;
-                }
+                    while( $1 != "1"){
+                        getline;
+                    }
                 }
                 if( TRC == 1){
-                while( $1 != "2"){
-                    getline;
-                }            
+                    while( $1 != "2"){
+                        getline;
+                    }            
                 }
                 while(  NF != 1){
                     i=1 
@@ -525,14 +526,14 @@ BEGIN{
             P = 1
             if(HFBasisflag == 1){
                 if( TRC == 0) {
-                while( $1 != "1"){
-                    getline;
-                }
+                    while( $1 != "1"){
+                        getline;
+                    }
                 }
                 if( TRC == 1){
-                while( $1 != "2"){
-                    getline;
-                }            
+                    while( $1 != "2"){
+                        getline;
+                    }            
                 }
 
                 while( NF != 1){
@@ -553,14 +554,14 @@ BEGIN{
             P = 1
             if(CanBasisflag == 1){
                 if( TRC == 0) {
-                while( $1 != "1"){
-                    getline;
-                }
+                    while( $1 != "1"){
+                        getline;
+                    }
                 }
                 if( TRC == 1){
-                while( $1 != "2"){
-                    getline;
-                }            
+                    while( $1 != "2"){
+                        getline;
+                    }            
                 }
 
                 while(  NF != 1){
@@ -902,30 +903,26 @@ BEGIN{
                 
         if ( energyflag && $2 == "Lagrange")  {
                 # Get all the things related to the energy
-                getline; 
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
-                getline;
+
+                while( $1 != "rho" && $2 != "d"){
+                    getline;
+                }
+                            
+                            
+                SpinOrbit[iq,1] = $5
+                SpinOrbit[iq,3] = $9
+                SpinOrbit[iq,5] = $11    
                 
+                while( $1 != "JmnJmn_t"){
+                    getline;
+                }
+                Tensor [iq,1] = $3
+                Tensor [iq,2] = $6
+                Tensor [iq,3] = $8
+                
+                while( $1 != "Kinetic"){
+                    getline;
+                }
                 Kinetic[iq,1] = $3
                 Kinetic[iq,2] = $6
                 Kinetic[iq,3] = $8
@@ -1002,6 +999,17 @@ END{
         iq += 1;
     }
     close("tmp.e.tab");
+    #---------------------------------------------------------------------------
+    # Edecomp
+    print "!       E(func)     E_FD     E(sp)     Routhian       eLN(n)     eLN(p)   " > "tmp.edecomp.tab";
+    iq=1;
+    while ( iq < iqmax + 1 ) {
+        enoln = Energy[iq,1] - ELN[iq,3];
+        printf("%3.0f %17.10f %17.10f %17.10f   %10.3f %10.3f   %10.6f %8.3f %8.3f %8.3f %12.6f %12.5f %12.6f %12.5f %12.6f %12.5f \n",
+           iq,Energy[iq,1],Energy[iq,2],Energy[iq,3],Energy[iq,4],ELN[iq,1],ELN[iq,2], Kinetic[iq,1], Kinetic[iq,2],Kinetic[iq,3], SpinOrbit[iq,1], SpinOrbit[iq,2], SpinOrbit[iq,3], Tensor[iq,1], Tensor[iq,2], Tensor[iq,3]) >> "tmp.e.tab"; 
+        iq += 1;
+    }
+    close("tmp.edecomp.tab");
     #---------------------------------------------------------------------------
     # Calculation details
     iq=1;

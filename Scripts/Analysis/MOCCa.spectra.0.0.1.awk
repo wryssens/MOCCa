@@ -907,31 +907,35 @@ BEGIN{
                 while( $1 != "rho" && $2 != "d"){
                     getline;
                 }
-                            
+                getline;
+                while( $1 != "rho" && $2 != "d"){
+                    getline;
+                }
                             
                 SpinOrbit[iq,1] = $5
-                SpinOrbit[iq,3] = $9
-                SpinOrbit[iq,5] = $11    
+                SpinOrbit[iq,2] = $10
+                SpinOrbit[iq,3] = SpinOrbit[iq,1] + SpinOrbit[iq,2]   
                 
                 while( $1 != "JmnJmn_t"){
                     getline;
                 }
                 Tensor [iq,1] = $3
                 Tensor [iq,2] = $6
-                Tensor [iq,3] = $8
+                Tensor [iq,3] = Tensor [iq,1] + Tensor [iq,2]
                 
                 while( $1 != "Kinetic"){
                     getline;
                 }
+                getline;
+                
                 Kinetic[iq,1] = $3
                 Kinetic[iq,2] = $6
                 Kinetic[iq,3] = $8
-                
                 getline;
                 getline;
                 
                 if( PairingType != "HF") {
-	   	    Pairing[iq,1] = $3
+	   	            Pairing[iq,1] = $3
                     Pairing[iq,2] = $6
                     Pairing[iq,3] = $8
                     getline;                    
@@ -947,9 +951,9 @@ BEGIN{
                         getline ;
                 }
                 else{
-                        if( PairingType != "HF" ) {
-			 getline ;
-			}
+                    if( PairingType != "HF" ) {
+			            getline ;
+			        }
                         ELN[iq,1] = 0.0
                         ELN[iq,2] = 0.0
                         ELN[iq,3] = 0.0
@@ -969,9 +973,9 @@ BEGIN{
                 getline;
                 
                 Energy[iq,1] = $2 #Lagrange energy
-		getline;
+                getline;
                 Energy[iq,2] = $2 #Finite difference energy
-		getline;
+		        getline;
                 Energy[iq,3] = $3 #SPWF energy
                 getline;
                 getline;
@@ -1001,12 +1005,12 @@ END{
     close("tmp.e.tab");
     #---------------------------------------------------------------------------
     # Edecomp
-    print "!       E(func)     E_FD     E(sp)     Routhian       eLN(n)     eLN(p)   " > "tmp.edecomp.tab";
+    print "!       E(func)     E_FD     E(sp)     Routhian       eLN(n)     eLN(p)   Kinetic(n) Kinetic(p) Kinetic(t) SpinOrbit(n) SpinOrbit(p) SpinOrbit(t) Tensor(n) Tensor(p) Tensor(t)" > "tmp.edecomp.tab";
     iq=1;
     while ( iq < iqmax + 1 ) {
         enoln = Energy[iq,1] - ELN[iq,3];
         printf("%3.0f %17.10f %17.10f %17.10f   %10.3f %10.3f   %10.6f %8.3f %8.3f %8.3f %12.6f %12.5f %12.6f %12.5f %12.6f %12.5f \n",
-           iq,Energy[iq,1],Energy[iq,2],Energy[iq,3],Energy[iq,4],ELN[iq,1],ELN[iq,2], Kinetic[iq,1], Kinetic[iq,2],Kinetic[iq,3], SpinOrbit[iq,1], SpinOrbit[iq,2], SpinOrbit[iq,3], Tensor[iq,1], Tensor[iq,2], Tensor[iq,3]) >> "tmp.e.tab"; 
+           iq,Energy[iq,1],Energy[iq,2],Energy[iq,3],Energy[iq,4],ELN[iq,1],ELN[iq,2], Kinetic[iq,1], Kinetic[iq,2],Kinetic[iq,3], SpinOrbit[iq,1], SpinOrbit[iq,2], SpinOrbit[iq,3], Tensor[iq,1], Tensor[iq,2], Tensor[iq,3]) >> "tmp.edecomp.tab"; 
         iq += 1;
     }
     close("tmp.edecomp.tab");

@@ -577,12 +577,17 @@ BEGIN{
             }
             CanBasisflag = 0
 
-            #----------------------------------
-            # Neutron qps
             N = 1
             if(QPBasisflag == 1){
+                if( TRC == 0) {
                 while( $1 != "1"){
                     getline;
+                }
+                }
+                if( TRC == 1){
+                while( $1 != "2"){
+                    getline;
+                }            
                 }
                 i = 1
                 # FIRST BLOCK
@@ -603,10 +608,16 @@ BEGIN{
                         getline;
                     }
                 }
+                if( TRC == 0) {
                 while( $1 != "1"){
                     getline;
                 }
-                i = 1
+                }
+                if( TRC == 1){
+                while( $1 != "2"){
+                    getline;
+                }            
+                }                i = 1
                 #THIRD BLOCK
                 while(  NF != 1){
                     protonqp[iq,i,-1]=$3 

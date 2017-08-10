@@ -1060,10 +1060,8 @@ contains
     5 format (' RMS radius',  3(1x,f15.4))
     6 format ('Pulling to ',  33x, f15.4)
     7 format ('Constrained Difference: ', 3x, 2(1x,f15.4))
-    8 format ('Pulling to ', 33x,  f15.4)
-   81 format ('Multiplier ', 33x,  f15.4)
-    9 format ('Pulling to ', 2(1x,f15.4))
-   91 format ('Multiplier ', 2(1x,f15.4))
+    8 format ('Mult_{',i2,i2,'}',   33x,  f15.4)
+    9 format ('Mult_{',i2,i2,'}',   2(1x,f15.4))
 
   select case(ToPrint%l)
 
@@ -1107,11 +1105,14 @@ contains
           print 3, ToPrint%TrueConstraint
           if(ToPrint%ConstraintType.eq.1) then
             print 6, ToPrint%Constraint
+            print 8, ToPrint%l, Toprint%m, 2*ToPrint%Intensity(1)* & 
+            &        sum(ToPrint%Value - ToPrint%Constraint)
+          else
+            print 8, ToPrint%l, Toprint%m, ToPrint%Intensity(1)
           endif
-          print 8, ToPrint%Intensity(1)
         case(2)
           print 2, ToPrint%TrueConstraint
-          print 9, ToPrint%Intensity
+          print 9, ToPrint%l, Toprint%m,ToPrint%Intensity
         case(3)
           print 7, ToPrint%TrueConstraint, ToPrint%Value(1) - ToPrint%Value(2)
         end select
@@ -2030,6 +2031,14 @@ subroutine PrintAllMoments()
     real(KIND=dp)                     :: O2(2), Old(2)
     integer                           :: it
 
+    1 format ('-----Readjusting Q_{', 2i2, '} ------')
+    2 format (' New value     = ', f15.6)
+   21 format (' Intermediate  = ', f15.6)
+    3 format (' Previous      = ', f15.6)
+   31 format (' Squared       = ', f15.6)
+    4 format (' Lambda(i)     = ', f15.6)
+    5 format (' Lambda(i+1)   = ', f15.6)
+
     select case(ToReadjust%ConstraintType)
 
     case (0)
@@ -2045,15 +2054,8 @@ subroutine PrintAllMoments()
           ToReadjust%Constraint(1) = ToReadjust%Constraint(1)-ReadjustSlowDown*&
           &                 (sum(ToReadjust%Value)-ToReadjust%TrueConstraint(1))
         else
-          print *, ToReadjust%Constraint(1)
-          print *, sum(CalculateTotalQl(ToReadjust%l))
-          print *, ToReadjust%TrueConstraint(1)
-          print *
-
           ToReadjust%Constraint(1) = ToReadjust%Constraint(1)-ReadjustSlowDown*&
           &   (sum(CalculateTotalQl(ToReadjust%l))-ToReadjust%TrueConstraint(1))
-
-
         endif
       case(2)
         !Proton and neutron separately
@@ -2075,9 +2077,20 @@ subroutine PrintAllMoments()
       ! Proton + neutron value
       if(.not. ToReadjust%total) then
         O2 = sum(ToReadjust%Squared)
+        
+        write (*, 1), ToReadjust%l, ToReadjust%m
+        write (*, 2), sum(ToReadjust%Value)
+        write (*,21), sum(ToReadjust%OldValue(:,1))
+        write (*, 3), sum(ToReadjust%OldValue(:,2))
+        write (*,31), sum(O2)
+        write (*, 4), ToReadjust%Intensity
+        
         ToReadjust%Intensity = ToReadjust%Intensity +                          &
-        & epsilon *  (sum(ToReadjust%Value) - sum(ToReadjust%OldValue(:,1))) / &
+        & epsilon *  (sum(ToReadjust%Value) - sum(ToReadjust%OldValue(:,1)))/  &
         & (O2(1) + d0)
+        ! sum(ToReadjust%OldValue(:,1))
+        write (*, 5), ToReadjust%Intensity
+        print *
       else
         O2 = sum(ToReadjust%Squared) * sum(ToReadjust%Value)/sum(CalculateTotalQl(Toreadjust%l))
         Old = CalculateTotalQl(Toreadjust%l,1)
@@ -2737,10 +2750,7 @@ subroutine PrintAllMoments()
                 New%Constraint     = Current%Constraint
                 New%TrueConstraint = Current%TrueConstraint
                 New%Total          = Total
-                print *, 'Setting intensity', New%l, New%m
                 New%Intensity      = Current%Intensity
-                print *, New%Intensity, Current%Intensity
-                print *, Intensity
                 if(.not.associated(New%Next)) exit
                 New => New%Next
               enddo

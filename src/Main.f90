@@ -314,7 +314,7 @@ subroutine Evolve(MaxIterations, iprint)
     call TurnOffConstraints(iteration)
 
     !Calculating the expected values of all relevant Moments
-    call CalculateAllMoments(0)
+    call CalculateAllMoments(1)
 
     !Readjust the constraints
     call ReadjustAllMoments(1)

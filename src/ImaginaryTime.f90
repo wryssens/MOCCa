@@ -112,7 +112,7 @@ contains
     ! constrained.
     do while(associated(Current%Next))
       Current => Current%Next
-      if(Current%ConstraintType.ne.2) cycle
+      if(Current%ConstraintType.lt.2) cycle
 
       !Ordinary constraints
       select case(Current%Isoswitch)

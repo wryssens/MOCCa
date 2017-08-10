@@ -66,8 +66,9 @@ module Moments
 !
 !  This is encoded for every multipole moment separately into Constrainttype
 !   (0) No constraint
-!   (1) Predictor-Corrector
-!   (2) Augmented Lagrangian
+!   (1) Augmented Lagrangian
+!   (2) Predictor-Corrector
+!   (3) Alternating 
 !
 ! Every constraint can be on different quantities based on its isoswitch
 !   (1) proton + neutron value
@@ -138,6 +139,7 @@ implicit none
       ! 0 - unconstrained
       ! 1 - Augmented Lagrangian
       ! 2 - Predictor-Corrector
+      ! 3 - Alternating
       !-------------------------------------------------------------------------
       integer        :: ConstraintType
       !-------------------------------------------------------------------------
@@ -923,6 +925,8 @@ contains
             ConType='Augmented Lagrangian'
         case(2)
             ConType='Predictor-Corrector'
+        case(3)
+            ConType='Alternating'
         end select
 
         select case(Current%l)
@@ -958,6 +962,8 @@ contains
             ConType='Augmented Lagrangian'
         case(2)
             ConType='Predictor-Corrector'
+        case(3)
+            ConType='Alternating'
         end select
 
         select case(Current%l)
@@ -994,6 +1000,8 @@ contains
             ConType='Augmented Lagrangian'
         case(2)
             ConType='Predictor-Corrector'
+        case(3)
+            ConType='Alternating'
         end select
 
         select case(Current%l)
@@ -1030,6 +1038,8 @@ contains
             ConType='Augmented Lagrangian'
         case(2)
             ConType='Predictor-Corrector'
+        case(3)
+            ConType='Alternating'
         end select
 
         if(.not.Current%Impart) ReIm = 'Re'
@@ -1549,6 +1559,7 @@ subroutine PrintAllMoments()
         if(Current%ConstraintType.lt.1) cycle
         if(NoRutz.eq.1 .and. Current%ConstraintType.eq.2) cycle
         if(NoRutz.eq.0 .and. Current%ConstraintType.ne.2) cycle
+        
         call Readjust(Current)
     enddo
     nullify(Current)
@@ -1637,6 +1648,26 @@ subroutine PrintAllMoments()
     case(2)
       !-----------------------------------------------------------------------
       ! Rutz self-correcting constraints
+      Value   = 1.0_dp
+      Desired = 0.0_dp
+
+      select case(Current%Isoswitch)
+      case(1)
+        Factor = Current%Intensity(1)
+      case(2)
+        Factor = Current%Intensity
+      case(3)
+        Factor(1) =   Current%Intensity(1)
+        Factor(2) = - Current%Intensity(1)
+      end select
+
+      if(Current%Total) then
+        Factor = Factor/(sum(CalculateTotalQl(Current%l) + 0.000001))
+      endif
+     case(3)
+      !-------------------------------------------------------------------------
+      ! Alternating constraints, equivalent here to the predictor-corrector
+      ! constraints.
       Value   = 1.0_dp
       Desired = 0.0_dp
 
@@ -2038,6 +2069,7 @@ subroutine PrintAllMoments()
    31 format (' Squared       = ', f15.6)
     4 format (' Lambda(i)     = ', f15.6)
     5 format (' Lambda(i+1)   = ', f15.6)
+    6 format (' New Target    = ', f15.6)
 
     select case(ToReadjust%ConstraintType)
 
@@ -2117,6 +2149,54 @@ subroutine PrintAllMoments()
       &             - ToReadjust%OldValue(1,1) + ToReadjust%OldValue(2,1))   / &
       & (O2(1) + d0)
 
+     end select
+    case (3)
+     !--------------------------------------------------------------------------
+     ! Alternating direction constraints
+     select case(ToReadjust%Isoswitch)
+     case(1)
+      ! Proton + neutron value
+      if(.not. ToReadjust%total) then
+        O2 = sum(ToReadjust%Squared)
+        
+        write (*, 1), ToReadjust%l, ToReadjust%m
+        write (*, 2), sum(ToReadjust%Value)
+        write (*,21), sum(ToReadjust%OldValue(:,1))
+        write (*, 3), sum(ToReadjust%OldValue(:,2))
+        write (*,31), sum(O2)
+        write (*, 4), ToReadjust%Intensity
+        
+        ToReadjust%Constraint = ToReadjust%Constraint -                        &
+        & 2*c0/(O2(1) + d0) *                                                  &
+        & (sum(ToReadjust%Value) - ToReadjust%TrueConstraint(1))
+        print *
+        write (*, 6), ToReadjust%Constraint
+       endif
+!      else
+!        O2 = sum(ToReadjust%Squared) * sum(ToReadjust%Value)/sum(CalculateTotalQl(Toreadjust%l))
+!        Old = CalculateTotalQl(Toreadjust%l,1)
+
+!        ToReadjust%Intensity = ToReadjust%Intensity + epsilon*                 &
+!        & (sum(CalculateTotalQl(Toreadjust%l))-sum(Old))/(O2(1) + d0)
+!      endif
+
+!     case(2)
+!      ! Proton and neutron separately
+!      do it=1,2
+!        O2(it) = ToReadjust%Squared(it)
+!        ToReadjust%Intensity(it) = ToReadjust%Intensity(it)+                   &
+!        & epsilon *  ( ToReadjust%Value(it) - ToReadjust%OldValue(it,1))/      &
+!        & (O2(it) + d0)
+!      enddo
+
+!     case(3)
+!      ! Difference of proton and neutron
+!      O2 = sum(ToReadjust%Squared)
+
+!      ToReadjust%Intensity = ToReadjust%Intensity +                            &
+!      & epsilon *  (ToReadjust%Value(1) - ToReadjust%Value(2)                  &
+!      &             - ToReadjust%OldValue(1,1) + ToReadjust%OldValue(2,1))   / &
+!      & (O2(1) + d0)
      end select
     end select
     return
@@ -2478,7 +2558,7 @@ subroutine PrintAllMoments()
 
     do while(associated(Current%Next))
       Current => Current%Next
-      if(Current%ConstraintType.eq.2) then
+      if(Current%ConstraintType.ge.2) then
         Check = .true.
         exit
       endif
@@ -2611,7 +2691,7 @@ subroutine PrintAllMoments()
         !Initialisation
         l=0; m=0; Impart=.false.; Isoswitch = 1; Intensity=0.0_dp
         ConstraintNeutrons=0.0_dp; ConstraintProtons=0.0_dp;Constraint=0.0_dp
-        MoreConstraints=.false.; ConstraintType=2
+        MoreConstraints=.false.; ConstraintType=3
         iq1=0.0_dp       ; iq2=0.0_dp
         iq1neutron=0.0_dp; iq2neutron=0.0_dp; iq1proton=0.0_dp;iq2proton=0.0_dp
         Total = .false.  ; iteration = -1

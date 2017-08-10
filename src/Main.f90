@@ -203,7 +203,14 @@ subroutine Evolve(MaxIterations, iprint)
   Iteration   = 0
   Convergence = .false.
 
+  ! We calculate all of the multipole moments three times. This is strictly 
+  ! wasteful, but only done at the zeroth iteration. This is to make sure
+  ! the correct values are used in all readjustment formulas.
   call CalculateAllMoments(1)
+  call CalculateAllMoments(1)
+  call CalculateAllMoments(1)
+  
+  
   !Readjust all moments, both Rutz and nonRutz
   call ReadjustAllMoments(1)
   call ReadjustAllMoments(0)

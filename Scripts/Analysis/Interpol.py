@@ -71,14 +71,14 @@ def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1, LA
 
     print 'surface minimum at ', xmin, ymin
     AXIS.plot(xmin,ymin,'kd')
-    AXIS.set_xlim(min(data[:,0]),max(data[:,0]))
-    AXIS.set_ylim(min(data[:,1]),max(data[:,1]))
-    cbar    = plt.colorbar(contour, label=LABEL)
+
+#    cbar    = plt.colorbar(contour, label=LABEL)
+#    cbar.ax.yaxis.set_ticks_position('left')
 
     if(PLOTDATA> 0):
         plt.plot(data[:,0],data[:,1], 'kx')
 
-    return(xmin,ymin,np.min(Z))
+    return(xmin,ymin,np.min(Z), contour)
 
 #===============================================================================
 def BetaGamma(datafile, A, title='', figname  = 'BG.out.eps', MAXB=0.7, EMAX = 10, 

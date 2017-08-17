@@ -112,7 +112,7 @@ contains
     ! constrained.
     do while(associated(Current%Next))
       Current => Current%Next
-      if(Current%ConstraintType.lt.2) cycle
+      if(Current%ConstraintType.ne.2) cycle
 
       !Ordinary constraints
       select case(Current%Isoswitch)
@@ -150,9 +150,10 @@ contains
         Value(2) = - Value(1)
       end select
 
+      !-------------------------------------------------------------------------
       !Calculate the update
       do it=1,2
-        Update(:,:,:,it) = c0*(Value(it)  - Desired(it))/(O2(it) + d0)*       &
+        Update(:,:,:,it) = c0/2*(Value(it)  - Desired(it))/(O2(it) + d0)*      &
         &                  Current%SpherHarm
       enddo
       Correction = Correction + Update
@@ -188,6 +189,79 @@ contains
     ! Finally, orthonormalisation
     call Gramschmidt
   end subroutine RutzCorrectionStep
+  
+  subroutine AlternateStep
+  !-----------------------------------------------------------------------------
+  ! Subroutine performing one (or more) alternate step for the alternating
+  ! constraints. The idea is a a simple gradient step in the direction of a
+  ! satisfied constraint, meaning that the objective function being minimized is
+  !
+  !  c0 ( < O > - O_target )^2
+  ! 
+  ! and we update the single-particle wavefunctions according to 
+  !
+  ! psi = ( 1 - epsilon \hat{O} ) psi
+  !  
+  ! with
+  !
+  ! epsilon = 1/2 * ( <C> - C )/( < C^2 >)
+  !
+  ! where < C >^2 is the one-body part of the two-body operator C.
+  !-----------------------------------------------------------------------------
+
+   use Wavefunctions
+   use Moments
+   use Spwfstorage
+   use Cranking
+
+   real(KIND=dp) :: O2(2), Targ(2), Des(2), Value(2)
+   real(KIND=dp) :: multipole(nx,ny,nz,2), update(nx,ny,nz,2)
+   integer       :: it, i,j, power
+   type(Moment),pointer  :: Current
+   type(Spinor)  :: QPsi, tempspinor
+
+   Current    => Root
+   multipole = 0.0_dp
+   
+   do while(associated(Current%Next))
+    Current => Current%next
+    
+    if(Current%ConstraintType.ne.3) cycle
+    select case(Current%Isoswitch)
+    case(1)
+        !-----------------------------------------------------------------------
+        ! Constrain the sum of the proton & neutron parts       
+        power = 1
+        O2    = sum(Current%Squared)                    ! < C^2 >
+        Value = sum(Current%Value)                      ! Current value of <C>
+        Targ  = Current%Constraint(1)                   ! Current targeted value
+        Des   = Current%TrueConstraint(1)               ! Desired final value
+        
+        !-----------------------------------------------------------------------
+        !Calculate the update
+        do it=1,2
+            Update(:,:,:,it) = 0.5*(Value(it)  - Des(it))/(O2(it) + d0)*      &
+            &                                                  Current%SpherHarm
+        enddo
+        multipole = multipole + Update
+    case DEFAULT
+        call stp('Alternating constraints do not recognize this type of constraint.')
+    end select
+   enddo
+   !---------------------------------------------------------------------------
+   ! With the update in hand, we update the spwfs
+   call compcutoff()
+    do i=1,nwt
+      QPsi = HFBasis(i)%GetValue()
+      it   = (HFBasis(i)%GetIsospin() + 3)/2
+      !Substituting the correction
+      QPsi = QPsi - multipole(:,:,:,it)*Cutoff(:,:,:,it)*QPsi 
+      call HFBasis(i)%SetGrid(QPsi)
+    enddo
+   !---------------------------------------------------------------------------
+   ! Finally, orthonormalisation
+   call Gramschmidt
+  end subroutine AlternateStep
 
   subroutine GradDesc(Iteration)
     !----------------------------------------------------------------

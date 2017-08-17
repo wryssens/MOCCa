@@ -90,7 +90,8 @@ subroutine Evolve(MaxIterations, iprint)
   use SpwfStorage
   use Densities, only   : UpdateDensities, DampingParam, Density, Recalc
   use Moments, only     : CalculateAllMoments, ReadjustAllMoments,             &
-  &                       CheckForRutzMoments, TurnOffConstraints
+  &                       CheckForRutzMoments, TurnOffConstraints,             &
+  &                       CheckForAlternateConstraints, totaldeviation
   use Pairing, only     : SolvePairing, PairingType, SolvePairingStart
   use Cranking, only    : ReadjustCranking, CrankC0
   use DensityMixing,only: MixDensities
@@ -133,11 +134,11 @@ subroutine Evolve(MaxIterations, iprint)
 
   logical, intent(in) :: iprint
   integer, intent(in) :: MaxIterations
-  integer             :: Iteration
+  integer             :: Iteration, inneriter
   logical             :: Convergence
   logical, external   :: ConvergenceCheck
   integer             :: i,wave
-  logical             :: RutzCheck
+  logical             :: RutzCheck, AlternateCheck
   real(KIND=dp)       :: Canenergy
 
   !--------------------------------------------------------------------------
@@ -209,11 +210,6 @@ subroutine Evolve(MaxIterations, iprint)
   call CalculateAllMoments(1)
   call CalculateAllMoments(1)
   call CalculateAllMoments(1)
-  
-  
-  !Readjust all moments, both Rutz and nonRutz
-  call ReadjustAllMoments(1)
-  call ReadjustAllMoments(0)
 
   !Construct the mean-field potentials
   call ConstructPotentials
@@ -235,11 +231,13 @@ subroutine Evolve(MaxIterations, iprint)
   call PrintIterationInfo(0, .true.)
 
   !Checking for the presence of Rutz-Type constraints
-  RutzCheck = CheckForRutzMoments()
+  RutzCheck      = CheckForRutzMoments()
+  AlternateCheck = CheckForAlternateConstraints() 
  
   if(MaxIterations.ne.0) then
         print 100
   endif
+  
   !-----------------------------------------------------------------------------
   !Start of the Mean-field iterations
   do while((Iteration.lt.MaxIterations))
@@ -255,14 +253,19 @@ subroutine Evolve(MaxIterations, iprint)
     !Pairing.
     call SolvePairing
     !---------------------------------------------------------------------------
+    !Checking for the presence of Rutz-Type constraints
+    RutzCheck = CheckForRutzMoments()
+    AlternateCheck = CheckForAlternateConstraints()
+    
+    !---------------------------------------------------------------------------
     ! When moments or angular moments are constrained according to K.Rutz'
     ! prescription, there needs to be a correction step, dependent on the
     ! density or angular moment obtained in  the meantime.
-
-    if(RutzCheck) then
+    if(RutzCheck .or. AlternateCheck) then
       call UpdateDensities(0,.true.)
       call CalculateAllMoments(1) ! Save old values to history
-      call ReadjustAllMoments(0)  ! Only readjust Rutz-style moments
+      call ReadjustAllMoments(2)  ! Only readjust Rutz-style moments
+      call ReadjustAllMoments(3)
     endif
     if(RutzCrank) then
         !Deriving all Spwf
@@ -275,13 +278,27 @@ subroutine Evolve(MaxIterations, iprint)
         call updateAm(.true.)
         call ReadjustCranking(.true.)
     endif
-    !Checking for the presence of Rutz-Type constraints
-    RutzCheck = CheckForRutzMoments()
-
+    
     if(RutzCheck .or. RutzCrank) then
         !Apply Corrections and resolve pairing
         call RutzCorrectionStep
         call SolvePairing
+    endif
+    !---------------------------------------------------------------------------
+    !Checking for the presence of alternating constraints
+    if(AlternateCheck) then
+        !inneriter = 0
+        !do while(totaldeviation .gt. 1d-3)
+            !Apply Corrections and resolve pairing
+            call AlternateStep
+            call SolvePairing
+            call UpdateDensities(0,.true.)
+            call CalculateAllMoments(0) 
+            inneriter = inneriter +1
+        !enddo
+        !print *
+        !print *, 'Convergence after ', inneriter, ' iterations'
+        !print *
     endif
 
     !---------------------------------------------------------------------------
@@ -291,6 +308,7 @@ subroutine Evolve(MaxIterations, iprint)
     else
       call DeriveAll()
     endif
+    !---------------------------------------------------------------------------
     !Calculate the expectation values of the symmetry operators and the spwf
     !energies of the canonical basis
     do i=1,nwt
@@ -305,7 +323,7 @@ subroutine Evolve(MaxIterations, iprint)
     !Update all the angular momentum information. This can be skipped on
     !iterations without printout if there is no cranking.
     !if( any(CrankType.ne.0)  .or.  mod(Iteration, PrintIter).eq.0 ) then
-      call UpdateAM(.false.)
+    call UpdateAM(.false.)
     !endif
 
     !Print a summary

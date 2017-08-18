@@ -214,7 +214,7 @@ contains
    use Spwfstorage
    use Cranking
 
-   real(KIND=dp) :: O2(2), Targ(2), Des(2), Value(2)
+   real(KIND=dp) :: O2(2), Targ(2), Des(2), Value(2), CrankFactor(3)
    real(KIND=dp) :: multipole(nx,ny,nz,2), update(nx,ny,nz,2)
    integer       :: it, i,j, power
    type(Moment),pointer  :: Current
@@ -249,13 +249,31 @@ contains
     end select
    enddo
    !---------------------------------------------------------------------------
+   ! Then construct the correction for the cranking constraints.
+   CrankFactor=0.0_dp
+   if(AlternateCrank) then
+     do i=1,3
+         if(CrankType(i).ne.3) cycle
+         CrankFactor(i) = 0.5*(TotalAngMom(i)-CrankValues(i))/(J2Total(i)+d0)
+     enddo
+   endif
+   
+   !---------------------------------------------------------------------------
    ! With the update in hand, we update the spwfs
    call compcutoff()
     do i=1,nwt
       QPsi = HFBasis(i)%GetValue()
       it   = (HFBasis(i)%GetIsospin() + 3)/2
+      
+      TempSpinor = NewSpinor()
+      !Calculating the actions of the cranking correction
+      do j=1,3
+        if(CrankFactor(j).eq.0.0_dp) cycle
+        TempSpinor = TempSpinor + CrankFactor(j)*AngMomOperator(HFBasis(i), j)
+      enddo
+      
       !Substituting the correction
-      QPsi = QPsi - multipole(:,:,:,it)*Cutoff(:,:,:,it)*QPsi 
+      QPsi = QPsi - multipole(:,:,:,it)*Cutoff(:,:,:,it)*QPsi - TempSpinor
       call HFBasis(i)%SetGrid(QPsi)
     enddo
    !---------------------------------------------------------------------------

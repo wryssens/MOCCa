@@ -576,11 +576,11 @@ contains
       call stp(' Parity broken on file, but parity conservation asked.')
     endif
     if(.not.inTSC .and. TSC) then
-      call stp('Signature broken on file, but signature conservation asked.')
+      call stp('TimeSimplex broken on file, but timesimplex conservation asked.')
     endif
     if(.not.inSC .and. SC) then
-      call stp('Time Simplex broken on file,'                                  &
-      &      //'but Time Simplex conservation asked.')
+      call stp('Signature broken on file,'                                  &
+      &      //'but Signature conservation asked.')
     endif
     if(.not.inTRC .and. TRC) then
       call stp(' Time Reversal broken on file,'                                &
@@ -1146,10 +1146,10 @@ subroutine ReadMOCCa_v1(Ichan)
           &        'In data: ', nwt, 'On file :', filenwt )
       endif
     endif
-    if( (nwt.ne.2*filenwt) .and. (TRC .neqv. inTRC)) then
-      call stp('Nwt should be doubled when breaking TimeReversal.',            &
-      &        'In data: ', nwt, 'On file :', filenwt )
-    endif
+!    if( (nwt.ne.2*filenwt) .and. (TRC .neqv. inTRC)) then
+!      call stp('Nwt should be doubled when breaking TimeReversal.',            &
+!      &        'In data: ', nwt, 'On file :', filenwt )
+!    endif
     !---------------------------------------------------------------------------
     ! c) There should be enough space for neutrons & protons
     N = nwt

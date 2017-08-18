@@ -42,7 +42,7 @@ module Cranking
   real(KIND=dp)         :: CrankC0=0.8_dp
   !-----------------------------------------------------------------------------
   ! Logical signalling other modules whether or not to do Rutz correction steps
-  logical               :: RutzCrank
+  logical               :: RutzCrank              , AlternateCrank
   logical               :: RealignOmega = .false.
 contains
 
@@ -78,13 +78,13 @@ contains
     if(CrankReadj.lt.0.0_dp) then
       call stp('CrankReadj should not be negative!')
     endif
-    if(CrankTypeX.lt.0 .or. CrankTypeX .gt. 2) then
+    if(CrankTypeX.lt.0 .or. CrankTypeX .gt. 3) then
         call stp('Unrecognised cranktype in the X direction.')
     endif
-    if(CrankTypeY.lt.0 .or. CrankTypeY .gt. 2) then
+    if(CrankTypeY.lt.0 .or. CrankTypeY .gt. 3) then
         call stp('Unrecognised cranktype in the Y direction.')
     endif
-    if(CrankTypeZ.lt.0 .or. CrankTypeZ .gt. 2) then
+    if(CrankTypeZ.lt.0 .or. CrankTypeZ .gt. 3) then
         call stp('Unrecognised cranktype in the Z direction.')
     endif
 
@@ -100,6 +100,12 @@ contains
       RutzCrank = .true.
     else
       RutzCrank = .false.
+    endif
+    
+    if(any(CrankType.eq.3)) then
+      AlternateCrank = .true.
+    else
+      AlternateCrank = .false.
     endif
 
     return
@@ -178,6 +184,9 @@ contains
         case(2)
           if(Rutz) cycle
           Omega(i) = Omega(i) - 2*CrankC0*(TotalAngMom(i) - CrankValues(i))
+        case(3)
+          if(Rutz) cycle
+          Omega(i) = Omega(i) - 2*sqrt(2/J2Total(i))*(TotalAngMom(i) - CrankValues(i))
         end select
     enddo
 

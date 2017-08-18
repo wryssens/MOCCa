@@ -96,7 +96,7 @@ subroutine Evolve(MaxIterations, iprint)
   use Cranking, only    : ReadjustCranking, CrankC0
   use DensityMixing,only: MixDensities
   use Energy 
-  use Cranking, only    : RutzCrank, CrankType
+  use Cranking, only    : RutzCrank, CrankType, AlternateCrank
   use HFB
   use Testing
 
@@ -203,14 +203,14 @@ subroutine Evolve(MaxIterations, iprint)
   !Loop over the iterations
   Iteration   = 0
   Convergence = .false.
-
+  
   ! We calculate all of the multipole moments three times. This is strictly 
   ! wasteful, but only done at the zeroth iteration. This is to make sure
   ! the correct values are used in all readjustment formulas.
   call CalculateAllMoments(1)
   call CalculateAllMoments(1)
   call CalculateAllMoments(1)
-
+  
   !Construct the mean-field potentials
   call ConstructPotentials
 
@@ -254,7 +254,7 @@ subroutine Evolve(MaxIterations, iprint)
     call SolvePairing
     !---------------------------------------------------------------------------
     !Checking for the presence of Rutz-Type constraints
-    RutzCheck = CheckForRutzMoments()
+    RutzCheck      = CheckForRutzMoments()
     AlternateCheck = CheckForAlternateConstraints()
     
     !---------------------------------------------------------------------------
@@ -267,9 +267,8 @@ subroutine Evolve(MaxIterations, iprint)
       call ReadjustAllMoments(2)  ! Only readjust Rutz-style moments
       call ReadjustAllMoments(3)
     endif
-    if(RutzCrank) then
+    if(RutzCrank .or. AlternateCrank) then
         !Deriving all Spwf
-        
         if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
             call N2LODerive()
         else
@@ -286,14 +285,13 @@ subroutine Evolve(MaxIterations, iprint)
     endif
     !---------------------------------------------------------------------------
     !Checking for the presence of alternating constraints
-    if(AlternateCheck) then
+    if(AlternateCheck .or. AlternateCrank) then
         !inneriter = 0
         !do while(totaldeviation .gt. 1d-3)
             !Apply Corrections and resolve pairing
             call AlternateStep
             call SolvePairing
-            call UpdateDensities(0,.true.)
-            call CalculateAllMoments(0) 
+
             inneriter = inneriter +1
         !enddo
         !print *

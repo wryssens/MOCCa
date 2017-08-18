@@ -2213,6 +2213,9 @@ subroutine PrintAllMoments()
           allocate(Current%Intensity(1)); Current%Intensity=0.0_dp
           Current%Constraint=0.0_dp     ; Current%TrueConstraint=0.0_dp
           Current%Isoswitch=1           ; Current%Total=.false.
+         
+          allocate(Current%Deviation(1))
+          allocate(Current%Multiplier(1))
       endif
 
       Current => FindMoment(1,1,.false.)
@@ -2222,6 +2225,9 @@ subroutine PrintAllMoments()
           allocate(Current%Intensity(1)); Current%Intensity=0.0_dp
           Current%Constraint=0.0_dp ; Current%TrueConstraint=0.0_dp
           Current%Isoswitch=1
+          
+          allocate(Current%Deviation(1))
+          allocate(Current%Multiplier(1))
       endif
 
       Current => FindMoment(1,1,.true.)
@@ -2231,6 +2237,9 @@ subroutine PrintAllMoments()
           allocate(Current%Intensity(1)); Current%Intensity=0.0_dp
           Current%Constraint=0.0_dp  ; Current%TrueConstraint=0.0_dp
           Current%Isoswitch=1
+          
+          allocate(Current%Deviation(1))
+          allocate(Current%Multiplier(1))
       endif
       !Find the rotational degrees of freedom
       Current => FindMoment(2,1,.false.)
@@ -2240,6 +2249,9 @@ subroutine PrintAllMoments()
          allocate(Current%Intensity(1)); Current%Intensity=0.0_dp
          Current%Constraint=0.0_dp ;  Current%TrueConstraint=0.0_dp
          Current%Isoswitch=1
+         
+         allocate(Current%Deviation(1))
+         allocate(Current%Multiplier(1))
       endif
 
       Current => FindMoment(2,1,.true.)
@@ -2249,6 +2261,9 @@ subroutine PrintAllMoments()
           allocate(Current%Intensity(1)); Current%Intensity=0.0_dp
           Current%Constraint=0.0_dp ; Current%TrueConstraint=0.0_dp
           Current%Isoswitch=1
+          
+         allocate(Current%Deviation(1))
+         allocate(Current%Multiplier(1))
       endif
 
       Current => FindMoment(2,2,.true.)
@@ -2258,6 +2273,9 @@ subroutine PrintAllMoments()
           allocate(Current%Intensity(1)); Current%Intensity=0.0_dp
           Current%Constraint=0.0_dp ; Current%TrueConstraint=0.0_dp
           Current%Isoswitch=1
+          
+          allocate(Current%Deviation(1))
+          allocate(Current%Multiplier(1))
       endif
   end subroutine ConstrainNonPhysicalMoments
 

@@ -190,7 +190,7 @@ contains
     call Gramschmidt
   end subroutine RutzCorrectionStep
   
-  subroutine AlternateStep
+  subroutine AlternateStep(AllConstraints)
   !-----------------------------------------------------------------------------
   ! Subroutine performing one (or more) alternate step for the alternating
   ! constraints. The idea is a a simple gradient step in the direction of a
@@ -219,6 +219,7 @@ contains
    integer       :: it, i,j, power
    type(Moment),pointer  :: Current
    type(Spinor)  :: QPsi, tempspinor
+   logical, intent(in):: AllConstraints
 
    Current    => Root
    multipole = 0.0_dp
@@ -226,7 +227,11 @@ contains
    do while(associated(Current%Next))
     Current => Current%next
     
-    if(Current%ConstraintType.ne.3) cycle
+    if(.not. AllConstraints) then
+        if(Current%ConstraintType.ne.3) cycle
+    else
+        if(Current%ConstraintType.eq.0) cycle
+    endif
     select case(Current%Isoswitch)
     case(1)
         !-----------------------------------------------------------------------
@@ -240,7 +245,7 @@ contains
         !-----------------------------------------------------------------------
         !Calculate the update
         do it=1,2
-            Update(:,:,:,it) = 0.5*(Value(it)  - Des(it))/(O2(it) + d0)*      &
+            Update(:,:,:,it) = 0.5*(Value(it)  - Des(it))/(O2(it) + d0)*       &
             &                                                  Current%SpherHarm
         enddo
         multipole = multipole + Update
@@ -253,7 +258,11 @@ contains
    CrankFactor=0.0_dp
    if(AlternateCrank) then
      do i=1,3
-         if(CrankType(i).ne.3) cycle
+         if(.not. AllConstraints) then
+            if(CrankType(i).ne.3) cycle
+         else
+            if(CrankType(i).eq.0) cycle
+         endif
          CrankFactor(i) = 0.5*(TotalAngMom(i)-CrankValues(i))/(J2Total(i)+d0)
      enddo
    endif
@@ -261,7 +270,7 @@ contains
    !---------------------------------------------------------------------------
    ! With the update in hand, we update the spwfs
    call compcutoff()
-    do i=1,nwt
+   do i=1,nwt
       QPsi = HFBasis(i)%GetValue()
       it   = (HFBasis(i)%GetIsospin() + 3)/2
       

@@ -267,6 +267,12 @@ implicit none
   ! Total deviation of all the multipole moments
   real(KIND=dp) :: TotalDeviation = 0.0_dp
   !-----------------------------------------------------------------------------
+  ! Whether or not to iteratively project on correct constraints at the start 
+  ! of the iterations, up to an accuracy of ProjectionPrecision.
+  logical       :: ConstraintsProject = .false.
+  real(KIND=dp) :: ProjectionPrecision = 1d-2
+  integer       :: ProjectionIter = 100
+  !-----------------------------------------------------------------------------
   !Pointer to the cutoff procedure chosen.
   !-----------------------------------------------------------------------------
   abstract interface
@@ -1690,7 +1696,7 @@ subroutine PrintAllMoments()
        select case(Current%Isoswitch)
         case(1)
             ! sum(proton+neutron) value constrained
-            Factor = 2*Current%Intensity
+            Factor = 2*Current%Intensity(1)
             Desired=     Current%Constraint(1)
             Value  = sum(Current%Value)
        end select
@@ -2092,6 +2098,14 @@ subroutine PrintAllMoments()
       ! Augmented Lagrangian readjustment
       select case(ToReadjust%Isoswitch)
       case(1)
+      
+        if(ToReadjust%Intensity(1) == 0.0) then
+            ! Set the intensity if none was there before
+            O2 = sum(ToReadjust%Squared)
+            ToReadjust%Intensity(1) = sqrt(2/sum(O2))
+            ReadjustSlowdown        = 2*ToReadjust%Intensity(1)
+        endif
+!      
         if(.not.ToReadjust%Total) then
           ToReadjust%Constraint(1) = ToReadjust%Constraint(1)-ReadjustSlowDown*&
           &                 (sum(ToReadjust%Value)-ToReadjust%TrueConstraint(1))
@@ -2618,7 +2632,7 @@ subroutine PrintAllMoments()
     do while(associated(Current%Next))
         Current => Current%Next
         
-        if(Current%Constrainttype .eq. 3) then
+        if(Current%Constrainttype .ne. 0) then
             totaldeviation = totaldeviation + Current%Deviation(1)
         endif
     enddo
@@ -2685,7 +2699,8 @@ subroutine PrintAllMoments()
     NameList /MomentParam/ MaxMoment, radd, acut, MoreConstraints,Damping,     &
     &                      ReadjustSlowDown, CutoffType, ContinueMoment        &
     &                     ,c0,d0, epsilon,QuantisationAxis,SpecialInput,       &
-    &                      SecondaryAxis
+    &                      SecondaryAxis, ProjectionPrecision,                 &
+    &                      ConstraintsProject, ProjectionIter
 
     NameList /MomentConstraint/ l,m,Impart, Isoswitch, Intensity,              &
     &                           ConstraintNeutrons,ConstraintProtons,          &

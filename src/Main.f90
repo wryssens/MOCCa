@@ -91,7 +91,8 @@ subroutine Evolve(MaxIterations, iprint)
   use Densities, only   : UpdateDensities, DampingParam, Density, Recalc
   use Moments, only     : CalculateAllMoments, ReadjustAllMoments,             &
   &                       CheckForRutzMoments, TurnOffConstraints,             &
-  &                       CheckForAlternateConstraints, totaldeviation
+  &                       CheckForAlternateConstraints, totaldeviation,        &
+  &                       ConstraintsProject, projectioniter, projectionprecision
   use Pairing, only     : SolvePairing, PairingType, SolvePairingStart
   use Cranking, only    : ReadjustCranking, CrankC0
   use DensityMixing,only: MixDensities
@@ -131,10 +132,11 @@ subroutine Evolve(MaxIterations, iprint)
   9 format ("Average dispersion of the occupied Spwfs: ", e9.2)
 100 format (/,60('='),/, 18x,' START OF THE ITERATIVE PROCESS ' ,/, 60('='))
 101 format (/,60('='),/, 18x,' **FINAL** Iteration ')
+102 format (/,60('='),/, 18x,' PROJECTION ON FEASILBLE CONSTRAINTS ' ,/, 55('='))
 
   logical, intent(in) :: iprint
   integer, intent(in) :: MaxIterations
-  integer             :: Iteration, inneriter
+  integer             :: Iteration
   logical             :: Convergence
   logical, external   :: ConvergenceCheck
   integer             :: i,wave
@@ -211,9 +213,6 @@ subroutine Evolve(MaxIterations, iprint)
   call CalculateAllMoments(1)
   call CalculateAllMoments(1)
   
-  !Construct the mean-field potentials
-  call ConstructPotentials
-
   if(Pairingtype.eq.2) then
     do i=1,nwt
       CanEnergy = InproductSpinorReal(CanBasis(i)%GetValue(),hPsi(Canbasis(i)))
@@ -224,11 +223,45 @@ subroutine Evolve(MaxIterations, iprint)
   !Calculating  The Energy
   call CompEnergy()
   
+  !Printing observables
+  call PrintIterationInfo(0, .true.)
+
+  !-----------------------------------------------------------------------------
+  ! If asked for, we project first on the subspace of valid constraints.
+  if(ConstraintsProject) then
+      do iteration = 1, ProjectionIter 
+            !Apply Corrections and resolve pairing
+            call AlternateStep(.true.)
+            call SolvePairing
+            call UpdateDensities(0)
+            call updateAM(.false.)
+            call CalculateAllMoments(1)
+            print *, iteration, totaldeviation
+            if(TotalDeviation .lt. ProjectionPrecision) exit
+      enddo
+  
+      print 102
+      !-------------------------------------------------------------------------
+      ! Derive everything again
+      if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp)   then
+        if(MAXFDORDER .ne. -1 .or. MAXFDLAPORDER .NE. -1) then
+            call stp('It is irresponsible to calculate N2LO without lag derivatives.')
+        endif
+        call N2LODerive()
+      else
+        call DeriveAll()  
+      endif
+      call compEnergy()
+      !Printing observables
+      call PrintIterationInfo(0, .true.)
+  endif
+  !-----------------------------------------------------------------------------
+  !Construct the mean-field potentials
+  call ConstructPotentials
+  
   if(Maxiterations.eq.0) then
         print 101
   endif
-  !Printing observables
-  call PrintIterationInfo(0, .true.)
 
   !Checking for the presence of Rutz-Type constraints
   RutzCheck      = CheckForRutzMoments()
@@ -240,6 +273,7 @@ subroutine Evolve(MaxIterations, iprint)
   
   !-----------------------------------------------------------------------------
   !Start of the Mean-field iterations
+  iteration = 0
   do while((Iteration.lt.MaxIterations))
     !Incrementing the iteration number
     Iteration = Iteration + 1
@@ -265,7 +299,6 @@ subroutine Evolve(MaxIterations, iprint)
       call UpdateDensities(0,.true.)
       call CalculateAllMoments(1) ! Save old values to history
       call ReadjustAllMoments(2)  ! Only readjust Rutz-style moments
-      call ReadjustAllMoments(3)
     endif
     if(RutzCrank .or. AlternateCrank) then
         !Deriving all Spwf
@@ -286,17 +319,8 @@ subroutine Evolve(MaxIterations, iprint)
     !---------------------------------------------------------------------------
     !Checking for the presence of alternating constraints
     if(AlternateCheck .or. AlternateCrank) then
-        !inneriter = 0
-        !do while(totaldeviation .gt. 1d-3)
-            !Apply Corrections and resolve pairing
-            call AlternateStep
-            call SolvePairing
-
-            inneriter = inneriter +1
-        !enddo
-        !print *
-        !print *, 'Convergence after ', inneriter, ' iterations'
-        !print *
+        call AlternateStep(.false.)
+        call SolvePairing
     endif
 
     !---------------------------------------------------------------------------
@@ -341,6 +365,8 @@ subroutine Evolve(MaxIterations, iprint)
 
     !Readjust the constraints
     call ReadjustAllMoments(1)
+    call ReadjustAllMoments(3)
+    
     call ReadjustCranking(.false.)
 
     !Construct the mean-field potentials

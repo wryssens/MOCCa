@@ -299,6 +299,7 @@ subroutine Evolve(MaxIterations, iprint)
       call UpdateDensities(0,.true.)
       call CalculateAllMoments(1) ! Save old values to history
       call ReadjustAllMoments(2)  ! Only readjust Rutz-style moments
+      call ReadjustAllMoments(3)
     endif
     if(RutzCrank .or. AlternateCrank) then
         !Deriving all Spwf
@@ -365,7 +366,6 @@ subroutine Evolve(MaxIterations, iprint)
 
     !Readjust the constraints
     call ReadjustAllMoments(1)
-    call ReadjustAllMoments(3)
     
     call ReadjustCranking(.false.)
 

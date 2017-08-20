@@ -1538,6 +1538,7 @@ subroutine PrintAllMoments()
     !---------------------------------------------------------------------------
     type(Moment), pointer :: Current
     integer, intent(in)   :: SaveOld
+    integer, save         :: firstcall = 0
 
     nullify(Current)
     Current => Root
@@ -1552,6 +1553,23 @@ subroutine PrintAllMoments()
     do while(associated(Current%Next))
         Current => Current%Next
         call Current%Calculate(Current,SaveOld)
+
+        if(firstcall .eq. 0 .and. (.not. ContinueMoment)) then
+        ! If this is the first time we call this subroutine, set all of the constraints
+        ! to the calculated value of the multipole moments if we are not continuing a
+        ! constrained calculation (via ContinueMoment=.true.). This makes sure the 
+        ! constraintEnergy contribution to the single-particle Hamiltonian is not too
+        ! large. 
+            if(Current%ConstraintType .eq. 3) then
+                select case(Current%Isoswitch)
+                    case(1)
+                        Current%Constraint(1) = sum(Current%Value)
+                    case DEFAULT
+                        call stp('Not implemented yet!')
+                end select
+            endif
+        endif
+
     enddo
     !---------------------------------------------------------------------------
     ! Calculate the magnetic multipole moments
@@ -1562,9 +1580,7 @@ subroutine PrintAllMoments()
     enddo
 
     call CalcConstraintEnergy()
-
     call CalcQuadrupoleAlt()
-
     call calculatetotaldeviation()
 
     return
@@ -2670,8 +2686,6 @@ subroutine PrintAllMoments()
                         print 4
                 endif
         enddo
-        
-
   end subroutine TurnOffConstraints
 
   subroutine ReadMomentData

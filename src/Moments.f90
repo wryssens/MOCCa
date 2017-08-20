@@ -1538,7 +1538,7 @@ subroutine PrintAllMoments()
     !---------------------------------------------------------------------------
     type(Moment), pointer :: Current
     integer, intent(in)   :: SaveOld
-    integer, save         :: firstcall = 0
+    integer, save         :: firstcall = 1
 
     nullify(Current)
     Current => Root
@@ -1554,7 +1554,7 @@ subroutine PrintAllMoments()
         Current => Current%Next
         call Current%Calculate(Current,SaveOld)
 
-        if(firstcall .eq. 0 .and. (.not. ContinueMoment)) then
+        if(firstcall .eq. 1 .and. (.not. ContinueMoment)) then
         ! If this is the first time we call this subroutine, set all of the constraints
         ! to the calculated value of the multipole moments if we are not continuing a
         ! constrained calculation (via ContinueMoment=.true.). This makes sure the 
@@ -1569,8 +1569,8 @@ subroutine PrintAllMoments()
                 end select
             endif
         endif
-
     enddo
+    firstcall = 0
     !---------------------------------------------------------------------------
     ! Calculate the magnetic multipole moments
     Current => Root_spin
@@ -2202,7 +2202,7 @@ subroutine PrintAllMoments()
                                 
       if(ToReadjust%Intensity(1) == 0.0) then
         ! Set the intensity if none was there before
-        ToReadjust%Intensity(1) = sqrt(2/sum(O2))
+        ToReadjust%Intensity(1) = (sqrt(2/sum(O2)))
       endif
       ToReadjust%Constraint(1) = &
       &                           ToReadjust%Constraint(1)                     &

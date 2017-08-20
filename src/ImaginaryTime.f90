@@ -248,7 +248,6 @@ contains
         do it=1,2
             Update(:,:,:,it) = 0.5*(Value(it)  - Des(it))/(O2(it) + d0)*       &
             &                      Cutoff(:,:,:,it)*Current%SpherHarm
-            print *, 'Deviation step', Current%l,- 0.5*(Value(it)  - Des(it))/(O2(it) + d0)
         enddo
         
         multipole = multipole + Update

@@ -142,7 +142,7 @@ contains
         SchiffMoment%Value(2)      = sum(SchiffMoment%SpherHarm   *Density%Rho(:,:,:,2))*dv
         Schiffmoment%ValueCut(2)   = sum(SchiffMoment%SpherHarm   *Density%Rho(:,:,:,2) *Cutoff(:,:,:,2))*dv
         Schiffmoment%Squared(2)    = sum(SchiffMoment%SpherHarm**2*Density%Rho(:,:,:,2))*dv
-        Schiffmoment%SquaredCut(2) = sum(SchiffMoment%SpherHarm**2*Density%Rho(:,:,:,2) *Cutoff(:,:,:,2))*dv
+        Schiffmoment%Thirdpower(2) = sum(SchiffMoment%SpherHarm**3*Density%Rho(:,:,:,2))*dv
 
     end subroutine CalculateSchiff
 

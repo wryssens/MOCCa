@@ -153,12 +153,10 @@ implicit none
       real(KIND=dp) :: Value(2)          , ValueCut(2)
       real(KIND=dp) :: vectorvalue(3,2,2), physvectorvalue(3,2)
       !-------------------------------------------------------------------------
-      ! Calculated value of the moment SQUARED.
-      ! So < Q_{lm}^2 >
-      ! Allocatable, size(2) for the electric multipole moments, size(4)
-      ! for the magnetic multipole moments. 
+      ! Calculated value of the moment SQUARED and to the third power.
+      ! So < Q_{lm}^2 > and < Q_{lm}>^3
       !-------------------------------------------------------------------------
-      real(KIND=dp) :: Squared(2), SquaredCut(2)
+      real(KIND=dp) :: Squared(2), ThirdPower(2)
       !-------------------------------------------------------------------------
       !The program retains the previous 7 values of the moments
       !for checking of convergence.
@@ -665,7 +663,7 @@ contains
     NewMoment%OldValue      = 0.0_dp
     NewMoment%OldValueCut   = 0.0_dp
     NewMoment%Squared       = 0.0_dp
-    NewMoment%SquaredCut    = 0.0_dp
+    NewMoment%ThirdPower    = 0.0_dp
 
     nullify(NewMoment%Calculate)
 
@@ -757,7 +755,7 @@ contains
     NewMoment%OldValueCut   = 0.0_dp
     NewMoment%Isoswitch     = 1
     NewMoment%Squared       = 0.0_dp
-    NewMoment%SquaredCut    = 0.0_dp
+    NewMoment%ThirdPower    = 0.0_dp
 
     nullify(NewMoment%Calculate)
 
@@ -1416,7 +1414,7 @@ subroutine PrintAllMoments()
     ToCalculate%Value      = 0.0_dp
     ToCalculate%ValueCut   = 0.0_dp
     ToCalculate%Squared    = 0.0_dp
-    ToCalculate%SquaredCut = 0.0_dp
+    ToCalculate%ThirdPower = 0.0_dp
 
     !---------------------------------------------------------------------------
     ! Calculate the new value for ordinary constraints
@@ -1431,9 +1429,8 @@ subroutine PrintAllMoments()
     do it=1,2
       ToCalculate%Squared(it)    = ToCalculate%Squared(it)    + &
       &       sum(ToCalculate%SpherHarm(:,:,:)**2*Density%Rho(:,:,:,it))
-      ToCalculate%SquaredCut(it) = ToCalculate%SquaredCut(it) + &
-      &       sum(ToCalculate%SpherHarm(:,:,:)**2*Density%Rho(:,:,:,it)      &
-      &       *CutOff(:,:,:,it))
+      ToCalculate%ThirdPower(it) = ToCalculate%ThirdPower(it) + &
+      &       sum(ToCalculate%SpherHarm(:,:,:)**3*Density%Rho(:,:,:,it))
     enddo
 
     if(any(ToCalculate%Value.eq.ToCalculate%Value+1)) then
@@ -1443,7 +1440,7 @@ subroutine PrintAllMoments()
 
     ToCalculate%Value     =ToCalculate%Value*dv
     ToCalculate%ValueCut  =ToCalculate%ValueCut*dv
-    ToCalculate%SquaredCut=ToCalculate%SquaredCut*dv
+    ToCalculate%Thirdpower=ToCalculate%Thirdpower*dv
     ToCalculate%Squared   =ToCalculate%Squared*dv
     
     ! Set the deviation

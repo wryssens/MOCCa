@@ -223,10 +223,11 @@ contains
 
    Current    => Root
    multipole = 0.0_dp
+   call compcutoff()
    
    do while(associated(Current%Next))
     Current => Current%next
-    
+   
     if(.not. AllConstraints) then
         if(Current%ConstraintType.ne.3) cycle
     else
@@ -246,8 +247,10 @@ contains
         !Calculate the update
         do it=1,2
             Update(:,:,:,it) = 0.5*(Value(it)  - Des(it))/(O2(it) + d0)*       &
-            &                                                  Current%SpherHarm
+            &                      Cutoff(:,:,:,it)*Current%SpherHarm
+            print *, 'Deviation step', Current%l,- 0.5*(Value(it)  - Des(it))/(O2(it) + d0)
         enddo
+        
         multipole = multipole + Update
     case DEFAULT
         call stp('Alternating constraints do not recognize this type of constraint.')
@@ -269,7 +272,6 @@ contains
    
    !---------------------------------------------------------------------------
    ! With the update in hand, we update the spwfs
-   call compcutoff()
    do i=1,nwt
       QPsi = HFBasis(i)%GetValue()
       it   = (HFBasis(i)%GetIsospin() + 3)/2
@@ -282,7 +284,7 @@ contains
       enddo
       
       !Substituting the correction
-      QPsi = QPsi - multipole(:,:,:,it)*Cutoff(:,:,:,it)*QPsi - TempSpinor
+      QPsi = QPsi - multipole(:,:,:,it)*QPsi - TempSpinor
       call HFBasis(i)%SetGrid(QPsi)
     enddo
    !---------------------------------------------------------------------------

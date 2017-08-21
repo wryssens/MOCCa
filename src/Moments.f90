@@ -2202,12 +2202,11 @@ subroutine PrintAllMoments()
                                 
       if(ToReadjust%Intensity(1) == 0.0) then
         ! Set the intensity if none was there before
-        ToReadjust%Intensity(1) = (sqrt(2/sum(O2)))
+        ToReadjust%Intensity(1) = (2/sum(O2))
       endif
-      ToReadjust%Constraint(1) = &
-      &                           ToReadjust%Constraint(1)                     &
-      & - 2*ToReadjust%Intensity(1)*(sum(ToReadjust%Value) - ToReadjust%TrueConstraint(1))
-     
+      ToReadjust%Constraint(1) = ToReadjust%Constraint(1)                      &
+      & -                 (sum(ToReadjust%Value) - ToReadjust%TrueConstraint(1))
+    
       ! Set the new effective multiplier        
       ToReadjust%Multiplier = 2*ToReadjust%Intensity(1)*                       &
       &                       (sum(ToReadjust%Value) - ToReadjust%Constraint(1))

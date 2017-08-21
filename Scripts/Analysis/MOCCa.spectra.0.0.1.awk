@@ -163,7 +163,7 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
         }
         else if (SimplexSort == 1) {
             # Sort according to simplex
-            command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' < spwf.par=0";
+            command = "awk -f Spwf.sort.awk 'column=13' 'points=" iqmax "' < spwf.par=0";
             system(command)
             
             command = " mv tmp.p spwf.sx=+1"

@@ -478,14 +478,7 @@ contains
 
     if(allocated(CanBasis)) then
       do i=1,nwt
-        if(CanDeriv(i).eq.0) then
             call CanBasis(i)%CompDer()
-        else
-            CanBasis(i)%Der(1) = HFBasis(CanDeriv(i))%Der(1)
-            CanBasis(i)%Der(2) = HFBasis(CanDeriv(i))%Der(2)
-            CanBasis(i)%Der(3) = HFBasis(CanDeriv(i))%Der(3)
-            CanBasis(i)%Lap    = HFBasis(CanDeriv(i))%Lap
-        endif
       enddo
     endif
     return

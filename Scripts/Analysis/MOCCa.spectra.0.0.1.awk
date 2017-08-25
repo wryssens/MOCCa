@@ -161,7 +161,19 @@ function SortSpwfs (file, iso, basis, prefix, PC, SC, TRC, points){
             system(command)
           
         }
+        else if (SimplexSort == 1) {
+            # Sort according to simplex
+            command = "awk -f Spwf.sort.awk 'column=13' 'points=" iqmax "' < spwf.par=0";
+            system(command)
+            
+            command = " mv tmp.p spwf.sx=+1"
+            system(command)
+            
+            command = " mv tmp.m spwf.sx=-1"
+            system(command)
+        }
         else{
+        # No sorting
             command = "awk -f Spwf.sort.awk 'column=-1' 'points=" iqmax "' < spwf.par=0 ";
             system(command)
             command = " mv tmp.zero spwf.par=0.sig=0"
@@ -260,19 +272,15 @@ function ReadSpwf(basis, PairingType, SC, TSC, PC, TRC, sorted)
         }
 
     sorted[5] = $Eind
-    # Angular momentum quantum numbers Jx, Jy, Jz and J
+    # Angular momentum quantum numbers Jx, Jy, Jz,J and Sx
     if(basis == "hf") {
         k = 1
         if(legacy == 0){
-#            while (k < 8){
-#                sorted[5+k] = $(Eind + k +2)
-#                k+=1
-#            }
             sorted[5+1] = $(Eind + 3)
             sorted[5+2] = $(Eind + 5)
             sorted[5+3] = $(Eind + 7)
             sorted[5+4] = $(Eind + 9)
-#            sorted[5+5] = $(Eind + 1)
+            sorted[5+5] = $(Eind + 10)
         }
         else{
             while (k < 5){
@@ -345,6 +353,7 @@ BEGIN{
                 lengthfilename = length(FILENAME);
                 prefix = substr(FILENAME,1,lengthfilename-4);
                 print "Assuming Parity? ", AssumeParity
+                print "Simplex sorting  ", SimplexSort
         }
         #-----------------------------------------------------------------------
         # Some parameters to get from the start of the files, that are necessary

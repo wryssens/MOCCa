@@ -203,15 +203,12 @@ subroutine Evolve(MaxIterations, iprint)
   !Loop over the iterations
   Iteration   = 0
   Convergence = .false.
-  
   ! We calculate all of the multipole moments three times. This is strictly 
   ! wasteful, but only done at the zeroth iteration. This is to make sure
   ! the correct values are used in all readjustment formulas.
   call CalculateAllMoments(1)
   call CalculateAllMoments(1)
   call CalculateAllMoments(1)
-  
-  
 
   if(Pairingtype.eq.2) then
     !-----------------------------------------------------------------------------
@@ -228,8 +225,8 @@ subroutine Evolve(MaxIterations, iprint)
   call CompEnergy()
   
   !Printing observables
+  if(maxiterations .eq.0) print 101
   call PrintIterationInfo(0, .true.)
-
   !-----------------------------------------------------------------------------
   ! If asked for, we project first on the subspace of valid constraints.
   if(ConstraintsProject) then
@@ -262,10 +259,6 @@ subroutine Evolve(MaxIterations, iprint)
   !-----------------------------------------------------------------------------
   !Construct the mean-field potentials
   call ConstructPotentials
-  
-  if(Maxiterations.eq.0) then
-        print 101
-  endif
 
   !Checking for the presence of Rutz-Type constraints
   RutzCheck      = CheckForRutzMoments()
@@ -382,7 +375,7 @@ subroutine Evolve(MaxIterations, iprint)
   	if(Convergence) exit
 
     if(mod(Iteration, PrintIter).eq.0 .or. Iteration.eq.MaxIterations) then
-      if(Iteration.eq.MaxIterations) print 101
+      if((Iteration.eq.MaxIterations) .and. (.not. Maxiterations.eq.0)) print 101
       !Print info after selected amount of iterations.
       call PrintIterationInfo(Iteration, .true.)
     endif

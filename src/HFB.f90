@@ -3114,9 +3114,9 @@ subroutine InsertionSortQPEnergies
           if(abs(CanTransfo(j,C,P,it)) .lt.HFBNumCut) cycle
           !---------------------------------------------------------------------
           ! Get the phase of the not-transformed levels correctly
-          if(CanDeriv(index).ne.0) then
-            CanTransfo(j,C,P,it) = abs(CanTransfo(j,C,P,it))
-          endif
+!          if(CanDeriv(index).ne.0) then
+!            CanTransfo(j,C,P,it) = abs(CanTransfo(j,C,P,it))
+!          endif
           !---------------------------------------------------------------------
           !Transformation
           !---------------------------------------------------------------------

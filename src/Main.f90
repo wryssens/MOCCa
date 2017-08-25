@@ -174,7 +174,6 @@ subroutine Evolve(MaxIterations, iprint)
       call stp('Need to calculate Canonical basis at the start')
     endif
   endif
-
   if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp)   then
     if(MAXFDORDER .ne. -1 .or. MAXFDLAPORDER .NE. -1) then
         call stp('It is irresponsible to calculate N2LO without lag derivatives.')
@@ -183,7 +182,6 @@ subroutine Evolve(MaxIterations, iprint)
   else
     call DeriveAll()  
   endif
-  
   !Update the Angular momentum variables
   call UpdateAm(.true.)
   !Make sure that there is no improper readjusting of cranking constraints
@@ -213,13 +211,19 @@ subroutine Evolve(MaxIterations, iprint)
   call CalculateAllMoments(1)
   call CalculateAllMoments(1)
   
+  
+
   if(Pairingtype.eq.2) then
+    !-----------------------------------------------------------------------------
+    !Construct the mean-field potentials
+    call ConstructPotentials
+
     do i=1,nwt
       CanEnergy = InproductSpinorReal(CanBasis(i)%GetValue(),hPsi(Canbasis(i)))
       call Canbasis(i)%SetEnergy(CanEnergy)
     enddo
   endif
-  
+
   !Calculating  The Energy
   call CompEnergy()
   
@@ -270,14 +274,12 @@ subroutine Evolve(MaxIterations, iprint)
   if(MaxIterations.ne.0) then
         print 100
   endif
-  
   !-----------------------------------------------------------------------------
   !Start of the Mean-field iterations
   iteration = 0
   do while((Iteration.lt.MaxIterations))
     !Incrementing the iteration number
     Iteration = Iteration + 1
-
     ! Calculate all the different potentials to construct the single particle
     ! hamiltonian h and then substitute every spwf |\Psi> by 1 - dt/hbar*h|\Psi>
     ! or more complicated algorithms in general.
@@ -388,7 +390,6 @@ subroutine Evolve(MaxIterations, iprint)
   
   !End of the mean-field iterations
   !-----------------------------------------------------------------------------
-
   if (Convergence .and. mod(Iteration, PrintIter).ne.0) then
     ! If convergence happens during iterations, it is possible
     ! that a printout has been skipped

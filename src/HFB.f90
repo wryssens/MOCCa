@@ -4125,7 +4125,8 @@ subroutine PrintBlocking
     integer :: NP(2,2), P, it,j,i
     integer :: NS(2,2), S
 
-    1 format(' Number Parities')
+    1 format(' Number Parities (from counting holes)')
+   11 format(' Number Parities (from counting particles)') 
     3 format(' P =+1', 17x, i5,5x,i5)
     2 format(' P =-1', 17x, i5,5x,i5)
     4 format(' P = 0', 17x, i5,5x,i5)
@@ -4147,6 +4148,8 @@ subroutine PrintBlocking
                 ! sense: pairs in the canonical basis have the same occupation up to
                 ! about 10**-9 in some cases (but often better). Test case was 
                 ! one neutron qp state in Th223.
+                ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+                ! 
                 !--------------------------------------------------------------------
                 if(abs(Occupations(j,P,it)).lt.1d-8) NP(P,it) = NP(P,it) - 1
                 !if(abs(Occupations(j,P,it) - 1.0_dp).lt.1d-5) NP(P,it) = NP(P,it) + 1
@@ -4165,8 +4168,37 @@ subroutine PrintBlocking
       print 4, NP(1,:)
     endif
 
+    NP = 0
+    do it=1,Iindex
+        do P=1,Pindex
+            NP(P,it) = blocksizes(P,it)/2
+            do j=1,Blocksizes(P,it)    
+                !--------------------------------------------------------------------
+                ! For completeness' sake, MOCCa also prints the number parities
+                ! by counting eigenvalues close to 1
+                !--------------------------------------------------------------------
+                if(TRC) then
+                    if(abs(Occupations(j,P,it) - 2.0_dp).lt.1d-5) NP(P,it) = NP(P,it) + 1
+                else
+                    if(abs(Occupations(j,P,it) - 1.0_dp).lt.1d-5) NP(P,it) = NP(P,it) + 1
+                endif
+            enddo
+            if(TRC) NP(P,it) = NP(P,it)*2
+        enddo
+    enddo
+    
+    print *
+    print 11
+    if(PC) then
+      print 2, NP(1,:)
+      print 3, NP(2,:)
+    else
+      print 4, NP(1,:)
+    endif
+
     if((.not. SC).and.(.not.PC)) then
-        ! Check for the number parities in the 
+        ! Check for the number parities in the x-simplex blocks. This is
+        ! probably not to be trusted.
         NS = 0
         do it=1,Iindex
             do j = 1,blocksizes(1,it)

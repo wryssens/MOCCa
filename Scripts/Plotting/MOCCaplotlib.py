@@ -256,6 +256,17 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         yfname =PREFIX + '.ef.tab'
         ycolumn=7
         derivY=0
+    elif(YARG=='ESO') :
+        ylabel =r'$\langle E_{\rm spin orbit} \rangle$'
+        yfname =PREFIX + '.edecomp.tab'
+        ycolumn=12
+        derivY=0   
+    elif(YARG=='ETENSOR') :
+        ylabel =r'$\langle E_{\rm tensor} \rangle$'
+        yfname =PREFIX + '.edecomp.tab'
+        ycolumn=15
+        derivY=0    
+    
     else :
         print 'YARG not recognized'
         return
@@ -265,9 +276,8 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         sortfname =PREFIX + '.e.tab'
         sortcolumn=11
     elif(SORT == ''):
-        sortfname = xfname
+        sortfname  = xfname
         sortcolumn = xcolumn        
-
 
     return(xlabel, ylabel, xfname,yfname,sortfname,xcolumn,ycolumn,sortcolumn,derivY,altx,alty, divy, absy, fac)
 
@@ -276,7 +286,8 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
               INTERMAX =None,  LABEL=None, NORMY=1, SPHERNORM=0, 
               LINESTYLE='-' ,  MARKER='', COLOR='', OFFSET=None, 
               XMIN     =None,  XMAX=None, MINRANGE=None, MAXRANGE=None,
-              LINEWIDTH=1.0, INTERKIND='cubic', SORT='', INVERTINTERPOL=0):
+              LINEWIDTH=1.0, INTERKIND='cubic', SORT='', INVERTINTERPOL=0,     
+              YMAX=None):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
@@ -295,14 +306,16 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
     
             dataX=np.loadtxt(xfname,skiprows=1)
             dataY=np.loadtxt(yfname,skiprows=1)
-            sortdata = np.loadtxt(sortname, skiprows=1)
+            dataS= np.loadtxt(sortname, skiprows=1)
             
-            tempx=dataX[:,xcolumn]
-            tempsort = sortdata[:,sortcolumn]
+            
+            tempx    = dataX[:,xcolumn]
+            tempsort = dataS[:,sortcolumn]
             if( ycolumn != -1): 
                 tempy=dataY[:,ycolumn]
             else:
                 tempy=np.zeros_like(tempx)
+            
             if(XMIN != None):
                 indices = []
                 for j in range(len(tempx)):
@@ -310,6 +323,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
                         indices.append(j)
                 tempx = np.delete(tempx,indices)
                 tempy = np.delete(tempy,indices)
+                tempsort = np.delete(tempsort,indices)     
             if(XMAX != None):
                 indices = []
                 for j in range(len(tempx)):
@@ -317,15 +331,25 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
                         indices.append(j)
                 tempx = np.delete(tempx,indices)
                 tempy = np.delete(tempy,indices)
+                tempsort = np.delete(tempsort,indices)     
+            if(YMAX != None):
+                indices = []
+                for j in range(len(tempy)):
+                    if(tempy[j] > YMAX[i]):
+                        indices.append(j)
+                tempx = np.delete(tempx,indices)
+                tempy = np.delete(tempy,indices)
+                tempsort = np.delete(tempsort,indices)            
             
             if(i==0) :
                 xdata=tempx
                 ydata=tempy
                 sortdata = tempsort
             else:
-                xdata = np.append(xdata, tempx)
-                ydata = np.append(ydata, tempy)
+                xdata    = np.append(xdata, tempx)
+                ydata    = np.append(ydata, tempy)
                 sortdata = np.append(sortdata, tempsort)
+            
             ydata= fac * ydata
             if(absy == 1):
                 ydata = abs(ydata)
@@ -358,6 +382,14 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
                     indices.append(j)
             xdata = np.delete(xdata,indices)
             ydata = np.delete(ydata,indices)
+    
+        if(YMAX != None):
+            indices = []
+            for j in range(len(tempy)):
+                if(tempy[j] > YMAX):
+                    indices.append(j)
+            tempx = np.delete(tempx,indices)
+            tempy = np.delete(tempy,indices)
     
         if(altx != 0):
             altxdata = dataX[:, altx]
@@ -562,7 +594,8 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[]):
 ################################################################################
 def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, 
             PLOTDATA=-1, MARKER='', FERMIWINDOW=-1, XARG='B20', PC=1, SC=1, HF=0
-            , LINESTYLES=['-.','-', '--'], LINEWIDTH=1, DASHES=None):
+            , LINESTYLES=['-.','-', '--'], LINEWIDTH=1, DASHES=None, SIMPLEX=0, 
+            SIMPLEXSORT=0, MARKERSIZE=1):
 
     #Default to current axis
     if AXIS is None:
@@ -606,14 +639,24 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
     
     for P in PAR:
         shells[P] = {}
-        if (P == '-1'):
-            linestyle = LINESTYLES[2]
-        else:
-            linestyle = LINESTYLES[1]
-
         for S in SIG:
-            fnametemp=PREFIX + '.' + BASIS + '.' + ISO + '.' + 'par=' + P + '.' + 'sig=' + S 
-
+            if(SIMPLEXSORT == 0):
+                fnametemp=PREFIX + '.' + BASIS + '.' + ISO + '.' + 'par=' + P + '.' + 'sig=' + S 
+                
+                if (P == '-1'):
+                    linestyle = LINESTYLES[2]
+                else:
+                    linestyle = LINESTYLES[1]
+                
+            else:
+                fnametemp=PREFIX + '.' + BASIS + '.' + ISO + '.' + 'sx=' + S 
+                
+                if (S == '-1'):
+                    linestyle = LINESTYLES[2]
+                else:
+                    linestyle = LINESTYLES[1]
+            
+           
             if(KMAX !=0):
                 #===============================================================
                 # Axial case
@@ -638,6 +681,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                         except IndexError:
                             # Just ignore spwfs that are a single point
                             continue
+                        
                         xdata   = dataX[indexes,xcolumn]
                         if(PLOTDATA == 1):
                             AXIS.plot(xdata, ydata, c +'x')
@@ -650,18 +694,29 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                             ydata = f(interx)
                             xdata = interx
                             
+                     
+                        if((spwf[0,3] == -1)):
+                            m  = (5,1)
+                            me = 20
+                            ms = 10
+                        else:
+                            m  = MARKER
+                            me = 1
+                            ms = MARKERSIZE
+                        lw = LINEWIDTH
+                        
                         xdata, ydata = zip(*sorted(zip(xdata, ydata)))
                         if(i == 0 and P == PAR[0] ):
                             if(DASHES != None):
-                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=MARKER,linewidth=LINEWIDTH, dashes=DASHES)
+                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=m,linewidth=lw, dashes=DASHES, markevery=me, ms=ms)
                             else :
-                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=MARKER,linewidth=LINEWIDTH)
+                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=m,linewidth=lw, markevery=me, ms=ms)
                         
                         else:
                             if(DASHES != None):
-                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, marker=MARKER, linewidth=LINEWIDTH, dashes=DASHES)
+                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, marker=m, linewidth=lw, dashes=DASHES, markevery=me, ms=ms)
                             else:
-                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, marker=MARKER, linewidth=LINEWIDTH)
+                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, marker=m, linewidth=lw, markevery=me,ms=ms)
                                 
                         # Find the point of the spwf closest to x = 0 and add it
                         # to shells
@@ -693,6 +748,12 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                     spwf = spwfs[i]
                     try:
                         ydata = spwf[:,7]
+                        
+                        if(SIMPLEX == 1):
+                            if (spwf[3,12] < 0):
+                                linestyle = LINESTYLES[2]
+                            else:
+                                linestyle = LINESTYLES[1]
                         indexes = [int(x)-1 for x in spwf[:,1]]
                         if(HF == 1):
                             occupation = spwf[4,6]
@@ -703,6 +764,18 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                     except IndexError:
                         # Just ignore spwfs that are a single point
                         continue
+                        
+                    if((spwf[0,3] == -1)):
+                        m  = (5,1)
+                        me = 72
+                        ms = 10
+                    else:
+                        m  = MARKER
+                        me = 1
+                        ms = MARKERSIZE
+                        lw = LINEWIDTH
+                            
+                        
                     xdata   = dataX[indexes,xcolumn]
                     if(PLOTDATA == 1):
                         AXIS.plot(xdata, ydata, c +'x')
@@ -715,9 +788,9 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                         ydata = f(interx)
                         xdata = interx
                     if(i == 0 and P == PAR[0] ):
-                        AXIS.plot(xdata, ydata, c+linestyle, marker=MARKER)
+                        AXIS.plot(xdata, ydata, c+linestyle, marker=m, ms=ms, markevery=me)
                     else:
-                        AXIS.plot(xdata, ydata, c+linestyle, marker=MARKER)
+                        AXIS.plot(xdata, ydata, c+linestyle, marker=m, ms=ms, markevery=me)
                
     AXIS.set_xlabel(xlabel)
     AXIS.set_ylabel(r'E (MeV)')

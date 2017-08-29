@@ -4195,7 +4195,8 @@ subroutine PrintBlocking
     else
       print 4, NP(1,:)
     endif
-
+    
+    print *
     if((.not. SC).and.(.not.PC)) then
         ! Check for the number parities in the x-simplex blocks. This is
         ! probably not to be trusted.

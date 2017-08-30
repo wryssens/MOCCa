@@ -4127,6 +4127,8 @@ subroutine PrintBlocking
 
     1 format(" Number Parities (from counting holes, don't trust this easily)")
    11 format(' Number Parities (from counting particles)') 
+  111 format(' precision = 1d-5'   )
+  112 format(' precision = 1d-6'   ) 
     3 format(' P =+1', 17x, i5,5x,i5)
     2 format(' P =-1', 17x, i5,5x,i5)
     4 format(' P = 0', 17x, i5,5x,i5)
@@ -4189,6 +4191,34 @@ subroutine PrintBlocking
     
     print *
     print 11
+    print 111
+    if(PC) then
+      print 2, NP(1,:)
+      print 3, NP(2,:)
+    else
+      print 4, NP(1,:)
+    endif
+
+    NP = 0
+    do it=1,Iindex
+        do P=1,Pindex
+            NP(P,it) = 0
+            do j=1,Blocksizes(P,it)    
+                !--------------------------------------------------------------------
+                ! For completeness' sake, MOCCa also prints the number parities
+                ! by counting eigenvalues close to 1
+                !--------------------------------------------------------------------
+                if(TRC) then
+                    if(abs(Occupations(j,P,it) - 2.0_dp).lt.1d-6) NP(P,it) = NP(P,it) + 1
+                else
+                    if(abs(Occupations(j,P,it) - 1.0_dp).lt.1d-6) NP(P,it) = NP(P,it) + 1
+                endif
+            enddo
+            if(TRC) NP(P,it) = NP(P,it)*2
+        enddo
+    enddo
+    
+    print 112
     if(PC) then
       print 2, NP(1,:)
       print 3, NP(2,:)

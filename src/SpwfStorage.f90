@@ -975,8 +975,6 @@ contains
     N = 0
     do wave=1,nwt
         ! Find the spwfs with occupation = 1.
-        
-        
         if(abs(DensityBasis(wave)%Occupation - ref) .lt. prec) then
             it = (DensityBasis(wave)%Isospin + 3)/2
             N(it) = N(it) + 1
@@ -1023,10 +1021,6 @@ contains
     do it=1,2
        ifail = 0
        call zheev('N','U',N(it), A(1:N(it),1:N(it),it),N(it),eigen(1:N(it),it), work, 2*nw, rwork, 2*nw) 	
-!       do j=1,N(it)
-!            print *, eigen(j,it)
-!       enddo
-!       print *
     enddo
     
     print 1
@@ -1036,9 +1030,9 @@ contains
     do it=1,2
         plus(it) = 0 ; minus(it) = 0 ; unclas(it) = 0
         do j=1,N(it)
-            if( abs(eigen(j,it) - 1)   .lt.prec ) then
+            if( abs(eigen(j,it) - 1)   .lt. 1d-2) then
                 plus(it)  = plus(it) + 1
-            elseif(abs(eigen(j,it) + 1).lt.prec ) then
+            elseif(abs(eigen(j,it) + 1).lt. 1d-2 ) then
                 minus(it) = minus(it) + 1
             else
                 unclas(it) = unclas(it) +1 

@@ -4125,7 +4125,7 @@ subroutine PrintBlocking
     integer :: NP(2,2), P, it,j,i
     integer :: NS(2,2), S
 
-    1 format(' Number Parities (from counting holes)')
+    1 format(" Number Parities (from counting holes, don't trust this easily)")
    11 format(' Number Parities (from counting particles)') 
     3 format(' P =+1', 17x, i5,5x,i5)
     2 format(' P =-1', 17x, i5,5x,i5)
@@ -4171,7 +4171,7 @@ subroutine PrintBlocking
     NP = 0
     do it=1,Iindex
         do P=1,Pindex
-            NP(P,it) = blocksizes(P,it)/2
+            NP(P,it) = 0
             do j=1,Blocksizes(P,it)    
                 !--------------------------------------------------------------------
                 ! For completeness' sake, MOCCa also prints the number parities
@@ -4195,28 +4195,28 @@ subroutine PrintBlocking
     else
       print 4, NP(1,:)
     endif
-    
-    print *
-    if((.not. SC).and.(.not.PC)) then
-        ! Check for the number parities in the x-simplex blocks. This is
-        ! probably not to be trusted.
-        NS = 0
-        do it=1,Iindex
-            do j = 1,blocksizes(1,it)
-                i = blockindices(j,1,it)
-                if(abs(Occupations(j,1,it)).lt.1d-6)  then
-                    if(CanBasis(i)%xsimplexr > 0) then
-                        NS(2,it) = NS(2,it) + 1 
-                    else
-                        NS(1,it) = NS(1,it) + 1
-                    endif
-                endif
-            enddo
-        enddo
-        print 1
-        print 5, NS(2,:)
-        print 6, NS(1,:)
-    endif
+!    
+!    print *
+!    if((.not. SC).and.(.not.PC)) then
+!        ! Check for the number parities in the x-simplex blocks. This is
+!        ! probably not to be trusted.
+!        NS = 0
+!        do it=1,Iindex
+!            do j = 1,blocksizes(1,it)
+!                i = blockindices(j,1,it)
+!                if(abs(Occupations(j,1,it)).lt.1d-6)  then
+!                    if(CanBasis(i)%xsimplexr > 0) then
+!                        NS(2,it) = NS(2,it) + 1 
+!                    else
+!                        NS(1,it) = NS(1,it) + 1
+!                    endif
+!                endif
+!            enddo
+!        enddo
+!        print 1
+!        print 5, NS(2,:)
+!        print 6, NS(1,:)
+!    endif
 
   end subroutine PrintNumberParities
 

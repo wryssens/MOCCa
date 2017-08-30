@@ -943,7 +943,112 @@ contains
     enddo
     
   end subroutine Alirotatebasis
+  
+  subroutine NumberParityCounting()
+    !---------------------------------------------------------------------------
+    ! Correctly determine the quantum number of the many-body state under 
+    ! consideration. 
+    !  Step a) Collect the spwfs in the DensityBasis with occupation 1.
+    !  Step b) Diagonalize the symmetry in this subspace.
+    !  Step c) Count the eigenvalues.
+    !---------------------------------------------------------------------------
 
+    integer                       :: i,j,k, wave, N(2), it, nw, ref, ifail
+    integer                       :: plus(2), minus(2), unclas(2)
+    integer, allocatable          :: indices(:,:), isuppz(:), iwork(:)
+    complex(KIND=dp), allocatable :: A(:,:,:), work(:)
+    real(KIND=dp)                 :: prec = 1d-5, inprod(2)
+    real(KIND=dp), allocatable    :: rwork(:), eigen(:,:)
+    type(Spinor)                  :: left, right
+    
+    1 format ( ' - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ' )
+    2 format ( ' Re-diagonalizing S_x among fully occupied levels.           ')
+    3 format ( '              +i   -i unclassified     total ')
+    4 format ( ' Neutrons: ', 2i5, i5,10x,i5)
+    5 format ( ' Protons:  ', 2i5, i5,10x,i5)
+    
+    allocate(indices(nwt,2)) ; indices = 0
+    
+    ref = 1
+    if(TRC) ref = 2
+    
+    N = 0
+    do wave=1,nwt
+        ! Find the spwfs with occupation = 1.
+        
+        
+        if(abs(DensityBasis(wave)%Occupation - ref) .lt. prec) then
+            it = (DensityBasis(wave)%Isospin + 3)/2
+            N(it) = N(it) + 1
+            ! Filling the indices array
+            indices(N(it),it) = wave
+        endif
+    enddo
+    
+    
+    ! Populating the array to be diagonalized
+    nw = maxval(N)
+
+    allocate(A(nw,nw,2))  ; A = 0.0_dp 
+    allocate(eigen(nw,2)) ; eigen = 0
+    allocate(isuppz(2*nw))
+    allocate(work(2*nw))
+    allocate(rwork(2*nw))
+    allocate(iwork(2*nw))
+    
+    do it=1,2
+        do j=1,N(it)
+           do k=j,N(it)
+               if(DensityBasis(indices(j,it))%Parity.ne.  &
+               &  DensityBasis(indices(k,it))%Parity      ) cycle
+               
+               if(DensityBasis(indices(j,it))%Parity.ne.  &
+               &  DensityBasis(indices(k,it))%Parity      ) cycle
+               
+               left      = DensityBasis(indices(j,it))%Value
+               right     = ActionOfXSimplex(DensityBasis(indices(k,it))%Value)
+               
+               ! Note that 
+               ! a) S_x is not hermitian, but iS_x is. 
+               ! b) Re < j | S_x | k > is restricted by y-timesimplex, and thus
+               !                       manually set to zero.
+               !    This of course corresponds to i< j | S_x | k > being fully 
+               !    real
+               inprod(1) = InproductSpinorImaginary(left, right)
+               A(j,k,it) = CMPLX(inprod(1), 0) 
+           enddo
+        enddo
+    enddo 
+
+    do it=1,2
+       ifail = 0
+       call zheev('N','U',N(it), A(1:N(it),1:N(it),it),N(it),eigen(1:N(it),it), work, 2*nw, rwork, 2*nw) 	
+!       do j=1,N(it)
+!            print *, eigen(j,it)
+!       enddo
+!       print *
+    enddo
+    
+    print 1
+    print 2
+    print 3
+    ! Counting and printing the outcome
+    do it=1,2
+        plus(it) = 0 ; minus(it) = 0 ; unclas(it) = 0
+        do j=1,N(it)
+            if( abs(eigen(j,it) - 1)   .lt.prec ) then
+                plus(it)  = plus(it) + 1
+            elseif(abs(eigen(j,it) + 1).lt.prec ) then
+                minus(it) = minus(it) + 1
+            else
+                unclas(it) = unclas(it) +1 
+            endif
+        enddo
+    enddo
+    print 4, plus(1), minus(1), unclas(1), plus(1) + minus(1) + unclas(1)
+    print 5, plus(2), minus(2), unclas(2), plus(2) + minus(2) + unclas(2)
+    print 1
+  end subroutine NumberParityCounting
   ! subroutine DrawWaveFunction(wave, Direction, FileName)
   !   !---------------------------------------------------------------------------
   !   ! Subroutine that draws the density corresponding to a single wavefunction.

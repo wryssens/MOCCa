@@ -527,7 +527,7 @@ subroutine FinalIteration()
   ! 2) Recalculate Energies with Lagrange derivatives.
   !-----------------------------------------------------------------------------
   use Derivatives
-  use Spwfstorage, only : DeriveAll, DensityBasis, nwt
+  use Spwfstorage, only : DeriveAll, DensityBasis, nwt, NumberParityCounting
   use Densities,   only : UpdateDensities
   use Pairing,     only : SolvePairing
   use InOutput,    only : Pictures, PlotDensity
@@ -555,6 +555,9 @@ subroutine FinalIteration()
   !Printing Energy (with Lagrange mention...)
   call PrintEnergy(.true.)
 
+  ! Count the quantum numbers of the single-particle states
+  if((.not. PC) .and. (.not. SC) .and. (.not. TRC))call NumberParityCounting
+
   ! Recalculating the finite difference derivatives, in order
   ! to write the densities of the final iteration to file
   call AssignFDCoefs(MaxFDOrder, MaxFDLapOrder, CoulombLapOrder)
@@ -564,7 +567,7 @@ subroutine FinalIteration()
 
   !Write densities to files.
   if(Pictures) call PlotDensity()
-
+  
   call UpdateDensities(0)
 
 end subroutine FinalIteration

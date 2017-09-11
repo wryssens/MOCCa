@@ -832,6 +832,15 @@ BEGIN{
                 Jz[iq]     = $3
                 OmegaZ[iq] = $5          
                 angmomflag=0     
+                
+                while( $1 != "ReJTx"){
+                    getline;
+                }
+                JtX[iq] = $3
+                getline;
+                JtY[iq] = $3
+                getline;
+                JtZ[iq] = $3
         }
 
         if ( pairingflag && $2 == "Pairing") {
@@ -1007,14 +1016,14 @@ END{
     iq=1;
     while ( iq < iqmax + 1 ) {
         enoln = Energy[iq,1] - ELN[iq,3];
-        printf("%3.0f %17.10f %17.10f %17.10f   %10.3f %10.3f   %10.6f %8.3f %8.3f %8.3f %12.6f %12.5f %12.6f %12.5f %12.6f %12.5f \n",
-           iq,Energy[iq,1],Energy[iq,2],Energy[iq,3],Energy[iq,4],ELN[iq,1],ELN[iq,2], rms[iq,1],rms[iq,2],rms[iq,3],OmegaX[iq],Jx[iq],OmegaY[iq],Jy[iq],OmegaZ[iq],Jz[iq]) >> "tmp.e.tab"; 
+        printf("%3.0f %17.10f %17.10f %17.10f   %17.10f %17.10f   %17.10f %8.3f %8.3f %8.3f %12.6f %12.5f %12.6f %12.5f %12.6f %12.5f %12.6f %12.5f %12.6f %12.5f \n",
+                   iq, Energy[iq,1],Energy[iq,2],Energy[iq,3],Energy[iq,4],ELN[iq,1],ELN[iq,2], rms[iq,1],rms[iq,2],rms[iq,3],OmegaX[iq],Jx[iq],JxT[iq],OmegaY[iq],Jy[iq],JyT[iq],OmegaZ[iq],Jz[iq],JzT[iq]) >> "tmp.e.tab"; 
         iq += 1;
     }
     close("tmp.e.tab");
     #---------------------------------------------------------------------------
     # Edecomp
-    print "!       E(func)     E_FD     E(sp)     Routhian       eLN(n)     eLN(p)   Kinetic(n) Kinetic(p) Kinetic(t) SpinOrbit(n) SpinOrbit(p) SpinOrbit(t) Tensor(n) Tensor(p) Tensor(t)" > "tmp.edecomp.tab";
+    print "!        E(func)            E_FD          E(sp)            Routhian        eLN(n)     eLN(p)   Kinetic(n) Kinetic(p) Kinetic(t) SpinOrbit(n) SpinOrbit(p) SpinOrbit(t) Tensor(n) Tensor(p) Tensor(t)" > "tmp.edecomp.tab";
     iq=1;
     while ( iq < iqmax + 1 ) {
         enoln = Energy[iq,1] - ELN[iq,3];

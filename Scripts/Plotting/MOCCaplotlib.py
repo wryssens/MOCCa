@@ -77,12 +77,20 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
     elif(XARG=='JZ') :
         xlabel =r'$\langle \hat{J}_{z} \rangle$ ($\hbar$)'
         xfname =PREFIX + '.e.tab'
-        xcolumn=15
+        xcolumn=17
+    elif(XARG=='JTX') :
+        xlabel =r'$\langle J_{x}\check{T}\rangle$ ($\hbar$) '
+        xfname =PREFIX + '.e.tab'
+        xcolumn=12
+    elif(XARG=='JTZ') :
+        xlabel =r'$\langle \hat{J}_{z}\check{T} \rangle$ ($\hbar$)'
+        xfname =PREFIX + '.e.tab'
+        xcolumn=16
     elif(XARG=='THETAZ'):
         xlabel =r'$\theta_z$'
         xfname =PREFIX + '.e.tab'
-        xcolumn= 14
-        altx   = 10
+        xcolumn= 17
+        altx   = 11
     elif(XARG=='NX'):   
         xlabel =r'$nx$'
         xfname =PREFIX + '.calc.tab'
@@ -287,7 +295,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
               LINESTYLE='-' ,  MARKER='', COLOR='', OFFSET=None, 
               XMIN     =None,  XMAX=None, MINRANGE=None, MAXRANGE=None,
               LINEWIDTH=1.0, INTERKIND='cubic', SORT='', INVERTINTERPOL=0,     
-              YMAX=None):
+              YMAX=None, FORCESYM=None):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
@@ -434,6 +442,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
             ydata = f(interx)
             xdata = g(interx)
         else:
+            
             f     = interp1d(ydata, sortdata, kind=INTERKIND)
             g     = interp1d(xdata, sortdata, kind=INTERKIND)
             if(INTERMIN == None and INTERMAX == None):  

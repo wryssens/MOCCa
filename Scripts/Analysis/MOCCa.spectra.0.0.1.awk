@@ -836,11 +836,11 @@ BEGIN{
                 while( $1 != "ReJTx"){
                     getline;
                 }
-                JtX[iq] = $3
+                JxT[iq] = $3
                 getline;
-                JtY[iq] = $3
+                JyT[iq] = $3
                 getline;
-                JtZ[iq] = $3
+                JzT[iq] = $3
         }
 
         if ( pairingflag && $2 == "Pairing") {
@@ -1016,7 +1016,7 @@ END{
     iq=1;
     while ( iq < iqmax + 1 ) {
         enoln = Energy[iq,1] - ELN[iq,3];
-        printf("%3.0f %17.10f %17.10f %17.10f   %17.10f %17.10f   %17.10f %8.3f %8.3f %8.3f %12.6f %12.5f %12.6f %12.5f %12.6f %12.5f %12.6f %12.5f %12.6f %12.5f \n",
+        printf("%3.0f %17.10f %17.10f %17.10f   %17.10f %17.10f   %17.10f %8.3f %8.3f %8.3f %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f \n",
                    iq, Energy[iq,1],Energy[iq,2],Energy[iq,3],Energy[iq,4],ELN[iq,1],ELN[iq,2], rms[iq,1],rms[iq,2],rms[iq,3],OmegaX[iq],Jx[iq],JxT[iq],OmegaY[iq],Jy[iq],JyT[iq],OmegaZ[iq],Jz[iq],JzT[iq]) >> "tmp.e.tab"; 
         iq += 1;
     }

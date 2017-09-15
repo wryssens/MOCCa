@@ -186,7 +186,7 @@ contains
           Omega(i) = Omega(i) - 2*CrankC0*(TotalAngMom(i) - CrankValues(i))
         case(3)
           if(Rutz) cycle
-          Omega(i) = Omega(i) - 2*sqrt(2/J2Total(i))*(TotalAngMom(i) - CrankValues(i))
+          Omega(i) = Omega(i) - 2/J2Total(i)*(TotalAngMom(i) - CrankValues(i))
         end select
     enddo
 

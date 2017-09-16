@@ -23,7 +23,7 @@ module HartreeFock
     integer :: HFConfiguration(2,2,2) = 0
     procedure(PickHFConfig),pointer :: HFFill !=> NaiveFill
 
-    integer :: HFBlock=0
+    integer :: HFBlock(8) = 0
 contains
 
     subroutine PickHFConfig(Configuration)
@@ -174,9 +174,12 @@ contains
     else
       ProtonUpperBound  = floor(Protons)
       NeutronUpperBound = floor(Neutrons)
-      if(HFBlock .ne. 0 ) then
-        NeutronUpperBound = NeutronUpperBound -1
-      endif
+      
+      do i=1,8
+        if(HFBlock(i) .ne. 0 ) then
+            NeutronUpperBound = NeutronUpperBound -1
+        endif
+      enddo
     endif
     !---------------------------------------------------------------------------
     !Finding the order of the spwfs, in terms of energy
@@ -209,9 +212,11 @@ contains
       i = i + 1
     enddo
     ! Blocking a certain state
-    if(HFBlock.ne.0) then
-        call HFBasis(HFBlock)%SetOcc(1.0_dp)
-    endif
+    do i=1,8
+        if(HFBlock(i).ne.0) then
+            call HFBasis(HFBlock(i))%SetOcc(1.0_dp)
+        endif
+    enddo
     
     !---------------------------------------------------------------------------
     !Double all occupation Numbers in the case of Time Reversal Symmetry

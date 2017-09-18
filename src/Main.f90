@@ -530,7 +530,7 @@ subroutine FinalIteration()
   use Spwfstorage, only : DeriveAll, DensityBasis, nwt, NumberParityCounting
   use Densities,   only : UpdateDensities
   use Pairing,     only : SolvePairing
-  use InOutput,    only : Pictures, PlotDensity
+  use InOutput,    only : Pictures, PlotDensity, PlotCurrents
   use Energy
     
   implicit none
@@ -566,7 +566,10 @@ subroutine FinalIteration()
   enddo
 
   !Write densities to files.
-  if(Pictures) call PlotDensity()
+  if(Pictures) then
+    call PlotDensity()
+    call PlotCurrents(15,1)
+  endif
   
   call UpdateDensities(0)
 

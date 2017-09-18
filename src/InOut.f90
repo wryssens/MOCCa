@@ -1463,71 +1463,123 @@ end subroutine ReadMOCCa_v1
   
     integer :: zmin, zmax, ymin,ymax, xmin, xmax
     integer :: i,j,k, iunit, ctarg, dir
-    
-    zmin = -(nz-0.5d0) * dx
-    zmax =  (nz-0.5d0) * dx
-    ymin = -(ny-0.5d0) * dx
-    ymax =  (ny-0.5d0) * dx
-    
-    
-    select case(dir)
-    
-    case(1)
-        iunit = 12
-        open(iunit, File='vecs.dat')
-        do k=1,nz
-            ! First the negative y-axis. Needs to be explicit since I do not want
-            ! to write a complex HFB solver.
-            do j=1,ny
-                do i=1,nx
-                    write(iunit,'(10f10.5)'), MeshX(i), -MeshY(ny-j+1), MeshZ(k),  &
-                    & +Density%vecs(i,ny-j+1,k,1,1), -Density%vecs(i,ny-j+1,k,2,1),          &
-                    & +Density%vecs(i,ny-j+1,k,3,1), &
-                    & +Density%vecs(i,ny-j+1,k,1,2), -Density%vecs(i,ny-j+1,k,2,2),          &
-                    & +Density%vecs(i,ny-j+1,k,3,2) 
-                enddo
-            enddo
-            do j=1,ny
-                do i=1,nx
-                    write(iunit,'(10f10.5)'), MeshX(i), MeshY(j), MeshZ(k),        &
-                    &  Density%vecs(i,j,k,1,1), Density%vecs(i,j,k,2,1),           &
-                    &  Density%vecs(i,j,k,3,1), &
-                    &  Density%vecs(i,j,k,1,2), Density%vecs(i,j,k,2,2),           &
-                    &  Density%vecs(i,j,k,3,2) 
-                enddo
+
+    !---------------------------------------------------------------------------
+    ! 3D
+    iunit = 12
+    open(iunit, File='vecs.dat')
+    do k=1,nz
+        ! First the negative y-axis. Needs to be explicit since I do not want
+        ! to write a complex HFB solver.
+        do j=1,ny
+            do i=1,nx
+                write(iunit,'(10f10.5)'), MeshX(i), -MeshY(ny-j+1), MeshZ(k),  &
+                & +Density%vecs(i,ny-j+1,k,1,1), -Density%vecs(i,ny-j+1,k,2,1),          &
+                & +Density%vecs(i,ny-j+1,k,3,1), &
+                & +Density%vecs(i,ny-j+1,k,1,2), -Density%vecs(i,ny-j+1,k,2,2),          &
+                & +Density%vecs(i,ny-j+1,k,3,2) 
             enddo
         enddo
-        close(iunit)
-        
-        i = ctarg
-        open(iunit, File='vecj.dat')
-        do k=1,nz
-            ! First the negative y-axis. Needs to be explicit since I do not want
-            ! to write a complex HFB solver.
-            do j=1,ny
-                do i=1,nx
-                    write(iunit,'(10f10.5)'), MeshX(i), -MeshY(ny-j+1), MeshZ(k),  &
-                    & -Density%vecj(i,ny-j+1,k,1,1), +Density%vecj(i,ny-j+1,k,2,1),          &
-                    & -Density%vecj(i,ny-j+1,k,3,1), -Density%vecj(i,ny-j+1,k,1,2),          &
-                    & +Density%vecj(i,ny-j+1,k,2,2), -Density%vecj(i,ny-j+1,k,3,2)     
-                enddo
-            enddo
-        
-            do j=1,ny
-                do i=1,nx
-                    write(iunit,'(10f10.5)'), MeshX(i), MeshY(j), MeshZ(k),        &
-                    & Density%vecj(i,j,k,1,1), Density%vecj(i,j,k,2,1),            &
-                    & Density%vecj(i,j,k,3,1), Density%vecj(i,j,k,1,2),            &
-                    & Density%vecj(i,j,k,2,2), Density%vecj(i,j,k,3,2)     
-                enddo
+        do j=1,ny
+            do i=1,nx
+                write(iunit,'(10f10.5)'), MeshX(i), MeshY(j), MeshZ(k),        &
+                &  Density%vecs(i,j,k,1,1), Density%vecs(i,j,k,2,1),           &
+                &  Density%vecs(i,j,k,3,1), &
+                &  Density%vecs(i,j,k,1,2), Density%vecs(i,j,k,2,2),           &
+                &  Density%vecs(i,j,k,3,2) 
             enddo
         enddo
-        close(iunit)
-   case(2)
-        
-   case(3)
-   
-   end select 
+    enddo
+    close(iunit)
+    
+    i = ctarg
+    open(iunit, File='vecj.dat')
+    do k=1,nz
+        ! First the negative y-axis. Needs to be explicit since I do not want
+        ! to write a complex HFB solver.
+        do j=1,ny
+            do i=1,nx
+                write(iunit,'(10f10.5)'), MeshX(i), -MeshY(ny-j+1), MeshZ(k),  &
+                & -Density%vecj(i,ny-j+1,k,1,1), +Density%vecj(i,ny-j+1,k,2,1),          &
+                & -Density%vecj(i,ny-j+1,k,3,1), -Density%vecj(i,ny-j+1,k,1,2),          &
+                & +Density%vecj(i,ny-j+1,k,2,2), -Density%vecj(i,ny-j+1,k,3,2)     
+            enddo
+        enddo
+    
+        do j=1,ny
+            do i=1,nx
+                write(iunit,'(10f10.5)'), MeshX(i), MeshY(j), MeshZ(k),        &
+                & Density%vecj(i,j,k,1,1), Density%vecj(i,j,k,2,1),            &
+                & Density%vecj(i,j,k,3,1), Density%vecj(i,j,k,1,2),            &
+                & Density%vecj(i,j,k,2,2), Density%vecj(i,j,k,3,2)     
+            enddo
+        enddo
+    enddo
+    close(iunit)
+    
+    !---------------------------------------------------------------------------
+    ! X 
+    i = ctarg
+    open(iunit, File='vecj.X.dat')
+    do k=1,nz
+        ! First the negative y-axis. Needs to be explicit since I do not want
+        ! to write a complex HFB solver.
+        do j=1,ny
+                write(iunit,'(10f10.5)'), MeshX(i), -MeshY(ny-j+1), MeshZ(k),  &
+                & -Density%vecj(i,ny-j+1,k,1,1), +Density%vecj(i,ny-j+1,k,2,1),          &
+                & -Density%vecj(i,ny-j+1,k,3,1), -Density%vecj(i,ny-j+1,k,1,2),          &
+                & +Density%vecj(i,ny-j+1,k,2,2), -Density%vecj(i,ny-j+1,k,3,2)     
+        enddo
+    
+        do j=1,ny
+                write(iunit,'(10f10.5)'), MeshX(i), MeshY(j), MeshZ(k),        &
+                & Density%vecj(i,j,k,1,1), Density%vecj(i,j,k,2,1),            &
+                & Density%vecj(i,j,k,3,1), Density%vecj(i,j,k,1,2),            &
+                & Density%vecj(i,j,k,2,2), Density%vecj(i,j,k,3,2)     
+        enddo
+    enddo
+    close(iunit)
+    
+    !---------------------------------------------------------------------------
+    ! Y
+    j = 1
+    open(iunit, File='vecj.Y.dat')
+    do k=1,nz 
+        do i=1,nx
+                write(iunit,'(10f10.5)'), MeshX(i), MeshY(j), MeshZ(k),        &
+                & Density%vecj(i,j,k,1,1), Density%vecj(i,j,k,2,1),            &
+                & Density%vecj(i,j,k,3,1), Density%vecj(i,j,k,1,2),            &
+                & Density%vecj(i,j,k,2,2), Density%vecj(i,j,k,3,2)     
+        enddo
+    enddo
+    close(iunit)
+    
+    !---------------------------------------------------------------------------
+    ! Z
+    k = ctarg
+    open(iunit, File='vecj.Z.dat')
+    
+    ! First the negative y-axis. Needs to be explicit since I do not want
+    ! to write a complex HFB solver.
+    do j=1,ny
+        do i=1,nx
+            write(iunit,'(10f10.5)'), MeshX(i), -MeshY(ny-j+1), MeshZ(k),  &
+            & -Density%vecj(i,ny-j+1,k,1,1), +Density%vecj(i,ny-j+1,k,2,1),&
+            & -Density%vecj(i,ny-j+1,k,3,1), -Density%vecj(i,ny-j+1,k,1,2),&
+            & +Density%vecj(i,ny-j+1,k,2,2), -Density%vecj(i,ny-j+1,k,3,2) 
+        enddo    
+    enddo
+    
+    do j=1,ny
+        do i=1,nx
+            write(iunit,'(10f10.5)'), MeshX(i), MeshY(j), MeshZ(k),        &
+            & Density%vecj(i,j,k,1,1), Density%vecj(i,j,k,2,1),            &
+            & Density%vecj(i,j,k,3,1), Density%vecj(i,j,k,1,2),            &
+            & Density%vecj(i,j,k,2,2), Density%vecj(i,j,k,3,2) 
+        enddo    
+    enddo
+    close(iunit)
+    !---------------------------------------------------------------------------
    
   
   end subroutine PlotCurrents

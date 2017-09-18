@@ -1440,10 +1440,11 @@ end subroutine ReadMOCCa_v1
     open(iunit, File='density.X.dat')
 
     do k=1,nz
-      do j=1,ny
           i = nx/2+1
           if(SC) i = 1
-          write(iunit, '(5f10.5)') MeshY(ny-j+1), MeshZ(k), Density%Rho(i,ny-j+1,k,1), Density%Rho(i,ny-j+1,k,2),&
+
+      do j=1,ny
+          write(iunit, '(5f10.5)') -MeshY(ny-j+1), MeshZ(k), Density%Rho(i,ny-j+1,k,1), Density%Rho(i,ny-j+1,k,2),&
           &                       sum(Density%Rho(i,ny-j+1,k,:))
       enddo
       do j=1,ny          
@@ -1474,7 +1475,7 @@ end subroutine ReadMOCCa_v1
     if(PC) k =1
       do j=1,ny
         do i=1,nx
-          write(iunit, '(5f10.5)') MeshX(i), MeshY(ny-j+1),Density%Rho(i,ny-j+1,k,1), Density%Rho(i,ny-j+1,k,2),&
+          write(iunit, '(5f10.5)') MeshX(i), -MeshY(ny-j+1),Density%Rho(i,ny-j+1,k,1), Density%Rho(i,ny-j+1,k,2),&
           &                       sum(Density%Rho(i,ny-j+1,k,:))
         enddo
       enddo

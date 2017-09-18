@@ -1423,7 +1423,7 @@ end subroutine ReadMOCCa_v1
     do k=1,nz
       do j=1,ny
         do i=1,nx
-          write(iunit, '(5f10.5)') Mesh(i), MeshY(j), MeshZ(k), Density%Rho(i,j,k,1), Density%Rho(i,j,k,2),&
+          write(iunit, '(6f10.5)') MeshX(i), MeshY(j), MeshZ(k), Density%Rho(i,j,k,1), Density%Rho(i,j,k,2),&
           &                       sum(Density%Rho(i,j,k,:))
          enddo
       enddo

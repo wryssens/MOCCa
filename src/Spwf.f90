@@ -1010,7 +1010,8 @@ contains
     ! Y-direction
     if(SC .or. TSC) then
         J(2) = 0
-    else 
+    else
+        J(2) = 0
         !-----------------------------------------------------------------------
         ! Real part of <Jy>
         do i=1,nx*ny*nz
@@ -1133,6 +1134,9 @@ contains
         & + Phi%Grid(i,1,1,4,1)*Mesh3D(3,i,1,1)*derphi(1)%Grid(i,1,1,2,1)  &
         & - Phi%Grid(i,1,1,4,1)*Mesh3D(1,i,1,1)*derphi(3)%Grid(i,1,1,2,1) 
     enddo
+
+!!    JTI(2) = JTI(2) * JTR(1)/abs(JTR(1))
+!    JTI(2) = 0.5*InproductSpinorReal(Phi,Pauli(TimeReverse(MultiplyI(Phi)),2))/dv !* JTR(1)/abs(JTR(1))
 
     JTR(2) = 0.0_dp
     if(.not. TSC) then

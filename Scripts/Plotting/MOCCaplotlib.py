@@ -65,7 +65,7 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
     elif(XARG=='OmZ') :
         xlabel =r'$\hbar \omega_{z}$ (MeV) '
         xfname =PREFIX + '.e.tab'
-        xcolumn=14
+        xcolumn=16
     elif(XARG=='OmX') :
         xlabel =r'$\omega_{x}$ (MeV $\hbar^{-1}$) '
         xfname =PREFIX + '.e.tab'
@@ -103,6 +103,14 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         xlabel =r'$\alpha_x (^{\circ})$'
         xfname =PREFIX + '.block.tab'
         xcolumn=1
+    elif(XARG=='SizeJ') :
+        xlabel =r'$J_{tot} (\hbar)$'
+        xfname =PREFIX + '.e.tab'
+        xcolumn= 19
+    elif(XARG=='JXT') :
+        xlabel =r'$\langle \hat{J}_{x} T \rangle$ ($\hbar$)'
+        xfname =PREFIX + '.e.tab'
+        xcolumn= 12
     else :
         print 'XARG not recognized'
         return
@@ -154,12 +162,27 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
     elif(YARG=='JZ') :
         ylabel =r'$\langle \hat{J}_{z} \rangle$ ($\hbar$)'
         yfname =PREFIX + '.e.tab'
-        ycolumn=15
+        ycolumn=17
         derivY = 0
     elif(YARG=='JX') :
         ylabel =r'$\langle \hat{J}_{x} \rangle$ ($\hbar$)'
         yfname =PREFIX + '.e.tab'
         ycolumn= 11
+        derivY = 0
+    elif(YARG=='JZT') :
+        ylabel =r'$\langle \hat{J}_{z}T \rangle$ ($\hbar$)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn=18
+        derivY = 0
+    elif(YARG=='JXT') :
+        ylabel =r'$\langle \hat{J}_{x} T \rangle$ ($\hbar$)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn= 12
+        derivY = 0
+    elif(YARG=='SizeJ') :
+        ylabel =r'$J_{tot} (\hbar)$'
+        yfname =PREFIX + '.e.tab'
+        ycolumn= 19
         derivY = 0
     elif(YARG=='OmX') :
         ylabel =r'$\omega_{x}$ (MeV $\hbar^{-1}$) '
@@ -523,7 +546,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         emax = max(ydata[maskmax])
     
 
-    return (minx, ymin, maxx, emax)
+    return (minx, ymin, xdata, ydata)
 
 #################################################################################
 def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[]):
@@ -817,7 +840,7 @@ def Qps(PREFIX, PAR, ISO, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER=''):
 
     xfname=PREFIX + '.e.tab'
     dataX=np.loadtxt(xfname,skiprows=1)
-    xdata = dataX[:,11]
+    xdata = dataX[:,16]
     
     
     for P in PAR:
@@ -847,7 +870,7 @@ def Qps(PREFIX, PAR, ISO, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER=''):
             except IndexError:
                 # Just ignore spwfs that are a single point
                 continue
-            xdata   = dataX[indexes,11]
+            xdata   = dataX[indexes,16]
             
             xdata, ydata = zip(*sorted(zip(xdata,ydata)))
             xdata = np.asarray(xdata)

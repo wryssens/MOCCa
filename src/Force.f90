@@ -123,13 +123,19 @@ module Force
     !-----------------------------------------------------------------------------
     integer, public              :: COM1Body=2, COM2Body=0
 
+
+    !---------------------------------------------------------------------------
+    ! Temporary parameter to vary the the contribution of the RhoQ term.
+    !---------------------------------------------------------------------------
+    real(KIND=dp) :: RhoQFactor = 1.0_dp
+    
 contains
 
     subroutine ReadForceInfo()
         !---------------------------------------------------------------------------
         ! Subroutine governing the user input of parameters regarding this module.
         !---------------------------------------------------------------------------
-        NameList /Force/ afor, SkyrmeTreatment
+        NameList /Force/ afor, SkyrmeTreatment, RhoQFactor
 
         !Read the correct name from input
         read(unit=*, NML=Force)
@@ -166,8 +172,7 @@ contains
     &                    t1n3, t2n3, x1n3, x2n3,                           &
     &                    hbm,e2,                                           &
     &                    COM1body, COM2body,                               &
-    &                    J2Terms,                                          &
-    &                    averagemass, hbar, nucleonmass
+    &                    J2Terms, averagemass, hbar, nucleonmass
 
     inquire(file='forces.param', exist=exists)
     if (.not. exists) call stp("MOCCa can't find forces.param file!")
@@ -380,6 +385,13 @@ contains
         &           N2itaumn, N2tddr, N2Dvecj, N2jpi, N2DJ,       &
         &           N2JV, N2sS, N2vecT, N2ReTmn, N2ImTmn,       &
         &           N2TmnD2s 
+        if(RhoQFactor .ne. 1.0_dp) then
+            print *, '!-----------------------------------------------'
+            print *, ' Warning, importance of rhoQ term multiplied by '
+            print *, ' RhoQfactor = ', RhoQfactor
+            print *, ' from its value derived from the interaction.   '
+            print *, '!-----------------------------------------------'
+        endif
     endif
     print *
     if(t1n3 .ne.0) then
@@ -551,6 +563,10 @@ contains
         N2D2s(1)   = BN2LO(5) ; N2D2s(2)   = BN2LO(6)
         
         N2rhoQ(1)  = BN2LO(3) ; N2rhoQ(2)  = BN2LO(4)
+        
+        ! Temporary hack to get the influence of this term
+        N2rhoQ = N2rhoQ * RhoQFactor
+        
         N2tau(1)   = BN2LO(3) ; N2tau(2)   = BN2LO(4)
         N2rtaumn(1)= BN2LO(3) ; N2rtaumn(2)= BN2LO(4)
         N2itaumn(1)= BN2LO(3) ; N2itaumn(2)= BN2LO(4)

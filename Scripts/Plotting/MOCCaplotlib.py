@@ -546,7 +546,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         emax = max(ydata[maskmax])
     
 
-    return (minx, ymin, xdata, ydata)
+    return (minx, ymin, maxx, emax ) #, xdata, ydata)
 
 #################################################################################
 def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[]):
@@ -627,7 +627,7 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[]):
 def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, 
             PLOTDATA=-1, MARKER='', FERMIWINDOW=-1, XARG='B20', PC=1, SC=1, HF=0
             , LINESTYLES=['-.','-', '--'], LINEWIDTH=1, DASHES=None, SIMPLEX=0, 
-            SIMPLEXSORT=0, MARKERSIZE=1):
+            SIMPLEXSORT=0, MARKERSIZE=1, ALLOWMARKING=1):
 
     #Default to current axis
     if AXIS is None:
@@ -727,7 +727,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                             xdata = interx
                             
                      
-                        if((spwf[0,3] == -1)):
+                        if((spwf[0,3] == -1) and ALLOWMARKING == 1):
                             m  = (5,1)
                             me = 20
                             ms = 10
@@ -797,7 +797,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                         # Just ignore spwfs that are a single point
                         continue
                         
-                    if((spwf[0,3] == -1)):
+                    if((spwf[0,3] == -1)  and ALLOWMARKING == 1 ):
                         m  = (5,1)
                         me = 72
                         ms = 10

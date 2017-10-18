@@ -34,6 +34,23 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         xcolumn=1
         if(PC != 1) :
             xcolumn = 3
+            
+    elif(XARG=='N') :
+        xlabel =r'Neutrons'
+        xfname =PREFIX + '.calc.tab'
+        xcolumn=0
+    
+    elif(XARG=='Z') :
+        xlabel =r'Protons'
+        xfname =PREFIX + '.calc.tab'
+        xcolumn=1
+        
+    elif(XARG=='A') :
+        xlabel =r'Mass'
+        xfname =PREFIX + '.calc.tab'
+        xcolumn=2
+
+
     elif(XARG=='B20') :
         xlabel =r'$\beta_{20}$ '
         xfname =PREFIX + '.t.qlm.tab'
@@ -306,6 +323,9 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
     if(SORT=='JX') :
         sortfname =PREFIX + '.e.tab'
         sortcolumn=11
+    elif(SORT=='JZ') :
+        sortfname =PREFIX + '.e.tab'
+        sortcolumn=17
     elif(SORT == ''):
         sortfname  = xfname
         sortcolumn = xcolumn        
@@ -502,13 +522,13 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
 
     if(OFFSET != None):
         ydata = ydata -OFFSET
-            
- 
+    
 
     if(COLOR != ""):
     	AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER, color=COLOR, linewidth=LINEWIDTH)
     else:
 	    AXIS.plot(xdata,ydata, label=LABEL, linestyle=LINESTYLE, marker=MARKER, linewidth=LINEWIDTH)
+    
     AXIS.set_xlabel(xlabel)
     AXIS.set_ylabel(ylabel)
     
@@ -546,10 +566,10 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         emax = max(ydata[maskmax])
     
 
-    return (minx, ymin, maxx, emax ) #, xdata, ydata)
+    return (minx, ymin, maxx, emax) #, xdata, ydata)
 
 #################################################################################
-def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[]):
+def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[], INTERPOL=1):
     
     if(XARG=='Q20') :
         xfname =PREFIX + '.t.qlm.tab'
@@ -609,18 +629,23 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[]):
     ydata=dataY[:,ycolumn]
     edata=dataE[:,1]
     
-    if(len(XRANGE) != 0):
-        interx= np.arange(XRANGE[0], XRANGE[1], (max(xdata) - min(xdata))/1000)
-
-    else:
-        interx= np.arange(min(xdata), max(xdata)- (max(xdata) - min(xdata))/100, (max(xdata) - min(xdata))/1000)
-    f     = interp1d(xdata, edata,kind='cubic')
-    g     = interp1d(xdata, ydata)
+    if(INTERPOL==1):
+        if(len(XRANGE) != 0):
+            interx= np.arange(XRANGE[0], XRANGE[1], (max(xdata) - min(xdata))/1000)
+        else:
+            interx= np.arange(min(xdata), max(xdata)- (max(xdata) - min(xdata))/100, (max(xdata) - min(xdata))/1000)
     
-    E     = f(interx)
-    emin  = np.argmin(E) 
-    minx  = interx[emin]
-    miny  = g(minx)
+        f     = interp1d(xdata, edata,kind='cubic')
+        g     = interp1d(xdata, ydata)
+    
+        E     = f(interx)
+        emin  = np.argmin(E) 
+        minx  = interx[emin]
+        miny  = g(minx)
+        
+    else:
+        minx  = xdata[np.argmin(edata)]
+        miny  = ydata[np.argmin(edata)]
     
     return (minx, miny)
 ################################################################################

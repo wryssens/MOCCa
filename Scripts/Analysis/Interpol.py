@@ -109,7 +109,7 @@ def BetaGamma(datafile, A, title='', figname  = 'BG.out.eps', MAXB=0.7, EMAX = 1
             if(abs(check[i,0] - check[j,0]) < 0.01 and abs(check[i,1]-check[j,1]) < 0.01):
                 print 'Duplicate', i,j
     os.system('cp %s/SplineInter.exe .'%execloc)
-    os.system('./SplineInter.exe 2 %d %d "tps"  < %s > inter.out'%(ntps, 501, 'input'))
+    os.system('./SplineInter.exe 2 %d %d "tps" "++" < %s > inter.out'%(ntps, 501, 'input'))
     
     try:
         data = np.loadtxt('data.z', skiprows=1)
@@ -140,7 +140,7 @@ def BetaGamma(datafile, A, title='', figname  = 'BG.out.eps', MAXB=0.7, EMAX = 1
         else:
             LEG = ''
 
-        with open("%s/full_betagamma.template"%(scriptloc), 'r') as template:
+        with open("%s/betagamma.template"%(scriptloc), 'r') as template:
             with open('BG.gle', 'w') as file: 
                 for line in template:
                     line = line.replace('$NAMESTRING', title)

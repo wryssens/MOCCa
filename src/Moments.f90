@@ -1711,12 +1711,18 @@ subroutine PrintAllMoments()
             ! sum(proton+neutron) value constrained
             Factor = 2*Current%Intensity(1)
             Desired=     Current%Constraint(1)
-            Value  = sum(Current%Value)
+            if(Current%Total) then
+              Factor = Factor * sum(Current%Value)
+              if(Current%m .ne. 0) Factor = Factor * 2
+              Value   = 1
+              Desired = Desired/(sum(CalculateTotalQl(Current%l) + 0.000001))
+            else
+              Value  = sum(Current%Value)
+            endif
        end select
     case DEFAULT
           call stp('Not implemented constrainttype.')
     end select
-    !Put everything together
     !-------------------------------------------------------------------------
     ! Multiplying by (1-Damp) if this is not the first time that
     ! ConstraintEnergy is calculated
@@ -1776,10 +1782,6 @@ subroutine PrintAllMoments()
       else
         factorialquotient=1
       endif
-      ! factorialquotient=1.0
-      ! do q=l-Current%m+1,l
-      !    factorialquotient = factorialquotient * q
-      ! enddo
 
       if(present(old))then
         ql = ql + Current%OldValue(:,1)**2*factorialquotient
@@ -2204,12 +2206,20 @@ subroutine PrintAllMoments()
         ! Set the intensity if none was there before
         ToReadjust%Intensity(1) = (2/sum(O2))
       endif
-      ToReadjust%Constraint(1) = ToReadjust%Constraint(1)                      &
-      & -                 (sum(ToReadjust%Value) - ToReadjust%TrueConstraint(1))
-    
-      ! Set the new effective multiplier        
-      ToReadjust%Multiplier = 2*ToReadjust%Intensity(1)*                       &
-      &                       (sum(ToReadjust%Value) - ToReadjust%Constraint(1))
+      
+      if(.not.ToReadjust%Total) then
+         ToReadjust%Constraint(1) = ToReadjust%Constraint(1)                   &
+         & -              (sum(ToReadjust%Value) - ToReadjust%TrueConstraint(1))
+         ! Set the new effective multiplier        
+         ToReadjust%Multiplier = 2*ToReadjust%Intensity(1)*                    &
+         &                (sum(ToReadjust%Value)     - ToReadjust%Constraint(1))
+      else
+         ToReadjust%Constraint(1) = ToReadjust%Constraint(1)                   &
+         & -  (sum(CalculateTotalQl(ToReadjust%l))-ToReadjust%TrueConstraint(1))
+         ! Set the new effective multiplier        
+         ToReadjust%Multiplier = 2*ToReadjust%Intensity(1)*                    &
+         &    (sum(CalculateTotalQl(ToReadjust%l))   - ToReadjust%Constraint(1))
+      endif
      end select
     end select
     return

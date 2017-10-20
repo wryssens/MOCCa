@@ -224,7 +224,7 @@ contains
     do it=1,2
       do i=1,nx*ny*nz
          DensityFactor(i,1,1,it) =  - PairingStrength(it) *  ( 1.0_dp - alpha(it)/rhosat* &
-         &                         (Density%Rho(i,1,1,1) + Density%Rho(i,1,1,2)))
+         &                                 (Density%Rho(i,1,1,1) + Density%Rho(i,1,1,2)))
       enddo
     enddo
   end subroutine CompDensityFactor

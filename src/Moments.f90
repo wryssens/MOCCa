@@ -1327,7 +1327,7 @@ subroutine PrintAllMoments()
         Current => FindMoment(Currentl,0,.false.)
         if(.not.associated(Current)) cycle
         if(Current%ConstraintType.ne.0 .and. Current%Total) then
-          print 9  ,Current%TrueConstraint
+          print 9, Current%TrueConstraint
           if(Current%ConstraintType.eq.1) then
             print 91, Current%Constraint
           else
@@ -1445,8 +1445,13 @@ subroutine PrintAllMoments()
     
     ! Set the deviation
     if(ToCalculate%ConstraintType.ne.0) then
-        ToCalculate%deviation(1) = abs(sum(ToCalculate%Value) -                &
+        if(.not. ToCalculate%total) then
+          ToCalculate%deviation(1) = abs(sum(ToCalculate%Value) -              &
                                                   ToCalculate%TrueConstraint(1))
+        else
+          ToCalculate%deviation(1) = abs(sum(CalculateTotalQl(Tocalculate%l))- &
+                                                  ToCalculate%TrueConstraint(1))
+        endif
     endif
     call CalcBeta(ToCalculate)
 
@@ -2200,10 +2205,13 @@ subroutine PrintAllMoments()
      case(1)
       !-------------------------------------------------------------------------
       ! Proton + neutron value
-      O2 = ToReadjust%Squared
-                                
       if(ToReadjust%Intensity(1) == 0.0) then
         ! Set the intensity if none was there before
+        if(.not. ToReadjust%Total) then
+            O2 = ToReadjust%Squared
+        else
+            O2 = ToReadjust%Squared
+        endif
         ToReadjust%Intensity(1) = (2/sum(O2))
       endif
       
@@ -2840,11 +2848,11 @@ subroutine PrintAllMoments()
                 ! Deal with legacy input
                 if( allocated(LegacyCon)                                       &
                 &  .and. l.eq. 2 .and. m.eq.2 .and. .not. Impart) then
-                  Current%Constraint = LegacyCon(2)
+                  Current%Constraint     = LegacyCon(2)
                   Current%TrueConstraint = LegacyCon(2)
                 elseif(allocated(LegacyCon)                                    &
                 &  .and. l.eq. 2 .and. m.eq.0 .and. .not. Impart) then
-                  Current%Constraint = LegacyCon(1)
+                  Current%Constraint    = LegacyCon(1)
                   Current%TrueConstraint = LegacyCon(1)
                 else
                   if(Current%l .eq. -2) then
@@ -2887,18 +2895,18 @@ subroutine PrintAllMoments()
                     if(Current%Total) then
                       ! In practice we constrain Ql**2
                       Current%Constraint(1) = ConstraintNeutrons**2
-                      Current%Constraint(2) = ConstraintProtons**2
+                      Current%Constraint(2) = ConstraintProtons **2
                     else
                       Current%Constraint(1) = ConstraintNeutrons
                       Current%Constraint(2) = ConstraintProtons
                     endif
                   endif
                   if(Current%Total) then
-                    Current%TrueConstraint(1) = Current%Constraint(1)
-                    Current%TrueConstraint(2) = Current%Constraint(2)
-                  else
                     Current%TrueConstraint(1) = Current%Constraint(1)**2
                     Current%TrueConstraint(2) = Current%Constraint(2)**2
+                  else
+                    Current%TrueConstraint(1) = Current%Constraint(1)
+                    Current%TrueConstraint(2) = Current%Constraint(2)
                   endif
                 endif
             endif
@@ -2915,6 +2923,9 @@ subroutine PrintAllMoments()
                 New%TrueConstraint = Current%TrueConstraint
                 New%Total          = Total
                 New%Intensity      = Current%Intensity
+                New%Multiplier     = Current%Multiplier
+                New%Deviation      = Current%Deviation
+                
                 if(.not.associated(New%Next)) exit
                 New => New%Next
               enddo

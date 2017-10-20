@@ -215,7 +215,7 @@ contains
    use Cranking
 
    real(KIND=dp) :: O2(2), Targ(2), Des(2), Value(2), CrankFactor(3)
-   real(KIND=dp) :: multipole(nx,ny,nz,2), update(nx,ny,nz,2)
+   real(KIND=dp) :: multipole(nx,ny,nz,2), update(nx,ny,nz,2), total, fac
    integer       :: it, i,j, power
    type(Moment),pointer  :: Current
    type(Spinor)  :: QPsi, tempspinor
@@ -245,10 +245,21 @@ contains
         
         !-----------------------------------------------------------------------
         !Calculate the update
-        do it=1,2
-            Update(:,:,:,it) = 0.5*(Value(it)  - Des(it))/(O2(it) + d0)*       &
-            &                      Cutoff(:,:,:,it)*Current%SpherHarm
-        enddo
+        if(.not. Current%total) then
+            do it=1,2
+                Update(:,:,:,it) = 0.5*(Value(it)  - Des(it))/(O2(it) + d0)*   &
+                &                      Cutoff(:,:,:,it)*Current%SpherHarm
+            enddo
+        else
+            total = sum(CalculateTotalQl(Current%l))
+            fac = 1
+            if(Current%l .ne. 0) fac = 2
+            
+            do it=1,2
+                Update(:,:,:,it) = 0.5*fac*(total - Des(it))/(O2(it) + d0)     &
+                &                  *Cutoff(:,:,:,it)/total*Current%SpherHarm
+            enddo
+        endif
         
         multipole = multipole + Update
     case DEFAULT

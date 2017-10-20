@@ -2777,9 +2777,9 @@ subroutine PrintAllMoments()
     do while(MoreConstraints)
         !-----------------------------------------------------------------------
         !Initialisation
-        l=0; m=0; Impart=.false.; Isoswitch = 1; Intensity=0.0_dp
-        ConstraintNeutrons=0.0_dp; ConstraintProtons=0.0_dp;Constraint=0.0_dp
-        MoreConstraints=.false.; ConstraintType=3
+        l=0; m=0; Impart=.false.  ; Isoswitch = 1            ; Intensity =0.0_dp
+        ConstraintNeutrons=0.0_dp ; ConstraintProtons=0.0_dp ; Constraint=0.0_dp
+        MoreConstraints=.false.   ; ConstraintType=3
         iq1=0.0_dp       ; iq2=0.0_dp            ; mult = 0.0_dp
         iq1neutron=0.0_dp; iq2neutron=0.0_dp; iq1proton=0.0_dp;iq2proton=0.0_dp
         Total = .false.  ; iteration = -1
@@ -2837,7 +2837,7 @@ subroutine PrintAllMoments()
                 ! To be able to override data from input
                 if(allocated(Current%Constraint)) then
                     deallocate(Current%Constraint, Current%TrueConstraint,     &
-                    &          Current%Intensity)
+                    &    Current%Intensity,Current%Deviation,Current%Multiplier)
                 endif
                 allocate(Current%Constraint(1))
                 allocate(Current%TrueConstraint(1))
@@ -2869,7 +2869,7 @@ subroutine PrintAllMoments()
             else
                 if(allocated(Current%Constraint)) then
                     deallocate(Current%Constraint, Current%TrueConstraint,     &
-                    &          Current%Intensity)
+                    &    Current%Intensity,Current%Deviation,Current%Multiplier)
                 endif
                 allocate(Current%Constraint(2))
                 allocate(Current%TrueConstraint(2))

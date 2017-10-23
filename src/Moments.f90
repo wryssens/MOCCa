@@ -1568,7 +1568,12 @@ subroutine PrintAllMoments()
             if(Current%ConstraintType .eq. 3) then
                 select case(Current%Isoswitch)
                     case(1)
-                        Current%Constraint(1) = sum(Current%Value)
+                        if(Current%total) then
+                            Current%Constraint(1) = sum(calculatetotalql(Current%l))
+                            print *, 'done'
+                        else
+                            Current%Constraint(1) = sum(Current%Value)
+                        endif
                     case DEFAULT
                         call stp('Not implemented yet!')
                 end select
@@ -1715,14 +1720,13 @@ subroutine PrintAllMoments()
         case(1)
             ! sum(proton+neutron) value constrained
             Factor = 2*Current%Intensity(1)
-            Desired=     Current%Constraint(1)
             if(Current%Total) then
-              Factor = Factor * sum(Current%Value)
-              if(Current%m .ne. 0) Factor = Factor * 2
-              Value   = 1
-              Desired = Desired/(sum(CalculateTotalQl(Current%l) + 0.000001))
+                Value   = 1
+                Desired = Current%Constraint(1)/(sum(CalculateTotalql(current%l)))
+                Factor  = Factor*sum(Current%Value)*(16*pi/(2*current%l+1))
             else
               Value  = sum(Current%Value)
+              Desired=   Current%Constraint(1)
             endif
        end select
     case DEFAULT
@@ -1798,6 +1802,45 @@ subroutine PrintAllMoments()
     nullify(Current)
 
   end function CalculateTotalQl
+
+  function CalculateTotalSquared(l) result(ql)
+    !---------------------------------------------------------------------------
+    ! Sum of <O^2> (one-body-like) for all multipole moments of degree l.
+    !---------------------------------------------------------------------------
+    integer, intent(in)   :: l
+    type(Moment), pointer :: Current
+    real(KIND=dp)         :: ql(2), factorialquotient
+    integer :: q,m
+
+    ql = 0.0_dp ; m=0
+    Current => FindMoment(l,0,.false.)
+    do while(m.lt.l .and. .not.associated(Current))
+        m = m+1
+        Current => FindMoment(l,m,.false.)
+        if(.not.associated(Current)) then
+           Current => FindMoment(l,m,.true.)
+        endif
+    enddo
+    if(.not.associated(Current)) then
+         return
+    endif
+
+    ql = Current%squared
+    do while(associated(Current%Next))
+      Current  => Current%Next
+      if(Current%l .ne.l) exit
+
+      if(Current%m.ne.0) then
+        factorialquotient=2
+      else
+        factorialquotient=1
+      endif
+
+      ql = ql + Current%squared*factorialquotient
+    enddo
+    nullify(Current)
+
+  end function CalculateTotalSquared
 
   logical function ConverMultipole(ToCheck, Prec) result(Converged)
     !---------------------------------------------------------------------------
@@ -2210,9 +2253,11 @@ subroutine PrintAllMoments()
         if(.not. ToReadjust%Total) then
             O2 = ToReadjust%Squared
         else
-            O2 = ToReadjust%Squared
+            O2 = CalculateTotalsquared(ToReadjust%l)
         endif
-        ToReadjust%Intensity(1) = (2/sum(O2))
+        ToReadjust%Intensity(1) = (2/sum(O2))     
+        
+        print *, 'Judged intensity',   ToReadjust%Intensity(1) 
       endif
       
       if(.not.ToReadjust%Total) then
@@ -2223,10 +2268,7 @@ subroutine PrintAllMoments()
          &                (sum(ToReadjust%Value)     - ToReadjust%Constraint(1))
       else
          ToReadjust%Constraint(1) = ToReadjust%Constraint(1)                   &
-         & -  (sum(CalculateTotalQl(ToReadjust%l))-ToReadjust%TrueConstraint(1))
-         ! Set the new effective multiplier        
-         ToReadjust%Multiplier = 2*ToReadjust%Intensity(1)*                    &
-         &    (sum(CalculateTotalQl(ToReadjust%l))   - ToReadjust%Constraint(1))
+         &  - (sum(CalculateTotalQl(Toreadjust%l))-ToReadjust%TrueConstraint(1))
       endif
      end select
     end select
@@ -2664,6 +2706,7 @@ subroutine PrintAllMoments()
         
         if(Current%Constrainttype .ne. 0) then
             totaldeviation = totaldeviation + Current%Deviation(1)
+            
         endif
     enddo
   

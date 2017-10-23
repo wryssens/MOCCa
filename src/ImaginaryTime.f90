@@ -251,13 +251,13 @@ contains
                 &                      Cutoff(:,:,:,it)*Current%SpherHarm
             enddo
         else
-            total = sum(CalculateTotalQl(Current%l))
-            fac = 1
-            if(Current%l .ne. 0) fac = 2
-            
+            total = sum(CalculateTotalQl(current%l))
+            O2    = sum(CalculateTotalsquared(current%l))
+            fac   = sqrt(current%l/(16*pi/5))
+            if(Current%m .ne. 0) fac = 2 * fac      
             do it=1,2
-                Update(:,:,:,it) = 0.5*fac*(total - Des(it))/(O2(it) + d0)     &
-                &                  *Cutoff(:,:,:,it)/total*Current%SpherHarm
+                Update(:,:,:,it)=fac*Value(it)*(1 - Des(it)/total)/(O2(it))* &
+                &                      Cutoff(:,:,:,it)*Current%SpherHarm
             enddo
         endif
         

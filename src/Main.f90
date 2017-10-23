@@ -132,7 +132,7 @@ subroutine Evolve(MaxIterations, iprint)
   9 format ("Average dispersion of the occupied Spwfs: ", e9.2)
 100 format (/,60('='),/, 18x,' START OF THE ITERATIVE PROCESS ' ,/, 60('='))
 101 format (/,60('='),/, 18x,' **FINAL** Iteration ')
-102 format (/,60('='),/, 18x,' PROJECTION ON FEASILBLE CONSTRAINTS ' ,/, 55('='))
+102 format (/,60('='),/, 18x,' PROJECTION ON FEASIBLE SUBSPACE ' ,/, 55('='))
 
   logical, intent(in) :: iprint
   integer, intent(in) :: MaxIterations
@@ -301,7 +301,7 @@ subroutine Evolve(MaxIterations, iprint)
         if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
             call N2LODerive()
         else
-            call DeriveAll()
+            call DeriveAll()    
         endif
         call updateAm(.true.)
         call ReadjustCranking(.true.)

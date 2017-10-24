@@ -750,6 +750,9 @@ BEGIN{
                 QuadCart[iq,Y,3] = $4
                 QuadCart[iq,Z,3] = $5
                 
+                getline;
+                getline;
+                
                 # (Q,Gamma representation)
                 Q0[iq,1]     = $3
                 Gamma[iq,1]  = $4

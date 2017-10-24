@@ -1111,6 +1111,16 @@ END{
     close("tmp.p.ql.tab");
     close("tmp.t.ql.tab");
     #---------------------------------------------------------------------------
+    # Deformation in terms of (Q,g)
+    iq=1;
+    print "! Qn gn Qp gp Qt gt" > "tmp.qgamma.tab";  
+    while ( iq < iqmax + 1 ) {
+        printf("%12.3f %7.3f %12.3f %7.3f %12.3f %7.3f \n", Q0[iq,1], Gamma[iq,1], Q0[iq,2], Gamma[iq,2], Q0[iq,3],Gamma[iq,3] ) >> "tmp.qgamma.tab"
+        iq += 1;
+    }
+    close("tmp.calc.tab");
+    
+    #---------------------------------------------------------------------------
     # Blocking
     print "!      ali_y"  >> "tmp.block.tab"
     iq = 1 ;

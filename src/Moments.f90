@@ -1328,11 +1328,8 @@ subroutine PrintAllMoments()
         if(.not.associated(Current)) cycle
         if(Current%ConstraintType.ne.0 .and. Current%Total) then
           print 9, Current%TrueConstraint
-          if(Current%ConstraintType.eq.1) then
-            print 91, Current%Constraint
-          else
-            print 92, Current%Intensity
-          endif
+          print 91, Current%Constraint
+          print 92, Current%Intensity
         endif
       enddo
       print 1

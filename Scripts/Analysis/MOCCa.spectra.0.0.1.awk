@@ -431,6 +431,23 @@ BEGIN{
                 getline;
                 aliy = $2
         }
+        
+        if  ($1 == "Blocking"') {
+            # Note that this only really functions with CR8 style blocking
+            
+            getline; # header
+            getline; # separator
+            getline; 
+            iblock = 0
+            while( NF !=  1) {
+                iblock = iblock +1
+                TempBlockarray[iblock,1] = $1
+                TempBlockarray[iblock,2] = $2
+                TempBlockarray[iblock,3] = $3
+                TempBlockarray[iblock,4] = $4
+                getline; 
+            }
+        }
        
         #------------------------------------------------------------------------
         # This flag marks the end of a MOCCa calculation in the file
@@ -475,6 +492,12 @@ BEGIN{
             aliyarray[iq]   = aliy
             #Reset nx to zero to indicate that next time it can be overwritten
             nx = ""
+        
+            # Only saving the first blocked state for the moment
+            Blockarray[iq,1] = TempBlockarray[1,4]
+            Blockarray[iq,2] = TempBlockarray[1,4]
+            Blockarray[iq,3] = TempBlockarray[1,4]
+            Blockarray[iq,3] = TempBlockarray[1,4]
 	}
         #-----------------------------------------------------------------------
         # Reading the SPWF info
@@ -588,13 +611,23 @@ BEGIN{
             CanBasisflag = 0
             N = 1
             if(QPBasisflag == 1){
+                #---------------------------------------------------------------
+                # Analysis of the qps only takes into account the qp energies
+                # at the moment. 
+                # A search is done however for the blocked particle if there
+                # is one and the u^2 - v^2 is saved.
                 while( $2 != "0.00"){
                     getline;
                 }
                 i = 1
                 # FIRST BLOCK
                 while(  NF != 1){
-                    neutronqp[iq,i,-1]=$3 
+                    neutronqp[iq,i,-1] = $3 
+                    
+                    if($5 == Blockarray[iq,1]){
+                        Blockarray[iq,5] = $6
+                    }
+                    
                     i = i+1                    
                     getline;
                 }
@@ -605,7 +638,12 @@ BEGIN{
                     i = 1
                     # SECOND BLOCK
                     while(  NF != 1){
-                        neutronqp[iq,i,+1]=$3 
+                        neutronqp[iq,i,+1] = $3 
+                        
+                        if($5 == Blockarray[iq,1]){
+                            Blockarray[iq,5] = $6
+                        }
+                        
                         i = i+1
                         getline;
                     }
@@ -616,7 +654,12 @@ BEGIN{
                 i = 1
                 #THIRD BLOCK
                 while(  NF != 1){
-                    protonqp[iq,i,-1]=$3 
+                    protonqp[iq,i,-1] = $3 
+
+                    if($5 == Blockarray[iq,1]){
+                        Blockarray[iq,5] = $6
+                    }                    
+                    
                     i = i+1                    
                     getline;
                 }
@@ -627,7 +670,12 @@ BEGIN{
                     i = 1
                     #FOURTH BLOCK
                     while(  NF != 1){
-                        protonqp[iq,i,+1]=$3 
+                        protonqp[iq,i,+1] = $3 
+                        
+                        if($5 == Blockarray[iq,1]){
+                            Blockarray[iq,5] = $6
+                        }
+                        
                         i = i+1
                         getline;
                     }
@@ -1125,10 +1173,13 @@ END{
     
     #---------------------------------------------------------------------------
     # Blocking
-    print "!      ali_y"  >> "tmp.block.tab"
+    print "!   Index   Parity   Isospin   Signature u^2-v^2  ali_y"  >> "tmp.block.tab"
     iq = 1 ;
+    if(iblock > 1){
+        print "Only analyzing first blocked state!"
+    }
     while ( iq < iqmax + 1 ) {
-        printf("%3.0f %8.3f \n",iq, aliyarray[iq]) >> "tmp.block.tab"; 
+        printf("%3.0f %3.0f %3.0f %3.0f %3.0f %8.3f %8.3f \n",iq, BlockArray[iq,1], BlockArray[iq,2], BlockArray[iq,3], BlockArray[iq,4], BlockArray[iq,5], aliyarray[iq]) >> "tmp.block.tab"; 
         iq += 1;
     }
     close("tmp.block.tab")

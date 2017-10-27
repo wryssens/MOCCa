@@ -212,8 +212,8 @@ contains
     
     if(Jtotal .ne. 0.0_dp .and. (.not. SC)) then
         SizeJ = sqrt(sum(TotalAngMom(1:3)**2))
-        Omega(1) = Omega(1) - 2/(J2Total(1)**2)*(1 - Jtotal/SizeJ)*(TotalAngMom(1))
-        Omega(3) = Omega(3) - 2/(J2Total(3)**2)*(1 - Jtotal/SizeJ)*(TotalAngMom(3))
+        Omega(1) = Omega(1) - 2/(J2Total(1))*(1 - Jtotal/SizeJ)*(TotalAngMom(1))
+        Omega(3) = Omega(3) - 2/(J2Total(3))*(1 - Jtotal/SizeJ)*(TotalAngMom(3))
     endif
 
   end subroutine ReadjustCranking

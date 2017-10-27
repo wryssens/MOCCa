@@ -432,7 +432,7 @@ BEGIN{
                 aliy = $2
         }
         
-        if  ($1 == "Blocking"') {
+        if  ($1 == "Blocking") {
             # Note that this only really functions with CR8 style blocking
             
             getline; # header
@@ -465,7 +465,7 @@ BEGIN{
             if(PairingType == "HF") {
                 HFBasisflag =1
                 CanBasisflag=0
-		        QPBasisflag =0
+		QPBasisflag =0
             }
             if(PairingType == "BCS") {
                 HFBasisflag =1
@@ -475,7 +475,7 @@ BEGIN{
             if(PairingType == "HFB") {
                 HFBasisflag =1
                 CanBasisflag=1
-                QPBasisflag =0
+                QPBasisflag =1
             }
             angmomflag=1
             
@@ -494,10 +494,11 @@ BEGIN{
             nx = ""
         
             # Only saving the first blocked state for the moment
-            Blockarray[iq,1] = TempBlockarray[1,4]
-            Blockarray[iq,2] = TempBlockarray[1,4]
-            Blockarray[iq,3] = TempBlockarray[1,4]
-            Blockarray[iq,3] = TempBlockarray[1,4]
+            Blockarray[iq,1] = TempBlockarray[1,1]
+            Blockarray[iq,2] = TempBlockarray[1,2]
+            Blockarray[iq,3] = TempBlockarray[1,3]
+            Blockarray[iq,4] = TempBlockarray[1,4]
+
 	}
         #-----------------------------------------------------------------------
         # Reading the SPWF info
@@ -623,7 +624,6 @@ BEGIN{
                 # FIRST BLOCK
                 while(  NF != 1){
                     neutronqp[iq,i,-1] = $3 
-                    
                     if($5 == Blockarray[iq,1]){
                         Blockarray[iq,5] = $6
                     }
@@ -1179,7 +1179,7 @@ END{
         print "Only analyzing first blocked state!"
     }
     while ( iq < iqmax + 1 ) {
-        printf("%3.0f %3.0f %3.0f %3.0f %3.0f %8.3f %8.3f \n",iq, BlockArray[iq,1], BlockArray[iq,2], BlockArray[iq,3], BlockArray[iq,4], BlockArray[iq,5], aliyarray[iq]) >> "tmp.block.tab"; 
+        printf("%3.0f %3.0f %3.0f %3.0f %3.0f %8.3f %8.3f \n",iq, Blockarray[iq,1], Blockarray[iq,2], Blockarray[iq,3], Blockarray[iq,4], Blockarray[iq,5], aliyarray[iq]) >> "tmp.block.tab"; 
         iq += 1;
     }
     close("tmp.block.tab")

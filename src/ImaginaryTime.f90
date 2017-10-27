@@ -214,7 +214,7 @@ contains
    use Spwfstorage
    use Cranking
 
-   real(KIND=dp) :: O2(2), Targ(2), Des(2), Value(2), CrankFactor(3)
+   real(KIND=dp) :: O2(2), Targ(2), Des(2), Value(2), CrankFactor(3), sizeJ
    real(KIND=dp) :: multipole(nx,ny,nz,2), update(nx,ny,nz,2), total, fac
    integer       :: it, i,j, power
    type(Moment),pointer  :: Current
@@ -270,14 +270,23 @@ contains
    ! Then construct the correction for the cranking constraints.
    CrankFactor=0.0_dp
    if(AlternateCrank) then
-     do i=1,3
-         if(.not. AllConstraints) then
-            if(CrankType(i).ne.3) cycle
-         else
-            if(CrankType(i).eq.0) cycle
-         endif
-         CrankFactor(i) = 0.5*(TotalAngMom(i)-CrankValues(i))/(J2Total(i)+d0)
-     enddo
+     if(Jtotal.eq.0.0_dp) then        
+         do i=1,3
+             if(.not. AllConstraints) then
+                if(CrankType(i).ne.3) cycle
+             else
+                if(CrankType(i).eq.0) cycle
+             endif
+             CrankFactor(i) = 0.5*(TotalAngMom(i)-CrankValues(i))/(J2Total(i)+d0)
+         enddo
+     else
+        ! Constraints on total J
+        ! Currently only working for J_x + J_z
+        sizeJ = sqrt(sum(TotalAngMom(1:3)**2))
+        CrankFactor(1) = 4*(1 - JTotal/sizeJ)/(J2Total(1)+d0) * TotalAngMom(1)
+        CrankFactor(2) = 0
+        CrankFactor(3) = 4*(1 - JTotal/sizeJ)/(J2Total(3)+d0) * TotalAngMom(3)
+     endif
    endif
    
    !---------------------------------------------------------------------------

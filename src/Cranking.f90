@@ -22,6 +22,8 @@ module Cranking
   !   (1) => Omega_x ; (2) => Omega_y ;  (3) => Omega_z
   ! CrankValues:
   !   Values of J to use in the constraint.
+  ! Jtotal
+  !   Size of J if the constraint is only on the total size
   ! Crankdamp:
   !   Damping of the cranking potential.
   ! Crankdamp:
@@ -34,6 +36,7 @@ module Cranking
   real(KIND=dp), public :: Omega(3)      = 0.0_dp, CrankValues(3)= 0.0_dp
   real(KIND=dp), public :: CrankReadj    = 1.0_dp, CrankDamp     = 0.95_dp
   real(KIND=dp), public :: CrankEnergy(3)= 0.0_dp, OmegaSize     = 0.0_dp
+  real(KIND=dp), public :: Jtotal        = 0.0_dp
   integer      , public :: CrankType(3)  = 0
   !-----------------------------------------------------------------------------
   ! Whether or not to use the cranking info from file
@@ -59,7 +62,7 @@ contains
     NameList /Cranking/ OmegaX,OmegaY,OmegaZ,CrankX,CrankY,CrankZ,             &
     &                   CrankDamp,CrankReadj, ContinueCrank,                   &
     &                   CrankTypeX,CrankTypeY, CrankTypeZ, CrankC0,            &
-    &                   OmegaSize, RealignOmega
+    &                   OmegaSize, RealignOmega, Jtotal
 
     read(unit=*, NML=Cranking)
 
@@ -87,6 +90,13 @@ contains
     if(CrankTypeZ.lt.0 .or. CrankTypeZ .gt. 3) then
         call stp('Unrecognised cranktype in the Z direction.')
     endif
+    if(Jtotal .lt. 0.0_dp) then
+        call stp('Jtotal constraint should be positive.')
+    endif
+
+    if(Jtotal .ne. 0.0_dp .and. SC) then
+        call stp('Jtotal only usable when signature is broken at the moment.')
+    endif
 
     !----------------- Assigning Constants based on Input ----------------------
     CrankValues = (/ CrankX,CrankY,CrankZ/)
@@ -94,7 +104,7 @@ contains
     CrankType   = (/ CrankTypeX, CrankTypeY, CrankTypeZ/)
 
     if(.not. ContinueCrank) then
-    OmegaSize = sqrt((OmegaX**2 + OmegaY**2 + OmegaZ**2))
+        OmegaSize = sqrt((OmegaX**2 + OmegaY**2 + OmegaZ**2))
     endif
     if(any(CrankType.eq.1) .and. CrankC0.ne.0.0_dp) then
       RutzCrank = .true.
@@ -102,12 +112,18 @@ contains
       RutzCrank = .false.
     endif
     
-    if(any(CrankType.eq.3)) then
+    if(any(CrankType.eq.3) .or. (Jtotal .ne. 0.0)) then
       AlternateCrank = .true.
     else
       AlternateCrank = .false.
     endif
-
+    
+    if(Jtotal.ne.0.0) then
+        CrankType(1) = 3
+        CrankType(2) = 0
+        CrankType(3) = 3
+    endif
+    
     return
   end subroutine ReadCrankingInfo
 
@@ -140,7 +156,7 @@ contains
 
   function CrankSPot() result(CrankContribution)
    !----------------------------------------------------------------------------
-   ! Function that returns the contribution ReadjustCrankingof a cranking constraint to the S
+   ! Function that returns the contribution of a cranking constraint to the S
    ! mean field potential.
    !       SPot => SPot - 1/2 * hbar * \vec{omega}
    !----------------------------------------------------------------------------
@@ -167,6 +183,7 @@ contains
     integer       :: i,j
     real(KIND=dp),parameter :: d0 = 1.0_dp
     logical, intent(in) :: Rutz
+    real(KIND=dp) :: SizeJ
 
     OmegaSize = sqrt(sum(Omega**2))
 
@@ -186,9 +203,18 @@ contains
           Omega(i) = Omega(i) - 2*CrankC0*(TotalAngMom(i) - CrankValues(i))
         case(3)
           if(Rutz) cycle
-          Omega(i) = Omega(i) - 2/J2Total(i)*(TotalAngMom(i) - CrankValues(i))
+          
+          if(Jtotal.eq.0.0_dp) then
+            Omega(i) = Omega(i) - 2/J2Total(i)*(TotalAngMom(i) - CrankValues(i))
+          endif
         end select
     enddo
+    
+    if(Jtotal .ne. 0.0_dp .and. (.not. SC)) then
+        SizeJ = sqrt(sum(TotalAngMom(1:3)**2))
+        Omega(1) = Omega(1) - 2/(J2Total(1)**2)*(1 - Jtotal/SizeJ)*(TotalAngMom(1))
+        Omega(3) = Omega(3) - 2/(J2Total(3)**2)*(1 - Jtotal/SizeJ)*(TotalAngMom(3))
+    endif
 
   end subroutine ReadjustCranking
 

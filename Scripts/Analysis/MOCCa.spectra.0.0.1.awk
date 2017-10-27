@@ -624,7 +624,7 @@ BEGIN{
                 # FIRST BLOCK
                 while(  NF != 1){
                     neutronqp[iq,i,-1] = $3 
-                    if($5 == Blockarray[iq,1]){
+                    if(($5 == Blockarray[iq,1]) && ($3 < 0)){
                         Blockarray[iq,5] = $6
                     }
                     
@@ -640,7 +640,7 @@ BEGIN{
                     while(  NF != 1){
                         neutronqp[iq,i,+1] = $3 
                         
-                        if($5 == Blockarray[iq,1]){
+                        if(($5 == Blockarray[iq,1]) && ($3 < 0)){
                             Blockarray[iq,5] = $6
                         }
                         
@@ -656,7 +656,7 @@ BEGIN{
                 while(  NF != 1){
                     protonqp[iq,i,-1] = $3 
 
-                    if($5 == Blockarray[iq,1]){
+                    if(($5 == Blockarray[iq,1]) && ($3 < 0)){
                         Blockarray[iq,5] = $6
                     }                    
                     
@@ -672,7 +672,7 @@ BEGIN{
                     while(  NF != 1){
                         protonqp[iq,i,+1] = $3 
                         
-                        if($5 == Blockarray[iq,1]){
+                        if(($5 == Blockarray[iq,1]) && ($3 < 0)){
                             Blockarray[iq,5] = $6
                         }
                         

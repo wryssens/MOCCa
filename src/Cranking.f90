@@ -36,6 +36,7 @@ module Cranking
   real(KIND=dp), public :: Omega(3)      = 0.0_dp, CrankValues(3)= 0.0_dp
   real(KIND=dp), public :: CrankReadj    = 1.0_dp, CrankDamp     = 0.95_dp
   real(KIND=dp), public :: CrankEnergy(3)= 0.0_dp, OmegaSize     = 0.0_dp
+  real(KIND=dp), public :: CrankIntensity(3) = 0.0_dp
   real(KIND=dp), public :: Jtotal        = 0.0_dp
   integer      , public :: CrankType(3)  = 0
   !-----------------------------------------------------------------------------
@@ -62,7 +63,8 @@ contains
     NameList /Cranking/ OmegaX,OmegaY,OmegaZ,CrankX,CrankY,CrankZ,             &
     &                   CrankDamp,CrankReadj, ContinueCrank,                   &
     &                   CrankTypeX,CrankTypeY, CrankTypeZ, CrankC0,            &
-    &                   OmegaSize, RealignOmega, Jtotal
+    &                   OmegaSize, RealignOmega, Jtotal, IntensityX,           &
+    &                   IntensityY, IntensityZ
 
     read(unit=*, NML=Cranking)
 
@@ -99,9 +101,10 @@ contains
     endif
 
     !----------------- Assigning Constants based on Input ----------------------
-    CrankValues = (/ CrankX,CrankY,CrankZ/)
-    Omega       = (/ OmegaX,OmegaY,OmegaZ/)
-    CrankType   = (/ CrankTypeX, CrankTypeY, CrankTypeZ/)
+    CrankValues    = (/ CrankX,CrankY,CrankZ/)
+    Omega          = (/ OmegaX,OmegaY,OmegaZ/)
+    CrankType      = (/ CrankTypeX, CrankTypeY, CrankTypeZ/)
+    CrankIntensity = (/ IntensityX, IntensityY, IntensityZ/)
 
     if(.not. ContinueCrank) then
         OmegaSize = sqrt((OmegaX**2 + OmegaY**2 + OmegaZ**2))
@@ -197,7 +200,8 @@ contains
         case(1)
           if(.not.Rutz) cycle
           Omega(i) = Omega(i) -                                                &
-          & CrankReadj*(TotalAngMom(i) - AngMomOld(i))/(J2Total(i) + d0)
+!          & CrankReadj*(TotalAngMom(i) - AngMomOld(i))/(J2Total(i) + d0)
+          & CrankReadj*(TotalAngMom(i) - AngMomOld(i))*CrankIntensity(i)
         case(2)
           if(Rutz) cycle
           Omega(i) = Omega(i) - 2*CrankC0*(TotalAngMom(i) - CrankValues(i))

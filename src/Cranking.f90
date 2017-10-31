@@ -200,11 +200,11 @@ contains
         case(1)
           if(.not.Rutz) cycle
           Omega(i) = Omega(i) -                                                &
-!          & CrankReadj*(TotalAngMom(i) - AngMomOld(i))/(J2Total(i) + d0)
-          & CrankReadj*(TotalAngMom(i) - AngMomOld(i))*CrankIntensity(i)
+          & CrankReadj*(TotalAngMom(i) - AngMomOld(i))/(J2Total(i) + d0)
         case(2)
           if(Rutz) cycle
-          Omega(i) = Omega(i) - 2*CrankC0*(TotalAngMom(i) - CrankValues(i))
+          Omega(i) = Omega(i) -                                                &                                     
+          &               2*CrankIntensity(i)*(TotalAngMom(i) - CrankValues(i))
         case(3)
           if(Rutz) cycle
           

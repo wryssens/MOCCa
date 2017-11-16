@@ -1003,7 +1003,8 @@ BEGIN{
                         ELN[iq,3] = 0.0
                 }
                 Coulomb[iq,0] = $2
-                Coulomb[iq,1]   = $4
+                Coulomb[iq,1] = $4
+                Coulomb[iq,2] = $2 + $4
                 if(COM1flag == 1) {
                     getline;
                     getline;

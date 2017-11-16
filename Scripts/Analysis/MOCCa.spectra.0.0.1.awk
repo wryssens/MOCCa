@@ -387,7 +387,7 @@ BEGIN{
         }
         #  c) number of multipole moments to consider
         if ( $1 == "Maximum" && $2 == "l" ) {
-                maxmultipole=$4     
+                maxmultipole=$4
         }
         #  e) type of pairing to deal with
         if ( (pairingtypeflag == 1)  && ($1 == "BCS" || $1 == "HFB" || $1 == "Hartree-Fock;")) {
@@ -439,13 +439,13 @@ BEGIN{
             getline; # separator
             getline; 
             iblock = 0
-            while( NF !=  1) {
+            while( iblock < 1) {
                 iblock = iblock +1
                 TempBlockarray[iblock,1] = $1
                 TempBlockarray[iblock,2] = $2
                 TempBlockarray[iblock,3] = $3
                 TempBlockarray[iblock,4] = $4
-                getline; 
+                getline;
             }
         }
        

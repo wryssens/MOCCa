@@ -1002,8 +1002,8 @@ BEGIN{
                         ELN[iq,2] = 0.0
                         ELN[iq,3] = 0.0
                 }
-                Coulomb[iq,direct] = $2
-                Coulomb[iq,exch]   = $4
+                Coulomb[iq,0] = $2
+                Coulomb[iq,1]   = $4
                 if(COM1flag == 1) {
                     getline;
                     getline;
@@ -1049,12 +1049,12 @@ END{
     close("tmp.e.tab");
     #---------------------------------------------------------------------------
     # Edecomp
-    print "!        E(func)            E_FD          E(sp)            Routhian        eLN(n)     eLN(p)   Kinetic(n) Kinetic(p) Kinetic(t) SpinOrbit(n) SpinOrbit(p) SpinOrbit(t) Tensor(n) Tensor(p) Tensor(t)" > "tmp.edecomp.tab";
+    print "!        E(func)            E_FD          E(sp)            Routhian        eLN(n)     eLN(p)   Kinetic(n) Kinetic(p) Kinetic(t) SpinOrbit(n) SpinOrbit(p) SpinOrbit(t) Tensor(n) Tensor(p) Tensor(t) Coulomb(direct) Coulomb(Exchange) Coulomb(total)" > "tmp.edecomp.tab";
     iq=1;
     while ( iq < iqmax + 1 ) {
         enoln = Energy[iq,1] - ELN[iq,3];
-        printf("%3.0f %17.10f %17.10f %17.10f   %10.3f %10.3f   %10.6f %8.3f %8.3f %8.3f %12.6f %12.5f %12.6f %12.5f %12.6f %12.5f \n",
-           iq,Energy[iq,1],Energy[iq,2],Energy[iq,3],Energy[iq,4],ELN[iq,1],ELN[iq,2], Kinetic[iq,1], Kinetic[iq,2],Kinetic[iq,3], SpinOrbit[iq,1], SpinOrbit[iq,2], SpinOrbit[iq,3], Tensor[iq,1], Tensor[iq,2], Tensor[iq,3]) >> "tmp.edecomp.tab"; 
+        printf("%3.0f %17.10f %17.10f %17.10f   %10.3f %10.3f   %10.6f %8.3f %8.3f %8.3f %12.6f %12.5f %12.6f %12.5f %12.6f %12.5f %12.6f %12.6f %12.6f\n",
+           iq,Energy[iq,1],Energy[iq,2],Energy[iq,3],Energy[iq,4],ELN[iq,1],ELN[iq,2], Kinetic[iq,1], Kinetic[iq,2],Kinetic[iq,3], SpinOrbit[iq,1], SpinOrbit[iq,2], SpinOrbit[iq,3], Tensor[iq,1], Tensor[iq,2], Tensor[iq,3], Coulomb[iq,0], Coulomb[iq,1], Coulomb[iq,2]) >> "tmp.edecomp.tab"; 
         iq += 1;
     }
     close("tmp.edecomp.tab");
@@ -1170,7 +1170,7 @@ END{
         printf("%12.3f %7.3f %12.3f %7.3f %12.3f %7.3f \n", Q0[iq,1], Gamma[iq,1], Q0[iq,2], Gamma[iq,2], Q0[iq,3],Gamma[iq,3] ) >> "tmp.qgamma.tab"
         iq += 1;
     }
-    close("tmp.calc.tab");
+    close("tmp.qgamma.tab");
     
     #---------------------------------------------------------------------------
     # Blocking

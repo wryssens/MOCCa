@@ -50,7 +50,6 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         xfname =PREFIX + '.calc.tab'
         xcolumn=2
 
-
     elif(XARG=='B20') :
         xlabel =r'$\beta_{20}$ '
         xfname =PREFIX + '.t.qlm.tab'
@@ -108,6 +107,11 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         xfname =PREFIX + '.e.tab'
         xcolumn= 17
         altx   = 11
+    elif(XARG=='THETAZOM'):
+        xlabel =r'$\theta_z$'
+        xfname =PREFIX + '.e.tab'
+        xcolumn= 16
+        altx   = 10
     elif(XARG=='NX'):   
         xlabel =r'$nx$'
         xfname =PREFIX + '.calc.tab'
@@ -124,10 +128,45 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         xlabel =r'$J_{tot} (\hbar)$'
         xfname =PREFIX + '.e.tab'
         xcolumn= 19
+    elif(XARG=='SizeO') :
+        xlabel =r'$\omega_{tot} (\hbar)$'
+        xfname =PREFIX + '.e.tab'
+        xcolumn= 20    
+    
     elif(XARG=='JXT') :
         xlabel =r'$\langle \hat{J}_{x} T \rangle$ ($\hbar$)'
         xfname =PREFIX + '.e.tab'
         xcolumn= 12
+    elif(XARG=='B40') :
+        xlabel =r'$\beta_{40}$ '
+        xfname =PREFIX + '.t.qlm.tab'
+        if(PC == 1) :
+            xcolumn=6
+        else:
+            xcolumn=12
+    elif(XARG=='Q0'):
+        xlabel  =r'$Q_{0}$  (fm$^2$)'
+        xfname  =PREFIX + '.qgamma.tab'
+        xcolumn = 4
+    
+    elif(XARG=='gamma'):
+        xlabel  =r'$\gamma (^{\circ})$ '
+        xfname  =PREFIX + '.qgamma.tab'
+        xcolumn = 5
+        
+    elif(XARG=='u2mv2'):
+        xfname = PREFIX + '.block.tab'
+        xcolumn= 5
+        xlabel = r'$u^2 - v^2$'
+        
+    elif(XARG=='A'):
+        xfname = PREFIX + '.calc.tab'
+        xcolumn= 2
+        xlabel = r'A'
+    elif(XARG=='RRMS') :
+        xlabel =r'$\langle r^2 \rangle$ (fm$^2$)'
+        xfname =PREFIX + '.e.tab'
+        xcolumn=8
     else :
         print 'XARG not recognized'
         return
@@ -331,6 +370,69 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         sortcolumn = xcolumn        
 
     return(xlabel, ylabel, xfname,yfname,sortfname,xcolumn,ycolumn,sortcolumn,derivY,altx,alty, divy, absy, fac)
+
+def ExtractData(XARG,YARG, PREFIX,PC=1, SC=1, XMIN=None, YMIN=None, XMAX=None, YMAX=None, SORT=''):
+    # Simple interface
+    
+    (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn, derivY,altx,alty, divy, absy,fac) = Determinedata(PREFIX, XARG, YARG,PC,SC, SORT)
+
+    dataX=np.loadtxt(xfname,skiprows=1)
+    dataY=np.loadtxt(yfname,skiprows=1)
+    
+    sortdata = np.loadtxt(sortname, skiprows=1)
+    xdata=dataX[:,xcolumn]
+    sortdata = sortdata[:,sortcolumn]
+    if( ycolumn != -1): 
+            tempy=dataY[:,ycolumn]
+    else:
+            tempy=np.zeros_like(tempx)
+
+    ydata = tempy
+    if(XMIN != None):
+        indices = []
+        for j in range(len(xdata)):
+            if(xdata[j] < XMIN):
+                indices.append(j)
+        xdata = np.delete(xdata,indices)
+        ydata = np.delete(ydata,indices)
+    if(XMAX != None):
+        indices = []
+        for j in range(len(xdata)):
+            if(xdata[j] > XMAX):
+                indices.append(j)
+        xdata = np.delete(xdata,indices)
+        ydata = np.delete(ydata,indices)
+
+    if(YMAX != None):
+        indices = []
+        for j in range(len(tempy)):
+            if(tempy[j] > YMAX):
+                indices.append(j)
+        tempx = np.delete(tempx,indices)
+        tempy = np.delete(tempy,indices)
+
+    if(altx != 0):
+        altxdata = dataX[:, altx]
+        xdata = np.arctan2(  altxdata, xdata)*180/np.pi
+    if(alty != 0):
+        altydata = dataY[:, alty]
+        ydata    =  altydata - ydata
+    
+    if(absy == 1):
+        ydata = abs(ydata)
+    
+    ydata = fac * ydata
+    
+    if(divy !=0):
+        ydata = ydata/xdata
+    
+    # Sort along sort-data for surety
+    sortdata, xdata, ydata = zip(*sorted(zip(sortdata,xdata, ydata)))
+    
+    xdata = list(xdata)
+    ydata = list(ydata)
+
+    return(xdata,ydata)
 
 def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1, 
               AXIS     =None,  INTERPOLATE=-1, INTERMIN=None,    
@@ -609,14 +711,16 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[], INTERPOL=1):
         derivY=0
         
     elif(YARG=='OmX') :
-        ylabel =r'$\omega_{x}$ (MeV $\hbar^{-1}$) '
         yfname =PREFIX + '.e.tab'
         ycolumn=10
         derivY = 0
     elif(YARG=='JX') :
-        ylabel =r'$\langle \hat{J}_{x} \rangle$ ($\hbar$)'
         yfname =PREFIX + '.e.tab'
         ycolumn= 11
+        derivY = 0
+    elif(YARG=='JZ') :
+        yfname =PREFIX + '.e.tab'
+        ycolumn= 17
         derivY = 0
     
     efname = PREFIX + '.e.tab'
@@ -765,9 +869,9 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                         xdata, ydata = zip(*sorted(zip(xdata, ydata)))
                         if(i == 0 and P == PAR[0] ):
                             if(DASHES != None):
-                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=m,linewidth=lw, dashes=DASHES, markevery=me, ms=ms)
+                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$j_z = \frac{%d}{2}$'%K, marker=m,linewidth=lw, dashes=DASHES, markevery=me, ms=ms)
                             else :
-                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$J_z = \frac{%d}{2}$'%K, marker=m,linewidth=lw, markevery=me, ms=ms)
+                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$j_z = \frac{%d}{2}$'%K, marker=m,linewidth=lw, markevery=me, ms=ms)
                         
                         else:
                             if(DASHES != None):

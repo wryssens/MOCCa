@@ -79,7 +79,7 @@ def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1, LA
     return(xmin,ymin,np.min(Z), contour)
 
 #===============================================================================
-def BetaGammaFULL(prefix, A, title='', AX=plt.gca(), PLOTDATA=0, 
+def BetaGammaFULL(prefix, A, title='', AX=plt.gca(), PLOTDATA=0, LEVELS=None,
                   execloc  ='$HOME/Documents/Codes/inter/SplineInter/exe/',
                   scriptloc='/home/wryssens/Documents/Codes/MOCCa/Scripts/Plotting/BGscripts'):
     #------------------------------------------------------------
@@ -121,9 +121,10 @@ def BetaGammaFULL(prefix, A, title='', AX=plt.gca(), PLOTDATA=0,
     Qdata     = Qdata * 4.0 * np.pi/(3.0 * R0**2 * A ) 
     gammadata = np.arctan2(np.sqrt(2)*points[:,1],points[:,0]) 
 
-    
-    AX.contourf(gamma, Q, Z)
-
+    if(LEVELS != None):    
+        AX.contourf(gamma, Q, Z - np.amin(Z), levels=LEVELS)
+    else:   
+        AX.contourf(gamma, Q, Z - np.amin(Z))
     if(PLOTDATA == 1):
         AX.plot( gammadata, Qdata,'ro')
 

@@ -864,7 +864,48 @@ BEGIN{
                 getline;
                 JzT[iq] = $3
                 
+                # Getting the block decomposition of
+                # angular momentum
+                while( $1 != "P R_z"){
+                    getline;
+                }
+                getline ; # Header
+                getline ; #Separator        
+                JNz[iq,1] = $1
+                JNz[iq,1] = $2
+                JNz[iq,1] = $3
+                JNz[iq,1] = $4   
+                getline;
+                JPz[iq,1] = $1
+                JPz[iq,1] = $2
+                JPz[iq,1] = $3
+                JPz[iq,1] = $4
                 
+                if( SC ==  0) {
+                    getline;
+                    getline;
+                    JNx[iq,1] = $1
+                    JNx[iq,2] = $2
+                    JNx[iq,3] = $3
+                    JNx[iq,4] = $4   
+                    getline;
+                    JPx[iq,1] = $1
+                    JPx[iq,2] = $2
+                    JPx[iq,3] = $3
+                    JPx[iq,4] = $4
+                }   
+                if( SC ==  1) {   
+                    JNx[iq,1] = 0
+                    JNx[iq,2] = 0
+                    JNx[iq,3] = 0
+                    JNx[iq,4] = 0   
+                    getline;
+                    JPx[iq,1] = 0
+                    JPx[iq,2] = 0
+                    JPx[iq,3] = 0
+                    JPx[iq,4] = 0
+                }          
+
                 SizeJ[iq] = sqrt(Jx[iq]**2     + Jz[iq]**2)
                 SizeO[iq] = sqrt(OmegaX[iq]**2 + OmegaY[iq]**2 + OmegaZ[iq]**2)
         }
@@ -1048,6 +1089,17 @@ END{
         iq += 1;
     }
     close("tmp.e.tab");
+
+
+    #---------------------------------------------------------------------------
+    # Angular momentum decomposition
+    iq=1;
+    while ( iq < iqmax + 1 ) {
+        printf("%3.0f %17.10f %17.10f %17.10f  %17.10f  %17.10f %17.10f %17.10f  %17.10f %17.10f %17.10f %17.10f  %17.10f %17.10f %17.10f %17.10f  %17.10f  \n",
+                   iq, JNx[iq,1],JNx[iq,2],JNx[iq,3],JNx[iq,4],JNz[iq,1],JNz[iq,2],JNz[iq,3],JNz[iq,4],JPx[iq,1],JPx[iq,2],JPx[iq,3],JPx[iq,4],JPz[iq,1],JPz[iq,2],JPz[iq,3],JPz[iq,4] ) >> "tmp.jdecomp.tab"; 
+        iq += 1;
+    }
+    close("tmp.jdecomp.tab");
     #---------------------------------------------------------------------------
     # Edecomp
     print "!        E(func)            E_FD          E(sp)            Routhian        eLN(n)     eLN(p)   Kinetic(n) Kinetic(p) Kinetic(t) SpinOrbit(n) SpinOrbit(p) SpinOrbit(t) Tensor(n) Tensor(p) Tensor(t) Coulomb(direct) Coulomb(Exchange) Coulomb(total)" > "tmp.edecomp.tab";
@@ -1412,9 +1464,6 @@ END{
         command = " mv tmp.zero tmp.p.qp.P=+1.tab"
         system(command)
     }
-
-
-
 
 
     #---------------------------------------------------------------------------

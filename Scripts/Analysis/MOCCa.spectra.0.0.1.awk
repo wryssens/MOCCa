@@ -866,24 +866,13 @@ BEGIN{
                 
                 # Getting the block decomposition of
                 # angular momentum
-                while( $1 != "P R_z"){
+                while( $1 != "P"){
                     getline;
                 }
                 getline ; # Header
-                getline ; #Separator        
-                JNz[iq,1] = $1
-                JNz[iq,1] = $2
-                JNz[iq,1] = $3
-                JNz[iq,1] = $4   
-                getline;
-                JPz[iq,1] = $1
-                JPz[iq,1] = $2
-                JPz[iq,1] = $3
-                JPz[iq,1] = $4
-                
+                getline ; #Separator
+
                 if( SC ==  0) {
-                    getline;
-                    getline;
                     JNx[iq,1] = $1
                     JNx[iq,2] = $2
                     JNx[iq,3] = $3
@@ -893,6 +882,8 @@ BEGIN{
                     JPx[iq,2] = $2
                     JPx[iq,3] = $3
                     JPx[iq,4] = $4
+                    getline;
+                    getline;
                 }   
                 if( SC ==  1) {   
                     JNx[iq,1] = 0
@@ -906,6 +897,18 @@ BEGIN{
                     JPx[iq,4] = 0
                 }          
 
+
+        
+                JNz[iq,1] = $1
+                JNz[iq,1] = $2
+                JNz[iq,1] = $3
+                JNz[iq,1] = $4   
+                getline;
+                JPz[iq,1] = $1
+                JPz[iq,1] = $2
+                JPz[iq,1] = $3
+                JPz[iq,1] = $4
+                
                 SizeJ[iq] = sqrt(Jx[iq]**2     + Jz[iq]**2)
                 SizeO[iq] = sqrt(OmegaX[iq]**2 + OmegaY[iq]**2 + OmegaZ[iq]**2)
         }

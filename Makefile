@@ -37,7 +37,7 @@ CLUOBJ :=      $(patsubst %.f90,$(OBJDIR)/%.o,$(CLUSRC))
 # Compilers and some recommended options
 
 #Default compiler is gfortran
-CXX :=      gfortran
+CXX :=      ifort
 # Default behaviour is not debugging
 DEBUG := no
 
@@ -71,7 +71,7 @@ else ifeq ($(CXX),ifort)
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ifeq ($(DEBUG),no)
 		#Optimal flag
-		CXXFLAGS=-O3 -assume realloc-lhs
+		CXXFLAGS=-O3 -assume realloc-lhs  -assume byterecl
   else
 		# Debugging flag
 		CXXFLAGS=-g -traceback -check bounds -warn all -assume realloc-lhs

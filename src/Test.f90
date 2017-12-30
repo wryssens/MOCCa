@@ -27,30 +27,6 @@ module Testing
 
     contains
     
-    subroutine TestDY
-      
-       integer :: i,k
-      
-      call CompDer(HFBasis(1))
-      
-      do k=1,1
-        do i=1,1 
-          print *, HFBasis(1)%Der(2)%Grid(i,ny/2+1:ny,k,1,1)
-          print *, HFBasis(1)%Der(2)%Grid(i,ny/2+1:ny,k,2,1)
-          print *, HFBasis(1)%Der(2)%Grid(i,ny/2+1:ny,k,3,1)
-          print *, HFBasis(1)%Der(2)%Grid(i,ny/2+1:ny,k,4,1)
-          print *
-          print *, HFBasis(1)%Value%Grid(i,ny/2+1:ny,k,1,1)
-          print *, HFBasis(1)%Value%Grid(i,ny/2+1:ny,k,2,1)
-          print *, HFBasis(1)%Value%Grid(i,ny/2+1:ny,k,3,1)
-          print *, HFBasis(1)%Value%Grid(i,ny/2+1:ny,k,4,1)
-        enddo
-      enddo
-      stop
-      
-    
-    end subroutine TestDY
-
     subroutine TestJ2
 
       integer :: i,j

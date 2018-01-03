@@ -21,7 +21,7 @@ import glob
 import sys
 import math
 
-def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
+def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
     
     altx = 0
     alty = 0
@@ -34,7 +34,13 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         xcolumn=1
         if(PC != 1) :
             xcolumn = 3
-            
+    elif(XARG=='Q20P') :
+        xlabel =r'$\langle \hat{Q}_{20,p} \rangle$ (fm$^2$)'
+        xfname =PREFIX + '.p.qlm.tab'
+        xcolumn=1
+        if(PC != 1) :
+            xcolumn = 3
+    
     elif(XARG=='N') :
         xlabel =r'Neutrons'
         xfname =PREFIX + '.calc.tab'
@@ -82,6 +88,8 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         xlabel =r'$\hbar \omega_{z}$ (MeV) '
         xfname =PREFIX + '.e.tab'
         xcolumn=16
+        if(LEGACY == 1):
+            xcolumn = 14
     elif(XARG=='OmX') :
         xlabel =r'$\omega_{x}$ (MeV $\hbar^{-1}$) '
         xfname =PREFIX + '.e.tab'
@@ -94,6 +102,7 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         xlabel =r'$\langle \hat{J}_{z} \rangle$ ($\hbar$)'
         xfname =PREFIX + '.e.tab'
         xcolumn=17
+        
     elif(XARG=='JTX') :
         xlabel =r'$\langle J_{x}\check{T}\rangle$ ($\hbar$) '
         xfname =PREFIX + '.e.tab'
@@ -148,6 +157,14 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         xlabel  =r'$Q_{0}$  (fm$^2$)'
         xfname  =PREFIX + '.qgamma.tab'
         xcolumn = 4
+    elif(XARG=='Q0P'):
+        xlabel  =r'$Q_{0}$  (fm$^2$)'
+        xfname  =PREFIX + '.qgamma.tab'
+        xcolumn = 2
+    elif(XARG=='Q0N'):
+        xlabel  =r'$Q_{0}$  (fm$^2$)'
+        xfname  =PREFIX + '.qgamma.tab'
+        xcolumn = 0
     
     elif(XARG=='gamma'):
         xlabel  =r'$\gamma (^{\circ})$ '
@@ -352,8 +369,13 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
         ylabel =r'$\langle E_{\rm tensor} \rangle$'
         yfname =PREFIX + '.edecomp.tab'
         ycolumn=15
-        derivY=0    
-    
+        derivY=0  
+        
+    elif(YARG=='ECOUL') :
+        ylabel =r'$\langle E_{\rm coul} \rangle$'
+        yfname =PREFIX + '.edecomp.tab'
+        ycolumn=18
+        derivY=0  
     else :
         print 'YARG not recognized'
         return
@@ -362,6 +384,12 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
     if(SORT=='JX') :
         sortfname =PREFIX + '.e.tab'
         sortcolumn=11
+    elif(SORT=='Q20') :
+        sortfname =PREFIX + '.t.qlm.tab'
+        sortcolumn=1
+        if(PC != 1) :
+            sortcolumn = 3
+
     elif(SORT=='JZ') :
         sortfname =PREFIX + '.e.tab'
         sortcolumn=17
@@ -374,7 +402,7 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT):
 def ExtractData(XARG,YARG, PREFIX,PC=1, SC=1, XMIN=None, YMIN=None, XMAX=None, YMAX=None, SORT=''):
     # Simple interface
     
-    (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn, derivY,altx,alty, divy, absy,fac) = Determinedata(PREFIX, XARG, YARG,PC,SC, SORT)
+    (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn, derivY,altx,alty, divy, absy,fac) = Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0)
 
     dataX=np.loadtxt(xfname,skiprows=1)
     dataY=np.loadtxt(yfname,skiprows=1)
@@ -440,7 +468,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
               LINESTYLE='-' ,  MARKER='', COLOR='', OFFSET=None, 
               XMIN     =None,  XMAX=None, MINRANGE=None, MAXRANGE=None,
               LINEWIDTH=1.0, INTERKIND='cubic', SORT='', INVERTINTERPOL=0,     
-              YMAX=None, FORCESYM=None):
+              YMAX=None, FORCESYM=None, LEGACY=0):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
@@ -455,7 +483,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
 
     if(isinstance(PREFIX, list)):
         for i in range(len(PREFIX)):
-            (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn,derivY,altx,alty, divy, absy, fac) = Determinedata(PREFIX[i], XARG, YARG,PC[i],SC[i], SORT)
+            (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn,derivY,altx,alty, divy, absy, fac) = Determinedata(PREFIX[i], XARG, YARG,PC[i],SC[i], SORT, LEGACY=LEGACY)
     
             dataX=np.loadtxt(xfname,skiprows=1)
             dataY=np.loadtxt(yfname,skiprows=1)
@@ -508,7 +536,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
                 ydata = abs(ydata)
             
     else:
-        (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn, derivY,altx,alty, divy, absy,fac) = Determinedata(PREFIX, XARG, YARG,PC,SC, SORT)
+        (xlabel, ylabel, xfname,yfname,sortname,xcolumn, ycolumn, sortcolumn, derivY,altx,alty, divy, absy,fac) = Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=LEGACY)
     
         dataX=np.loadtxt(xfname,skiprows=1)
         dataY=np.loadtxt(yfname,skiprows=1)
@@ -574,6 +602,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
             deriv[i] = ( ydata[i+1] - ydata[i])/(xdata[i+1] - xdata[i])
         ydata = abs(deriv)
         xdata = xdata[0:-1]
+        sortdata = xdata
         
     if(INTERPOLATE > 0):
         if(INVERTINTERPOL == 0):
@@ -763,7 +792,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
         AXIS = plt.gca()
 
     
-    (xlabel, ylabel, xfname,yfname,sortfname,xcolumn,ycolumn,sortcolumn,derivY,altx,alty, divy, absy, fac)= Determinedata(PREFIX, XARG,'E' ,PC,SC, SORT='')
+    (xlabel, ylabel, xfname,yfname,sortfname,xcolumn,ycolumn,sortcolumn,derivY,altx,alty, divy, absy, fac)= Determinedata(PREFIX, XARG,'E' ,PC,SC, SORT='', LEGACY=LEGACY)
     
     dataX=np.loadtxt(xfname,skiprows=1)
     xdata = dataX[:,xcolumn]

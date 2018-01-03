@@ -1101,9 +1101,8 @@ END{
     #---------------------------------------------------------------------------
     # Angular momentum decomposition
     iq=1;
+    printf("#iq JNX(5) JNZ(5) JPX(5) JPZ(5)" ) >> "tmp.jdecomp.tab"; 
     while ( iq < iqmax + 1 ) {
-        printf("#iq JNX(5) JNZ(5) JPX(5) JPZ(5)" ) >> "tmp.jdecomp.tab"; 
-        
         printf("%3.0f %12.5f %12.5f %12.5f  %12.5f  %12.5f %12.5f %12.5f  %12.5f %12.5f %12.5f %12.5f  %12.5f %12.5f %12.5f %12.5f  %12.5f %12.5f %12.5f %12.5f %12.5f  \n",
                iq, JNx[iq,1],JNx[iq,2],JNx[iq,3],JNx[iq,4],JNx[iq,5],JNz[iq,1],JNz[iq,2],JNz[iq,3],JNz[iq,4], JNz[iq,5],JPx[iq,1],JPx[iq,2],JPx[iq,3],JPx[iq,4], JPx[iq,5],JPz[iq,1],JPz[iq,2],JPz[iq,3],JPz[iq,4], JPz[iq,5] ) >> "tmp.jdecomp.tab"; 
         iq += 1;

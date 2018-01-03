@@ -628,7 +628,7 @@ contains
     if(PairingType.eq.0) then
      if(FreezeOccupation) return
      call HFFill(HFConfiguration)
-     if(HFConfig) FreezeOccupation=.true.
+     !if(HFConfig) FreezeOccupation=.true.
      return
     endif
 

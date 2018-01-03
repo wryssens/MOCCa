@@ -79,6 +79,58 @@ def SurfPlot( data, X,Y,Z, AXIS=None, LEVELS=[], PLOTDATA=-1, SYMX=1, SYMY=1, LA
     return(xmin,ymin,np.min(Z), contour)
 
 #===============================================================================
+def BetaGammaFULL(prefix, A, title='', AX=plt.gca(), PLOTDATA=0, LEVELS=None,
+                  execloc  ='$HOME/Documents/Codes/inter/SplineInter/exe/',
+                  scriptloc='/home/wryssens/Documents/Codes/MOCCa/Scripts/Plotting/BGscripts'):
+    #------------------------------------------------------------
+    # Use matplotlib plot something in the full beta-gamma plane
+    #------------------------------------------------------------
+
+    # Get the data in terms of Q20, Q22
+    data  = np.loadtxt(prefix + '.t.qlm.tab', skiprows=1)
+    Edata = np.loadtxt(prefix + '.e.tab', skiprows=1)
+    
+    N     = len(data[:,1])    
+    with open('input', 'w') as f:
+        for i in range(N):
+            f.write('%10.6e %10.6e %10.6e \n'%(data[i,1],data[i,3],Edata[i,1]))
+            if(abs(data[i,3]) > 1):
+                f.write('%10.6e %10.6e %10.6e \n'%(data[i,1],-data[i,3],Edata[i,1]))
+      
+    # Interpolate the data in Q20 and Q22
+    ntps=0
+    with open('input', 'r') as f:
+        for i in f:
+            ntps = ntps+1
+    print ntps
+    os.system('cp %s/SplineInter.exe .'%execloc)
+    os.system('./SplineInter.exe 2 %d %d "tps" < %s > inter.out'%(ntps, 201, 'input'))
+
+    X = np.loadtxt('data.x', skiprows=1)
+    Y = np.loadtxt('data.y', skiprows=1)
+    Z = np.loadtxt('data.z', skiprows=1)
+
+    # Retransform the data to Q0 and gamma
+    R0 = 1.2 * A**(1.0/3.0)
+    Q     = np.sqrt(16.0/(5*np.pi) * (X**2 + 2*Y**2)) * 4.0 * np.pi/(3.0 * R0**2 * A ) 
+    gamma = np.arctan2(np.sqrt(2)*Y, X) 
+
+    points = np.loadtxt('input')
+
+    Qdata     = np.sqrt(16.0/(5*np.pi) * (points[:,0]**2 + 2*points[:,1]**2))
+    Qdata     = Qdata * 4.0 * np.pi/(3.0 * R0**2 * A ) 
+    gammadata = np.arctan2(np.sqrt(2)*points[:,1],points[:,0]) 
+
+    if(LEVELS != None):    
+        AX.contourf(gamma, Q, Z - np.amin(Z), levels=LEVELS)
+    else:   
+        AX.contourf(gamma, Q, Z - np.amin(Z))
+    if(PLOTDATA == 1):
+        AX.plot( gammadata, Qdata,'ro')
+
+    os.system('rm  *.z data.x data.y inter.out')
+
+#===============================================================================
 def BetaGamma(datafile, A, title='', figname  = 'BG.out.eps', MAXB=0.7, EMAX = 10, 
                                      Q1MIN    = 10**8 , Q2MIN = 10**8, PLOTDATA=1, 
                                      LEGEND   = 1,

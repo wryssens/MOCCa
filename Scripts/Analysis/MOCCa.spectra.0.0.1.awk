@@ -873,15 +873,15 @@ BEGIN{
                 getline ; #Separator
 
                 if( SC ==  0) {
-                    JNx[iq,1] = $1
-                    JNx[iq,2] = $2
-                    JNx[iq,3] = $3
-                    JNx[iq,4] = $4   
+                    JNx[iq,1] = $3
+                    JNx[iq,2] = $4
+                    JNx[iq,3] = $5
+                    JNx[iq,4] = $6   
                     getline;
-                    JPx[iq,1] = $1
-                    JPx[iq,2] = $2
-                    JPx[iq,3] = $3
-                    JPx[iq,4] = $4
+                    JPx[iq,1] = $3
+                    JPx[iq,2] = $4
+                    JPx[iq,3] = $5
+                    JPx[iq,4] = $6
                     getline;
                     getline;
                 }   
@@ -896,18 +896,22 @@ BEGIN{
                     JPx[iq,3] = 0
                     JPx[iq,4] = 0
                 }          
-
-
         
-                JNz[iq,1] = $1
-                JNz[iq,1] = $2
+                JNx[iq,5] = JNx[iq,1] + JNx[iq,2] + JNx[iq,3] + JNx[iq,4] 
+                JPx[iq,5] = JPx[iq,1] + JPx[iq,2] + JPx[iq,3] + JPx[iq,4] 
+        
                 JNz[iq,1] = $3
-                JNz[iq,1] = $4   
+                JNz[iq,1] = $4
+                JNz[iq,1] = $5
+                JNz[iq,1] = $6   
                 getline;
-                JPz[iq,1] = $1
-                JPz[iq,1] = $2
                 JPz[iq,1] = $3
                 JPz[iq,1] = $4
+                JPz[iq,1] = $5
+                JPz[iq,1] = $6
+                
+                JNz[iq,5] = JNz[iq,1] + JNz[iq,2] + JNz[iq,3] + JNz[iq,4] 
+                JPz[iq,5] = JPz[iq,1] + JPz[iq,2] + JPz[iq,3] + JPz[iq,4] 
                 
                 SizeJ[iq] = sqrt(Jx[iq]**2     + Jz[iq]**2)
                 SizeO[iq] = sqrt(OmegaX[iq]**2 + OmegaY[iq]**2 + OmegaZ[iq]**2)
@@ -1098,8 +1102,8 @@ END{
     # Angular momentum decomposition
     iq=1;
     while ( iq < iqmax + 1 ) {
-        printf("%3.0f %17.10f %17.10f %17.10f  %17.10f  %17.10f %17.10f %17.10f  %17.10f %17.10f %17.10f %17.10f  %17.10f %17.10f %17.10f %17.10f  %17.10f  \n",
-                   iq, JNx[iq,1],JNx[iq,2],JNx[iq,3],JNx[iq,4],JNz[iq,1],JNz[iq,2],JNz[iq,3],JNz[iq,4],JPx[iq,1],JPx[iq,2],JPx[iq,3],JPx[iq,4],JPz[iq,1],JPz[iq,2],JPz[iq,3],JPz[iq,4] ) >> "tmp.jdecomp.tab"; 
+        printf("%3.0f %12.5f %12.5f %12.5f  %12.5f  %12.5f %12.5f %12.5f  %12.5f %12.5f %12.5f %12.5f  %12.5f %12.5f %12.5f %12.5f  %12.5f %12.5f %12.5f %12.5f %12.5f  \n",
+               iq, JNx[iq,1],JNx[iq,2],JNx[iq,3],JNx[iq,4],JNx[iq,5],JNz[iq,1],JNz[iq,2],JNz[iq,3],JNz[iq,4], JNz[iq,5],JPx[iq,1],JPx[iq,2],JPx[iq,3],JPx[iq,4], JPx[iq,5],JPz[iq,1],JPz[iq,2],JPz[iq,3],JPz[iq,4], JPz[iq,5] ) >> "tmp.jdecomp.tab"; 
         iq += 1;
     }
     close("tmp.jdecomp.tab");

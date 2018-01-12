@@ -16,6 +16,11 @@ module ImaginaryTime
   end interface
   procedure(Evolve_Interface),pointer :: EvolveSpwf
 
+
+  !-----------------------------------------------------------------------------
+  ! Momentum-needed array
+  type(Spinor), allocatable :: updates(:)
+  
 contains
 
   function hPsi(Psi)
@@ -328,7 +333,12 @@ contains
     type(Spwf)                :: TempWf
     Propfactor = dt/hbar
 
-    if(TaylorOrder.eq.2) print *, 'Taylor'
+    if(Momentum.ne.0.0_dp .and. (.not. allocated(updates))) then
+        allocate(updates(nwt))
+        do i=1,nwt
+            updates(i) = NewSpinor()
+        enddo
+    endif
 
     do i=1,nwt
       Current      = HFBasis(i)%GetValue()
@@ -336,6 +346,7 @@ contains
       SpEnergy     = InproductSpinorReal(Current, ActionOfH)
       SpDispersion = InproductSpinorReal(ActionOfH,ActionOfH) - SpEnergy**2
 
+      !-------------------------------------------------------------------------
       !Precondition the descent direction if InverseKineticDamping is active.
       if(InverseKineticDamping) then
         ActionOfH = ActionOfH - SpEnergy*Current
@@ -343,7 +354,8 @@ contains
         &           HFBasis(i)%GetParity(), HFBasis(i)%GetSignature(),  &
         &           HFBasis(i)%GetTimeSimplex(), HFBasis(i)%GetIsospin())
       endif
-
+      !-------------------------------------------------------------------------
+      ! Add second order of the Taylor expansion
       if(TaylorOrder.eq.2) then
           TempWF = NewWaveFunction(ActionOfH,HFBasis(i)%GetIsospin(),          &
           &      HFBasis(i)%GetTimeSimplex(), HFBasis(i)%GetParity(),          &
@@ -359,6 +371,12 @@ contains
           endif
 
           ActionOfH = ActionofH - (propfactor * 0.5_dp) * ActionofH2
+      endif
+      !-------------------------------------------------------------------------
+      ! Add previous updates if momentum is active
+      if(momentum.ne.0.0_dp) then
+        ActionOfH = ActionOfH + momentum * updates(i)
+        updates(i)= ActionOfH
       endif
 
       ActionOFH    = - propfactor*ActionOfH

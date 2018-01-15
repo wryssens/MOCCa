@@ -423,7 +423,7 @@ contains
     12 format ( '  Iter= ', i5)
    121 format ( '  Imaginary Time-step method')
    122 format ( '  Nesterov optimal gradient')
-    13 format ( '  Mixing Process : ' , A7, ' mixing')
+    13 format ( '  Mixing Process : ' , A30)
    131 format ( '    Memory       : ' , i3)
    132 format ( '    Damping      : ' , f5.2)
    133 format ( '    MixingScheme : ' , i2)

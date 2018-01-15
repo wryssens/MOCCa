@@ -372,7 +372,7 @@ contains
     NameList /densit/ DampingParam, PulayOrder, MixingScheme, Recalc
 
     read(unit=*, NML=densit)
-    if(MixingScheme.ne.0 .and. PulayOrder.lt.1) then
+    if(MixingScheme.ge.2 .and. PulayOrder.lt.1) then
       call stp('PulayOrder should be strictly positive!')
     endif
 
@@ -420,6 +420,7 @@ contains
     else
       call ComputeDensity(Density,.false.)
     endif
+
 
   end subroutine UpdateDensities
 

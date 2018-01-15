@@ -24,9 +24,10 @@ contains
     ! Mixes the densities according to different schemes.
     ! MixingScheme=
     ! 0) => Linear Mixing with DampingParam as parameter.
-    ! 1) => DIIS
-    ! 2) => CDIIS (not yet)
-    ! 3) => CEDIIS (only dim=2 for the moment).
+    ! 1) => Linear mixing of ONLY rho.
+    ! 2) => DIIS
+    ! 3) => CDIIS (not yet)
+    ! 4) => CEDIIS (only dim=2 for the moment).
     !---------------------------------------------------------------------------
     integer, intent(in) :: Iteration
 
@@ -34,14 +35,19 @@ contains
     select case(MixingScheme)
       case(0)
         ! Do linear damping
-        !                                                       &
-        !&        sum((Density%Rho-DensityHistory(1)%Rho)**2)*dv/(1-DampingParam)
+        !-----------------------------------------------------------------------
+        ! This one-liner is more complex than it seems: it mixes ALL of the
+        ! densities. Needlessly, as I've realized now.
         Density = (1-DampingParam) * Density + DampingParam*DensityHistory(1)
       case(1)
-        call DIIS(mod(Iteration,100))
+        ! Only mix rho
+        Density%rho = (1-DampingParam)*Density%rho + &
+        &                DampingParam *DensityHistory(1)%rho
       case(2)
-        call stp('CDIIS not properly implemented yet.')
+        call DIIS(mod(Iteration,100))
       case(3)
+        call stp('CDIIS not properly implemented yet.')
+      case(4)
         !Look for the energetically best mixing!
         !call NaiveCEDIIS(Iteration)
         call stp('NaiveCDIIS not properly implemented yet.')

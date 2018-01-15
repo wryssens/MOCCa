@@ -485,12 +485,15 @@ contains
       print 122
     end select
 
-    if(PulayOrder.gt.1 .and. Mixingscheme.eq.1) then
+    if(PulayOrder.gt.1 .and. Mixingscheme.eq.2) then
       print 13, 'DIIS   '
       print 131, PulayOrder
-    else
-      print 13, 'Linear '
+    elseif(MixingScheme .eq. 1) then
+      print 13, 'Linear (only rho)'
       print 132, DampingParam
+    else
+      print 13, 'Linear (all densities)'
+      print 132, Dampingparam
     endif
     print 133, MixingScheme
 
@@ -1485,6 +1488,16 @@ end subroutine ReadMOCCa_v1
           &                       sum(Density%Rho(i,j,k,:))
         enddo
       enddo
+    close(iunit)
+    
+    
+    open(iunit, File='density.R.dat')
+
+    do i=1,nx
+          write(iunit, '(6f16.9)') MeshX(i), MeshY(i), MeshZ(i),               &
+          &            Density%Rho(i,i,i,1), Density%Rho(i,i,i,2),             &
+          &            sum(Density%Rho(i,i,i,:))
+    enddo
     close(iunit)
   end subroutine PlotDensity
   !-----------------------------------------------------------------------------

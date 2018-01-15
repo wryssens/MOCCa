@@ -23,8 +23,11 @@ use Mesh
 
 implicit none
 
-    ! Contain the Schiff operator
+    ! Constrain the Schiff operator
     type(Moment), target :: Schiff
+    
+    ! Constraint the total size of J_0
+!    type(Moment), target :: Schiff
 
 contains
 

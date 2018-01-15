@@ -322,7 +322,7 @@ contains
                      &  Neutrons, Protons, ErrorFileName, nx, ny,nz, dx,       &
                      &  PrintIter, MomentPrec, EnergyPrec, TaylorOrder,        &
                      &  InverseKineticDamping, E0, PairingPrec, CrankPrec,     &
-                     &  IterType, Restart, recalcN2LO
+                     &  IterType, Restart, recalcN2LO, momentum
 
     !Reading the symmetries that are conserved or broken.
     read (unit=*, nml=GenInfo)

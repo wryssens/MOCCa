@@ -375,7 +375,7 @@ contains
       !-------------------------------------------------------------------------
       ! Add previous updates if momentum is active
       if(momentum.ne.0.0_dp) then
-        ActionOfH = ActionOfH + momentum * updates(i)
+        ActionOfH = ActionOfH - SpEnergy * Current + momentum * updates(i)
         updates(i)= ActionOfH
       endif
 

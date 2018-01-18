@@ -1914,6 +1914,8 @@ subroutine PrintAllMoments()
     !---------------------------------------------------------------------------
     ! Readjust all the multipole constraints.
     !---------------------------------------------------------------------------
+    use Densities
+    
     type(Moment), pointer :: Current
     integer               :: Constrainttype
 
@@ -1930,6 +1932,9 @@ subroutine PrintAllMoments()
     Current => Root_J0
     do while(associated(Current)) 
         if(Current%ConstraintType.eq.constrainttype) then
+           if(.not.allocated(Density%Jmunu)) then
+            call stp('Can not constrain J0 if Jmunu is not calculated.')
+           endif    
           call Readjust(Current,.true.)
         endif
         if(associated(Current%next)) then

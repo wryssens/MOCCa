@@ -1213,10 +1213,10 @@ contains
     !       - E_constraint is the energy due to constraints.
     !---------------------------------------------------------------------------
 
-    use Moments, only : ConstraintEnergy
+    use Moments, only : ConstraintEnergy,  ConstraintEnergy_J0
     use Cranking,only : Omega, CrankEnergy
     use Spwfstorage, only: TotalAngMom
-    integer           :: i
+    integer           :: i, mu
 
     !Summing the energies of the single particle states.
     SpwfEnergy = 0.0_dp
@@ -1236,6 +1236,12 @@ contains
     endif
     !Remove the contribution from the multipole constraints
     SpwfEnergy = SpwfEnergy - sum(ConstraintEnergy*Density%Rho)*dv/2.0_dp
+    if(allocated(Density%Jmunu)) then
+        do mu=1,3
+            SpwfEnergy = SpwfEnergy -  &
+            &   sum(ConstraintEnergy_J0*Density%Jmunu(:,:,:,mu,mu,:))*dv/2.0_dp
+        enddo
+    endif
      !Remove contribution from the cranking constraints
     SpwfEnergy = SpwfEnergy - sum(CrankEnergy)/2.0_dp
     !Add the pairing Energy and Lipkin-Nogami energy

@@ -69,6 +69,7 @@ module Moments
 !   (1) Augmented Lagrangian
 !   (2) Predictor-Corrector
 !   (3) Alternating 
+!   (4) Preconditioning
 !
 ! Every constraint can be on different quantities based on its isoswitch
 !   (1) proton + neutron value
@@ -221,13 +222,15 @@ implicit none
   end type Moment
   !-----------------------------------------------------------------------------
   !Maximum degree of the multipole components that are considered. Default = 6
-  integer, public :: MaxMoment=6
+  integer, public :: MaxMoment=6, maxmoment_J0=2
   !-----------------------------------------------------------------------------
   ! Starting point for the linked list of moments.
   !-----------------------------------------------------------------------------
   type(Moment), public, pointer :: Root         ! Electric multipole moments
   type(Moment), public, pointer :: Root_spin    ! Magnetic-spin    multipole moments
   type(Moment), public, pointer :: Root_current ! Magnetic-current multipole moments
+  type(Moment), public, pointer :: Root_J0      ! Multipole moments of the 
+                                                ! pseudo-scalar J0 density
   !-----------------------------------------------------------------------------
   ! Couplings of the angular momentum to the magnetic moments
   real(KIND=dp) :: g_spin(2) =(/5.586d0, -3.826d0/) ! Spin-coupling 
@@ -253,6 +256,7 @@ implicit none
   ! constraints is stored in this variable
   !-----------------------------------------------------------------------------
   real(Kind=dp), public, allocatable :: ConstraintEnergy(:,:,:,:)
+  real(Kind=dp), public, allocatable :: ConstraintEnergy_J0(:,:,:,:)
   !-----------------------------------------------------------------------------
   !Damping associated with the calculation of <Q_lm>
   !-----------------------------------------------------------------------------
@@ -304,7 +308,7 @@ implicit none
 
 contains
 
-  recursive function FindMoment(l,m,Impart, StartMoment) result(FoundMoment)
+  recursive function FindMoment(l,m,Impart,StartMoment) result(FoundMoment)
     !---------------------------------------------------------------------------
     ! Subroutine that finds a pointer to the moment, specified by multipole
     ! values l,m and whether it is a real or imaginary part.
@@ -325,6 +329,13 @@ contains
       Current => StartMoment
     else
       Current => Root
+    endif
+
+    if((Current%l.eq.l) .and. (Current%m .eq. m) .and.                       &
+      &               (Impart.eqv.Current%Impart)) then
+        !Then we've found the correct moment.
+        FoundMoment => Current
+        return
     endif
 
     do while(associated(Current%Next))
@@ -385,6 +396,10 @@ contains
     Root_spin%l=0      ;    Root_spin%m=0
     allocate(Root_spin%SpherHarm(nx,ny,nz))
     
+    nullify(Root_J0) ;    allocate(Root_J0)
+    Root_J0%l=0      ;    Root_J0%m=0
+    allocate(Root_J0%SpherHarm(nx,ny,nz))
+    
     !---------------------------------------------------------------------------
     !This is the l=0,m=0 spherical harmonic
     Root%SpherHarm=1.0_dp/sqrt(4.0_dp*pi) 
@@ -400,6 +415,13 @@ contains
     Root_spin%Calculate => Calculate_Multipole
     Root_spin%PrintMoment => PrintMoment_Multipole
     nullify(Root_spin%Prev) ;  nullify(Root_spin%Next)
+    
+    Root_J0%SpherHarm=1.0_dp/sqrt(4.0_dp*pi) 
+    Root_J0%Impart=.false.
+    Root_J0%ConstraintType=0
+    Root_J0%Calculate   => Calculate_J0
+    Root_J0%PrintMoment => PrintMoment_J0
+    nullify(Root_J0%Prev) ;  nullify(Root_J0%Next)
     
     !---------------------------------------------------------------------------
     ! Calculating all the spherical harmonics
@@ -468,6 +490,35 @@ contains
           enddo
         enddo
     endif
+    !---------------------------------------------------------------------------
+    ! c) the J0 moments
+    if(.not. PC) then
+        nullify(Current)   ;  allocate(Current)
+        Current=>Root_J0
+        nullify(Current%Next) ;  nullify(Current%Prev) ; nullify(NextMoment)
+        do l=1, MaxMoment_J0
+          do m=0,l
+            do ImPart=0,1
+              NextMoment => NewMoment_J0(l,m,ImPart)
+              !Placing the moment in the list
+              if(associated(NextMoment)) then
+                if(Impart.eq.1.) then
+                  NextMoment%SpherHarm=SpherHarmMesh(:,:,:,l,m,2)
+                else
+                  NextMoment%SpherHarm=SpherHarmMesh(:,:,:,l,m,1)
+                endif
+
+                NextMoment%Prev => Current
+                Current%Next => NextMoment
+                Current => NextMoment
+                nullify(NextMoment)
+              endif
+            enddo
+          enddo
+        enddo
+    endif
+    !---------------------------------------------------------------------------
+    
     return
   end subroutine IniMoments
 
@@ -764,6 +815,94 @@ contains
 
     return
   end function NewMoment_Electric
+  
+  function NewMoment_J0(l,m,ImPart) result(newmoment)
+    !---------------------------------------------------------------------------
+
+    type(Moment),pointer   :: NewMoment
+    integer, intent(in)    :: l,m,ImPart
+
+    nullify(NewMoment)
+
+    if((mod(l,2).eq.0).and.PC) then
+      ! The multipole moments of even order are constrained by parity.
+      ! This is independent of quantisation axis.
+      return
+    endif
+
+    if((m.eq.0).and.(Impart.eq.1)) then
+      !Do not create a new moment for an imaginary part of moments with m=0
+      return
+    endif
+
+    select case(QuantisationAxis)
+    case(1)
+        if((ImPart.eq.1.).and.TSC) then
+          return
+        endif
+
+        if((mod(m,2).ne.0).and.SC) then
+          return
+        endif
+        if((.not.SC) .or. (.not. TSC) .or. (.not.PC)) then
+          call stp('Newmoments not correctly treated when X is the quantisation axis.')
+        endif
+    case(2)
+        if((mod(l,2) .ne. 0) .and. (mod(m,2).eq.0) .and. TSC ) then
+         return
+        endif
+        if((mod(l,2) .eq. 0) .and. (mod(m,2).ne.0) .and. TSC ) then
+          return
+        endif
+
+        if((Impart.eq.0) .and. (mod(m,2).ne.0).and.SC) then
+          return
+        endif
+        if((Impart.eq.1) .and. (mod(m,2).eq.0).and.SC) then
+          return
+        endif
+         
+    case(3)
+        if((ImPart.eq.1.).and.TSC) then
+          return
+        endif
+
+        if((mod(m,2).ne.0).and.SC) then
+          return
+        endif
+    end select 
+
+    allocate(NewMoment)
+    NewMoment%l=l
+    NewMoment%m=m
+
+    nullify(NewMoment%Prev, NewMoment%Next)
+    allocate(NewMoment%SpherHarm(nx,ny,nz))
+
+    if(ImPart.eq.1.) then
+        NewMoment%ImPart=.true.
+    else
+        NewMoment%ImPart=.false.
+    endif
+
+    ! The parameters of the new multipole moment are set to zero by default.
+    NewMoment%ConstraintType= 0
+    NewMoment%Value         = 0.0_dp
+    NewMoment%ValueCut      = 0.0_dp
+    NewMoment%SpherHarm     = 0.0_dp
+    NewMoment%OldValue      = 0.0_dp
+    NewMoment%OldValueCut   = 0.0_dp
+    NewMoment%Isoswitch     = 1
+    NewMoment%Squared       = 0.0_dp
+    NewMoment%ThirdPower    = 0.0_dp
+
+    nullify(NewMoment%Calculate)
+
+    NewMoment%Calculate   => Calculate_J0
+    NewMoment%PrintMoment => PrintMoment_J0
+
+    return
+  end function NewMoment_J0
 
   subroutine PrintMomentInfo()
     !---------------------------------------------------------------------------
@@ -941,6 +1080,8 @@ contains
             ConType='Predictor-Corrector'
         case(3)
             ConType='Alternating'
+        case(4)
+            ConType='Preconditioning'
         end select
 
         select case(Current%l)
@@ -978,6 +1119,8 @@ contains
             ConType='Predictor-Corrector'
         case(3)
             ConType='Alternating'
+        case(4)
+            ConType='Preconditioning'
         end select
 
         select case(Current%l)
@@ -1016,6 +1159,8 @@ contains
             ConType='Predictor-Corrector'
         case(3)
             ConType='Alternating'
+        case(4)
+            ConType='Preconditioning'
         end select
 
         select case(Current%l)
@@ -1054,6 +1199,8 @@ contains
             ConType='Predictor-Corrector'
         case(3)
             ConType='Alternating'
+        case(4)
+            ConType='Preconditioning'
         end select
 
         if(.not.Current%Impart) ReIm = 'Re'
@@ -1153,6 +1300,54 @@ contains
 
 end subroutine PrintMoment_Multipole
 
+subroutine PrintMoment_J0(ToPrint)
+  !---------------------------------------------------------------------------
+  ! This subroutine provides the printing of all relevant info of a Moment.
+  !---------------------------------------------------------------------------
+
+  class(Moment),       intent(in) :: ToPrint
+  character(len=2)                :: ReIm
+  real(KIND=dp)                   :: fac
+  
+    1 format (A2, ' J_{', 2i2, '}', 3(1x,f15.4) )
+    2 format ('Constrained',  2(1x,f15.4))
+    3 format ('Constrained',  33x, f15.4)
+    4 format (' Particles ',  3(1x,f15.4))
+    5 format (' RMS radius',  3(1x,f15.4))
+    6 format ('Pulling to ',  33x, f15.4)
+    7 format ('Constrained Difference: ', 3x, 2(1x,f15.4))
+    8 format ('Mult_{',i2,i2,'}',   33x,  f15.4)
+    9 format ('Mult_{',i2,i2,'}',   2(1x,f15.4))
+   10 format ('Devi_{',i2,i2,'}',   33x,  e15.7) 
+   11 format ('Devi_{',i2,i2,'}',   33x,  e15.7) 
+
+    !---------------------------------------------------------------------------
+    !All other "normal" multipole moments
+    if(.not.ToPrint%Impart) then
+        ReIm = 'Re'
+    else
+        ReIm = 'Im'
+    endif
+    
+    if(ToPrint%l.eq.0) then
+        fac = sqrt(4.0*pi)
+    else
+        fac = 1
+    endif
+
+    print 1, ReIm, ToPrint%l, ToPrint%m, fac*ToPrint%Value(1),                 &
+    &                                    fac*ToPrint%Value(2),                 &
+    &                                    fac*Sum(ToPrint%Value)
+    
+    if(ToPrint%ConstraintType.ne.0) then
+          print 3, ToPrint%TrueConstraint*fac
+          print 10, ToPrint%l, Toprint%m, ToPrint%Deviation(1)*fac
+          print 6, ToPrint%Constraint*fac
+          print 8, ToPrint%l, Toprint%m, ToPrint%Multiplier(1)*fac
+    endif
+    
+end subroutine PrintMoment_J0
+
 subroutine PrintMoment_magnetic(ToPrint)
   !---------------------------------------------------------------------------
   ! This subroutine provides the printing of all relevant info of a magnetic
@@ -1220,7 +1415,8 @@ subroutine PrintAllMoments()
       character(len=1)      :: AX='Z',secAx1='Y', secAx2='Z'
 
     100 format (15('-'),' Electric Multipole Moments ', 16('-'))
-    101 format (15('-'),' Magnetic Multipole Moments ', 16('-'))    
+    101 format (15('-'),' Magnetic Multipole Moments ', 16('-'))   
+    201 format (15('-'),' J0 Multipole Moments       ', 16('-'))    
     102 format (60('-'))
       1 format (60('_'))
       2 format (16x,4x, 'Neutrons',8x, 'Protons',9x, 'Total')
@@ -1354,28 +1550,50 @@ subroutine PrintAllMoments()
 
       call PrintQuadrupoleAlt
       print 102
-      if(TRC) return
-      !-------------------------------------------------------------------------
-      print 101
-      print 10, Ax
-      print 11, SecAx1, SecAx2
-      print 12
-      print 1
-      ! b) The magnetic multipole moments
-      Current => Root_spin
-      Current => Current%Next
-      currentl = Current%l
       
-      call Current%printMoment(Current)
-      do while(associated(Current%Next))
-        Current => Current%Next
-        print 1
-        currentl = Current%l
-        call Current%PrintMoment(Current)
-      enddo
-      !print 1
-      nullify(Current)
-      print 102
+      !-------------------------------------------------------------------------
+      if(.not. TRC) then
+          print 101
+          print 10, Ax
+          print 11, SecAx1, SecAx2
+          print 12
+          print 1
+          ! b) The magnetic multipole moments
+          Current => Root_spin
+          Current => Current%Next
+          currentl = Current%l
+          
+          call Current%printMoment(Current)
+          do while(associated(Current%Next))
+            Current => Current%Next
+            print 1
+            currentl = Current%l
+            call Current%PrintMoment(Current)
+          enddo
+          !print 1
+          nullify(Current)
+          print 102
+      endif
+      
+      !-------------------------------------------------------------------------
+      if(.not. PC) then
+          Current => Root_J0
+          print 201
+          print 10, Ax
+          print 11, SecAx1, SecAx2
+          print 1
+          ! c) The J0 moments
+          Current => Root_J0
+          call Current%printMoment(Current)
+          do while(associated(Current%Next))
+            Current => Current%Next
+            currentl = Current%l
+            call Current%PrintMoment(Current)
+          enddo
+          !print 1
+          nullify(Current)
+          print 102
+      endif
       return
   end subroutine PrintAllMoments
 
@@ -1530,6 +1748,88 @@ subroutine PrintAllMoments()
 
     return
   end subroutine Calculate_magnetic
+  
+  subroutine Calculate_J0(ToCalculate,SaveOld)
+    !---------------------------------------------------------------------------
+    ! This subroutine calculates the multipole moment, both with and without
+    ! cutoff by integrating over the mesh, using the SpherHarm variable.
+    ! The integration is then
+    !    <Q_{lm}> = \int d^3x \rho(x,y,z)* SpherHarm(x,y,z)
+    !---------------------------------------------------------------------------
+    ! The integer saveold controls if previous results are saved or not to the
+    ! Oldvalues array. 1 saves, 0 does not save.
+    !---------------------------------------------------------------------------
+    use Densities, only : Density
+
+    class(Moment),        intent(inout) :: ToCalculate
+    integer                             :: i,it
+    integer                             :: SaveOld, mu
+    real(KIND=dp)                       :: J0(nx,ny,nz,2)
+
+    if(SaveOld.ne.0) then
+      !Move the old values up in the list
+      do i=1,6
+          ToCalculate%OldValue(:,7-i+1)    = ToCalculate%OldValue(:,7-i)
+          ToCalculate%OldValueCut(:,7-i+1) = ToCalculate%OldValueCut(:,7-i)
+      enddo
+
+      !Copy the present value to OldValue
+      ToCalculate%OldValue(:,1)    = ToCalculate%Value
+      ToCalculate%OldValueCut(:,1) = ToCalculate%ValueCut
+    endif
+
+    !Initialise
+    ToCalculate%Value      = 0.0_dp
+    ToCalculate%ValueCut   = 0.0_dp
+    ToCalculate%Squared    = 0.0_dp
+    ToCalculate%ThirdPower = 0.0_dp
+
+    ! Calculate J0
+    J0 = 0
+    do mu=1,3
+        J0 = J0 + Density%Jmunu(:,:,:,mu,mu,:) 
+    enddo
+    !---------------------------------------------------------------------------
+    ! Calculate the new value for ordinary constraints
+    do it=1,2
+      ToCalculate%Value(it)    = ToCalculate%Value(it) + &
+      &       sum(ToCalculate%SpherHarm(:,:,:)*J0(:,:,:,it))
+      ToCalculate%ValueCut(it) = ToCalculate%ValueCut(it) + &
+      &       sum(ToCalculate%SpherHarm(:,:,:)*J0(:,:,:,it)           &
+      &       *CutOff(:,:,:,it))
+    enddo
+
+    do it=1,2
+      ToCalculate%Squared(it)    = ToCalculate%Squared(it)    + &
+      &       sum(ToCalculate%SpherHarm(:,:,:)**2*J0(:,:,:,it))
+      ToCalculate%ThirdPower(it) = ToCalculate%ThirdPower(it) + &
+      &       sum(ToCalculate%SpherHarm(:,:,:)**3*J0(:,:,:,it))
+    enddo
+
+    if(any(ToCalculate%Value.eq.ToCalculate%Value+1)) then
+      call stp('Nan in the calculation of multipole moments.', 'l=',           &
+      &         ToCalculate%l, 'm=', ToCalculate%m)
+    endif
+
+    ToCalculate%Value     =ToCalculate%Value*dv
+    ToCalculate%ValueCut  =ToCalculate%ValueCut*dv
+    ToCalculate%Thirdpower=ToCalculate%Thirdpower*dv
+    ToCalculate%Squared   =ToCalculate%Squared*dv
+    
+    ! Set the deviation
+    if(ToCalculate%ConstraintType.ne.0) then
+        if(.not. ToCalculate%total) then
+          ToCalculate%deviation(1) = abs(sum(ToCalculate%Value) -              &
+                                                  ToCalculate%TrueConstraint(1))
+        else
+          ToCalculate%deviation(1) = abs(sum(CalculateTotalQl(Tocalculate%l))- &
+                                                  ToCalculate%TrueConstraint(1))
+        endif
+    endif
+    call CalcBeta(ToCalculate)
+
+    return
+  end subroutine Calculate_J0
 
   subroutine CalculateAllMoments(SaveOld)
     !---------------------------------------------------------------------------
@@ -1538,6 +1838,8 @@ subroutine PrintAllMoments()
     !   2) Calculate the energy associated to the multipole constraints
     !   3) Calculate the quadrupole moments in different representations
     !---------------------------------------------------------------------------
+    use Densities
+    
     type(Moment), pointer :: Current
     integer, intent(in)   :: SaveOld
     integer, save         :: firstcall = 1
@@ -1585,6 +1887,17 @@ subroutine PrintAllMoments()
         Current => Current%Next
         call Current%Calculate(Current,SaveOld)
     enddo
+    
+    !---------------------------------------------------------------------------
+    ! Calculate the J0 multipole
+    if(.not.PC .and. allocated(Density%Jmunu)) then
+        Current => Root_J0
+        call Current%Calculate(Current,SaveOld)
+        do while(associated(Current%Next))
+            Current => Current%Next
+            call Current%Calculate(Current,SaveOld)
+        enddo
+    endif
 
     call CalcConstraintEnergy()
     call CalcQuadrupoleAlt()
@@ -1609,12 +1922,25 @@ subroutine PrintAllMoments()
         call Readjust(Current)
     enddo
     nullify(Current)
+    
+    Current => Root_J0
+    do while(associated(Current)) 
+        if(Current%ConstraintType.eq.constrainttype) then
+          call Readjust(Current,.true.)
+        endif
+        if(associated(Current%next)) then
+            Current => Current%Next
+        else
+            nullify(Current)
+        endif
+    enddo
   end subroutine ReadjustAllMoments
 
   subroutine CalcConstraintEnergy()
   !-----------------------------------------------------------------------------
   ! This function calculates the energy contribution associated with the
-  ! constraints on the multipole moments.
+  ! constraints on the multipole moments of the density rho 
+  ! (and J0 if requested). 
   !
   ! For ordinary multipole constraints
   !____________________________________________________________________
@@ -1650,8 +1976,8 @@ subroutine PrintAllMoments()
   type(Moment), pointer :: Current
 
   Current => Root
-  ConstraintEnergy = Damping*ConstraintEnergy
-
+  ConstraintEnergy    = Damping*ConstraintEnergy
+  
   do while(associated(Current%Next))
     Current => Current%Next
 
@@ -1726,6 +2052,16 @@ subroutine PrintAllMoments()
               Desired=   Current%Constraint(1)
             endif
        end select
+       
+     case(4)
+       !------------------------------------------------------------------------
+       ! Preconditioning
+!       Factor = - Current%multiplier
+!       Value  =  1
+!       Desired = 0
+        Factor = 2*Current%Intensity(1)
+        Value = sum(Current%Value)
+        Desired =Current%Constraint(1)
     case DEFAULT
           call stp('Not implemented constrainttype.')
     end select
@@ -1742,6 +2078,51 @@ subroutine PrintAllMoments()
     enddo
   enddo
   nullify(Current)
+  
+  !=============================================================================
+  !
+  Current             => Root_J0
+  ConstraintEnergy_J0 = Damping*ConstraintEnergy_J0
+  
+  do while(associated(Current))
+    !---------------------------------------------------------------------------
+    Factor(1) = 0.0_dp ; Factor(2) = 0.0_dp
+
+    select case(Current%ConstraintType)
+    case(0)
+      !-------------------------------------------------------------------------
+      ! Go to the next moment if this moment is not constrained
+    case(3)
+       !------------------------------------------------------------------------
+       ! Alternating constraints
+       ! sum(proton+neutron) value constrained
+       Factor = 2*Current%Intensity(1)
+       Value  =   sum(Current%Value)
+       Desired=   Current%Constraint(1)
+       !-------------------------------------------------------------------------
+       ! Multiplying by (1-Damp) if this is not the first time that
+       ! ConstraintEnergy is calculated
+       if(.not.all(ConstraintEnergy_J0.eq.0.0_dp)) then
+         Factor = Factor * (1.0_dp - Damping)
+       endif
+       do it=1,2
+         ConstraintEnergy_J0(:,:,:,it)=ConstraintEnergy_J0(:,:,:,it)              &
+         & +                      Factor(it)*(Value(it) - Desired(it))*           &
+         &                        Current%SpherHarm(:,:,:)*Cutoff(:,:,:,it)
+       enddo
+    case DEFAULT
+          call stp('Not implemented constrainttype.')
+    end select
+  
+    if(associated(Current%next)) then
+        Current => Current%Next
+    else
+        nullify(Current)
+        exit
+    endif
+    enddo
+  nullify(Current)
+  !=============================================================================
   end subroutine CalcConstraintEnergy
 
   function CalculateTotalQl(l,old) result(ql)
@@ -2130,13 +2511,15 @@ subroutine PrintAllMoments()
 
   end function LegacyQuad
 
-  subroutine Readjust(ToReadjust)
+  subroutine Readjust(ToReadjust, J0)
     !---------------------------------------------------------------------------
     ! Subroutine that readjusts the constraint of a certain multipole moment.
     !---------------------------------------------------------------------------
-    type(Moment), pointer             :: ToReadjust
-    real(KIND=dp)                     :: O2(2), Old(2), OldIntensity(2), factor(2)
-    integer                           :: it
+    type(Moment), pointer    :: ToReadjust
+    real(KIND=dp)            :: O2(2),Old(2),OldIntensity(2),factor(2)
+    real(KIND=dp)            :: G1, G2, oldC
+    integer                  :: it
+    logical, optional        :: J0
 
     1 format ('-----Readjusting Q_{', 2i2, '} ------')
     2 format (' New value     = ', f15.6)
@@ -2246,13 +2629,19 @@ subroutine PrintAllMoments()
       !-------------------------------------------------------------------------
       ! Proton + neutron value
       if(ToReadjust%Intensity(1) == 0.0) then
+        !-----------------------------------------------------------------------
         ! Set the intensity if none was there before
-        if(.not. ToReadjust%Total) then
-            O2 = ToReadjust%Squared
+        if(.not. present(J0)) then
+            if(.not. ToReadjust%Total) then
+                O2 = ToReadjust%Squared
+            else
+                O2 = CalculateTotalsquared(ToReadjust%l)
+            endif
+            ToReadjust%Intensity(1) = (2/sum(O2)) 
         else
-            O2 = CalculateTotalsquared(ToReadjust%l)
-        endif
-        ToReadjust%Intensity(1) = (2/sum(O2))     
+            ToReadjust%Intensity(1) = 0.1
+        endif   
+        
         
         print *, 'Judged intensity',   ToReadjust%Intensity(1) 
       endif
@@ -2268,7 +2657,25 @@ subroutine PrintAllMoments()
          &  - (sum(CalculateTotalQl(Toreadjust%l))-ToReadjust%TrueConstraint(1))
       endif
      end select
-    end select
+     
+     case (4)
+      !-------------------------------------------------------------------------
+      ! Preconditioning constraints
+      !-------------------------------------------------------------------------
+      ! Proton + neutron value
+      
+      if(ToReadjust%Intensity(1) == 0.0) then
+        ! Set the intensity if none was there before
+        O2 = ToReadjust%Squared
+        ToReadjust%Intensity(1) = (2/sum(O2))     
+      endif
+     
+      ToReadjust%Constraint(1) = sum(ToReadjust%Value)                        &
+      &         +0.1* sum(ToReadjust%Value)    - sum(ToReadjust%OldValue(:,1))&
+      &         +0.1*(ToReadjust%Constraint(1) - sum(ToReadjust%OldValue(:,1)))
+       
+      ToReadjust%TrueConstraint = ToReadjust%Constraint(1)
+     end select
     return
   end subroutine Readjust
 
@@ -2667,7 +3074,7 @@ subroutine PrintAllMoments()
 
     do while(associated(Current%Next))
       Current => Current%Next
-      if(Current%ConstraintType.eq.3) then
+      if(Current%ConstraintType.ge.3) then
         Check = .true.
         exit
       endif
@@ -2753,13 +3160,15 @@ subroutine PrintAllMoments()
     ! Note that also legacy input is admitted with iq1 & iq2.
     !---------------------------------------------------------------------------
 
+    use Densities
+
     integer             :: iostat, iteration
     integer             :: l,m, ConstraintType, isoswitch
     logical             :: Impart
     real(KIND=dp)       :: Intensity, ConstraintNeutrons, ConstraintProtons
     real(KIND=dp)       :: Constraint, iq1, iq2
     real(KIND=dp)       :: iq1neutron, iq2neutron, iq1proton, iq2proton, mult
-    logical             :: MoreConstraints=.false., Total
+    logical             :: MoreConstraints=.false., Total, J0
     type(Moment),pointer:: Current, New
 
     real(KIND=dp), allocatable:: LegacyCon(:)
@@ -2773,7 +3182,7 @@ subroutine PrintAllMoments()
     NameList /MomentConstraint/ l,m,Impart, Isoswitch, Intensity,              &
     &                           ConstraintNeutrons,ConstraintProtons,          &
     &                           Constraint, MoreConstraints, ConstraintType,   &
-    &                           iq1, iq2, Total, iteration, mult
+    &                           iq1, iq2, Total, iteration, mult, J0
 
     nullify(Current)
 
@@ -2796,6 +3205,9 @@ subroutine PrintAllMoments()
 
     allocate(ConstraintEnergy(nx,ny,nz,2))
     ConstraintEnergy = 0.0_dp
+    
+    allocate(ConstraintEnergy_J0(nx,ny,nz,2))
+    ConstraintEnergy_J0 = 0.0_dp
 
     !Choosing cutoff
     nullify(CompCutoff)
@@ -2819,7 +3231,7 @@ subroutine PrintAllMoments()
         !Initialisation
         l=0; m=0; Impart=.false.  ; Isoswitch = 1            ; Intensity =0.0_dp
         ConstraintNeutrons=0.0_dp ; ConstraintProtons=0.0_dp ; Constraint=0.0_dp
-        MoreConstraints=.false.   ; ConstraintType=3
+        MoreConstraints=.false.   ; ConstraintType=3         ; J0 = .false.
         iq1=0.0_dp       ; iq2=0.0_dp            ; mult = 0.0_dp
         iq1neutron=0.0_dp; iq2neutron=0.0_dp; iq1proton=0.0_dp;iq2proton=0.0_dp
         Total = .false.  ; iteration = -1
@@ -2837,9 +3249,20 @@ subroutine PrintAllMoments()
         if(Total .and. l.eq.-2) then
           call stp('Constraining rms radii in the sense of Q_l is undefined.')
         endif
+        
+        if(J0 .and.PC) then
+            call stp('Can not constraint J^(0) when parity is conserved.')
+        endif
+        if(J0 .and. (.not.allocated(Density%Jmunu))) then
+            call stp('Can only calculate J0 with Jmunu allocated.')
+        endif
         !-----------------------------------------------------------------------
         !Finding the Correct Moment to constrain
-        Current => FindMoment(l,m,Impart)
+        if(J0) then
+            Current => FindMoment(l,m,Impart,Root_J0)
+        else
+            Current => FindMoment(l,m,Impart)
+        endif
         if(.not.associated(Current)) then
           call stp("MOCCa can't find this moment!", 'l= ', l, ' m= ', m)
         endif
@@ -2899,6 +3322,8 @@ subroutine PrintAllMoments()
                     ! Practically we constrain the radius squared instead of the
                     ! rms radius.
                     Current%Constraint = Constraint**2 * (Protons + Neutrons)
+                  elseif(Current%l .eq. 0) then
+                    Current%Constraint = Constraint / sqrt(4.0*pi)
                   else
                     Current%Constraint = Constraint
                   endif

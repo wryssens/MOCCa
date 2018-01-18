@@ -518,6 +518,8 @@ contains
   !             + B16*2*(J_{nu mu} + \sum_{k=x}^z J_kk \delta_{mu,nu})
   !             + B17*2*(J_{q;nu mu} + \sum_{k=x}^z J_{q;kk} \delta_{mu,nu})
   !-----------------------------------------------------------------------------
+    use Moments, only : ConstraintEnergy_J0
+    
     integer :: m,n,k,it
 
     WPot=0.0_dp
@@ -533,7 +535,14 @@ contains
          enddo
       enddo
     enddo
-
+    
+    !---------------------------------------------------------------------------
+    ! Add the constraining energy to the Wpot
+    !
+    Wpot(:,:,:,1,1,:) = Wpot(:,:,:,1,1,:) + ConstraintEnergy_J0
+    Wpot(:,:,:,2,2,:) = Wpot(:,:,:,2,2,:) + ConstraintEnergy_J0
+    Wpot(:,:,:,3,3,:) = Wpot(:,:,:,3,3,:) + ConstraintEnergy_J0
+    
     if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
         do it=1,2
            !B14&15 Contribution

@@ -1766,6 +1766,10 @@ subroutine PrintAllMoments()
     integer                             :: SaveOld, mu
     real(KIND=dp)                       :: J0(nx,ny,nz,2)
 
+    if(.not.allocated(Density%Jmunu)) then
+            call stp('Can only calculate J0 with Jmunu allocated.')
+    endif
+
     if(SaveOld.ne.0) then
       !Move the old values up in the list
       do i=1,6
@@ -3252,9 +3256,6 @@ subroutine PrintAllMoments()
         
         if(J0 .and.PC) then
             call stp('Can not constraint J^(0) when parity is conserved.')
-        endif
-        if(J0 .and. (.not.allocated(Density%Jmunu))) then
-            call stp('Can only calculate J0 with Jmunu allocated.')
         endif
         !-----------------------------------------------------------------------
         !Finding the Correct Moment to constrain

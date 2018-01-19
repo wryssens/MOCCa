@@ -69,7 +69,7 @@ module Densities
     real(KIND=dp), allocatable :: ImDTN2LO(:,:,:,:,:,:)
     real(KIND=dp), allocatable :: LapLapRho(:,:,:,:)
     real(KIND=dp), allocatable ::    D2RTau(:,:,:,:)
-    real(KIND=dp), allocatable ::    DmuITau(:,:,:,:,:)
+    real(KIND=dp), allocatable ::   DmuITau(:,:,:,:,:)
     real(KIND=dp), allocatable ::    PiN2LO(:,:,:,:,:)
     real(KIND=dp), allocatable ::     VN2LO(:,:,:,:,:,:)
     real(KIND=dp), allocatable ::     QN2LO(:,:,:,:)

@@ -234,10 +234,12 @@ contains
     Current => Current%next
    
     if(.not. AllConstraints) then
-        if(Current%ConstraintType.ne.3) cycle
+        if(Current%ConstraintType.lt.3) cycle
     else
         if(Current%ConstraintType.eq.0) cycle
     endif
+    
+    print *, ' Alternating', current%l, current%m
     select case(Current%Isoswitch)
     case(1)
         !-----------------------------------------------------------------------
@@ -326,11 +328,12 @@ contains
     use Damping
 
     integer :: i
-    real(KIND=dp)             :: SpEnergy, SpDispersion, Propfactor
+    real(KIND=dp)             :: SpEnergy, SpDispersion, Propfactor, m
     type(Spinor)              :: Current, ActionOfH, ActionOfH2
     integer, intent(in)       :: iteration
-
     type(Spwf)                :: TempWf
+    
+    
     Propfactor = dt/hbar
 
     if(Momentum.ne.0.0_dp .and. (.not. allocated(updates))) then
@@ -375,6 +378,8 @@ contains
       !-------------------------------------------------------------------------
       ! Add previous updates if momentum is active
       if(momentum.ne.0.0_dp) then
+        print *, 'prop', i, m, Spenergy, (1 - sqrt(propfactor *(Spenergy - m)))**2
+        
         ActionOfH = ActionOfH - SpEnergy * Current + momentum * updates(i)
         updates(i)= ActionOfH
       endif
@@ -385,7 +390,6 @@ contains
       call HFBasis(i)%SetEnergy(SpEnergy)
       call HFBasis(i)%SetDispersion(SpDispersion)
     enddo
-
     !Orthonormalisation
     call Gramschmidt
   end subroutine GradDesc

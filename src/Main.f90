@@ -361,6 +361,7 @@ subroutine Evolve(MaxIterations, iprint)
 
     !Readjust the constraints
     call ReadjustAllMoments(1)
+    call ReadjustAllMoments(4)
     
     call ReadjustCranking(.false.)
 

@@ -485,11 +485,14 @@ contains
       print 122
     end select
 
-    if(PulayOrder.gt.1 .and. Mixingscheme.eq.2) then
+    if(PulayOrder.gt.1 .and. Mixingscheme.eq.3) then
       print 13, 'DIIS   '
       print 131, PulayOrder
     elseif(MixingScheme .eq. 1) then
       print 13, 'Linear (only rho)'
+      print 132, DampingParam
+    elseif(MixingScheme .eq. 2) then
+      print 13, 'Linear (only lap-rho)'
       print 132, DampingParam
     else
       print 13, 'Linear (all densities)'

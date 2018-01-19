@@ -25,9 +25,10 @@ contains
     ! MixingScheme=
     ! 0) => Linear Mixing with DampingParam as parameter.
     ! 1) => Linear mixing of ONLY rho.
-    ! 2) => DIIS
-    ! 3) => CDIIS (not yet)
-    ! 4) => CEDIIS (only dim=2 for the moment).
+    ! 2) => Linear mixing of ONLY Laplacian of rho
+    ! 3) => DIIS
+    ! 4) => CDIIS (not yet)
+    ! 5) => CEDIIS (only dim=2 for the moment).
     !---------------------------------------------------------------------------
     integer, intent(in) :: Iteration
 
@@ -44,10 +45,14 @@ contains
         Density%rho = (1-DampingParam)*Density%rho + &
         &                DampingParam *DensityHistory(1)%rho
       case(2)
-        call DIIS(mod(Iteration,100))
+        ! only mix laprho
+        Density%laprho = (1-DampingParam)*Density%laprho + &
+        &                   DampingParam *DensityHistory(1)%laprho
       case(3)
-        call stp('CDIIS not properly implemented yet.')
+        call DIIS(mod(Iteration,100))
       case(4)
+        call stp('CDIIS not properly implemented yet.')
+      case(5)
         !Look for the energetically best mixing!
         !call NaiveCEDIIS(Iteration)
         call stp('NaiveCDIIS not properly implemented yet.')

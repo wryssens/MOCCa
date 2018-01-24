@@ -419,14 +419,23 @@ contains
     95 format ('  New nwt = ', i3,/ &
     &          "  !!!!!!!!!!!!!!!!!!!!!!!")
     10 format ( 'Iterative process')
-    11 format ( '   dt = ', f5.2 ,' (10^{-22} s) ')
     12 format ( '  Iter= ', i5)
    121 format ( '  Imaginary Time-step method')
    122 format ( '  Nesterov optimal gradient')
-    13 format ( '  Mixing Process : ' , A30)
+   
+   123 format ( '  Iterative parameters ')
+   124 format ( '     Fixed by user.')
+   125 format ( '     Reoptimized (average).   ')
+   126 format ( '     Reoptimized individually.')
+   127 format ( '     dt = ', f10.7, ' (initial)')
+   128 format ( '     mu = ', f10.7, ' (initial)')
+   
+    13 format ( '  Mixing Process : ' , A20)
    131 format ( '    Memory       : ' , i3)
    132 format ( '    Damping      : ' , f5.2)
    133 format ( '    MixingScheme : ' , i2)
+   
+
 
     14 format ( 'Convergence Levels')
     15 format ( '  dE  =', e8.1)
@@ -474,7 +483,6 @@ contains
         print 95, nwt
     endif
     print 10
-    print 11, dt
     print 12, MaxIter
 
     call to_upper(IterType, IterType)
@@ -484,6 +492,18 @@ contains
     case('NEST')
       print 122
     end select
+
+    print 123
+    select case(ParameterEstimation)
+    case(0) 
+        print 124
+    case(1)
+        print 125
+    case(2)
+        print 126
+    end select
+    print 127, dt
+    print 128, momentum
 
     if(PulayOrder.gt.1 .and. Mixingscheme.eq.3) then
       print 13, 'DIIS   '

@@ -16,6 +16,8 @@ module DensityMixing
   use Densities
 
   implicit none
+  
+  real(KIND=dp), allocatable :: DensityMomentum(:,:,:,:)
 
 contains
 
@@ -49,10 +51,25 @@ contains
         Density%laprho = (1-DampingParam)*Density%laprho + &
         &                   DampingParam *DensityHistory(1)%laprho
       case(3)
-        call DIIS(mod(Iteration,100))
+      
+        if(.not.allocated(DensityMomentum)) then
+            allocate(DensityMomentum(nx,ny,nz,2));
+            DensityMomentum = 0.0
+        endif
+      
+        Density%laprho = (1-DampingParam)*Density%laprho + &
+        &                   DampingParam *DensityHistory(1)%laprho
+        
+        DensityMomentum = 0.3*DensityMomentum + Density%rho - DensityHistory(1)%rho        
+        
+        Density%rho = DensityHistory(1)%rho + DensityMomentum
+        where(Density%rho .lt. 0.0) Density%rho = 0.0
+        
       case(4)
-        call stp('CDIIS not properly implemented yet.')
+        call DIIS(mod(Iteration,100))
       case(5)
+        call stp('CDIIS not properly implemented yet.')
+      case(6)
         !Look for the energetically best mixing!
         !call NaiveCEDIIS(Iteration)
         call stp('NaiveCDIIS not properly implemented yet.')
@@ -151,48 +168,4 @@ contains
 
   end subroutine CEDIIS
 
-!  subroutine NaiveCEDIIS(Iteration)
-!    !---------------------------------------------------------------------------
-!    ! Very naïve implementation of 2D CEDIIS.
-!    ! The strategy is to search for the minimum of the energy for different
-!    ! mixing parameters. This is a quadratic programming problem, and thus
-!    ! conceptually very hard to implement for D>2.
-!    !---------------------------------------------------------------------------
-!    use Energy, only : EstimateEnergy
-!
-!    integer             :: i, location(1)
-!    integer, intent(in) :: Iteration
-!    real(KIND=dp)       :: Samples(100)=0.0_dp, Values(100)
-!    type(DensityVector) :: Mix
-
-!    if(PulayOrder.gt.1) call stp("Can't do CEDIIS for bigger dimensions yet!")
-!
-!    !Initialise the Discretisation
-!    if(Samples(1).eq.0.0_dp) then
-!      do i=1,size(Samples)
-!        Samples(i) = -1.0_dp/(2.0_dp * size(Samples)) + i*1.0_dp/(size(Samples))
-!      enddo
-!    endif
-!
-!    if(Iteration.le.1) then
-!      !Return linear damping when not enough info is present
-!      Density = 0.5_dp*Density+0.5_dp*DensityHistory(1)
-!      return
-!    endif
-
-!    Mix = NewDensityVector()
-!    !Estimate the mixing energy
-!    do i=1,size(Samples)
-!      Mix = Samples(i) * Density + (1.0_dp - Samples(i)) * DensityHistory(1)
-!      Values(i) = EstimateEnergy(Mix)
-!    enddo
-!    location = minloc(Values)
-!    !Temporary
-!    print *, 'Found minimum estimated energy at ',                             &
-!    &       Samples(location), 1 - Samples(Location), Values(Location)
-!
-!    !Mix in the optimal way!
-!    Density=  Samples(Location(1))*Density +                                   &
-!    &        (1.0_dp-Samples(Location(1)))*DensityHistory(1)
-!  end subroutine NaiveCEDIIS
 end module DensityMixing

@@ -61,31 +61,24 @@ module GenInfo
     !Integer governing the Taylor expansion of exp(-dt/hbar * h)
     integer, public :: TaylorOrder=1
     !---------------------------------------------------------------------------
-    !Integer governing the extent of Broyden Mixing
-    integer, public :: BroydenOrder=1, BroydenSize
-    !Mixing coefficient of Broyden
-    real(Kind=dp)   :: BroydenAlpha=0.5_dp
-    !---------------------------------------------------------------------------
     !Flags for the Damping procedures
     logical, public       :: InverseKineticDamping=.false.
     real(KIND=dp), public :: E0 =0.0_dp
     !---------------------------------------------------------------------------
-    ! Determining the calculation of the propagationfactor.
-    integer, public :: TimeStepType=0
-    !---------------------------------------------------------------------------
-    ! Logical, determining whether or not to make search directions conjugate
-    logical, public :: CG=.false.
-    !---------------------------------------------------------------------------
-    ! real: determines whether or not to use the momentum
-    real(KIND=dp), public :: Momentum=0.0_dp
+    ! Flag for the treatment of momentum and dt in the iterative process.
+    !
+    ! 0) dt and momentum take values as specified by the user.
+    ! 1) dt and momentum are optimised automatically for all wavefunctions
+    !    in an average way.
+    ! 2) dt and momentum are optimised automatiically for all wavefunctions
+    !    individually.
+    integer               :: ParameterEstimation = 0
+    real(KIND=dp), public :: Momentum            = 0.0_dp
     !---------------------------------------------------------------------------
     ! Type of iterative procedure to employ.
     ! IMTS = Imaginary time-step method
     ! Nest = Nesterov optimal descent
     character(len=20):: IterType='ImTS'
-    !---------------------------------------------------------------------------
-    ! Number of iterations after which to restart the Nesterov-memory
-    integer :: Restart = 25
     !---------------------------------------------------------------------------
     ! Whether or not to recalculate the findings with the first implementation 
     ! of the N2LO functional of Becker, Meyer & Davesne.
@@ -322,7 +315,7 @@ contains
                      &  Neutrons, Protons, ErrorFileName, nx, ny,nz, dx,       &
                      &  PrintIter, MomentPrec, EnergyPrec, TaylorOrder,        &
                      &  InverseKineticDamping, E0, PairingPrec, CrankPrec,     &
-                     &  IterType, Restart, recalcN2LO, momentum
+                     &  IterType,recalcN2LO, momentum, ParameterEstimation
 
     !Reading the symmetries that are conserved or broken.
     read (unit=*, nml=GenInfo)

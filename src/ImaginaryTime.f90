@@ -16,12 +16,172 @@ module ImaginaryTime
   end interface
   procedure(Evolve_Interface),pointer :: EvolveSpwf
 
-
   !-----------------------------------------------------------------------------
-  ! Momentum-needed array
+  ! Spwf to estimate the maximum eigenvalue of h.
+  type(Spwf), allocatable :: maxspwf
+  !-----------------------------------------------------------------------------
+  ! Array that stores the previous update.
   type(Spinor), allocatable :: updates(:)
+  !-----------------------------------------------------------------------------
+  ! Arrays containing the parameters governing the iterative process. 
+  real(KIND=dp), allocatable ::  mom_estimate(:), dt_estimate(:)
   
 contains
+
+  subroutine IterativeEstimation(Iteration)
+    !---------------------------------------------------------------------------
+    ! Estimate optimale parameters 
+    !   a) timestep
+    !   b) mu
+    ! at every iteration to accelerate convergence. 
+    !---------------------------------------------------------------------------
+    ! As input, we need the current estimate of a timestep and momentum mu. 
+    ! THESE ESTIMATES NEED TO LEAD TO A CONVERGENT PROCEDURE BY THEMSELVES. 
+    ! In particular, the evolution of the single particle wavefunction to the 
+    ! maximum eigenvalue represented on the mesh needs to work with these 
+    ! parameters. 
+    !---------------------------------------------------------------------------
+    1 format (a20, 99f10.3)
+   
+    integer, intent(in) :: iteration
+    
+    integer             :: iter, maxiter, i,j,it,P,S
+    real(KIND=dp)       :: timestep, mu, maxE, dE(nwt), E, mom(nwt), momtot, con
+    real(KIND=dp)       :: minE
+    type(Spinor)        :: actionofh, update
+    
+    if(.not.allocated(mom_estimate)) then
+        allocate(mom_estimate(nwt)) ; mom_estimate = 0 
+        allocate(dt_estimate(nwt)) ;  dt_estimate  = 0
+    endif
+    
+    if(ParameterEstimation .eq. 0) then
+        !-----------------------------------------------------------------------
+        ! Take user-supplied values
+        dt_estimate  = dt
+        mom_estimate = momentum
+        return
+    endif
+
+    if(Iteration.eq.1) then
+        dt_estimate  = dt
+        mom_estimate = momentum
+    endif
+    
+    timestep = sum(dt_estimate)/nwt
+    mu       = sum(mom_estimate)/nwt
+    !---------------------------------------------------------------------------
+    ! Step 0: Find minimum energy value on the mesh
+    minE = 1000
+    do i=1,nwt
+        if(HFBasis(i)%energy.lt.minE) minE = HFBasis(i)%energy
+    enddo
+    minE = abs(minE)
+    
+    !---------------------------------------------------------------------------
+    ! Step 1: evolve the maxspwf in order to estimate the largest eigenvalue 
+    !         on the mesh.
+    !         Do this in a serious way at the first iteration, and only slowly
+    !         for later iterations
+    maxiter = 2
+    if(Iteration .eq.1) then
+        !-----------------------------------------------------------------------
+        ! Initialize randomly at the start
+        maxspwf = copywavefunction(HFBasis(16))
+        call random_number(maxspwf%value%grid)
+        call maxspwf%compnorm()
+        maxspwf%value = 1.0/sqrt(maxspwf%norm) * maxspwf%value
+        call maxspwf%compder()  
+    endif
+    maxiter = 100
+    update=NewSpinor()
+    update%grid=0.0
+
+    do iter=1,maxiter
+        !-----------------------------------------------------------------------
+        actionofh = hpsi(maxspwf)
+        con       = maxE
+        maxE      = InproductSpinorReal(maxspwf%value, actionofh)
+        con       = con - maxE
+        !-----------------------------------------------------------------------
+        ! notice the sign, we are maximising instead of minimising.
+        update        = timestep/hbar*(actionofh-maxE*maxspwf%value + mu*update) 
+        maxspwf%value = maxspwf%value + update
+        !-----------------------------------------------------------------------
+        ! Normalize
+        call maxspwf%compnorm()
+        maxspwf%value = 1.0/sqrt(maxspwf%norm) * maxspwf%value
+        call maxspwf%compder()
+        !-----------------------------------------------------------------------
+        ! Don't be to picky about convergence, within the order of an MeV is
+        ! good enough.
+        if(abs(con).lt. 1d-2) exit
+    enddo
+    !---------------------------------------------------------------------------
+    ! The time-step is definitely dependent on this estimate of maxE.
+    !timestep = 2/maxE * hbar * 0.95
+
+    !---------------------------------------------------------------------------
+    ! Don't perform fancy updating when momentum is not requested
+    !if(momentum.eq.0.0) return
+    
+    !---------------------------------------------------------------------------
+    ! Now we estimate for every spwf the necessary momentum
+    momtot= 0
+    de    = 100000
+        
+    do i=1,nwt
+        it = HFBasis(i)%getisospin()
+        P  = HFBasis(i)%getparity()
+        S  = HFBasis(i)%getsignature()
+        E  = HFBasis(i)%energy
+        
+        mom(i) = 0
+        if(HFBasis(i)%occupation.lt.0.1) cycle
+            
+        do j=1,nwt
+            !-------------------------------------------------------------------
+            ! Loop over all partner wavefunctions.
+            if(i.eq.j) cycle
+            if(HFBasis(j)%isospin.ne.it)  cycle
+            if(HFBasis(j)%parity.ne.P)    cycle
+            if(HFBasis(j)%signature.ne.S) cycle
+            
+            ! guard against degeneracies
+            if(abs(E - HFbasis(j)%energy) .gt. 1d-2 ) then
+                ! Find the closest one in the same symmetry block
+                if(abs(E - HFbasis(j)%energy).lt.de(i)) then
+                    de(i) = abs(E - HFbasis(j)%energy)
+                endif
+            endif
+            
+        enddo
+        mom(i) = ((sqrt(maxE/de(i)) - 1)/(sqrt(maxE/de(i)) + 1))**2
+        momtot= momtot + HFBasis(i)%occupation * mom(i)
+    enddo
+    
+    select case(ParameterEstimation)
+    case(1)
+        ! Optimal value        
+        if(Iteration.eq.1) then
+            dt_estimate  = 2/(maxE + minE) * hbar * 0.95
+        else
+            dt_estimate  = (4/(maxE + minE + 2*sqrt(maxE*minE)) * hbar  * 0.95)
+        endif
+        ! Average value
+        mom_estimate = momtot/(protons+neutrons)
+    case(2)
+
+    end select
+    print *, '---------------------------------'
+    print 1, 'dt_estimate' , dt_estimate(1)
+    print 1, 'mom_estimate', mom_estimate(1)
+    
+    momtot = momtot/(protons+neutrons)
+    momentum = momtot
+    
+    
+  end subroutine IterativeEstimation
 
   function hPsi(Psi)
     !---------------------------------------------------------------------------
@@ -334,66 +494,52 @@ contains
     type(Spwf)                :: TempWf
     
     
-    Propfactor = dt/hbar
-
-    if(Momentum.ne.0.0_dp .and. (.not. allocated(updates))) then
+    !---------------------------------------------------------------------------
+    ! Initialization.
+    if(.not. allocated(updates)) then
         allocate(updates(nwt))
         do i=1,nwt
             updates(i) = NewSpinor()
         enddo
     endif
-
+    
+    !---------------------------------------------------------------------------
+    ! Try to find an appropriate set of parameters (dt, mu), possibly for every
+    ! wavefunction. 
+    call IterativeEstimation(iteration)
+    
     do i=1,nwt
       Current      = HFBasis(i)%GetValue()
       ActionofH    = hPsi(HFbasis(i))
       SpEnergy     = InproductSpinorReal(Current, ActionOfH)
       SpDispersion = InproductSpinorReal(ActionOfH,ActionOfH) - SpEnergy**2
-
       !-------------------------------------------------------------------------
       !Precondition the descent direction if InverseKineticDamping is active.
       if(InverseKineticDamping) then
-        ActionOfH = ActionOfH - SpEnergy*Current
         ActionOfH = InverseKinetic(ActionOfH,E0,                        &
         &           HFBasis(i)%GetParity(), HFBasis(i)%GetSignature(),  &
         &           HFBasis(i)%GetTimeSimplex(), HFBasis(i)%GetIsospin())
       endif
+
       !-------------------------------------------------------------------------
-      ! Add second order of the Taylor expansion
-      if(TaylorOrder.eq.2) then
-          TempWF = NewWaveFunction(ActionOfH,HFBasis(i)%GetIsospin(),          &
-          &      HFBasis(i)%GetTimeSimplex(), HFBasis(i)%GetParity(),          &
-          &      HFBasis(i)%GetSignature(), HFBasis(i)%GetTimeReversal())
-          call TempWF%CompDer()
-
-          ActionOfH2 = hPsi(TempWF)
-          if(InverseKineticDamping) then
-            ActionOfH2 = ActionOfH2 - SpDispersion * Current
-            ActionOfH2 = InverseKinetic(ActionOfH2, E0 ,HFBasis(i)%GetParity(),&
-            & HFBasis(i)%GetSignature(), HFBasis(i)%GetTimeSimplex(),          &
-            & HFBasis(i)%GetIsospin())
-          endif
-
-          ActionOfH = ActionofH - (propfactor * 0.5_dp) * ActionofH2
-      endif
+      ! Add a heavy-ball term and save the update for next time
+      ActionOfH = ActionOfH - SpEnergy * Current + mom_estimate(i) * updates(i)
+      updates(i)= ActionOfH
+    
       !-------------------------------------------------------------------------
-      ! Add previous updates if momentum is active
-      if(momentum.ne.0.0_dp) then
-        print *, 'prop', i, m, Spenergy, (1 - sqrt(propfactor *(Spenergy - m)))**2
-        
-        ActionOfH = ActionOfH - SpEnergy * Current + momentum * updates(i)
-        updates(i)= ActionOfH
-      endif
-
-      ActionOFH    = - propfactor*ActionOfH
-      ActionOfH    =   Current + ActionOfH
+      ! Update and save      
+      ActionOfH    =  Current -(dt_estimate(i)/hbar) * ActionOfH
+    
       call HFBasis(i)%SetGrid(ActionOfH)
       call HFBasis(i)%SetEnergy(SpEnergy)
       call HFBasis(i)%SetDispersion(SpDispersion)
     enddo
+    !---------------------------------------------------------------------------
     !Orthonormalisation
     call Gramschmidt
+    
   end subroutine GradDesc
-
+    
   subroutine Nesterov(Iteration)
     !----------------------------------
     ! Nesterov optimal gradient method.
@@ -459,5 +605,28 @@ contains
     !Update Ak
     OldAlpha = Alpha
   end subroutine Nesterov
+
+!===============================================================================
+! Code zoo
+!===============================================================================
+!      !-------------------------------------------------------------------------
+!      ! Add second order of the Taylor expansion
+!      if(TaylorOrder.eq.2) then
+!          TempWF = NewWaveFunction(ActionOfH,HFBasis(i)%GetIsospin(),          &
+!          &      HFBasis(i)%GetTimeSimplex(), HFBasis(i)%GetParity(),          &
+!          &      HFBasis(i)%GetSignature(), HFBasis(i)%GetTimeReversal())
+!          call TempWF%CompDer()
+
+!          ActionOfH2 = hPsi(TempWF)
+!          if(InverseKineticDamping) then
+!            ActionOfH2 = ActionOfH2 - SpDispersion * Current
+!            ActionOfH2 = InverseKinetic(ActionOfH2, E0 ,HFBasis(i)%GetParity(),&
+!            & HFBasis(i)%GetSignature(), HFBasis(i)%GetTimeSimplex(),          &
+!            & HFBasis(i)%GetIsospin())
+!          endif
+
+!          ActionOfH = ActionofH - (propfactor * 0.5_dp) * ActionofH2
+!      endif
+
 
 end module Imaginarytime

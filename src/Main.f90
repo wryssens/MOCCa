@@ -497,6 +497,7 @@ subroutine PrintIterationInfo(Iteration, PrintAll)
   use Pairing,     only : PrintPairing, PairingType, Fermi
   use Energy,      only : PrintEnergy, PairingEnergy
   use HFB, only         : PrintQP
+  use ImaginaryTime 
   use geninfo
 
   implicit none
@@ -505,10 +506,14 @@ subroutine PrintIterationInfo(Iteration, PrintAll)
   logical, intent(in) :: PrintAll
 
   1 format (/,60('='))
-  2 format (' Iteration ', i5)
+  2 format (' Iteration ', i5, /, ' (Average) dt = ', f10.5, ' mu =', f10.5)
 
   print 1
-  print 2, Iteration
+  if(Iteration.eq.0) then 
+    print 2, Iteration
+  else
+    print 2, Iteration, sum(dt_estimate)/nwt, sum(mom_estimate)/nwt
+  endif
 
   call printSpwf(PairingType, Fermi, PrintAll)
   if(PairingType.eq.2) call PrintQp()

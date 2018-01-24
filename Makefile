@@ -37,7 +37,7 @@ CLUOBJ :=      $(patsubst %.f90,$(OBJDIR)/%.o,$(CLUSRC))
 # Compilers and some recommended options
 
 #Default compiler is gfortran
-CXX :=      ifort
+CXX :=   gfortran
 # Default behaviour is not debugging
 DEBUG := no
 

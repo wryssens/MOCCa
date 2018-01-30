@@ -394,7 +394,7 @@ contains
   ! This subroutine prints all relevant information of the input, both user
   ! input and wavefunction file.
   !-----------------------------------------------------------------------------
-    use SpwfStorage, only: nwt, BroydenOrder
+    use SpwfStorage, only: nwt
     use Derivatives, only: MaxFDOrder, MaxFDLapOrder
     use Densities, only  : DampingParam, PulayOrder, MixingScheme
 

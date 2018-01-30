@@ -153,6 +153,13 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
             xcolumn=6
         else:
             xcolumn=12
+    elif(XARG=='B60') :
+        xlabel =r'$\beta_{60}$ '
+        xfname =PREFIX + '.t.qlm.tab'
+        if(PC == 1) :
+            xcolumn=12
+        else:
+            xcolumn=22
     elif(XARG=='Q0'):
         xlabel  =r'$Q_{0}$  (fm$^2$)'
         xfname  =PREFIX + '.qgamma.tab'
@@ -232,6 +239,14 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
         else:
             ycolumn=14
         derivY = 0
+    elif(YARG=='B60') :
+        ylabel =r'$\beta_{60}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        if(PC == 1) :
+            ycolumn=12
+        else:
+            ycolumn=22
+        derivY = 0
     elif(YARG=='JZ') :
         ylabel =r'$\langle \hat{J}_{z} \rangle$ ($\hbar$)'
         yfname =PREFIX + '.e.tab'
@@ -302,6 +317,12 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
         derivY=0
         fac = np.sqrt(5/( 16 * np.pi))
 
+    elif(YARG=='gamma'):
+        ylabel  =r'$\gamma (^{\circ})$ '
+        yfname  =PREFIX + '.qgamma.tab'
+        ycolumn = 5
+        derivY=0
+        
     elif(YARG=='B22') :
         yfname =PREFIX + '.t.qlm.tab'
         ycolumn=4
@@ -360,6 +381,16 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
         yfname =PREFIX + '.ef.tab'
         ycolumn=7
         derivY=0
+    elif(YARG=='ELNN') :
+        ylabel =r'$ E^{\rm LN} (MeV)$'
+        yfname =PREFIX + '.ef.tab'
+        ycolumn=5
+        derivY=0
+    elif(YARG=='ELNP') :
+        ylabel =r'$ E^{\rm LN}$ (MeV)'
+        yfname =PREFIX + '.ef.tab'
+        ycolumn=6
+        derivY=0
     elif(YARG=='ESO') :
         ylabel =r'$\langle E_{\rm spin orbit} \rangle$'
         yfname =PREFIX + '.edecomp.tab'
@@ -375,6 +406,18 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
         ylabel =r'$\langle E_{\rm coul} \rangle$'
         yfname =PREFIX + '.edecomp.tab'
         ycolumn=18
+        derivY=0  
+        
+    elif(YARG=='ECOULDIR') :
+        ylabel =r'$\langle E^{\rm dir}_{\rm coul} \rangle$'
+        yfname =PREFIX + '.edecomp.tab'
+        ycolumn=16
+        derivY=0  
+        
+    elif(YARG=='ECOULEXC') :
+        ylabel =r'$\langle E^{\rm exch.}_{\rm coul} \rangle$'
+        yfname =PREFIX + '.edecomp.tab'
+        ycolumn=17
         derivY=0  
     else :
         print 'YARG not recognized'
@@ -751,6 +794,15 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[], INTERPOL=1):
         yfname =PREFIX + '.e.tab'
         ycolumn= 17
         derivY = 0
+    elif(YARG=='B40') :
+        yfname =PREFIX + '.t.qlm.tab'
+        ycolumn= 6
+        derivY = 0
+    elif(YARG=='B60') :
+        yfname =PREFIX + '.t.qlm.tab'
+        ycolumn= 12
+        derivY = 0
+
     
     efname = PREFIX + '.e.tab'
     
@@ -762,7 +814,7 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[], INTERPOL=1):
     ydata=dataY[:,ycolumn]
     edata=dataE[:,1]
     
-    if(INTERPOL==1):
+    if(INTERPOL!=1):
         if(len(XRANGE) != 0):
             interx= np.arange(XRANGE[0], XRANGE[1], (max(xdata) - min(xdata))/1000)
         else:

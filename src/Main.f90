@@ -645,7 +645,7 @@ subroutine PrintSummary_v2(Iteration)
   print 4, dQ20, dQ22
 
   if(.not.PC) then
-	print 32,  Q30, dQ30
+	print 32,  Q30, Q32
         print 42, dQ30, dQ32
   endif
 

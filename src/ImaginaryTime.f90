@@ -141,6 +141,7 @@ contains
 !        endif
 !    enddo
 
+    !------------------------------------------------
     !  Step two, find the highest occupied eigenvalue
     relE = -10000    
     do i=1,nwt
@@ -162,16 +163,18 @@ contains
             endif
         endif
     enddo
+    !-----------------------------------------------------
+    ! Have a failsafe for accidental degeneracies
     if(relE .lt. 0.1) relE = 0.1
-    !----------------------------------------------
+    !-----------------------------------------------------
     ! Step four, estimate dt
     if(iteration.ne.1) then    
-        dt_estimate     = 4.0/(maxE)*0.5 * hbar
+        dt_estimate     = 4.0/(maxE) * hbar * 0.95
     else
-        dt_estimate     = 2.0/(maxE)*0.5 * hbar
+        dt_estimate     = 2.0/(maxE) * hbar * 0.95
     endif    
+    ! Estimate the appropriate momentum.
     mom_estimate    = ((sqrt(maxE) - sqrt(relE))/(sqrt(maxE) + sqrt(relE)))**2
-
 
     print *, '----------------'
     print *, ' MAXE:' , maxE

@@ -169,7 +169,7 @@ contains
     !-----------------------------------------------------
     ! Step four, estimate dt
     if(iteration.ne.1) then    
-        dt_estimate     = 4.0/(maxE) * hbar * 0.95
+        dt_estimate     = 4.0/(maxE - HFBasis(1)%energy + 2*sqrt(maxE)) * hbar * 0.95
     else
         dt_estimate     = 2.0/(maxE) * hbar * 0.95
     endif    

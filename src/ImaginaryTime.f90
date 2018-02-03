@@ -155,7 +155,7 @@ contains
     ! Step three, estimate the eigenvalue right above
     relE = 100000
     do i=1,nwt
-        if(HFBasis(i)%occupation .eq. 0) cycle
+        if(HFBasis(i)%occupation .eq. 1) cycle
         if(HFBasis(i)%energy .gt. HFBasis(ind)%energy) then
             if(HFBasis(i)%energy - HFBasis(ind)%energy .lt. relE) then            
                 relE = HFBasis(i)%energy - HFBasis(ind)%energy

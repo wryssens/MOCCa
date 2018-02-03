@@ -95,7 +95,7 @@ contains
         con       = con - maxE
         !-----------------------------------------------------------------------
         ! notice the sign, we are maximising instead of minimising.
-        update        = timestep/hbar*(actionofh-maxE*maxspwf%value + mu*update) 
+        update        = dt_estimate(1)/hbar*(actionofh-maxE*maxspwf%value + momentum_estimate(1)*update) 
         maxspwf%value = maxspwf%value + update
         !-----------------------------------------------------------------------
         ! Normalize

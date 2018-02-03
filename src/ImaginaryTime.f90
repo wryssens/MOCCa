@@ -155,7 +155,7 @@ contains
     ! Step three, estimate the eigenvalue right above
     relE = 100000
     do i=1,nwt
-        if(HFBasis(i)%occupation .eq. 1) cycle
+        if(HFBasis(i)%occupation .gt. 1) cycle
         if(HFBasis(i)%energy .gt. HFBasis(ind)%energy) then
             if(HFBasis(i)%energy - HFBasis(ind)%energy .lt. relE) then            
                 relE = HFBasis(i)%energy - HFBasis(ind)%energy
@@ -163,8 +163,13 @@ contains
         endif
     enddo
     ! Step four, estimate dt
-    dt_estimate     = 4.0/(maxE - HFBasis(1)%energy + 2*sqrt(maxE))*0.99
+    if(iteration.ne.1) then    
+        dt_estimate     = 4.0/(maxE - HFBasis(1)%energy + 2*sqrt(maxE)*sqrt(relE))*0.99
+    else
+        dt_estimate     = 2.0/(maxE - HFBasis(1)%energy + 2*sqrt(maxE)*sqrt(relE))*0.99
+    endif    
     mom_estimate    = ((sqrt(maxE) - sqrt(relE))/(sqrt(maxE) + sqrt(relE)))**2
+
 
     print *, '----------------'
     print *, ' MAXE:' , maxE

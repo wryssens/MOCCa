@@ -110,50 +110,80 @@ contains
     
     !---------------------------------------------------------------------------
     ! Step two: for every spwf, find the next highest value.
-    do i=1,nwt
-        relE = 10000
-        P =HFBasis(i)%parity 
-        S =HFBasis(i)%signature
-        it=HFBasis(i)%isospin
-        do j=1,nwt
-            if(HFBasis(j)%isospin  .ne.it) cycle
-            if(HFBasis(j)%signature.ne.S) cycle
-            if(HFBasis(j)%parity   .ne.P) cycle
-            ! Notice the safeguard vs accidental degeneracies.
-            if(HFBasis(j)%energy .gt. hfbasis(i)%energy+0.1) then
-                if(hfbasis(j)%energy - hfbasis(i)%energy .lt. relE) then
-                    relE = hfbasis(j)%energy - hfbasis(i)%energy
-                endif
-            endif
-        enddo
-        ! Don't use anything if this difference in eigenvalues cannot
-        ! be estimated
-        if(relE .eq. 10000) relE = 0 
+!    do i=1,nwt
+!        relE = 10000
+!        P =HFBasis(i)%parity 
+!        S =HFBasis(i)%signature
+!        it=HFBasis(i)%isospin
+!        do j=1,nwt
+!            if(HFBasis(j)%isospin  .ne.it) cycle
+!            if(HFBasis(j)%signature.ne.S) cycle
+!            if(HFBasis(j)%parity   .ne.P) cycle
+!            ! Notice the safeguard vs accidental degeneracies.
+!            if(HFBasis(j)%energy .gt. hfbasis(i)%energy+0.1) then
+!                if(hfbasis(j)%energy - hfbasis(i)%energy .lt. relE) then
+!                    relE = hfbasis(j)%energy - hfbasis(i)%energy
+!                endif
+!            endif
+!        enddo
+!        ! Don't use anything if this difference in eigenvalues cannot
+!        ! be estimated
+!        if(relE .eq. 10000) relE = 0 
 
-        !-----------------------------------------------------------------------        
-        ! Estimate the best dt
-        if(relE.ne.0) then
-             dt_estimate(i) = 4.0/(maxE - HFBasis(1)%energy + 2*sqrt(maxE))*0.99
-             ! Estimate the best momentum
-             mom_estimate(i) = ((sqrt(maxE) - sqrt(relE))/(sqrt(maxE) + sqrt(relE)))**2
-        else
-             dt_estimate(i) = 2.0/(maxE - HFBasis(1)%energy + 2*sqrt(maxE))
-             mom_estimate(i) = 0.0
+!        !-----------------------------------------------------------------------        
+!        ! Estimate the best dt
+!        if(relE.ne.0) then
+!             dt_estimate(i) = 4.0/(maxE - HFBasis(1)%energy + 2*sqrt(maxE))*0.99
+!             ! Estimate the best momentum
+!             mom_estimate(i) = ((sqrt(maxE) - sqrt(relE))/(sqrt(maxE) + sqrt(relE)))**2
+!        else
+!             dt_estimate(i) = 2.0/(maxE - HFBasis(1)%energy + 2*sqrt(maxE))
+!             mom_estimate(i) = 0.0
+!        endif
+!    enddo
+
+    !  Step two, find the highest occupied eigenvalue
+    relE = -10000    
+    do i=1,nwt
+        if(HFBasis(i)%occupation.ne.0) then
+            if(HFBasis(i)%energy .gt. relE) then
+                relE = HFBasis(i)%energy
+                ind  = i
+            endif
         endif
     enddo
+    ! Step three, estimate the eigenvalue right above
+    relE = 100000
+    do i=1,nwt
+        if(HFBasis(i)%occupation .eq. 0) cycle
+        if(HFBasis(i)%energy .gt. HFBasis(ind)%energy) then
+            if(HFBasis(i)%energy - HFBasis(ind)%energy .lt. relE) then            
+                relE = HFBasis(i)%energy - HFBasis(ind)%energy
+            endif
+        endif
+    enddo
+    ! Step four, estimate dt
+    dt_estimate     = 4.0/(maxE - HFBasis(1)%energy + 2*sqrt(maxE))*0.99
+    mom_estimate    = ((sqrt(maxE) - sqrt(relE))/(sqrt(maxE) + sqrt(relE)))**2
+
+    print *, '----------------'
+    print *, ' MAXE:' , maxE
+    print *, ' dt   ' , dt
+    print *, ' ind  ' , ind
+    print *, ' relE ' , relE 
 
 !    mom_av =  mom_av/(neutrons  + protons)*2
 !    print *, 'average', sum(mom_estimate)/nwt, mom_av
 !    print *, 'dtmax', maxval(dt_estimate)
 !    print *, 'dtmin', minval(dt_estimate)
 
-    ! It is not so bad to overestimate momentum, but really bad to underestimate
-    ! it.
-    mom_estimate = maxval(mom_estimate)
-    mom_av =0
-    do j=1,nwt
-        mom_av = mom_av + hfbasis(j)%occupation * mom_estimate(j)
-    enddo
+!    ! It is not so bad to overestimate momentum, but really bad to underestimate
+!    ! it.
+!    mom_estimate = maxval(mom_estimate)
+!    mom_av =0
+!    do j=1,nwt
+!        mom_av = mom_av + hfbasis(j)%occupation * mom_estimate(j)
+!    enddo
   end subroutine IterativeEstimation
 
   function hPsi(Psi)

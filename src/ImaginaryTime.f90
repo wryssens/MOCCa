@@ -162,12 +162,13 @@ contains
             endif
         endif
     enddo
+    if(relE .lt. 0.1) relE = 0.1
     !----------------------------------------------
     ! Step four, estimate dt
     if(iteration.ne.1) then    
-        dt_estimate     = 4.0/(maxE)*0.5
+        dt_estimate     = 4.0/(maxE)*0.5 * hbar
     else
-        dt_estimate     = 2.0/(maxE)*0.5
+        dt_estimate     = 2.0/(maxE)*0.5 * hbar
     endif    
     mom_estimate    = ((sqrt(maxE) - sqrt(relE))/(sqrt(maxE) + sqrt(relE)))**2
 

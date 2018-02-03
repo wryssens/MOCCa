@@ -915,7 +915,8 @@ contains
     use Pairing, only : PairingType, Lipkin
 
     logical, intent(in), optional :: Lagrange
-    real*8                        :: SKTodd, N2LOODD
+    real*8                        :: SKTodd, N2LOODD, dispersion
+    integer                       :: i
 
       1 format (22('-'),  ' Energies (MeV) ', 22('-'))
      11 format (18('-'),  ' Lagrange Energies (MeV) ', 18('-'))
@@ -1006,7 +1007,7 @@ contains
     112 format(2x,'COM1  N', f12.5, ' COM1  P', f12.5, ' Total ', f12.5)
     113 format(2x,'COM2  N', f12.5, ' COM2  P', f12.5, ' Total ', f12.5)
     114 format(' Routhian:', 10x, f15.6)
-
+    115 format(' Disp. (weighted):', 6x, es20.11)
     !Header
     if(present(Lagrange)) then
       print 11
@@ -1137,6 +1138,14 @@ contains
       &          abs((TotalEnergy - OldEnergy(1))/TotalEnergy)
       print 114, Routhian
     endif
+    !------------------------------------------------------------------------------
+    ! Calculate sum of dispersions
+    dispersion = 0.0_dp
+    do i=1,nwt
+        dispersion = dispersion + HFBasis(i)%Occupation*HFBasis(i)%Dispersion
+    enddo
+    print 115, Dispersion
+    
     print 3
 
   end subroutine PrintEnergy_termbyterm

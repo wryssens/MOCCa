@@ -107,7 +107,6 @@ contains
         ! good enough.
         if(abs(con).lt. 1d-2) exit
     enddo
-    
     !---------------------------------------------------------------------------
     ! Step two: for every spwf, find the next highest value.
 !    do i=1,nwt
@@ -173,7 +172,8 @@ contains
 
     print *, '----------------'
     print *, ' MAXE:' , maxE
-    print *, ' dt   ' , dt
+    print *, ' dt   ' , dt_estimate(1)
+    print *, ' mom  ' , mom_estimate(1)
     print *, ' ind  ' , ind
     print *, ' relE ' , relE 
 

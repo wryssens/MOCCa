@@ -95,7 +95,7 @@ contains
         con       = con - maxE
         !-----------------------------------------------------------------------
         ! notice the sign, we are maximising instead of minimising.
-        update        = dt_estimate(1)/hbar*(actionofh-maxE*maxspwf%value + momentum_estimate(1)*update) 
+        update        = dt_estimate(1)/hbar*(actionofh-maxE*maxspwf%value + mom_estimate(1)*update) 
         maxspwf%value = maxspwf%value + update
         !-----------------------------------------------------------------------
         ! Normalize
@@ -151,6 +151,7 @@ contains
             endif
         endif
     enddo
+    !------------------------------------------------
     ! Step three, estimate the eigenvalue right above
     relE = 100000
     do i=1,nwt
@@ -161,11 +162,12 @@ contains
             endif
         endif
     enddo
+    !----------------------------------------------
     ! Step four, estimate dt
     if(iteration.ne.1) then    
-        dt_estimate     = 4.0/(maxE - HFBasis(1)%energy + 2*sqrt(maxE)*sqrt(relE))*0.99
+        dt_estimate     = 4.0/(maxE)*0.5
     else
-        dt_estimate     = 2.0/(maxE - HFBasis(1)%energy + 2*sqrt(maxE)*sqrt(relE))*0.99
+        dt_estimate     = 2.0/(maxE)*0.5
     endif    
     mom_estimate    = ((sqrt(maxE) - sqrt(relE))/(sqrt(maxE) + sqrt(relE)))**2
 

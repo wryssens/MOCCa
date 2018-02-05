@@ -146,10 +146,12 @@ contains
     where(relE .lt. 0.1) relE = 1
     !---------------------------------------------------------------------------
     ! Step four, estimate dt. 
-    dt_estimate     = 4.0/(maxE - HFBasis(1)%energy + 2*sqrt((maxE - HFBasis(1)%energy)*minval(relE))) * hbar * 0.85
+    !dt_estimate     = 4.0/(maxE - HFBasis(1)%energy + 2*sqrt((maxE - HFBasis(1)%energy)*minval(relE))) * hbar * 0.85
 
     kappa        = minval(relE)/maxE
     mom_estimate = ((sqrt(kappa) - 1)/(sqrt(kappa) + 1))**2
+
+    dt_estimate  = 2/(maxE - HFBasis(1)%energy) * (1 + mom_estimate) * hbar * 0.80
 
     ! Temporary printing.
     print *, '----------------'

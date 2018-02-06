@@ -36,6 +36,9 @@ contains
     ! at every iteration to accelerate convergence. 
     !---------------------------------------------------------------------------
     
+    use Pairing
+    use HFB
+    
     1 format (a20, 99f10.3)
    
     integer, intent(in) :: iteration
@@ -105,28 +108,35 @@ contains
         if(abs(con).lt. 1d-2) exit
     enddo
     !---------------------------------------------------------------------------
-    !  Step two, find the highest occupied eigenvalue in every symmetry-block.
-    relE = -10000 
-    do it=1,2
-        do P=1,2
-            do i=1,nwt
-                if((HFBasis(i)%isospin +3)/2 .ne. it) cycle
-                if((HFBasis(i)%parity  +3)/2 .ne. P ) cycle
-                if( HFBasis(i)%occupation    .eq. 0)  cycle
-                
-                if(HFBasis(i)%energy .gt. relE(P,it)) then
-                    relE(P,it) = HFBasis(i)%energy
-                    ind(P,it)  = i
-                endif
+    ! Step two: find the next excitation value of the next many-body state.
+    select case(PairingType)
+    
+    case(0)
+        !-----------------------------------------------------------------------
+        ! The excitation energy is here simply the energy difference of the first 
+        ! unoccupied state with the last occupied state.
+        !-----------------------------------------------------------------------
+        relE = -10000 
+        do it=1,2
+            do P=1,2
+                do i=1,nwt
+                    if((HFBasis(i)%isospin +3)/2 .ne. it) cycle
+                    if((HFBasis(i)%parity  +3)/2 .ne. P ) cycle
+                    if( HFBasis(i)%occupation    .eq. 0)  cycle
+                    
+                    if(HFBasis(i)%energy .gt. relE(P,it)) then
+                        relE(P,it) = HFBasis(i)%energy
+                        ind(P,it)  = i
+                    endif
+                enddo
             enddo
         enddo
-    enddo
     
-    !---------------------------------------------------------------------------
-    ! Step three, estimate the eigenvalue right above
-    relE = 10000
-    do it=1,2
-        do P=1,2
+        !-----------------------------------------------------------------------
+        ! Step three, estimate the eigenvalue right above
+        relE = 10000
+        do it=1,2
+          do P=1,2
             do i=1,nwt
                 if((HFBasis(i)%isospin +3)/2 .ne. it) cycle
                 if((HFBasis(i)%parity  +3)/2 .ne. P ) cycle
@@ -136,28 +146,47 @@ contains
                 if(HFBasis(i)%energy - HFBasis(ind(P,it))%energy .lt. relE(P,it)) then            
                     relE(P,it) = HFBasis(i)%energy - HFBasis(ind(P,it))%energy
                 endif
-                
+            enddo
+          enddo
+        enddo
+        !-----------------------------------------------------------------------
+    case(1)
+        !-----------------------------------------------------------------------
+        ! When doing BCS, the excitation is the lowest available qp energy.
+        relE = 10000
+        do i=1,nwt
+            if(HFBasis(i)%eqp .lt. relE(1,1)) then
+                relE(1,1) = HFBasis(i)%eqp
+            endif
+        enddo
+    case(2)
+        !-----------------------------------------------------------------------
+        ! When doing HFB, the excitation is the lowest available qp energy.
+        do it=1,Iindex
+            do P=1,Pindex
+                relE(P,it) = minval(abs(QuasiEnergies(1:blocksizes(P,it),P,it)))
             enddo
         enddo
-    enddo    
+    end select
+
 
     !---------------------------------------------------------------------------
     ! Have a failsafe for accidental degeneracies
     where(relE .lt. 0.1) relE = 1
     !---------------------------------------------------------------------------
     ! Step four, estimate dt. 
-    !dt_estimate     = 4.0/(maxE - HFBasis(1)%energy + 2*sqrt((maxE - HFBasis(1)%energy)*minval(relE))) * hbar * 0.85
 
     kappa        = minval(relE)/maxE
     mom_estimate = ((sqrt(kappa) - 1)/(sqrt(kappa) + 1))**2
 
-    dt_estimate  = 2/(maxE - HFBasis(1)%energy) * (1 + mom_estimate) * hbar * 0.80
+    dt_estimate  = 2/(maxE-HFBasis(1)%energy)*(1+mom_estimate)*hbar*0.80
 
+    !---------------------------------------------------------------------------
     ! Temporary printing.
     print *, '----------------'
     print *, ' MAXE:' , maxE
     print *, ' dt   ' , dt_estimate(1)
-    print *, ' mom  ' , mom_estimate(10),mom_estimate(5), mom_estimate(24), mom_estimate(21) 
+    print *, ' mom  ' , mom_estimate(1) 
     print *, ' ind  ' , ind
     print *, ' relE ' , relE 
 

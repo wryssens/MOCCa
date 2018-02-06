@@ -466,41 +466,6 @@ contains
     enddo
 
   end subroutine ReduceDimension
-  
-!  subroutine Switch(A,N,Rind,Cind,Nind, invert)
-!    !---------------------------------------------------------------------------
-!    ! Rearranges a matrix A so that the indices are last in storage
-!    !---------------------------------------------------------------------------
-!    integer, intent(in)      :: Rind(Nind),Cind(Nind),N, Nind
-!    real(KIND=dp)            :: A(N,N)
-!    integer                  :: i,j
-!    real(KIND=dp)            :: temp(N)
-!    logical                  :: invert
-
-!    if(invert) then
-!        do i=Nind,1,-1
-!            temp            = A(Rind(i),1:N)
-!            A(Rind(i),1:N)  = A(N-i+1,1:N)
-!            A(N-i+1  ,1:N)  = temp
-!        enddo
-!        do i=Nind,1,-1
-!            temp            = A(1:N,Cind(i))
-!            A(1:N, Cind(i)) = A(1:N,N-i+1)
-!            A(1:N, N-i+1)   = temp
-!        enddo
-!    else
-!        do i=1,Nind
-!            temp            = A(1:N,Cind(i))
-!            A(1:N, Cind(i)) = A(1:N,N-i+1)
-!            A(1:N, N-i+1)   = temp
-!        enddo
-!        do i=1,Nind
-!            temp            = A(Rind(i),1:N)
-!            A(Rind(i),1:N)  = A(N-i+1  ,1:N)
-!            A(N-i+1  ,1:N)  = temp
-!        enddo 
-!    endif
-!  end subroutine Switch
 
   subroutine HFBFermiGradient(Fermi,L2,Delta,DeltaLN,Lipkin,DN2,               &
     &                                                  ConstrainDispersion,Prec)
@@ -590,11 +555,6 @@ contains
     ! Reduce the dimension of the problem, by checking the pairing window and 
     ! rearranging all of the relevant matrices.
     call reducedimension()
-!    
-!    print *, '*******'
-!    print *, 'EFFSIG=   ', effsig
-!    print *, 'EFFBLOCKS=', effblocks
-!    print *
 
     !---------------------------------------------------------------------------
     ! Start of the iterative solver
@@ -680,12 +640,7 @@ contains
               N =  effblocks(P,it)
               Gradient(1:N,1:N,P,it) = Gradient(1:N,1:N,P,it)                  &
               &                                 - Fermi(it) * aN20(1:N,1:N,P,it)
-              
-!              print *, 'Gradient ', P, it
-!              do i=1,N
-!                print ('(100f7.3)') ,Gradient(i, 1:N,P,it)
-!              enddo
-!              print *
+
               ! Calculate the norm of the new gradient to
               ! 1) check for convergence and
               ! 2) calculate the conjugate direction
@@ -720,68 +675,37 @@ contains
       enddo
 !      stop
       !-------------------------------------------------------------------------
-      ! Construct the conjugate direction and update the U and V matrices.
+      ! Update the U and V matrices.
       do it=1,Iindex
           if(converged(it)) cycle
           do P=1,Pindex
               N =  effblocks(P,it)
               Direction(1:N,1:N,P,it) = Gradient(1:N,1:N,P,it)
-              if(oldnorm(P,it).ne.0.0d0) then
-                !---------------------------------------------------------------
-                ! Polak-Ribière formula for the conjugate gradient. This
-                ! outperforms the standard formula in my tests for heavy nuclei
-                ! (226Ra) but is worse for light nuclei (24Mg). However, since
-                ! the computational burden for these light nuclei is so small
-                ! already, I don't care for them.
-                gamma(P,it) = 0.0_dp != gradientnorm(p,it)/oldnorm(p,it)
-                !gamma(P,it) = gamma(P,it) - PR(p,it)/oldnorm(p,it)
-                !---------------------------------------------------------------
-                ! Update
-                Direction(1:N,1:N,P,it) = Direction(1:N,1:N,P,it)  +           &
-                &                             gamma(P,it) * OldDir(1:N,1:N,P,it)
-              endif
-              !-----------------------------------------------------------------
-              ! Check if this direction is indeed a descent direction.
-              ! In a linear problem, this is guaranteed, but I'm not too sure
-              ! about this case. So, to be safe we check.
-              ! If it is not a descent direction, we take the gradient.
-              slope = 0.0d0
-              do i=1,N
-                do j=1,N
-                  slope = slope + Direction(i,j,P,it) * Gradient(j,i,P,it)
-                enddo
-              enddo
 
-              if(slope.gt.0) then
-                Direction(1:N,1:N,P,it) = Gradient(1:N,1:N,P,it)
-                !call stp('Not a descent direction', 'slope', slope)
-              endif
               !-----------------------------------------------------------------
               oldgradU(1:N,1:N,P,it) = GradU(1:N,1:N,P,it)
               oldgradV(1:N,1:N,P,it) = GradV(1:N,1:N,P,it)
 
-!              print *, 'V ', P, it
-!              do i=1,N
-!                print ('(100f7.3)') ,GradV(i, 1:N,P,it)
-!              enddo
-!              print *
-
-              !-----------------------------------------------------------------
-              ! Line search for a good step.
-              ! In practice, this does nothing but slow the process in my
-              ! experience. Fixed-step for some reason works fine.
-              call Linesearch(oldgradU(1:N,1:N,P,it), oldgradV(1:N,1:N,P,it),  &
-              &               Gradient(1:N,1:N,P,it), Direction(1:N,1:N,P,it), &
-              &               step,   gradU(1:N,1:N,P,it), gradV(1:N,1:N,P,it),&
-              &             hblock(1:N,1:N,P,it),Dblock(1:N,1:N,P,it),Fermi(it)&
-              &            ,effsig(P,it))
-
+              !----------------------------------------------------------------- 
+              ! Do a step of the given size
+              call GradUpdate(step, oldgradU(1:N,1:N,P,it), &
+              &                     oldgradV(1:N,1:N,P,it), & 
+              &                    Direction(1:N,1:N,P,it), &
+              &                        GradU(1:N,1:N,P,it), &
+              &                        GradV(1:N,1:N,P,it), &
+              &                        effsig(P,it))
+              ! Save for nex time
               OldDir(1:N,1:N,P,it)  = Direction(1:N,1:N,P,it)
               oldnorm(P,it)         = gradientnorm(P,it)
           enddo
       enddo
+      !-------------------------------------------------------------------------
+      ! Estimate better iteration parameters
+      call calcQpEnergies(GradU,gradV,Fermi,L2,Delta)
       
-!      print *, iter, abs(gradientnorm(1,:)), abs(gradientnorm(2,:)), par, fermi
+      step = 2.0/maxval(QuasiEnergies) * 0.8
+      
+      print *, iter, step, abs(gradientnorm(1,:)), abs(gradientnorm(2,:)), par, fermi
       
       !-------------------------------------------------------------------------
       ! Detect convergence or divergence?
@@ -798,27 +722,69 @@ contains
    call OutHFBModule
    !call CheckUandVColumns(HFBColumns)
    call CalcQPEnergies(GradU,gradV,Fermi,L2,Delta)
+   
  end subroutine HFBFermiGradient
 
-  subroutine Linesearch(OldU, OldV, Grad, Direction, maxstep, Ulim, Vlim, hlim,&
-    &                   Dlim, Fermi,S)
-    !---------------------------------------------------------------------------
-    ! This linesearch algorithm is deprecated: it failed to do better than a
-    ! fixed step algorithm.
-    ! So, if anyone wants to try again, feel free, the API is there.
-    !---------------------------------------------------------------------------
-    ! What does not work:
-    !   *) backtracking line-search with Wolfe Conditions on the energy
-    !---------------------------------------------------------------------------
-    real(KIND=dp), intent(in) :: OldU(:,:), OldV(:,:), hlim(:,:), Dlim(:,:)
-    real(KIND=dp), intent(in) :: Grad(:,:), Fermi
-    real(KIND=dp), intent(out):: Ulim(:,:), Vlim(:,:)
-    real(KIND=dp), intent(inout) :: maxstep,Direction(:,:)
-    integer, intent(in)       :: S
+!  subroutine Linesearch(OldU, OldV, Grad, Direction, maxstep, Ulim, Vlim, hlim,&
+!    &                   Dlim, Fermi,S)
+!    !---------------------------------------------------------------------------
+!    ! This linesearch algorithm is deprecated: it failed to do better than a
+!    ! fixed step algorithm.
+!    ! So, if anyone wants to try again, feel free, the API is there.
+!    !---------------------------------------------------------------------------
+!    ! What does not work:
+!    !   *) backtracking line-search with Wolfe Conditions on the energy
+!    !---------------------------------------------------------------------------
+!    real(KIND=dp), intent(in) :: OldU(:,:), OldV(:,:), hlim(:,:), Dlim(:,:)
+!    real(KIND=dp), intent(in) :: Grad(:,:), Fermi
+!    real(KIND=dp), intent(out):: Ulim(:,:), Vlim(:,:)
+!    real(KIND=dp), intent(inout) :: maxstep,Direction(:,:)
+!    integer, intent(in)       :: S
 
-    call GradUpdate(maxstep, oldU,oldV,Direction,Ulim,Vlim,S)
+!    call GradUpdate(maxstep, oldU,oldV,Direction,Ulim,Vlim,S)
 
-  end subroutine Linesearch
+!  end subroutine Linesearch
+  
+  
+!  subroutine Evolution (OldU, OldV, Grad, Direction, Ulim, Vlim, hlim,&
+!    &                   Dlim, Fermi,S)
+!    !---------------------------------------------------------------------------
+!    !
+!    !---------------------------------------------------------------------------
+!    real(KIND=dp), intent(in)    :: OldU(:,:), OldV(:,:), hlim(:,:), Dlim(:,:)
+!    real(KIND=dp), intent(in)    :: Grad(:,:), Fermi
+!    real(KIND=dp), intent(out)   :: Ulim(:,:), Vlim(:,:)
+!    real(KIND=dp), intent(inout) :: Direction(:,:)
+!    integer, intent(in)          :: S
+!    integer                      :: N
+
+!    real(KIND=dp), allocatable, save :: diffU(:,:), diffV(:,:)
+!    real(KIND=dp)                    :: step=0.02, mu=0.0, maxqp=0
+!    !---------------------------------------------------------------------------
+!    ! Getting the size
+!    N = size(Vlim,1)
+!    !---------------------------------------------------------------------------
+!    ! Allocate necessary memory
+!    if(.not.allocated(diffU)) then
+!        allocate(diffU(N, N)) ; diffU = 0
+!        allocate(diffV(N, N)) ; diffV = 0
+!    endif
+!    !---------------------------------------------------------------------------
+!    ! Take a step
+!    call GradUpdate(step,oldU,oldV,Direction,Ulim,Vlim,S)
+!    !---------------------------------------------------------------------------
+!    ! Save the difference for next time around
+!    diffU = Ulim - oldU
+!    diffV = Vlim - oldV
+!    
+!    !---------------------------------------------------------------------------
+!    ! Calculate QP energies and update step size
+!    call CalcQPEnergies(GradU,gradV,Fermi,L2,Delta)
+
+!    maxqp = maxval(QuasiEnergies)
+!    step  = 2.0/(maxqp) * 0.9  
+!    
+!  end subroutine Evolution
 
   function ConstructRho_nosig(Vlim,S) result(Rho)
     !---------------------------------------------------------------------------
@@ -950,6 +916,7 @@ contains
             enddo
         enddo
     enddo
+    !-------------------------------
     !Don't forget to orthonormalise
     call ortho(U2,V2,S)
 

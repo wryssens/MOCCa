@@ -156,6 +156,8 @@ module HFB
   ! (slow and guaranteed) method to solve for the Fermi energy
   character(len=9) :: FermiSolver='Broyden'
   !-----------------------------------------------------------------------------
+  logical :: Fermimomentum = .false.
+  !-----------------------------------------------------------------------------
   ! Procedure pointer for the diagonalisation of the HFBhamiltonian.
   ! Either with or without signature conservation.
 

@@ -156,7 +156,7 @@ contains
      &                  QPinHFBasis, SolvePairingStart,QPPrintWindow, Block,   &
      &                  FermiSolver, HFBIter,HFBgauge,HFConfig, LNFixN, LNFixP,&
      &                  DN2P, DN2N, ConstrainDispersion, HFBlock, HFBreduce,   &
-     &                  Blockconsistent, aliyangle
+     &                  Blockconsistent, aliyangle, fermimomentum
 
      read(unit=*, NML=Pairing)
 

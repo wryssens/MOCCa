@@ -698,7 +698,6 @@ contains
                 ii = HFBcolumns(i,P,it)
                 do j=1,N
                     jj = HFBcolumns(j,P,it)
-                    if(ii.eq.jj) cycle
                     compare = abs(QuasiEnergies(ii,P,it)) + abs(QuasiEnergies(jj,P,it))
                 
                     minqp   = min(minqp, compare)
@@ -708,9 +707,11 @@ contains
         enddo
       enddo
       
-      step = 4.0/(minqp + maxqp + 2*sqrt(maxqp*minqp)) * 0.80
-      kappa= maxqp/minqp
-      mu   = ((sqrt(kappa) - 1)/(sqrt(kappa) +1))**2
+      if(fermimomentum) then
+          step = 4.0/(minqp + maxqp + 2*sqrt(maxqp*minqp)) * 0.80
+          kappa= maxqp/minqp
+          mu   = ((sqrt(kappa) - 1)/(sqrt(kappa) +1))**2
+      endif
       
       print *, iter, step, mu, minqp, maxqp,sum(abs(gradientnorm(:,1)))
 

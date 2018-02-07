@@ -495,9 +495,10 @@ contains
 
     !---------------------------------------------------------------------------
     real(KIND=dp) :: maxstep, step, L20Norm(2), LN(2), Disp(2)
-    real(KIND=dp) :: N20norm(2), par(2), slope,  OldFermi(2), corr(2)
-    real(KIND=dp) :: gradientnorm(2,2), z(2) = 0.0, minqp(2), maxqp, mu, kappa
+    real(KIND=dp) :: N20norm(2), par(2), slope,  OldFermi(2), corr(2), compare
+    real(KIND=dp) :: gradientnorm(2,2), z(2) = 0.0, minqp, maxqp, mu, kappa
     integer       :: i,j,P,it,N, Rzindex,iter, inneriter, first=1, succes(2), s
+    integer       :: ii,jj
     logical       :: converged(2)
 
     !---------------------------------------------------------------------------
@@ -693,36 +694,25 @@ contains
       do it=1,Iindex
         do P=1,Pindex
             N = blocksizes(P,it)
-            !if(SC) then
-            !    minqp = min(minqp, minval(abs(QuasiEnergies(N/2+1:N,P,it))))
-            !    maxqp = max(maxqp, maxval(abs(QuasiEnergies(N/2+1:N,P,it))))
-            !else
-            !    minqp = min(minqp, minval(QuasiEnergies(1:N/2,P,it)))
-            !    maxqp = max(maxqp, maxval(QuasiEnergies(1:N/2,P,it)))
-            !endif
-            do i=1,2*N
-                ! Exclude zero Quasienergies
-                if(abs(QuasiEnergies(i,P,it)).lt.1d-2) cycle
-                ! Find the maximum energy eigenvalue
-                maxqp    = max(maxqp, abs(QuasiEnergies(i,P,it)))
+            do i=1,N
+                ii = HFBcolumns(i,P,it)
+                do j=1,N
+                    jj = HFBcolumns(j,P,it)
+                    if(ii.eq.jj) cycle
+                    compare = abs(QuasiEnergies(ii,P,it)) + abs(QuasiEnergies(jj,P,it))
                 
-                if( abs(QuasiEnergies(i,P,it)).lt.minqp(2)) then
-                    if(abs(QuasiEnergies(i,P,it)).lt.minqp(1)) then
-                        minqp(2) = minqp(1)
-                        minqp(1) = abs(QuasiEnergies(i,P,it))
-                    else
-                        minqp(2) = abs(QuasiEnergies(i,P,it))
-                    endif
-                endif
-            enddo 
+                    minqp   = min(minqp, compare)
+                    maxqp   = max(maxqp, compare)
+                enddo
+            enddo
         enddo
       enddo
       
-      step = 4.0/(sum(minqp) + 2*maxqp + 2 *sqrt(2*maxqp*sum(minqp))) * 0.80
-      kappa= 2*maxqp/sum(minqp)
+      step = 4.0/(minqp + maxqp + 2*sqrt(maxqp*minqp)) * 0.80
+      kappa= maxqp/minqp
       mu   = ((sqrt(kappa) - 1)/(sqrt(kappa) +1))**2
       
-!      print *, iter, step, mu, minqp, maxqp,sum(abs(gradientnorm(:,1)))
+      print *, iter, step, mu, minqp, maxqp,sum(abs(gradientnorm(:,1)))
 
       !-------------------------------------------------------------------------
       ! Detect convergence or divergence?

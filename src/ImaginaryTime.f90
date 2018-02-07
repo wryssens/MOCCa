@@ -43,9 +43,9 @@ contains
    
     integer, intent(in) :: iteration
     
-    integer             :: iter, estiter, i,j,it,P,S, ind(2,2)
-    real(KIND=dp)       :: timestep, mu, maxE, dE(nwt), E, mom(nwt), con
-    real(KIND=dp)       :: relE(2,2), kappa
+    integer             :: iter, estiter, i,j,it,P,S, ind(2,2), N,ii,jj
+    real(KIND=dp)       :: timestep, mu, maxE, E, con
+    real(KIND=dp)       :: kappa, minE, relE(2,2), compare
     type(Spinor)        :: actionofh, update
     
     !---------------------------------------------------------------------------
@@ -131,7 +131,6 @@ contains
                 enddo
             enddo
         enddo
-    
         !-----------------------------------------------------------------------
         ! Step three, estimate the eigenvalue right above
         relE = 10000
@@ -143,7 +142,7 @@ contains
                 if( HFBasis(i)%occupation    .eq. 1)  cycle
                 if(HFBasis(i)%energy - HFBasis(ind(P,it))%energy .le. 0) cycle                 
 
-                if(HFBasis(i)%energy - HFBasis(ind(P,it))%energy .lt. relE(P,it)) then            
+                if(HFBasis(i)%energy-HFBasis(ind(P,it))%energy.lt.relE(P,it))then            
                     relE(P,it) = HFBasis(i)%energy - HFBasis(ind(P,it))%energy
                 endif
             enddo
@@ -154,32 +153,59 @@ contains
         !-----------------------------------------------------------------------
         ! When doing BCS, the excitation is the lowest available qp energy.
         relE = 10000
-        do i=1,nwt
-            if(HFBasis(i)%eqp .lt. relE(1,1)) then
-                relE(1,1) = HFBasis(i)%eqp
-            endif
-        enddo
-    case(2)
-        !-----------------------------------------------------------------------
-        ! When doing HFB, the excitation is the lowest available qp energy.
-        do it=1,Iindex
-            do P=1,Pindex
-                relE(P,it) = minval(abs(QuasiEnergies(1:blocksizes(P,it),P,it)))
+        do it=1,2
+            do P=1,2
+                 do i=1,nwt
+                    if(((HFBasis(i)%parity  + 3)/2) .ne. P ) cycle
+                    if(((HFBasis(i)%isospin + 3)/2) .ne. it) cycle
+                    
+                    do j=1,nwt
+                        if(((HFBasis(j)%parity  + 3)/2) .ne. P ) cycle
+                        if(((HFBasis(j)%isospin + 3)/2) .ne. it) cycle
+                        
+                        compare = HFBasis(i)%eqp  &
+                        &       + HFBasis(j)%eqp
+
+                        relE(P,it) = min(relE(P,it), compare)
+                    enddo
+                 enddo
             enddo
         enddo
+        !-----------------------------------------------------------------------
+    case(2)
+        !-----------------------------------------------------------------------
+        ! When doing HFB, the excitation is sum of the two lowest quasi-particle
+        ! energies that conserve the symmetries and are consistent with
+        ! number parity.
+        relE = 100000
+        do it=1,Iindex
+            do P=1,Pindex
+                 N = blocksizes(P,it)
+                 do i=1,N
+                    ii = HFBcolumns(i,P,it)
+                    do j=1,N
+                        jj = HFBcolumns(j,P,it)
+                        compare = QuasiEnergies(ii,P,it)  &
+                        &       + QuasiEnergies(jj,P,it)
+                        relE(P,it) = min(relE(P,it), compare)
+                    enddo
+                 enddo
+            enddo
+        enddo
+        !-----------------------------------------------------------------------
     end select
-
 
     !---------------------------------------------------------------------------
     ! Have a failsafe for accidental degeneracies
-    where(relE .lt. 0.1) relE = 1
+    !where(relE .lt. 0.1) relE = 1
+    maxE = maxE - HFBasis(1)%energy
+    relE = relE/2
     !---------------------------------------------------------------------------
-    ! Step four, estimate dt. 
-
+    ! Step four, estimate dt and the momentum. 
     kappa        = minval(relE)/maxE
     mom_estimate = ((sqrt(kappa) - 1)/(sqrt(kappa) + 1))**2
 
-    dt_estimate  = 2/(maxE-HFBasis(1)%energy)*(1+mom_estimate)*hbar*0.80
+    dt_estimate = 4.0/(maxE+minval(relE)+2*sqrt(maxE*minval(relE)))*hbar*0.80
 
     !---------------------------------------------------------------------------
     ! Temporary printing.
@@ -472,6 +498,7 @@ contains
       it   = (HFBasis(i)%GetIsospin() + 3)/2
       
       TempSpinor = NewSpinor()
+      !-------------------------------------------------------------------------
       !Calculating the actions of the cranking correction
       do j=1,3
         if(CrankFactor(j).eq.0.0_dp) cycle
@@ -528,11 +555,8 @@ contains
         &           HFBasis(i)%GetParity(), HFBasis(i)%GetSignature(),  &
         &           HFBasis(i)%GetTimeSimplex(), HFBasis(i)%GetIsospin())
       endif
-
       !-------------------------------------------------------------------------
       ! Add a heavy-ball term and save the update for next time
-!      ActionOfH = ActionOfH  + mom_estimate(i) * updates(i)
-!      updates(i)= ActionOfH
       ActionOfH = -(dt_estimate(i)/hbar)*ActionofH + mom_estimate(i)*updates(i)
       ! Save current value to calculate difference
       updates(i)= current
@@ -555,10 +579,10 @@ contains
   end subroutine GradDesc
     
   subroutine Nesterov(Iteration)
-    !----------------------------------
+    !---------------------------------------------------------------------------
     ! Nesterov optimal gradient method.
     !
-    !----------------------------------
+    !---------------------------------------------------------------------------
     use geninfo
     use Damping
     use Energy, only : totalenergy, oldenergy, nesterovsignal
@@ -619,134 +643,5 @@ contains
     !Update Ak
     OldAlpha = Alpha
   end subroutine Nesterov
-
-!===============================================================================
-! Code zoo
-!===============================================================================
-!      !-------------------------------------------------------------------------
-!      ! Add second order of the Taylor expansion
-!      if(TaylorOrder.eq.2) then
-!          TempWF = NewWaveFunction(ActionOfH,HFBasis(i)%GetIsospin(),          &
-!          &      HFBasis(i)%GetTimeSimplex(), HFBasis(i)%GetParity(),          &
-!          &      HFBasis(i)%GetSignature(), HFBasis(i)%GetTimeReversal())
-!          call TempWF%CompDer()
-
-!          ActionOfH2 = hPsi(TempWF)
-!          if(InverseKineticDamping) then
-!            ActionOfH2 = ActionOfH2 - SpDispersion * Current
-!            ActionOfH2 = InverseKinetic(ActionOfH2, E0 ,HFBasis(i)%GetParity(),&
-!            & HFBasis(i)%GetSignature(), HFBasis(i)%GetTimeSimplex(),          &
-!            & HFBasis(i)%GetIsospin())
-!          endif
-
-!          ActionOfH = ActionofH - (propfactor * 0.5_dp) * ActionofH2
-!      endif
-!
-!!
-!
-!
-!    !---------------------------------------------------------------------------
-    ! The time-step is definitely dependent on this estimate of maxE.
-    !timestep = 2/maxE * hbar * 0.95
-
-    !---------------------------------------------------------------------------
-    ! Don't perform fancy updating when momentum is not requested
-    !if(momentum.eq.0.0) return
-    
-    !---------------------------------------------------------------------------
-    ! Now we estimate for every spwf the necessary momentum
-!    momtot= 0
-!    de    = 100000
-        
-!    do i=1,nwt
-!        it = HFBasis(i)%getisospin()
-!        P  = HFBasis(i)%getparity()
-!        S  = HFBasis(i)%getsignature()
-!        E  = HFBasis(i)%energy
-!        
-!        mom(i) = 0
-!        if(HFBasis(i)%occupation.lt.0.1) cycle
-!            
-!        do j=1,nwt
-!            !-------------------------------------------------------------------
-!            ! Loop over all partner wavefunctions.
-!            if(i.eq.j) cycle
-!            if(HFBasis(j)%isospin.ne.it)  cycle
-!            if(HFBasis(j)%parity.ne.P)    cycle
-!            if(HFBasis(j)%signature.ne.S) cycle
-!            
-!            ! guard against degeneracies
-!            if(abs(E - HFbasis(j)%energy) .gt. 1d-2 ) then
-!                ! Find the closest one in the same symmetry block
-!                if(abs(E - HFbasis(j)%energy).lt.de(i) .and. HFbasis(j)%energy.gt.E ) then
-!                    de(i) = abs(E - HFbasis(j)%energy)
-!                endif
-!            endif
-!            
-!        enddo
-!        mom(i) = ((sqrt(maxE/de(i)) - 1)/(sqrt(maxE/de(i)) + 1))**2
-!        momtot= momtot + HFBasis(i)%occupation * mom(i)
-!    enddo
-    
-!    select case(ParameterEstimation)
-!    case(1)
-!        ! Optimal value        
-!        if(Iteration.eq.1) then
-!            dt_estimate  = 2/(maxE + minE) * hbar * 0.95
-!        else
-!            dt_estimate  = (4/(maxE + minE + 2*sqrt(maxE*minE)) * hbar  * 0.95)
-!        endif
-!        ! Average value
-!        mom_estimate = momtot/(protons+neutrons)
-!    case(2)
-!       ! Find out the second lowest energy
-!       minE = 1000
-!       do i=1,nwt
-!         if(HFBasis(i)%energy.lt.minE) then
-!            minE = HFBasis(i)%energy
-!            ind  = i
-!         endif
-!       enddo
-!       diffE = 10000
-!       
-!       it = HFBasis(ind)%getisospin()
-!       P  = HFBasis(ind)%getparity()
-!       S  = HFBasis(ind)%getsignature()
-!       print *, it, P,S
-!       do i=1,nwt
-!            if(i.eq.ind) cycle
-!            if(HFBasis(i)%isospin.ne.it)  cycle
-!            if(HFBasis(i)%parity.ne.P)    cycle
-!            if(HFBasis(i)%signature.ne.S) cycle
-!            
-!            if((HFBasis(i)%energy - minE) .lt. diffE) then
-!                diffE = HFBasis(i)%energy
-!            endif
-!       enddo 
-!       print *, diffE
-!       diffE = diffE - minE 
-!       kappa  = (maxE-minE)/diffE
-!       mom_estimate = ((sqrt(kappa) - 1)/(sqrt(kappa) +1 ))
-!       print *, 'Emin', minE, diffE, maxE
-!       print *, 'kappa', kappa, mom_estimate(1)
-!       
-!       if(Iteration.eq.1) then
-!            dt_estimate  = 2/(maxE - minE + diffE) * hbar * 0.95
-!       else
-!            dt_estimate  = 4/(maxE - minE + diffE + 2*sqrt(maxE-minE)*sqrt(diffE)) * hbar * 0.95
-!       endif
-!       
-!       dt_estimate(2:nwt) = dt
-!       print *,'dt',  dt_estimate(1)
-!!       stop
-!    end select
-!    print *, '---------------------------------'
-!    print 1, 'dt_estimate' , dt_estimate(1)
-!    print 1, 'mom_estimate', mom_estimate(1)
-!    print *, 'MaxA', maxE
-!    momtot   = momtot/(protons+neutrons)
-!    momentum = momtot
-!!    stop
-!    
 
 end module Imaginarytime

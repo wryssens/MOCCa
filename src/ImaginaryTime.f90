@@ -185,6 +185,23 @@ contains
                     ii = HFBcolumns(i,P,it)
                     do j=1,N
                         jj = HFBcolumns(j,P,it)
+                        !-------------------------------------------------------
+                        ! When Time-reversal is conserved, we need not bother
+                        ! with selecting indices, as the  time-reversed partners
+                        ! are not calculated. The minimum is then automatically
+                        ! at some i = j.
+                        ! 
+                        ! When time-reversal is not conserved however, we need
+                        ! to take explicit care that the signature quantum 
+                        ! numbers match.
+                        if((.not. TRC) .and. SC) then
+                            if(CanBasis(i)%signature.eq.CanBasis(j)%signature) then
+                                ! Don't allow excitations that change total 
+                                ! total signature
+                                cycle
+                            endif
+                        endif
+                        
                         compare = QuasiEnergies(ii,P,it)  &
                         &       + QuasiEnergies(jj,P,it)
                         relE(P,it) = min(relE(P,it), compare)

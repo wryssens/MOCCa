@@ -81,11 +81,11 @@ module GradientHFB
     end function
   end interface
   abstract interface
-    subroutine GradUpdateInterface(step, U1,V1,Grad,U2,V2, S)
+    subroutine GradUpdateInterface(step, mu, Grad,U2,V2, S)
       import :: dp
-      real(KIND=dp), intent(in) :: U1(:,:), V1(:,:), step
+      real(KIND=dp), intent(in) :: step, mu
       real(KIND=dp), intent(in) :: Grad(:,:)
-      real(KIND=dp),intent(out) :: U2(:,:), V2(:,:)
+      real(KIND=dp)             :: U2(:,:), V2(:,:)
       integer, intent(in)       :: S
     end subroutine
   end interface
@@ -494,22 +494,24 @@ contains
     real(KIND=dp), intent(in)                 :: Prec, DN2(2)
 
     !---------------------------------------------------------------------------
-    real(KIND=dp) :: gamma(2,2), maxstep, step, L20Norm(2), LN(2), Disp(2)
+    real(KIND=dp) :: maxstep, step, L20Norm(2), LN(2), Disp(2)
     real(KIND=dp) :: N20norm(2), par(2), slope,  OldFermi(2), corr(2)
-    real(KIND=dp) :: gradientnorm(2,2), oldnorm(2,2), PR(2,2), z(2)=0.0
+    real(KIND=dp) :: gradientnorm(2,2), z(2) = 0.0, minqp(2), maxqp, mu, kappa
     integer       :: i,j,P,it,N, Rzindex,iter, inneriter, first=1, succes(2), s
     logical       :: converged(2)
 
+    !---------------------------------------------------------------------------
     ! Make sure we search for the right number of particles
     Particles(1) = neutrons
     Particles(2) = protons
 
     !---------------------------------------------------------------------------
     ! Initialize the module
-    oldnorm = 0.0d0 ; gradientnorm = 0.0d0
+    gradientnorm = 0.0d0
     ! Step size works typically. 0.025 would be too big and smaller is slower.
-    step = 0.020_dp ; OldFermi = 0.0d0
+    step = 0.020_dp ; OldFermi = 0.0d0 ; mu = 0
     converged = .false.
+    
     if(.not. allocated(GradU)) then
         N = maxval(blocksizes)
         !-----------------------------------------------------------------------
@@ -522,8 +524,7 @@ contains
         allocate(Gradient(N,N,Pindex,Iindex)) ; Gradient = 0.0_dp
         allocate(OldGrad(N,N,Pindex,Iindex))  ; Gradient = 0.0_dp
         allocate(aN20(N,N,Pindex,Iindex))     ; aN20     = 0.0_dp
-        allocate(OldDir(N,N,Pindex,Iindex))   ; OldDir   = 0.0_dp
-
+        
         !-----------------------------------------------------------------------
         ! Point to the right routines
         if(SC) then
@@ -572,9 +573,7 @@ contains
         n20norm(it) = 0.0d0
         do P=1,Pindex
             N = Effblocks(P,it)
-            ! Save the old gradient
-            Oldgrad(1:N,1:N,p,it)  = Gradient(1:N,1:N,P,it)
-
+            
             Gradient(1:N,1:N,P,it) = H20(GradU(1:N,1:N,P,it),                  &
             &                            GradV(1:N,1:N,P,it),                  &
             &                            hblock(1:N,1:N,P,it),                 &
@@ -629,7 +628,6 @@ contains
             L2(it) = LN(it)!L2(it) + 0.1*(LN(it)   - L2(it))
           elseif(ConstrainDispersion) then
             L2(it) = L2(it) - 0.01*(Disp(it) - DN2(it))
-!            if(it.eq.1) print *, 'iter, it',it, L2(it), Disp(it), DN2(it)
           endif
       enddo
       !-------------------------------------------------------------------------
@@ -641,19 +639,12 @@ contains
               Gradient(1:N,1:N,P,it) = Gradient(1:N,1:N,P,it)                  &
               &                                 - Fermi(it) * aN20(1:N,1:N,P,it)
 
-              ! Calculate the norm of the new gradient to
-              ! 1) check for convergence and
-              ! 2) calculate the conjugate direction
-              ! PR is the scalar product between this gradient and the old one,
-              ! it is necessary to form the Polak-Ribière formula for nonlinear
-              ! conjugate gradient descent.
-              gradientnorm(P,it) = 0.0 ; Pr(P,it) = 0.0_dp
+              ! Calculate the norm of the new gradient to check for convergence
+              gradientnorm(P,it) = 0.0 
               do i=1,N
                 do j=1,N
                   gradientnorm(p,it) = gradientnorm(P,it) +                    &
                   &                      Gradient(i,j,P,it) * Gradient(j,i,P,it)
-                  Pr(P,it) = Pr(P,it) +                                        &
-                  &                      Gradient(i,j,P,it) * OldGrad(j,i,P,it)
                 enddo
               enddo
           enddo
@@ -673,7 +664,6 @@ contains
            endif
          endif
       enddo
-!      stop
       !-------------------------------------------------------------------------
       ! Update the U and V matrices.
       do it=1,Iindex
@@ -682,31 +672,58 @@ contains
               N =  effblocks(P,it)
               Direction(1:N,1:N,P,it) = Gradient(1:N,1:N,P,it)
 
-              !-----------------------------------------------------------------
-              oldgradU(1:N,1:N,P,it) = GradU(1:N,1:N,P,it)
-              oldgradV(1:N,1:N,P,it) = GradV(1:N,1:N,P,it)
+!              !-----------------------------------------------------------------
+!              oldgradU(1:N,1:N,P,it) = GradU(1:N,1:N,P,it)
+!              oldgradV(1:N,1:N,P,it) = GradV(1:N,1:N,P,it)
 
               !----------------------------------------------------------------- 
               ! Do a step of the given size
-              call GradUpdate(step, oldgradU(1:N,1:N,P,it), &
-              &                     oldgradV(1:N,1:N,P,it), & 
-              &                    Direction(1:N,1:N,P,it), &
-              &                        GradU(1:N,1:N,P,it), &
-              &                        GradV(1:N,1:N,P,it), &
-              &                        effsig(P,it))
-              ! Save for nex time
-              OldDir(1:N,1:N,P,it)  = Direction(1:N,1:N,P,it)
-              oldnorm(P,it)         = gradientnorm(P,it)
+              call GradUpdate(step, mu,Direction(1:N,1:N,P,it), &
+              &                            GradU(1:N,1:N,P,it), &
+              &                            GradV(1:N,1:N,P,it), &
+              &                                     effsig(P,it))
           enddo
       enddo
       !-------------------------------------------------------------------------
       ! Estimate better iteration parameters
       call calcQpEnergies(GradU,gradV,Fermi,L2,Delta)
+      !-------------------------------------------------------------------------
+      minQp= 10000
+      maxqp=-10000
+      do it=1,Iindex
+        do P=1,Pindex
+            N = blocksizes(P,it)
+            !if(SC) then
+            !    minqp = min(minqp, minval(abs(QuasiEnergies(N/2+1:N,P,it))))
+            !    maxqp = max(maxqp, maxval(abs(QuasiEnergies(N/2+1:N,P,it))))
+            !else
+            !    minqp = min(minqp, minval(QuasiEnergies(1:N/2,P,it)))
+            !    maxqp = max(maxqp, maxval(QuasiEnergies(1:N/2,P,it)))
+            !endif
+            do i=1,2*N
+                ! Exclude zero Quasienergies
+                if(abs(QuasiEnergies(i,P,it)).lt.1d-2) cycle
+                ! Find the maximum energy eigenvalue
+                maxqp    = max(maxqp, abs(QuasiEnergies(i,P,it)))
+                
+                if( abs(QuasiEnergies(i,P,it)).lt.minqp(2)) then
+                    if(abs(QuasiEnergies(i,P,it)).lt.minqp(1)) then
+                        minqp(2) = minqp(1)
+                        minqp(1) = abs(QuasiEnergies(i,P,it))
+                    else
+                        minqp(2) = abs(QuasiEnergies(i,P,it))
+                    endif
+                endif
+            enddo 
+        enddo
+      enddo
       
-      step = 2.0/maxval(QuasiEnergies) * 0.8
+      step = 4.0/(sum(minqp) + 2*maxqp + 2 *sqrt(2*maxqp*sum(minqp))) * 0.80
+      kappa= 2*maxqp/sum(minqp)
+      mu   = ((sqrt(kappa) - 1)/(sqrt(kappa) +1))**2
       
-      print *, iter, step, abs(gradientnorm(1,:)), abs(gradientnorm(2,:)), par, fermi
-      
+!      print *, iter, step, mu, minqp, maxqp,sum(abs(gradientnorm(:,1)))
+
       !-------------------------------------------------------------------------
       ! Detect convergence or divergence?
       if(any(.not. converged) .and. iter.eq.HFBIter) then
@@ -718,74 +735,14 @@ contains
       endif
       if(all(converged)) exit
    enddo
+   !----------------------------------------------------------------------------
    ! Make the HFB module happy again and hand control back.
    call OutHFBModule
    !call CheckUandVColumns(HFBColumns)
    call CalcQPEnergies(GradU,gradV,Fermi,L2,Delta)
    
  end subroutine HFBFermiGradient
-
-!  subroutine Linesearch(OldU, OldV, Grad, Direction, maxstep, Ulim, Vlim, hlim,&
-!    &                   Dlim, Fermi,S)
-!    !---------------------------------------------------------------------------
-!    ! This linesearch algorithm is deprecated: it failed to do better than a
-!    ! fixed step algorithm.
-!    ! So, if anyone wants to try again, feel free, the API is there.
-!    !---------------------------------------------------------------------------
-!    ! What does not work:
-!    !   *) backtracking line-search with Wolfe Conditions on the energy
-!    !---------------------------------------------------------------------------
-!    real(KIND=dp), intent(in) :: OldU(:,:), OldV(:,:), hlim(:,:), Dlim(:,:)
-!    real(KIND=dp), intent(in) :: Grad(:,:), Fermi
-!    real(KIND=dp), intent(out):: Ulim(:,:), Vlim(:,:)
-!    real(KIND=dp), intent(inout) :: maxstep,Direction(:,:)
-!    integer, intent(in)       :: S
-
-!    call GradUpdate(maxstep, oldU,oldV,Direction,Ulim,Vlim,S)
-
-!  end subroutine Linesearch
   
-  
-!  subroutine Evolution (OldU, OldV, Grad, Direction, Ulim, Vlim, hlim,&
-!    &                   Dlim, Fermi,S)
-!    !---------------------------------------------------------------------------
-!    !
-!    !---------------------------------------------------------------------------
-!    real(KIND=dp), intent(in)    :: OldU(:,:), OldV(:,:), hlim(:,:), Dlim(:,:)
-!    real(KIND=dp), intent(in)    :: Grad(:,:), Fermi
-!    real(KIND=dp), intent(out)   :: Ulim(:,:), Vlim(:,:)
-!    real(KIND=dp), intent(inout) :: Direction(:,:)
-!    integer, intent(in)          :: S
-!    integer                      :: N
-
-!    real(KIND=dp), allocatable, save :: diffU(:,:), diffV(:,:)
-!    real(KIND=dp)                    :: step=0.02, mu=0.0, maxqp=0
-!    !---------------------------------------------------------------------------
-!    ! Getting the size
-!    N = size(Vlim,1)
-!    !---------------------------------------------------------------------------
-!    ! Allocate necessary memory
-!    if(.not.allocated(diffU)) then
-!        allocate(diffU(N, N)) ; diffU = 0
-!        allocate(diffV(N, N)) ; diffV = 0
-!    endif
-!    !---------------------------------------------------------------------------
-!    ! Take a step
-!    call GradUpdate(step,oldU,oldV,Direction,Ulim,Vlim,S)
-!    !---------------------------------------------------------------------------
-!    ! Save the difference for next time around
-!    diffU = Ulim - oldU
-!    diffV = Vlim - oldV
-!    
-!    !---------------------------------------------------------------------------
-!    ! Calculate QP energies and update step size
-!    call CalcQPEnergies(GradU,gradV,Fermi,L2,Delta)
-
-!    maxqp = maxval(QuasiEnergies)
-!    step  = 2.0/(maxqp) * 0.9  
-!    
-!  end subroutine Evolution
-
   function ConstructRho_nosig(Vlim,S) result(Rho)
     !---------------------------------------------------------------------------
     ! Construct the part of the density matrix when signature is not conserved.
@@ -895,56 +852,93 @@ contains
 
   end function ConstructKappa_sig
 
-  subroutine GradUpdate_nosig(step, U1,V1,Grad,U2,V2, S)
+  subroutine GradUpdate_nosig(step, mu, Grad,U2,V2, S)
     !---------------------------------------------------------------------------
     ! Update U and V with a gradient step of size 'step'.
     !---------------------------------------------------------------------------
-    real(KIND=dp), intent(in) :: U1(:,:), V1(:,:), step
+    real(KIND=dp), intent(in) ::  step,mu
     real(KIND=dp), intent(in) :: Grad(:,:)
     integer, intent(in)       :: S
-    real(KIND=dp),intent(out):: U2(:,:), V2(:,:)
+    real(KIND=dp)             :: U2(:,:), V2(:,:)
+    real(KIND=dp), allocatable:: tempU(:,:), tempV(:,:)
+    real(KIND=dp),allocatable, save :: diffU(:,:), diffV(:,:)
     integer                   :: i,j,P,it,N,k
 
-    N = size(U1,1)
+    !---------------------------------------------------------------------------
+    N = size(U2,1)
+    !---------------------------------------------------------------------------
+    tempU = U2
+    tempV = V2
+    
+    if(.not.allocated(diffU)) then
+        allocate(diffU(N,N), diffV(N,N)) ; diffU = 0 ; diffV = 0
+    endif
+    !---------------------------------------------------------------------------
+!    do j=1,N
+!        do i=1,N
+!            U2(i,j) = tempU(i,j) + mu*diffU(i,j) 
+!            V2(i,j) = tempV(i,j) + mu*diffV(i,j)
+!            do k=1,N
+!                U2(i,j) = U2(i,j) - step * tempV(i,k)*Grad(k,j) 
+!                V2(i,j) = V2(i,j) - step * tempU(i,k)*Grad(k,j) 
+!            enddo
+!        enddo
+!    enddo
 
-    do j=1,N
-        do i=1,N
-            U2(i,j) = U1(i,j) ; V2(i,j) = V1(i,j)
-            do k=1,N
-                U2(i,j) = U2(i,j) - step * V1(i,k)*Grad(k,j)
-                V2(i,j) = V2(i,j) - step * U1(i,k)*Grad(k,j)
-            enddo
-        enddo
-    enddo
-    !-------------------------------
+    U2(1:N,1:N) = U2(1:N,1:N)-step *matmul(tempV(1:N,1:N),Grad(1:N,1:N)) +mu*diffU(1:N,1:N)
+    V2(1:N,1:N) = V2(1:N,1:N)-step *matmul(tempU(1:N,1:N),Grad(1:N,1:N)) +mu*diffV(1:N,1:N)
+    !---------------------------------------------------------------------------
     !Don't forget to orthonormalise
     call ortho(U2,V2,S)
+    
+    diffU(1:N,1:N) = U2(1:N,1:N) - tempU(1:N,1:N)
+    diffV(1:N,1:N) = V2(1:N,1:N) - tempV(1:N,1:N)
 
   end subroutine GradUpdate_nosig
 
-  subroutine GradUpdate_sig(step, U1,V1,Grad,U2,V2, S)
+  subroutine GradUpdate_sig(step, mu, Grad,U2,V2, S)
     !---------------------------------------------------------------------------
     ! Update U and V with a gradient step of size 'step'.
     !---------------------------------------------------------------------------
-    real(KIND=dp), intent(in) :: U1(:,:), V1(:,:), step
+    real(KIND=dp), intent(in) :: step, mu
     real(KIND=dp), intent(in) :: Grad(:,:)
-    real(KIND=dp),intent(out) :: U2(:,:), V2(:,:)
+    real(KIND=dp)             :: U2(:,:), V2(:,:)
+    real(KIND=dp),allocatable :: tempU(:,:), tempV(:,:)
+    real(KIND=dp),allocatable, save :: diffU(:,:), diffV(:,:)
     integer, intent(in)       :: S
     integer                   :: i,j,P,it,N,k
 
-    N = size(U1,1)
+    !---------------------------------------------------------------------------
+    N = size(U2,1)
+    !---------------------------------------------------------------------------
+    tempU = U2
+    tempV = V2
+    
+    if(.not.allocated(diffU)) then
+        allocate(diffU(N,N), diffV(N,N)) ; diffU = 0 ; diffV = 0
+    endif
+    !---------------------------------------------------------------------------
+    ! Update the current values
+    U2(1:N/2  ,1:S)   = U2(1:N/2  ,1:S)                                        &
+    &                 - step * matmul(tempV(1:N/2, S+1:N), Grad(S+1:N,1:S))    &
+    &                 + mu*diffU(1:N/2  ,1:S)
+    U2(1+N/2:N,S+1:N) = U2(1+N/2:N,S+1:N)                                      &
+    &                 - step * matmul(tempV(N/2+1:N, 1:S), Grad(1:S,S+1:N))    &
+    &                 + mu*diffU(1+N/2:N,S+1:N) 
+    V2(1:N/2  ,S+1:N) = V2(1:N/2  ,S+1:N)                                      &
+    &                 - step * matmul(tempU(1:N/2, 1:S), Grad(1:S,S+1:N))      &
+    &                 + mu*diffV(1:N/2  ,S+1:N) 
+    V2(N/2+1:N ,1:S)  = V2(N/2+1:N ,1:S)                                       &
+    &                 - step * matmul(tempU(N/2+1:N, S+1:N), Grad(S+1:N,1:S))  &
+    &                 + mu*diffV(N/2+1:N ,1:S) 
 
-    U2(1:N/2  ,1:S)   = U1(1:N/2  ,1:S) - step *                               &
-    &                     matmul(V1(1:N/2, S+1:N), Grad(S+1:N,1:S))
-    U2(1+N/2:N,S+1:N) = U1(1+N/2:N,S+1:N) - step *                             &
-    &                     matmul(V1(N/2+1:N, 1:S), Grad(1:S,S+1:N))
-    V2(1:N/2  ,S+1:N) = V1(1:N/2  ,S+1:N) - step *                             &
-    &                      matmul(U1(1:N/2, 1:S), Grad(1:S,S+1:N))
-    V2(N/2+1:N ,1:S)  = V1(N/2+1:N ,1:S) - step *                              &
-    &                      matmul(U1(N/2+1:N, S+1:N), Grad(S+1:N,1:S))
-
+    !---------------------------------------------------------------------------
     !Don't forget to orthonormalise
     call ortho(U2,V2,S)
+    
+    diffU = U2 - tempU
+    diffV = V2 - tempV
+
   end subroutine GradUpdate_sig
 
 function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
@@ -1304,14 +1298,15 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
     real(KIND=dp), intent(in) :: Ulim(:,:,:,:), Vlim(:,:,:,:)
     real(KIND=dp), intent(in) :: Fermi(2), L2(2)
     complex(KIND=dp), allocatable, intent(in) :: Delta(:,:,:,:)
-    real(KIND=dp)             :: Vector(2*nwt,nwt), HV(2*nwt,nwt)
+    real(KIND=dp)             :: Vector(2*maxval(blocksizes),maxval(blocksizes))
+    real(KIND=dp)             :: HV(2*maxval(blocksizes),maxval(blocksizes))
     integer                   :: P ,it, N,jj,i,j,k
 
     QuasiEnergies = 0.0_dp
 
     ! Construct the HFBHamiltonian
     call ConstructHFBHamiltonian(Fermi,Delta,L2,0.0_dp)
-
+    
     do it=1,Iindex
         do P=1,Pindex
             N = blocksizes(P,it)
@@ -1338,6 +1333,7 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
             enddo
         enddo
     enddo
+    
 end subroutine CalcQPEnergies
 
 end module GradientHFB

@@ -78,7 +78,7 @@ contains
     if(Iteration .eq.1) then
         !-----------------------------------------------------------------------
         ! Initialize randomly at the start
-        maxspwf = copywavefunction(HFBasis(16))
+        maxspwf = copywavefunction(HFBasis(1))
         call random_number(maxspwf%value%grid)
         call maxspwf%compnorm()
         maxspwf%value = 1.0/sqrt(maxspwf%norm) * maxspwf%value
@@ -108,11 +108,18 @@ contains
         call maxspwf%compnorm()
         maxspwf%value = 1.0/sqrt(maxspwf%norm) * maxspwf%value
         call maxspwf%compder()
+        if(t1n2.ne.0.0_dp .or. t2n2 .ne.0.0_dp) then
+            call maxspwf%compsecondder()
+        endif
+
         !-----------------------------------------------------------------------
         ! Don't be to picky about convergence, within the order of an MeV is
         ! good enough.
         if(abs(con).lt. 1d-2) exit
     enddo
+    !if(abs(con).gt. 1d-2) then
+    !    call stp('unreliable upper bound on MaxE')
+    !endif
     !---------------------------------------------------------------------------
     ! Step two: find the next excitation value of the next many-body state.
     select case(PairingType)
@@ -128,24 +135,24 @@ contains
                  do i=1,nwt
                     if(((HFBasis(i)%parity  + 3)/2) .ne. P ) cycle
                     if(((HFBasis(i)%isospin + 3)/2) .ne. it) cycle
-                    if(HFBasis(i)%occupation.ne.1) cycle                    
+                    if(abs(HFBasis(i)%occupation)   .lt.0.5) cycle
+                    
                     do j=1,nwt
-                        if(i.eq.j) cycle
                         if(((HFBasis(j)%parity  + 3)/2) .ne. P ) cycle
                         if(((HFBasis(j)%isospin + 3)/2) .ne. it) cycle
-                        if(HFBasis(j)%occupation.ne.0) cycle
-                        if(SC) then
-                            if(HFBasis(i)%signature.eq.HFBasis(j)%signature) cycle
-                        endif
+                        if(abs(HFBasis(j)%occupation)   .gt.0.5) cycle
+ 
                         compare = - HFBasis(i)%energy  &
                         &         + HFBasis(j)%energy
-
-                        relE(P,it) = min(relE(P,it), compare)
-                    enddo
+        
+                        if(compare .gt. 0.1) then
+                          relE(P,it) = min(relE(P,it), compare)
+                        endif
+                     enddo
                  enddo
             enddo
         enddo
-
+        relE = 2*relE 
 !        relE = -10000 
 !        do it=1,2
 !            do P=1,2
@@ -280,12 +287,12 @@ contains
 
     !---------------------------------------------------------------------------
     ! Temporary printing.
-    print *, '----------------'
-    print *, ' MAXE:' , maxE
-    print *, ' dt   ' , dt_estimate(1)
-    print *, ' mom  ' , mom_estimate(1) 
-    print *, ' ind  ' , ind
-    print *, ' relE ' , relE 
+    !print *, '----------------'
+    !print *, ' MAXE:' , maxE
+    !print *, ' dt   ' , dt_estimate(1)
+    !print *, ' mom  ' , mom_estimate(1) 
+    !print *, ' ind  ' , ind
+    !print *, ' relE ' , relE 
 
   !-----------------------------------------------------------------------------
   end subroutine IterativeEstimation

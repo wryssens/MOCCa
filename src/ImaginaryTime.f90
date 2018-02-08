@@ -38,6 +38,7 @@ contains
     
     use Pairing
     use HFB
+    use force
     
     1 format (a20, 99f10.3)
    
@@ -81,7 +82,12 @@ contains
         call random_number(maxspwf%value%grid)
         call maxspwf%compnorm()
         maxspwf%value = 1.0/sqrt(maxspwf%norm) * maxspwf%value
+        
         call maxspwf%compder()  
+        
+        if(t1n2.ne.0.0_dp .or. t2n2 .ne.0.0_dp) then
+            call maxspwf%compsecondder()
+        endif
     endif
     estiter = 100
     update=NewSpinor()

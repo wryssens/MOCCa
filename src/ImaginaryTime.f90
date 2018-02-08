@@ -122,40 +122,64 @@ contains
         ! The excitation energy is here simply the energy difference of the first 
         ! unoccupied state with the last occupied state.
         !-----------------------------------------------------------------------
-        relE = -10000 
-        do it=1,2
-            do P=1,2
-                do i=1,nwt
-                    if((HFBasis(i)%isospin +3)/2 .ne. it) cycle
-                    if((HFBasis(i)%parity  +3)/2 .ne. P ) cycle
-                    if( HFBasis(i)%occupation    .eq. 0)  cycle
-                    
-                    if(HFBasis(i)%energy .gt. relE(P,it)) then
-                        relE(P,it) = HFBasis(i)%energy
-                        ind(P,it)  = i
-                    endif
-                enddo
-            enddo
-        enddo
-        !-----------------------------------------------------------------------
-        ! Step three, estimate the eigenvalue right above
         relE = 10000
         do it=1,2
-          do P=1,2
-            do i=1,nwt
-                if((HFBasis(i)%isospin +3)/2 .ne. it) cycle
-                if((HFBasis(i)%parity  +3)/2 .ne. P ) cycle
-                if( HFBasis(i)%occupation    .eq. 1)  cycle
-                if(HFBasis(i)%energy - HFBasis(ind(P,it))%energy .le. 0) cycle                 
+            do P=1,2
+                 do i=1,nwt
+                    if(((HFBasis(i)%parity  + 3)/2) .ne. P ) cycle
+                    if(((HFBasis(i)%isospin + 3)/2) .ne. it) cycle
+                    if(HFBasis(i)%occupation.ne.1) cycle                    
+                    do j=1,nwt
+                        if(i.eq.j) cycle
+                        if(((HFBasis(j)%parity  + 3)/2) .ne. P ) cycle
+                        if(((HFBasis(j)%isospin + 3)/2) .ne. it) cycle
+                        if(HFBasis(j)%occupation.ne.0) cycle
+                        if(SC) then
+                            if(HFBasis(i)%signature.eq.HFBasis(j)%signature) cycle
+                        endif
+                        compare = - HFBasis(i)%energy  &
+                        &         + HFBasis(j)%energy
 
-                if(HFBasis(i)%energy-HFBasis(ind(P,it))%energy.lt.relE(P,it))then            
-                    relE(P,it) = HFBasis(i)%energy - HFBasis(ind(P,it))%energy
-                endif
+                        relE(P,it) = min(relE(P,it), compare)
+                    enddo
+                 enddo
             enddo
-          enddo
         enddo
-        !-----------------------------------------------------------------------
-        relE = relE*2
+
+!        relE = -10000 
+!        do it=1,2
+!            do P=1,2
+!                do i=1,nwt
+!                    if((HFBasis(i)%isospin +3)/2 .ne. it) cycle
+!                    if((HFBasis(i)%parity  +3)/2 .ne. P ) cycle
+!                    if( HFBasis(i)%occupation    .eq. 0)  cycle
+!                    
+!                    if(HFBasis(i)%energy .gt. relE(P,it)) then
+!                        relE(P,it) = HFBasis(i)%energy
+!                        ind(P,it)  = i
+!                    endif
+!                enddo
+!            enddo
+!        enddo
+!        !-----------------------------------------------------------------------
+!        ! Step three, estimate the eigenvalue right above
+!        relE = 10000
+!        do it=1,2
+!          do P=1,2
+!            do i=1,nwt
+!                if((HFBasis(i)%isospin +3)/2 .ne. it) cycle
+!                if((HFBasis(i)%parity  +3)/2 .ne. P ) cycle
+!                if( HFBasis(i)%occupation    .eq. 1)  cycle
+!                if(HFBasis(i)%energy - HFBasis(ind(P,it))%energy .le. 0) cycle                 
+
+!                if(HFBasis(i)%energy-HFBasis(ind(P,it))%energy.lt.relE(P,it))then            
+!                    relE(P,it) = HFBasis(i)%energy - HFBasis(ind(P,it))%energy
+!                endif
+!            enddo
+!          enddo
+!        enddo
+!        !-----------------------------------------------------------------------
+!        relE = relE*2
         !-----------------------------------------------------------------------
     case(1)
         !-----------------------------------------------------------------------

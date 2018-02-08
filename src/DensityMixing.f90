@@ -47,9 +47,15 @@ contains
         Density%rho = (1-DampingParam)*Density%rho + &
         &                DampingParam *DensityHistory(1)%rho
       case(2)
-        ! only mix laprho
+        ! only mix laprho and laps
         Density%laprho = (1-DampingParam)*Density%laprho + &
         &                   DampingParam *DensityHistory(1)%laprho
+        
+        if(allocated(Density%laps)) then
+            Density%laps = (1-DampingParam)*Density%laps + &
+        &                   DampingParam *DensityHistory(1)%laps
+        endif
+        
       case(3)
       
         if(.not.allocated(DensityMomentum)) then

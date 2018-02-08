@@ -882,9 +882,10 @@ contains
     !Don't forget to orthonormalise
     call ortho(U2,V2,S)
     
-    diffU(1:N,1:N) = U2(1:N,1:N) - tempU(1:N,1:N)
-    diffV(1:N,1:N) = V2(1:N,1:N) - tempV(1:N,1:N)
-
+    if(FermiMomentum) then
+        diffU(1:N,1:N) = U2(1:N,1:N) - tempU(1:N,1:N)
+        diffV(1:N,1:N) = V2(1:N,1:N) - tempV(1:N,1:N)
+    endif
   end subroutine GradUpdate_nosig
 
   subroutine GradUpdate_sig(step, mu, Grad,U2,V2, S)

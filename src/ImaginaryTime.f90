@@ -45,7 +45,7 @@ contains
     
     integer             :: iter, estiter, i,j,it,P,S, ind(2,2), N,ii,jj
     real(KIND=dp)       :: timestep, mu, maxE, E, con
-    real(KIND=dp)       :: kappa, minE, relE(2,2), compare
+    real(KIND=dp)       :: kappa, minE, relE(2,2), compare, ground(2,2)
     type(Spinor)        :: actionofh, update
     
     !---------------------------------------------------------------------------
@@ -174,42 +174,64 @@ contains
         !-----------------------------------------------------------------------
     case(2)
         !-----------------------------------------------------------------------
-        ! When doing HFB, the excitation is sum of the two lowest quasi-particle
-        ! energies that conserve the symmetries and are consistent with
-        ! number parity.
+        ! When doing HFB, there are some nasty pitfalls that can happen.
+        ! 
+        ! The configuration at this particular iteration need not be the lowest
+        ! in this particular symmetry block.
+        !   a) we are doing cr8-like blocking for the non-lowest qp
+        !   b) the HFB solver has not yet found the lowest qp
+        !   c) probably other things can happen on the way to convergence
+        !
+        ! For this reason, the minimum two-qp excitation within the symmetry
+        ! block need not be positive! In that case we are not in the ground 
+        ! state and need to figure out which one is 
+        ! a) the ground state
+        ! b) the first excited state 
+        !    (since our configuration can be even higher)
+        !-----------------------------------------------------------------------
+        
         relE = 100000
         do it=1,Iindex
             do P=1,Pindex
                  N = blocksizes(P,it)
+                 !--------------------------------------------------------------
+                 ! Step one: find the minimum sum of two qps
                  do i=1,N
                     ii = HFBcolumns(i,P,it)
                     do j=1,N
                         jj = HFBcolumns(j,P,it)
-                        !-------------------------------------------------------
-                        ! When Time-reversal is conserved, we need not bother
-                        ! with selecting indices, as the  time-reversed partners
-                        ! are not calculated. The minimum is then automatically
-                        ! at some i = j.
-                        ! 
-                        ! When time-reversal is not conserved however, we need
-                        ! to take explicit care that the signature quantum 
-                        ! numbers match.
-                        if((.not. TRC) .and. SC) then
-                            if(CanBasis(i)%signature.eq.CanBasis(j)%signature) then
-                                ! Don't allow excitations that change total 
-                                ! total signature
-                                cycle
-                            endif
-                        endif
                         
                         compare = QuasiEnergies(ii,P,it)  &
                         &       + QuasiEnergies(jj,P,it)
                         relE(P,it) = min(relE(P,it), compare)
                     enddo
                  enddo
+                 !--------------------------------------------------------------
+                 ! Step two: if the minimum energy is negative, we are not in 
+                 ! the ground state currently.
+                 !--------------------------------------------------------------
+                 if(relE(P,it).lt.0) then
+                    ! This is the new reference
+                    ground(P,it) = relE(P,it)
+                    
+                    relE(P,it) = 10000                    
+                    ! Find the next state
+                    do i=1,N
+                        ii = HFBcolumns(i,P,it)
+                        do j=1,N
+                            jj = HFBcolumns(j,P,it)
+
+                            compare = QuasiEnergies(ii,P,it)  &
+                            &       + QuasiEnergies(jj,P,it)
+                            if(compare.gt. ground(P,it)) then
+                                relE(P,it) = min(relE(P,it), compare)
+                            endif
+                        enddo
+                    enddo
+                    relE(P,it) = relE(P,it) - ground(P,it)
+                 endif
             enddo
         enddo
-        !-----------------------------------------------------------------------
     end select
 
     !---------------------------------------------------------------------------

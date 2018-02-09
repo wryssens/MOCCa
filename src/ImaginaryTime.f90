@@ -80,7 +80,8 @@ contains
     if(Iteration .eq.1) then
         !-----------------------------------------------------------------------
         ! Initialize randomly at the start
-        maxspwf = copywavefunction(HFBasis(1))
+        ! Calculate the maximum energy for a proton, which also have Coulomb.
+        maxspwf = copywavefunction(HFBasis(nwt)) 
         call random_number(maxspwf%value%grid)
         call maxspwf%compnorm()
         maxspwf%value = 1.0/sqrt(maxspwf%norm) * maxspwf%value
@@ -91,7 +92,7 @@ contains
             call maxspwf%compsecondder()
         endif
     endif
-    estiter = 300
+    estiter = 100
     update=NewSpinor()
     update%grid=0.0
 
@@ -283,10 +284,13 @@ contains
     relE = relE/2
     !---------------------------------------------------------------------------
     ! Step four, estimate dt and the momentum. 
-    kappa        = minval(relE)/maxE
-    mom_estimate = ((sqrt(kappa) - 1)/(sqrt(kappa) + 1))**2
-
-    dt_estimate = 4.0/(maxE+minval(relE)+2*sqrt(maxE*minval(relE)))*hbar*0.80
+    do i=1,nwt
+        P  = (HFBasis(i)%parity+3)/2
+        it = (HFBasis(i)%isospin+3)/2        
+        kappa        = relE(P,it)/maxE
+        mom_estimate(i) = ((sqrt(kappa) - 1)/(sqrt(kappa) + 1))**2
+        dt_estimate(i) = 4.0/(maxE+relE(P,it)+2*sqrt(maxE*relE(P,it)))*hbar*0.80
+    enddo
 
     !---------------------------------------------------------------------------
     ! Temporary printing.

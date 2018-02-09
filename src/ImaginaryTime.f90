@@ -80,7 +80,7 @@ contains
     if(Iteration .eq.1) then
         !-----------------------------------------------------------------------
         ! Initialize randomly at the start
-        maxspwf = copywavefunction(HFBasis(1))
+        maxspwf = copywavefunction(HFBasis(nwt))
         call random_number(maxspwf%value%grid)
         call maxspwf%compnorm()
         maxspwf%value = 1.0/sqrt(maxspwf%norm) * maxspwf%value

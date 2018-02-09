@@ -41,6 +41,9 @@ contains
     use force
     
     1 format (a20, 99f10.3)
+    2 format ('-----------------------------------------------------------')
+    3 format (' Warning: maximum value on the mesh could not be estimated.')
+    4 format (' maxE = ', f10.3,  ' convergence =', es10.3)
    
     integer, intent(in) :: iteration
     
@@ -74,7 +77,6 @@ contains
     !---------------------------------------------------------------------------
     ! Step 1: evolve the maxspwf in order to estimate the largest eigenvalue 
     !         on the mesh.
-    estiter = 2
     if(Iteration .eq.1) then
         !-----------------------------------------------------------------------
         ! Initialize randomly at the start
@@ -89,7 +91,7 @@ contains
             call maxspwf%compsecondder()
         endif
     endif
-    estiter = 100
+    estiter = 300
     update=NewSpinor()
     update%grid=0.0
 
@@ -111,19 +113,20 @@ contains
         if(t1n2.ne.0.0_dp .or. t2n2 .ne.0.0_dp) then
             call maxspwf%compsecondder()
         endif
-
         !-----------------------------------------------------------------------
         ! Don't be to picky about convergence, within the order of an MeV is
         ! good enough.
         if(abs(con).lt. 1d-2) exit
     enddo
-    !if(abs(con).gt. 1d-2) then
-    !    call stp('unreliable upper bound on MaxE')
-    !endif
+    if(abs(con).gt. 1d-2) then
+        print 2
+        print 3
+        print 4, maxE, con
+        print 2
+    endif
     !---------------------------------------------------------------------------
     ! Step two: find the next excitation value of the next many-body state.
     select case(PairingType)
-    
     case(0)
         !-----------------------------------------------------------------------
         ! The excitation energy is here simply the energy difference of the first 

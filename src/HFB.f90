@@ -156,11 +156,15 @@ module HFB
   ! (slow and guaranteed) method to solve for the Fermi energy
   character(len=9) :: FermiSolver='Broyden'
   !-----------------------------------------------------------------------------
+  ! Whether or not to enable momentum in the gradient solver.
+  ! HIGHLY EXPERIMENTAL
   logical :: Fermimomentum = .false.
+  !-----------------------------------------------------------------------------
+  ! Size of the change in rho and kappa in the last iteration.
+  real(KIND=dp) :: drho, dkappa
   !-----------------------------------------------------------------------------
   ! Procedure pointer for the diagonalisation of the HFBhamiltonian.
   ! Either with or without signature conservation.
-
   abstract interface
     function LNCr8_interface(Delta, DeltaLN, flag) result(LNLambda)
       import :: dp
@@ -3198,6 +3202,10 @@ subroutine InsertionSortQPEnergies
     KappaHFB = HFBMix * KappaHFB + (1.0_dp - HFBMix) * OldKappaHFB
   endif
   !-----------------------------------------------------------------------------
+  ! Measure convergence
+  drho   = sum( (RhoHFB   - OldRhoHFB  )**2)
+  dkappa = sum( (KappaHFB - OldKappaHFB)**2)
+  !-----------------------------------------------------------------------------
   ! Save old density and anomalous density matrix.
   do it=1,Iindex
     do P=1,Pindex
@@ -4279,6 +4287,48 @@ subroutine PrintBlocking
     enddo
     Dispersion = 2*Dispersion
   end function Dispersion
+
+  subroutine PrintHFBconvergence
+    !----------------------------------------------------------------------------
+    ! Prints out some convergence info on the HFB subproblem.
+    !   a) size of the change in rho, kappa
+    !   b) size of rho*rho - rho + kapppa * kappa^T
+    !   c) size of rho*kappa - kappa * rho
+    ! All of these should be small at convergence.
+    !----------------------------------------------------------------------------
+
+    real(KIND=dp) :: test1(2,2), test2(2,2)
+    real(KIND=dp), allocatable :: A(:,:)
+    integer       :: N,i,j, P,it
+    
+
+    1 format (' HFB convergence info')
+    2 format ('     Change in HFB matrices. dRho    = ',  1es15.8, 'dKappa = ', 1es15.8)
+    3 format ('     rho*rho - rho = - kappa*kappa^T = ',  4es15.8)
+    4 format ('     rho*kappa     =   kappa*rho     = ',  4es15.8)
+
+    print 2, drho, dkappa
+
+    do it=1,2
+        do P=1,2
+            N = blocksizes(P,it)
+            allocate(A(N,N))
+            A = matmul(rhoHFB(1:N,1:N,P,it), rhoHFB(1:N,1:N,P,it)) - rhoHFB(1:N,1:N,P,it)
+            A = A + matmul(kappaHFB(1:N,1:N,P,it), transpose(kappaHFB(1:N,1:N,P,it)))
+
+            test1(P,it) = sum(A**2)
+            
+            A = matmul(rhoHFB(1:N,1:N,P,it), kappaHFB(1:N,1:N,P,it)) 
+            A = A - matmul(kappaHFB(1:N,1:N,P,it),rhoHFB(1:N,1:N,P,it))
+            test2(P,it) = sum(A**2)
+            deallocate(A)
+        enddo
+    enddo
+
+    print 3, test1
+    print 4, test2
+
+  end subroutine PrintHFBconvergence
 
   subroutine diagoncr8 (a,ndim,n,v,d,wd, callrout,ifail)
   !..............................................................................

@@ -529,10 +529,12 @@ contains
 
     select case(PairingType)
       case (0)
+        !-------------------------------------------------------------------
         !Print Configuration counting
         call PrintHFConfiguration
         return
       case (1,2)
+        !-------------------------------------------------------------------
         print 2
         print 3, Fermi
         print 4, sum(Density%Rho(:,:,:,1))*dv, sum(Density%Rho(:,:,:,2))*dv
@@ -546,11 +548,14 @@ contains
         else if(any(LNFIX.ne.0.0_dp)) then
           print 61, LNLambda
         endif
+        !--------------------------------------------------------------------
     end select
-
+    !------------------------------------------------------------------------
     ! Print the number parity of the HFB vacuum
     if(PairingType.eq.2) call PrintNumberParities
 
+    if(PairingType.eq.2) call PrintHFBconvergence
+    !------------------------------------------------------------------------
     print 7
   end subroutine PrintPairing
 

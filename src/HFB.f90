@@ -161,7 +161,7 @@ module HFB
   logical :: Fermimomentum = .false.
   !-----------------------------------------------------------------------------
   ! Size of the change in rho and kappa in the last iteration.
-  real(KIND=dp) :: drho, dkappa
+  real(KIND=dp) :: drho(2,2), dkappa(2,2)
   !-----------------------------------------------------------------------------
   ! Procedure pointer for the diagonalisation of the HFBhamiltonian.
   ! Either with or without signature conservation.
@@ -2410,8 +2410,13 @@ subroutine InsertionSortQPEnergies
   endif
   !-----------------------------------------------------------------------------
   ! Measure convergence
-  drho   = sum( (RhoHFB   - OldRhoHFB  )**2)
-  dkappa = sum( (KappaHFB - OldKappaHFB)**2)
+  do it=1,2
+     do P=1,2   
+        N = blocksizes(P,it)
+        drho  (P,it) = sum( (RhoHFB(1:N,1:N,P,it)   - OldRhoHFB(1:N,1:N,P,it))**2)
+        dkappa(P,it) = sum( (KappaHFB(1:N,1:N,P,it) - OldKappaHFB(1:N, 1:N, P,it))**2)
+     enddo
+  enddo
   !-----------------------------------------------------------------------------
   ! Save old density and anomalous density matrix.
   do it=1,Iindex
@@ -3509,11 +3514,14 @@ subroutine PrintBlocking
     integer       :: N,i,j, P,it
     
 
-    1 format (' HFB convergence info')
-    2 format ('     Change in HFB matrices. dRho    = ',  1es15.8, 'dKappa = ', 1es15.8)
-    3 format ('     rho*rho - rho = - kappa*kappa^T = ',  4es15.8)
-    4 format ('     rho*kappa     =   kappa*rho     = ',  4es15.8)
+    1 format (' HFB convergenceo:   (N,-)   (N,+)    (P,-)    (P,+)')
+    2 format ('  Change  dRho   = ',  4es9.2,/,  &
+       &      '          dKappa = ',  4es9.2)
+    3 format ('  r^2-r+k*k^T    = ',  4es9.2)
+    4 format ('  r*k-k*r        = ',  4es9.2)
 
+    print *
+    print 1
     print 2, drho, dkappa
 
     do it=1,2

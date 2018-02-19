@@ -138,4 +138,60 @@ contains
   
   end function AverageSpinor
   
+  function AverageDensity(r) result(ar)
+    real(KIND=dp)             :: ar(nx,ny,nz,2), r(nx,ny,nz,2), a
+    integer                   :: it, i,j,k
+    
+    !---------------------------------------------------------------------------
+    ! Numerical parameter. Note that this is adjusted semi-empirically. The 
+    ! lower, the faster convergence, but is is bounded from below. The 
+    ! approximation to the exponential should be positive definite.
+    !  See P.G. Reinhardt & Cusson, Nuc. Phys. A A378, 418-442
+    !---------------------------------------------------------------------------
+    a = 0.25_dp
+    
+    do it=1,2
+       do k=1,nz
+        do j=1,ny 
+         do i=2,nx-1
+            ar(i,j,k,it) = (1-2*a)*r(i,j,k,it) + a*r(i+1,j,k,it)        &
+            &                                  + a*r(i-1,j,k,it)
+         enddo
+         ar(1,j,k,it)  = (1-2*a)*r(1,j,k,it) + a*r(2,j,k,it)             &
+         &                                  + a*r(1,j,k,it)
+         ar(nx,j,k,it) = (1-2*a)*r(nx,j,k,it) + a*r(nx-1,j,k,it) 
+        enddo
+       enddo
+       
+       !------------------------------------------------------------------------
+       do k=1,nz
+        do i=1,nx 
+         do j=2,ny-1
+            ar(i,j,k,it) = (1-2*a)*r(i,j,k,it) + a*r(i,j+1,k,it) &
+            &                                  + a*r(i,j-1,k,it)
+         enddo
+         ar(i,1,k,it)  = (1-2*a)*r(i,1,k,it)  + a*r(i,2,k,it)    &
+         &                                    + a*r(i,1,k,it)
+         ar(i,ny,k,it) = (1-2*a)*r(i,ny,k,it) + a*r(i,ny-1,k,it)
+        enddo
+       enddo
+       
+       !------------------------------------------------------------------------
+       do j=1,ny
+        do i=1,nx 
+         do k=2,nz-1
+            ar(i,j,k,it) = (1-2*a)*r(i,j,k,it) + a*r(i,j,k+1,it) &
+            &                                  + a*r(i,j,k-1,it)
+         enddo
+         ar(i,j,1,it)  = (1-2*a)*r(i,j,1,it)  + a*r(i,j,2,it)    &
+         &                                    + a*r(i,j,1,it)
+         ar(i,j,nz,it) = (1-2*a)*r(i,j,nz,it) + a*r(i,j,nz,it)
+        enddo
+       enddo
+       
+    enddo
+
+  end function AverageDensity
+  
+  
 end module Damping

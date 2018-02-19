@@ -16,8 +16,6 @@ module DensityMixing
   use Densities
 
   implicit none
-  
-  real(KIND=dp), allocatable :: DensityMomentum(:,:,:,:)
 
 contains
 
@@ -27,26 +25,29 @@ contains
     ! MixingScheme=
     ! 0) => Linear Mixing with DampingParam as parameter.
     ! 1) => Linear mixing of ONLY rho.
-    ! 2) => Linear mixing of ONLY Laplacian of rho
-    ! 3) => DIIS
-    ! 4) => CDIIS (not yet)
-    ! 5) => CEDIIS (only dim=2 for the moment).
+    ! 2) => Linear mixing of ONLY laplacian of rho and laplacian of S.
+    ! 3) => 
+    ! 4) => DIIS
     !---------------------------------------------------------------------------
+    use Damping
+    
     integer, intent(in) :: Iteration
+    real(KIND=dp), allocatable :: temp(:,:,:,:), last(:,:,:,:)
 
     DensityChange = 1 - Density * DensityHistory(1)/(Density * Density)
     select case(MixingScheme)
       case(0)
-        ! Do linear damping
         !-----------------------------------------------------------------------
         ! This one-liner is more complex than it seems: it mixes ALL of the
-        ! densities. Needlessly, as I've realized now.
+        ! densities. 
         Density = (1-DampingParam) * Density + DampingParam*DensityHistory(1)
       case(1)
+        !-----------------------------------------------------------------------
         ! Only mix rho
         Density%rho = (1-DampingParam)*Density%rho + &
         &                DampingParam *DensityHistory(1)%rho
       case(2)
+        !-----------------------------------------------------------------------
         ! only mix laprho and laps
         Density%laprho = (1-DampingParam)*Density%laprho + &
         &                   DampingParam *DensityHistory(1)%laprho
@@ -55,36 +56,46 @@ contains
             Density%laps = (1-DampingParam)*Density%laps + &
         &                   DampingParam *DensityHistory(1)%laps
         endif
-        
       case(3)
-      
-        if(.not.allocated(DensityMomentum)) then
-            allocate(DensityMomentum(nx,ny,nz,2));
-            DensityMomentum = 0.0
-        endif
-      
-        Density%laprho = (1-DampingParam)*Density%laprho + &
-        &                   DampingParam *DensityHistory(1)%laprho
-        
-        DensityMomentum = 0.3*DensityMomentum + Density%rho - DensityHistory(1)%rho        
-        
-        Density%rho = DensityHistory(1)%rho + DensityMomentum
-        where(Density%rho .lt. 0.0) Density%rho = 0.0
-        
+        !-----------------------------------------------------------------------
+        ! Look for the best density mixing ratio for every density.
+        call AdaptiveMixing(Iteration)
       case(4)
         call DIIS(mod(Iteration,100))
       case(5)
-        call stp('CDIIS not properly implemented yet.')
-      case(6)
-        !Look for the energetically best mixing!
-        !call NaiveCEDIIS(Iteration)
-        call stp('NaiveCDIIS not properly implemented yet.')
+       Density%laprho = DensityHistory(1)%laprho+                             &
+       &(1-DampingParam)*AverageDensity(Density%laprho-DensityHistory(1)%laprho)
+        
+        
       case DEFAULT
         call stp('Mixing scheme not supported!')
     end select
 
   end subroutine MixDensities
 
+  subroutine AdaptiveMixing(iteration)
+    !---------------------------------------------------------------------------
+    !
+    !
+    !---------------------------------------------------------------------------
+    use force
+    use imaginarytime
+    
+    type(DensityVector), save :: rho_last
+    integer             :: i, iteration
+    real(KIND=dp)       :: alpha,L, dold(nx,ny,nz,2), dnew(nx,ny,nz,2)
+    
+    if(iteration.gt.2) then
+        alpha = 1/abs(dt_estimate(1)/hbar * B5*6.0/(dx**2))*0.98
+    else
+        alpha = 0.25
+    endif
+    print *, 'alpha', alpha
+    rho_last       = density
+    density%laprho = DensityHistory(1)%laprho+alpha*(Density%laprho-DensityHistory(1)%laprho)
+
+  end subroutine AdaptiveMixing
+  
   subroutine DIIS(Iteration)
     !---------------------------------------------------------------------------
     ! Simple implementation of the DIIS density mixing scheme.
@@ -150,28 +161,5 @@ contains
     return
   end subroutine DIIS
 
-  subroutine CDIIS
-    !---------------------------------------------------------------------------
-    ! Naïve implementation of CDIIS.
-    !
-    !---------------------------------------------------------------------------
-
-  end subroutine CDIIS
-
-  subroutine CEDIIS
-    !---------------------------------------------------------------------------
-    ! Non-naïve version of CEDIIS, using a Downhill Simplex Method for finding
-    ! the minimum for the density mixing.
-    ! See Numerical Recipes by Press for more info or the wikipedia page
-    ! http://en.wikipedia.org/wiki/Nelder-Mead_method
-    ! for a good step-by-step explanation.
-    !---------------------------------------------------------------------------
-    !use Energy, only : EstimateEnergy
-
-    integer                   :: i
-    !Location of the N-dimensional minimum
-    real(KIND=dp),allocatable :: MinSimplex(:)
-
-  end subroutine CEDIIS
 
 end module DensityMixing

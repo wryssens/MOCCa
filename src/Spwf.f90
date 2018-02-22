@@ -1597,15 +1597,15 @@ contains
   !-----------------------------------------------------------------------------
   ! Hartree-Fock calculations
   !           n   <P>     <Rz>      v^2        E_sp      d2H  
-  1 format (i3,1x,f5.2,1x,f5.2, 1x, f7.4 , 1x, f8.3, 1x, e9.2,1x,9(f6.2))
+  1 format (i3,1x,f5.2,1x,f5.2, 1x, f7.4 , 1x, f8.3, 1x, es9.2,1x,9(f6.2))
   !-----------------------------------------------------------------------------
   ! BCS calculations
   !           n   <P>     <Rz>     v^2    Delta    E_sp      d2H  
-  2 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x, f8.3, 1x,e9.2, 9(f7.2))
+  2 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x, f8.3, 1x,es9.2, 9(f7.2))
   !-----------------------------------------------------------------------------
   ! HFB calculations
   !           n      <P>  <Rz>    RhoII   Delta  Partner E d2H 
-  3 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x, f8.3,1x,e9.2,9f7.3)
+  3 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x, f8.3,1x,es9.2,9f7.3)
 
   class(Spwf), intent(in) :: WF
   integer, intent(in)     :: i

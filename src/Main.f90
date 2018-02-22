@@ -605,20 +605,20 @@ subroutine PrintSummary_v2(Iteration)
   integer      :: i
 
   1 format('----------- Iteration ', i6,'--------------')
-  2 format("Summ.     E=" f10.3, "   dE=",e10.3)
- 21 format("Summ.     R=" f10.3, "   dR=",e10.3)
+  2 format("Summ.     E=" f10.3, "   dE=",es10.3)
+ 21 format("Summ.     R=" f10.3, "   dR=",es10.3)
  22 format("Summ. Fermi=" f10.3, "      ",f10.3) 
   
   3 format("Summ.   Q20=" f10.3, "  Q22=",f10.3)
-  4 format("Summ.  dQ20=" e10.3, " dQ22=",e10.3)
+  4 format("Summ.  dQ20=" es10.3, " dQ22=",es10.3)
  31 format("Summ.   Q10=" f10.3)
- 41 format("Summ.  dQ10=" e10.3)
+ 41 format("Summ.  dQ10=" es10.3)
  32 format("Summ.   Q30=" f10.3, "  Q32=",f10.3)
- 42 format("Summ.  dQ30=" e10.3, " dQ32=",e10.3)
+ 42 format("Summ.  dQ30=" es10.3, " dQ32=",es10.3)
   
   5 format('Summ.    Jz=',f10.3, '  OmZ=',f10.3)
  51 format('Summ.    Jx=',f10.3, '  OmX=',f10.3)
-  6 format('Summ.   dH2=',e10.3)
+  6 format('Summ.   dH2=',es10.3)
   ! Printing energy
   print 1, Iteration
   print 2, TotalEnergy,abs((TotalEnergy - OldEnergy(1))/TotalEnergy)

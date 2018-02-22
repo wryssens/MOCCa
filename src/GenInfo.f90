@@ -68,10 +68,7 @@ module GenInfo
     ! Flag for the treatment of momentum and dt in the iterative process.
     !
     ! 0) dt and momentum take values as specified by the user.
-    ! 1) dt and momentum are optimised automatically for all wavefunctions
-    !    in an average way.
-    ! 2) dt and momentum are optimised automatiically for all wavefunctions
-    !    individually.
+    ! 1) dt and momentum are 
     integer               :: ParameterEstimation = 0
     real(KIND=dp), public :: Momentum            = 0.0_dp
     !---------------------------------------------------------------------------

@@ -512,7 +512,7 @@ subroutine PrintIterationInfo(Iteration, PrintAll)
   if(Iteration.eq.0) then 
     print 2, Iteration
   else
-    print 2, Iteration, sum(dt_estimate)/nwt, sum(mom_estimate)/nwt
+    print 2, Iteration, dt, momentum
   endif
 
   call printSpwf(PairingType, Fermi, PrintAll)

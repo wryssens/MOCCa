@@ -41,6 +41,9 @@ contains
     use force
     
     1 format (a20, 99f10.3)
+    2 format ('-----------------------------------------------------------')
+    3 format (' Warning: maximum value on the mesh could not be estimated.')
+    4 format (' maxE = ', f10.3,  ' convergence =', es10.3)
    
     integer, intent(in) :: iteration
     
@@ -74,12 +77,10 @@ contains
     !---------------------------------------------------------------------------
     ! Step 1: evolve the maxspwf in order to estimate the largest eigenvalue 
     !         on the mesh.
-    estiter = 2
     if(Iteration .eq.1) then
         !-----------------------------------------------------------------------
         ! Initialize randomly at the start
         maxspwf = copywavefunction(HFBasis(nwt))
-
         call random_number(maxspwf%value%grid)
         call maxspwf%compnorm()
         maxspwf%value = 1.0/sqrt(maxspwf%norm) * maxspwf%value
@@ -90,7 +91,7 @@ contains
             call maxspwf%compsecondder()
         endif
     endif
-    estiter = 100
+    estiter = 300
     update=NewSpinor()
     update%grid=0.0
 
@@ -109,54 +110,86 @@ contains
         call maxspwf%compnorm()
         maxspwf%value = 1.0/sqrt(maxspwf%norm) * maxspwf%value
         call maxspwf%compder()
+        if(t1n2.ne.0.0_dp .or. t2n2 .ne.0.0_dp) then
+            call maxspwf%compsecondder()
+        endif
         !-----------------------------------------------------------------------
         ! Don't be to picky about convergence, within the order of an MeV is
         ! good enough.
         if(abs(con).lt. 1d-2) exit
     enddo
+    if(abs(con).gt. 1d-2) then
+        print 2
+        print 3
+        print 4, maxE, con
+        print 2
+    endif
     !---------------------------------------------------------------------------
     ! Step two: find the next excitation value of the next many-body state.
     select case(PairingType)
-    
     case(0)
         !-----------------------------------------------------------------------
         ! The excitation energy is here simply the energy difference of the first 
         ! unoccupied state with the last occupied state.
         !-----------------------------------------------------------------------
-        relE = -10000 
-        do it=1,2
-            do P=1,2
-                do i=1,nwt
-                    if((HFBasis(i)%isospin +3)/2 .ne. it) cycle
-                    if((HFBasis(i)%parity  +3)/2 .ne. P ) cycle
-                    if( HFBasis(i)%occupation    .eq. 0)  cycle
-                    
-                    if(HFBasis(i)%energy .gt. relE(P,it)) then
-                        relE(P,it) = HFBasis(i)%energy
-                        ind(P,it)  = i
-                    endif
-                enddo
-            enddo
-        enddo
-        !-----------------------------------------------------------------------
-        ! Step three, estimate the eigenvalue right above
         relE = 10000
         do it=1,2
-          do P=1,2
-            do i=1,nwt
-                if((HFBasis(i)%isospin +3)/2 .ne. it) cycle
-                if((HFBasis(i)%parity  +3)/2 .ne. P ) cycle
-                if( HFBasis(i)%occupation    .eq. 1)  cycle
-                if(HFBasis(i)%energy - HFBasis(ind(P,it))%energy .le. 0) cycle                 
-
-                if(HFBasis(i)%energy-HFBasis(ind(P,it))%energy.lt.relE(P,it))then            
-                    relE(P,it) = HFBasis(i)%energy - HFBasis(ind(P,it))%energy
-                endif
+            do P=1,2
+                 do i=1,nwt
+                    if(((HFBasis(i)%parity  + 3)/2) .ne. P ) cycle
+                    if(((HFBasis(i)%isospin + 3)/2) .ne. it) cycle
+                    if(abs(HFBasis(i)%occupation)   .lt.0.5) cycle
+                    
+                    do j=1,nwt
+                        if(((HFBasis(j)%parity  + 3)/2) .ne. P ) cycle
+                        if(((HFBasis(j)%isospin + 3)/2) .ne. it) cycle
+                        if(abs(HFBasis(j)%occupation)   .gt.0.5) cycle
+ 
+                        compare = - HFBasis(i)%energy  &
+                        &         + HFBasis(j)%energy
+        
+                        if(compare .gt. 0.1) then
+                          relE(P,it) = min(relE(P,it), compare)
+                        endif
+                     enddo
+                 enddo
             enddo
-          enddo
         enddo
-        !-----------------------------------------------------------------------
-        relE = relE*2
+        relE = 2*relE 
+!        relE = -10000 
+!        do it=1,2
+!            do P=1,2
+!                do i=1,nwt
+!                    if((HFBasis(i)%isospin +3)/2 .ne. it) cycle
+!                    if((HFBasis(i)%parity  +3)/2 .ne. P ) cycle
+!                    if( HFBasis(i)%occupation    .eq. 0)  cycle
+!                    
+!                    if(HFBasis(i)%energy .gt. relE(P,it)) then
+!                        relE(P,it) = HFBasis(i)%energy
+!                        ind(P,it)  = i
+!                    endif
+!                enddo
+!            enddo
+!        enddo
+!        !-----------------------------------------------------------------------
+!        ! Step three, estimate the eigenvalue right above
+!        relE = 10000
+!        do it=1,2
+!          do P=1,2
+!            do i=1,nwt
+!                if((HFBasis(i)%isospin +3)/2 .ne. it) cycle
+!                if((HFBasis(i)%parity  +3)/2 .ne. P ) cycle
+!                if( HFBasis(i)%occupation    .eq. 1)  cycle
+!                if(HFBasis(i)%energy - HFBasis(ind(P,it))%energy .le. 0) cycle                 
+
+!                if(HFBasis(i)%energy-HFBasis(ind(P,it))%energy.lt.relE(P,it))then            
+!                    relE(P,it) = HFBasis(i)%energy - HFBasis(ind(P,it))%energy
+!                endif
+!            enddo
+!          enddo
+!        enddo
+!        !-----------------------------------------------------------------------
+!        relE = relE*2
         !-----------------------------------------------------------------------
     case(1)
         !-----------------------------------------------------------------------
@@ -257,12 +290,12 @@ contains
 
     !---------------------------------------------------------------------------
     ! Temporary printing.
-    print *, '----------------'
-    print *, ' MAXE:' , maxE
-    print *, ' dt   ' , dt_estimate(1)
-    print *, ' mom  ' , mom_estimate(1) 
-    print *, ' ind  ' , ind
-    print *, ' relE ' , relE 
+    !print *, '----------------'
+    !print *, ' MAXE:' , maxE
+    !print *, ' dt   ' , dt_estimate(1)
+    !print *, ' mom  ' , mom_estimate(1) 
+    !print *, ' ind  ' , ind
+    !print *, ' relE ' , relE 
 
   !-----------------------------------------------------------------------------
   end subroutine IterativeEstimation

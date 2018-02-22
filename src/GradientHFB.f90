@@ -713,7 +713,7 @@ contains
           mu   = ((sqrt(kappa) - 1)/(sqrt(kappa) +1))**2
       endif
       
-      print *, iter, step, mu, minqp, maxqp,sum(abs(gradientnorm(:,1)))
+      !print *, iter, step, mu, minqp, maxqp,sum(abs(gradientnorm(:,1)))
 
       !-------------------------------------------------------------------------
       ! Detect convergence or divergence?
@@ -861,7 +861,7 @@ contains
     tempU = U2
     tempV = V2
     
-    if(.not.allocated(diffU)) then
+    if( Fermimomentum .and. (.not.allocated(diffU))) then
         allocate(diffU(N,N), diffV(N,N)) ; diffU = 0 ; diffV = 0
     endif
     !---------------------------------------------------------------------------
@@ -876,8 +876,14 @@ contains
 !        enddo
 !    enddo
 
-    U2(1:N,1:N) = U2(1:N,1:N)-step *matmul(tempV(1:N,1:N),Grad(1:N,1:N)) +mu*diffU(1:N,1:N)
-    V2(1:N,1:N) = V2(1:N,1:N)-step *matmul(tempU(1:N,1:N),Grad(1:N,1:N)) +mu*diffV(1:N,1:N)
+    U2(1:N,1:N) = U2(1:N,1:N)-step *matmul(tempV(1:N,1:N),Grad(1:N,1:N)) !+mu*diffU(1:N,1:N)
+    V2(1:N,1:N) = V2(1:N,1:N)-step *matmul(tempU(1:N,1:N),Grad(1:N,1:N)) !+mu*diffV(1:N,1:N)
+
+    if(FermiMomentum) then
+        U2(1:N,1:N) = U2(1:N,1:N) + mu*diffU(1:N,1:N)
+        V2(1:N,1:N) = V2(1:N,1:N) + mu*diffV(1:N,1:N)
+    endif
+    
     !---------------------------------------------------------------------------
     !Don't forget to orthonormalise
     call ortho(U2,V2,S)
@@ -906,30 +912,39 @@ contains
     tempU = U2
     tempV = V2
     
-    if(.not.allocated(diffU)) then
+    if((.not.allocated(diffU)).and. FermiMomentum) then
         allocate(diffU(N,N), diffV(N,N)) ; diffU = 0 ; diffV = 0
     endif
     !---------------------------------------------------------------------------
     ! Update the current values
     U2(1:N/2  ,1:S)   = U2(1:N/2  ,1:S)                                        &
-    &                 - step * matmul(tempV(1:N/2, S+1:N), Grad(S+1:N,1:S))    &
-    &                 + mu*diffU(1:N/2  ,1:S)
+    &                 - step * matmul(tempV(1:N/2, S+1:N), Grad(S+1:N,1:S))!   &
+    !&                 + mu*diffU(1:N/2  ,1:S)
     U2(1+N/2:N,S+1:N) = U2(1+N/2:N,S+1:N)                                      &
-    &                 - step * matmul(tempV(N/2+1:N, 1:S), Grad(1:S,S+1:N))    &
-    &                 + mu*diffU(1+N/2:N,S+1:N) 
+    &                 - step * matmul(tempV(N/2+1:N, 1:S), Grad(1:S,S+1:N))!   &
+    !&                 + mu*diffU(1+N/2:N,S+1:N) 
     V2(1:N/2  ,S+1:N) = V2(1:N/2  ,S+1:N)                                      &
-    &                 - step * matmul(tempU(1:N/2, 1:S), Grad(1:S,S+1:N))      &
-    &                 + mu*diffV(1:N/2  ,S+1:N) 
+    &                 - step * matmul(tempU(1:N/2, 1:S), Grad(1:S,S+1:N))  !   &
+    !&                 + mu*diffV(1:N/2  ,S+1:N) 
     V2(N/2+1:N ,1:S)  = V2(N/2+1:N ,1:S)                                       &
-    &                 - step * matmul(tempU(N/2+1:N, S+1:N), Grad(S+1:N,1:S))  &
-    &                 + mu*diffV(N/2+1:N ,1:S) 
+    &                 - step * matmul(tempU(N/2+1:N, S+1:N), Grad(S+1:N,1:S))! &
+    !&                 + mu*diffV(N/2+1:N ,1:S) 
+
+    if(Fermimomentum) then
+        U2(1:N/2  ,1:S)   = U2(1:N/2  ,1:S)   + mu * diffU(1:N/2  ,1:S)
+        U2(1+N/2:N,S+1:N) = U2(1+N/2:N,S+1:N) + mu * diffU(1+N/2:N,S+1:N)
+        V2(1:N/2  ,S+1:N) = V2(1:N/2  ,S+1:N) + mu * diffV(1:N/2  ,1:S)
+        V2(N/2+1:N ,1:S)  = V2(N/2+1:N ,1:S)  + mu * diffV(N/2+1:N ,1:S)
+    endif
 
     !---------------------------------------------------------------------------
     !Don't forget to orthonormalise
     call ortho(U2,V2,S)
     
-    diffU = U2 - tempU
-    diffV = V2 - tempV
+    if(Fermimomentum) then
+        diffU = U2 - tempU
+        diffV = V2 - tempV
+    endif
 
   end subroutine GradUpdate_sig
 

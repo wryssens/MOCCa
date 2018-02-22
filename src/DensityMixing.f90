@@ -56,45 +56,40 @@ contains
             Density%laps = (1-DampingParam)*Density%laps + &
         &                   DampingParam *DensityHistory(1)%laps
         endif
-      case(3)
-        !-----------------------------------------------------------------------
-        ! Look for the best density mixing ratio for every density.
-        call AdaptiveMixing(Iteration)
+!      case(3)
+!        !-----------------------------------------------------------------------
+!        ! Look for the best density mixing ratio for every density.
+!        call AdaptiveMixing(Iteration)
       case(4)
         call DIIS(mod(Iteration,100))
-      case(5)
-       Density%laprho = DensityHistory(1)%laprho+                             &
-       &(1-DampingParam)*AverageDensity(Density%laprho-DensityHistory(1)%laprho)
-        
-        
       case DEFAULT
         call stp('Mixing scheme not supported!')
     end select
 
   end subroutine MixDensities
 
-  subroutine AdaptiveMixing(iteration)
-    !---------------------------------------------------------------------------
-    !
-    !
-    !---------------------------------------------------------------------------
-    use force
-    use imaginarytime
-    
-    type(DensityVector), save :: rho_last
-    integer             :: i, iteration
-    real(KIND=dp)       :: alpha,L, dold(nx,ny,nz,2), dnew(nx,ny,nz,2)
-    
-    if(iteration.gt.2) then
-        alpha = 1/abs(dt_estimate(1)/hbar * B5*6.0/(dx**2))*0.98
-    else
-        alpha = 0.25
-    endif
-    print *, 'alpha', alpha
-    rho_last       = density
-    density%laprho = DensityHistory(1)%laprho+alpha*(Density%laprho-DensityHistory(1)%laprho)
+!  subroutine AdaptiveMixing(iteration)
+!    !---------------------------------------------------------------------------
+!    !
+!    !
+!    !---------------------------------------------------------------------------
+!    use force
+!    use imaginarytime
+!    
+!    type(DensityVector), save :: rho_last
+!    integer             :: i, iteration
+!    real(KIND=dp)       :: alpha,L, dold(nx,ny,nz,2), dnew(nx,ny,nz,2)
+!    
+!    if(iteration.gt.2) then
+!        alpha = 1/abs(dt_estimate(1)/hbar * B5*6.0/(dx**2))*0.98
+!    else
+!        alpha = 0.25
+!    endif
+!    print *, 'alpha', alpha
+!    rho_last       = density
+!    density%laprho = DensityHistory(1)%laprho+alpha*(Density%laprho-DensityHistory(1)%laprho)
 
-  end subroutine AdaptiveMixing
+!  end subroutine AdaptiveMixing
   
   subroutine DIIS(Iteration)
     !---------------------------------------------------------------------------

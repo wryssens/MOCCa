@@ -22,17 +22,14 @@ module ImaginaryTime
   !-----------------------------------------------------------------------------
   ! Array that stores the previous update.
   type(Spinor), allocatable :: updates(:)
-  !-----------------------------------------------------------------------------
-  ! Arrays containing the parameters governing the iterative process. 
-  real(KIND=dp), allocatable ::  mom_estimate(:), dt_estimate(:)
   
 contains
 
   subroutine IterativeEstimation(Iteration)
     !---------------------------------------------------------------------------
     ! Estimate optimum parameters 
-    !   a) dt_estimate
-    !   b) mom_estimate
+    !   a) dt
+    !   b) momentum
     ! at every iteration to accelerate convergence. 
     !---------------------------------------------------------------------------
     
@@ -53,28 +50,6 @@ contains
     type(Spinor)        :: actionofh, update
     
     !---------------------------------------------------------------------------
-    ! Initialization
-    if(.not.allocated(mom_estimate)) then
-        allocate(mom_estimate(nwt)) ; mom_estimate = 0 
-        allocate(dt_estimate(nwt)) ;  dt_estimate  = 0
-    endif
-    
-    if(ParameterEstimation .eq. 0) then
-        !-----------------------------------------------------------------------
-        ! Take user-supplied values when not asked to do estimation.
-        dt_estimate  = dt
-        mom_estimate = momentum
-        return
-    endif
-
-    if(Iteration.eq.1) then 
-        !-----------------------------------------------------------------------
-        ! Use starting parameters if this is the first iteration.
-        dt_estimate  = dt
-        mom_estimate = momentum
-    endif
-    
-    !---------------------------------------------------------------------------
     ! Step 1: evolve the maxspwf in order to estimate the largest eigenvalue 
     !         on the mesh.
     if(Iteration .eq.1) then
@@ -91,7 +66,7 @@ contains
             call maxspwf%compsecondder()
         endif
     endif
-    estiter = 300
+    estiter = 500
     update=NewSpinor()
     update%grid=0.0
 
@@ -103,7 +78,7 @@ contains
         con       = con - maxE
         !-----------------------------------------------------------------------
         ! notice the sign, we are maximising instead of minimising.
-        update        = dt_estimate(1)/hbar*(actionofh-maxE*maxspwf%value + mom_estimate(1)*update) 
+        update        = dt*hbar*(actionofh-maxE*maxspwf%value)+momentum*update 
         maxspwf%value = maxspwf%value + update
         !-----------------------------------------------------------------------
         ! Normalize
@@ -129,8 +104,8 @@ contains
     select case(PairingType)
     case(0)
         !-----------------------------------------------------------------------
-        ! The excitation energy is here simply the energy difference of the first 
-        ! unoccupied state with the last occupied state.
+        ! The excitation energy is here simply the energy difference of the 
+        ! first unoccupied state with the last occupied state.
         !-----------------------------------------------------------------------
         relE = 10000
         do it=1,2
@@ -156,41 +131,6 @@ contains
             enddo
         enddo
         relE = 2*relE 
-!        relE = -10000 
-!        do it=1,2
-!            do P=1,2
-!                do i=1,nwt
-!                    if((HFBasis(i)%isospin +3)/2 .ne. it) cycle
-!                    if((HFBasis(i)%parity  +3)/2 .ne. P ) cycle
-!                    if( HFBasis(i)%occupation    .eq. 0)  cycle
-!                    
-!                    if(HFBasis(i)%energy .gt. relE(P,it)) then
-!                        relE(P,it) = HFBasis(i)%energy
-!                        ind(P,it)  = i
-!                    endif
-!                enddo
-!            enddo
-!        enddo
-!        !-----------------------------------------------------------------------
-!        ! Step three, estimate the eigenvalue right above
-!        relE = 10000
-!        do it=1,2
-!          do P=1,2
-!            do i=1,nwt
-!                if((HFBasis(i)%isospin +3)/2 .ne. it) cycle
-!                if((HFBasis(i)%parity  +3)/2 .ne. P ) cycle
-!                if( HFBasis(i)%occupation    .eq. 1)  cycle
-!                if(HFBasis(i)%energy - HFBasis(ind(P,it))%energy .le. 0) cycle                 
-
-!                if(HFBasis(i)%energy-HFBasis(ind(P,it))%energy.lt.relE(P,it))then            
-!                    relE(P,it) = HFBasis(i)%energy - HFBasis(ind(P,it))%energy
-!                endif
-!            enddo
-!          enddo
-!        enddo
-!        !-----------------------------------------------------------------------
-!        relE = relE*2
-        !-----------------------------------------------------------------------
     case(1)
         !-----------------------------------------------------------------------
         ! When doing BCS, the excitation is the lowest available qp energy.
@@ -283,17 +223,16 @@ contains
     relE = relE/2
     !---------------------------------------------------------------------------
     ! Step four, estimate dt and the momentum. 
-    kappa        = minval(relE)/maxE
-    mom_estimate = ((sqrt(kappa) - 1)/(sqrt(kappa) + 1))**2
-
-    dt_estimate = 4.0/(maxE+minval(relE)+2*sqrt(maxE*minval(relE)))*hbar*0.80
+    kappa     = minval(relE)/maxE
+    momentum  = ((sqrt(kappa) - 1)/(sqrt(kappa) + 1))**2
+    dt        = 4.0/(maxE+minval(relE)+2*sqrt(maxE*minval(relE)))*hbar*0.80
 
     !---------------------------------------------------------------------------
     ! Temporary printing.
     !print *, '----------------'
     !print *, ' MAXE:' , maxE
-    !print *, ' dt   ' , dt_estimate(1)
-    !print *, ' mom  ' , mom_estimate(1) 
+    !print *, ' dt   ' , dt
+    !print *, ' mom  ' , momentum
     !print *, ' ind  ' , ind
     !print *, ' relE ' , relE 
 
@@ -618,11 +557,10 @@ contains
             updates(i) = NewSpinor()
         enddo
     endif
-    
     !---------------------------------------------------------------------------
     ! Try to find an appropriate set of parameters (dt, mu), possibly for every
     ! wavefunction. 
-    call IterativeEstimation(iteration)
+    if(ParameterEstimation.eq.1) call IterativeEstimation(iteration)
     
     do i=1,nwt
       Current      = HFBasis(i)%GetValue()
@@ -638,7 +576,7 @@ contains
       endif
       !-------------------------------------------------------------------------
       ! Add a heavy-ball term and save the update for next time
-      ActionOfH = -(dt_estimate(i)/hbar)*ActionofH + mom_estimate(i)*updates(i)
+      ActionOfH = -(dt/hbar)*ActionofH + momentum*updates(i)
       ! Save current value to calculate difference
       updates(i)= current
       !-------------------------------------------------------------------------

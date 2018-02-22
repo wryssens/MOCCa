@@ -259,6 +259,14 @@ implicit none
   real(Kind=dp), public, allocatable :: ConstraintEnergy_J0(:,:,:,:)
   !-----------------------------------------------------------------------------
   !Damping associated with the calculation of <Q_lm>
+  ! Default = 0.0
+  !-----------------------------------------------------------------------------
+  ! Default value from EV8/CR8 = 0.9, i.e. taking only 10% new information. 
+  ! This seems to be kind of overstretching things for no real reason with the
+  ! current implementation. 
+  !
+  ! With alternating constraints, taking the full new information seems to be 
+  ! even beneficial (at least for multipole constraints).  
   !-----------------------------------------------------------------------------
   real(Kind=dp)  :: Damping=0.90_dp
   !-----------------------------------------------------------------------------
@@ -2540,6 +2548,11 @@ subroutine PrintAllMoments()
     6 format (' New Target    = ', f15.6)
     7 format (' Eff. Lambda   = ', f15.6)
 
+   11 format ( '------------------------------------')
+   12 format ( ' Constraint on Q_{ ', 2i2, ' has no ')
+   13 format ( ' intensity parameter.')
+   14 format ( ' Estimated ', 1es12.5)
+   
     select case(ToReadjust%ConstraintType)
 
     case (0)
@@ -2557,7 +2570,6 @@ subroutine PrintAllMoments()
             ToReadjust%Intensity(1) = sqrt(2/sum(O2))
             ReadjustSlowdown        = 2*ToReadjust%Intensity(1)
         endif
-!      
         if(.not.ToReadjust%Total) then
           ToReadjust%Constraint(1) = ToReadjust%Constraint(1)-ReadjustSlowDown*&
           &                 (sum(ToReadjust%Value)-ToReadjust%TrueConstraint(1))
@@ -2600,9 +2612,9 @@ subroutine PrintAllMoments()
         ToReadjust%Intensity = ToReadjust%Intensity +                          &
         & epsilon *  (sum(ToReadjust%Value) - sum(ToReadjust%OldValue(:,1)))/  &
         & (O2(1) + d0)
-        ! sum(ToReadjust%OldValue(:,1))
         write (*, 5), ToReadjust%Intensity
         print *
+      
       else
         O2 = sum(ToReadjust%Squared) * sum(ToReadjust%Value)/sum(CalculateTotalQl(Toreadjust%l))
         Old = CalculateTotalQl(Toreadjust%l,1)
@@ -2634,10 +2646,9 @@ subroutine PrintAllMoments()
      !--------------------------------------------------------------------------
      ! Alternating direction constraints
      select case(ToReadjust%Isoswitch)
+     ! Proton + neutron value
      case(1)
-      !-------------------------------------------------------------------------
-      ! Proton + neutron value
-      if(ToReadjust%Intensity(1) == 0.0) then
+      if(ToReadjust%Intensity(1) .eq. 0.0) then
         !-----------------------------------------------------------------------
         ! Set the intensity if none was there before
         if(.not. present(J0)) then
@@ -2647,14 +2658,24 @@ subroutine PrintAllMoments()
                 O2 = CalculateTotalsquared(ToReadjust%l)
             endif
             ToReadjust%Intensity(1) = (2/sum(O2)) 
+        
+            if(momentum.ne.0.0) then
+                ! It is generally advisable to take less intensive constraints
+                ! with momentum, as overshoots tend to happen and should not
+                ! have quite so dramatic effects.                
+                ToReadjust%Intensity(1) = 0.5 * ToReadjust%Intensity(1)
+            endif
         else
             ToReadjust%Intensity(1) = 0.1
         endif   
-        
-        
-        print *, 'Judged intensity',   ToReadjust%Intensity(1) 
+        ! Letting the user know his constraint parameters have been estimated.
+        print 11 
+        print 12, ToReadjust%l, ToReadjust%m
+        print 13
+        print 14,  ToReadjust%Intensity(1)
+        print 11
       endif
-      
+           
       if(.not.ToReadjust%Total) then
          ToReadjust%Constraint(1) = ToReadjust%Constraint(1)                   &
          & -              (sum(ToReadjust%Value) - ToReadjust%TrueConstraint(1))
@@ -2665,25 +2686,7 @@ subroutine PrintAllMoments()
          ToReadjust%Constraint(1) = ToReadjust%Constraint(1)                   &
          &  - (sum(CalculateTotalQl(Toreadjust%l))-ToReadjust%TrueConstraint(1))
       endif
-     end select
-     
-     case (4)
-      !-------------------------------------------------------------------------
-      ! Preconditioning constraints
-      !-------------------------------------------------------------------------
-      ! Proton + neutron value
-      
-      if(ToReadjust%Intensity(1) == 0.0) then
-        ! Set the intensity if none was there before
-        O2 = ToReadjust%Squared
-        ToReadjust%Intensity(1) = (2/sum(O2))     
-      endif
-     
-      ToReadjust%Constraint(1) = sum(ToReadjust%Value)                        &
-      &         +0.1* sum(ToReadjust%Value)    - sum(ToReadjust%OldValue(:,1))&
-      &         +0.1*(ToReadjust%Constraint(1) - sum(ToReadjust%OldValue(:,1)))
-       
-      ToReadjust%TrueConstraint = ToReadjust%Constraint(1)
+      end select     
      end select
     return
   end subroutine Readjust
@@ -3046,6 +3049,11 @@ subroutine PrintAllMoments()
       Mom%Intensity      = Intensity(1)
       Mom%TrueConstraint = TrueConstraint(1)
     end select
+    
+    
+    Mom%Multiplier=2*Mom%Intensity(1)*(sum(Mom%Value)     - Mom%Constraint(1))
+    print *,'read', Mom%l, mom%m, mom%constraint, mom%trueconstraint, mom%intensity, mom%multiplier
+    
   end subroutine ReadMoment
 
   function CheckForRutzMoments() result(Check)

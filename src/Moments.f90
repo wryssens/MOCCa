@@ -268,7 +268,7 @@ implicit none
   ! With alternating constraints, taking the full new information seems to be 
   ! even beneficial (at least for multipole constraints).  
   !-----------------------------------------------------------------------------
-  real(Kind=dp)  :: Damping=0.90_dp
+  real(Kind=dp)  :: Damping=0.00_dp
   !-----------------------------------------------------------------------------
   !Damping associated with the readjustment of quadratic constraints
   !-----------------------------------------------------------------------------

@@ -44,9 +44,8 @@ contains
    
     integer, intent(in) :: iteration
     
-    integer             :: iter, estiter, i,j,it,P,S, ind(2,2), N,ii,jj
-    real(KIND=dp)       :: timestep, mu, maxE, E, con
-    real(KIND=dp)       :: kappa, minE, relE(2,2), compare, ground(2,2)
+    integer             :: iter, estiter, i,ii,it,N,P,j,jj
+    real(KIND=dp)       :: maxE, minE, E, con, kappa, minh, relE, compare
     type(Spinor)        :: actionofh, update
     
     !---------------------------------------------------------------------------
@@ -101,141 +100,98 @@ contains
     endif
     !---------------------------------------------------------------------------
     ! Step two: find the next excitation value of the next many-body state.
+    relE=10000
+            
     select case(PairingType)
-    case(0)
-        !-----------------------------------------------------------------------
-        ! The excitation energy is here simply the energy difference of the 
-        ! first unoccupied state with the last occupied state.
-        !-----------------------------------------------------------------------
-        relE = 10000
-        do it=1,2
-            do P=1,2
-                 do i=1,nwt
-                    if(((HFBasis(i)%parity  + 3)/2) .ne. P ) cycle
-                    if(((HFBasis(i)%isospin + 3)/2) .ne. it) cycle
-                    if(abs(HFBasis(i)%occupation)   .lt.0.5) cycle
+        case(0)
+            !-------------------------------------------------------------------
+            ! Hartree-Fock
+            do i=1,nwt
+                
+                if(abs(HFBasis(i)%occupation)   .lt.0.5) cycle
+                do ii=1,nwt
+                    if(abs(HFBasis(ii)%occupation)   .gt.0.5) cycle
                     
-                    do j=1,nwt
-                        if(((HFBasis(j)%parity  + 3)/2) .ne. P ) cycle
-                        if(((HFBasis(j)%isospin + 3)/2) .ne. it) cycle
-                        if(abs(HFBasis(j)%occupation)   .gt.0.5) cycle
- 
-                        compare = - HFBasis(i)%energy  &
-                        &         + HFBasis(j)%energy
-        
-                        if(compare .gt. 0.1) then
-                          relE(P,it) = min(relE(P,it), compare)
-                        endif
-                     enddo
-                 enddo
+                    if(HFBasis(ii)%isospin.ne.HFBasis(i)%isospin) cycle
+     
+                    compare = - HFBasis(i)%energy  &
+                    &         + HFBasis(ii)%energy
+                    relE = min(relE, compare)
+                enddo
             enddo
-        enddo
-        relE = 2*relE 
-    case(1)
-        !-----------------------------------------------------------------------
-        ! When doing BCS, the excitation is the lowest available qp energy.
-        relE = 10000
-        do it=1,2
-            do P=1,2
-                 do i=1,nwt
-                    if(((HFBasis(i)%parity  + 3)/2) .ne. P ) cycle
-                    if(((HFBasis(i)%isospin + 3)/2) .ne. it) cycle
-                    
-                    do j=1,nwt
-                        if(((HFBasis(j)%parity  + 3)/2) .ne. P ) cycle
-                        if(((HFBasis(j)%isospin + 3)/2) .ne. it) cycle
-                        
-                        compare = HFBasis(i)%eqp  &
-                        &       + HFBasis(j)%eqp
-
-                        relE(P,it) = min(relE(P,it), compare)
-                    enddo
-                 enddo
-            enddo
-        enddo
-        !-----------------------------------------------------------------------
-    case(2)
-        !-----------------------------------------------------------------------
-        ! When doing HFB, there are some nasty pitfalls that can happen.
-        ! 
-        ! The configuration at this particular iteration need not be the lowest
-        ! in this particular symmetry block.
-        !   a) we are doing cr8-like blocking for the non-lowest qp
-        !   b) the HFB solver has not yet found the lowest qp
-        !   c) probably other things can happen on the way to convergence
-        !
-        ! For this reason, the minimum two-qp excitation within the symmetry
-        ! block need not be positive! In that case we are not in the ground 
-        ! state and need to figure out which one is 
-        ! a) the ground state
-        ! b) the first excited state 
-        !    (since our configuration can be even higher)
-        !-----------------------------------------------------------------------
-        
-        relE = 100000
-        do it=1,Iindex
-            do P=1,Pindex
+        case(1)
+            !-------------------------------------------------------------------
+            ! BCS pairing 
+            do i=1,nwt
+                if(HFBasis(i)%eqp .lt. relE) relE = HFBasis(i)%eqp
+            enddo   
+        case(2)
+            !-------------------------------------------------------------------
+            ! HFB pairing
+            !-------------------------------------------------------------------
+            ! Minimum over one-qp excitations
+            do it=1,Iindex
+               do P=1,Pindex
                  N = blocksizes(P,it)
-                 !--------------------------------------------------------------
-                 ! Step one: find the minimum sum of two qps
                  do i=1,N
                     ii = HFBcolumns(i,P,it)
-                    do j=1,N
-                        jj = HFBcolumns(j,P,it)
-                        
-                        compare = QuasiEnergies(ii,P,it)  &
-                        &       + QuasiEnergies(jj,P,it)
-                        relE(P,it) = min(relE(P,it), compare)
-                    enddo
+                    relE = min(relE, abs(QuasiEnergies(ii,P,it)))
                  enddo
-                 !--------------------------------------------------------------
-                 ! Step two: if the minimum energy is negative, we are not in 
-                 ! the ground state currently.
-                 !--------------------------------------------------------------
-                 if(relE(P,it).lt.0) then
-                    ! This is the new reference
-                    ground(P,it) = relE(P,it)
-                    
-                    relE(P,it) = 10000                    
-                    ! Find the next state
-                    do i=1,N
-                        ii = HFBcolumns(i,P,it)
-                        do j=1,N
-                            jj = HFBcolumns(j,P,it)
-
-                            compare = QuasiEnergies(ii,P,it)  &
-                            &       + QuasiEnergies(jj,P,it)
-                            if(compare.gt. ground(P,it)) then
-                                relE(P,it) = min(relE(P,it), compare)
-                            endif
-                        enddo
-                    enddo
-                    relE(P,it) = relE(P,it) - ground(P,it)
-                 endif
+               enddo
             enddo
-        enddo
+            !-------------------------------------------------------------------
+            ! Minimum over two-qp excitations
+            if(.not. TRC) then
+                do it=1,Iindex
+                   do P=1,Pindex
+                     N = blocksizes(P,it)
+                     do i=1,N
+                        do j=1,N
+                            ii = HFBcolumns(i,P,it)
+                            jj = HFBcolumns(j,P,it)
+                            if(i.eq.j) cycle
+                            compare = QuasiEnergies(ii,P,it) +                 &
+                            &         QuasiEnergies(jj,P,it) 
+                            relE = min(relE, (compare))
+                        enddo
+                     enddo
+                   enddo
+                enddo            
+            endif
+            relE = abs(relE)
+            !-------------------------------------------------------------------
     end select
-
     !---------------------------------------------------------------------------
-    ! Have a failsafe for accidental degeneracies
-    !where(relE .lt. 0.1) relE = 1
-    maxE = maxE - HFBasis(1)%energy
-    relE = relE/2
-    !---------------------------------------------------------------------------
-    ! Step four, estimate dt and the momentum. 
-    kappa     = minval(relE)/maxE
-    momentum  = ((sqrt(kappa) - 1)/(sqrt(kappa) + 1))**2
-    dt        = 4.0/(maxE+minval(relE)+2*sqrt(maxE*minval(relE)))*hbar*0.80
-
+    
     !---------------------------------------------------------------------------
     ! Temporary printing.
-    !print *, '----------------'
-    !print *, ' MAXE:' , maxE
-    !print *, ' dt   ' , dt
-    !print *, ' mom  ' , momentum
-    !print *, ' ind  ' , ind
-    !print *, ' relE ' , relE 
-
+    print *, '----------------'
+    print *, ' MAXE:' , maxE
+    print *, ' relE ' , relE 
+    print *, ' kappa', kappa
+    print *, ' dt   ' , dt
+    print *, ' mom  ' , momentum
+    
+!    if(relE .lt. 0.1) relE = 0.1
+    
+    !---------------------------------------------------------------------------
+    ! Step three, find the highest eigenvalue. 
+    ! The maximum energy eigenvalue of the quadratic we are minimizing is:
+    !  E_{max possible} - E_{min currently estimated} 
+    minh = 10000
+    do i=1,nwt
+        if(HFBasis(i)%energy.lt. minh) then
+            minh = HFBasis(i)%energy 
+        endif
+    enddo
+    maxE = maxE - minh
+    
+    !---------------------------------------------------------------------------
+    ! Step four, estimate dt and the momentum. 
+    kappa     = relE/maxE
+    momentum  = ((sqrt(kappa) - 1)/(sqrt(kappa) + 1))**2
+    dt        = 4.0/(maxE+relE+2*sqrt(maxE*relE))*hbar*0.95
+    
   !-----------------------------------------------------------------------------
   end subroutine IterativeEstimation
 
@@ -664,3 +620,138 @@ contains
   end subroutine Nesterov
 
 end module Imaginarytime
+
+!-------------------------------------------------------------------------------
+! CODE ZOO
+!
+!
+!-------------------------------------------------------------------------------
+
+!    case(0)
+!        !-----------------------------------------------------------------------
+!        ! The excitation energy is here simply the energy difference of the 
+!        ! first unoccupied state with the last occupied state.
+!        !-----------------------------------------------------------------------
+!        relE = 10000
+!        do it=1,2
+!            do P=1,2
+!                 do i=1,nwt
+!                    if(((HFBasis(i)%parity  + 3)/2) .ne. P ) cycle
+!                    if(((HFBasis(i)%isospin + 3)/2) .ne. it) cycle
+!                    if(abs(HFBasis(i)%occupation)   .lt.0.5) cycle
+!                    
+!                    do j=1,nwt
+!                        if(((HFBasis(j)%parity  + 3)/2) .ne. P ) cycle
+!                        if(((HFBasis(j)%isospin + 3)/2) .ne. it) cycle
+!                        if(abs(HFBasis(j)%occupation)   .gt.0.5) cycle
+! 
+!                        compare = - HFBasis(i)%energy  &
+!                        &         + HFBasis(j)%energy
+!        
+!                        if(compare .gt. 0.1) then
+!                          relE(P,it) = min(relE(P,it), compare)
+!                        endif
+!                     enddo
+!                 enddo
+!            enddo
+!        enddo
+!        relE = 2*relE 
+!    case(1)
+!        !-----------------------------------------------------------------------
+!        ! When doing BCS, the excitation is the lowest available qp energy.
+!        relE = 10000
+!        do it=1,2
+!            do P=1,2
+!                 do i=1,nwt
+!                    if(((HFBasis(i)%parity  + 3)/2) .ne. P ) cycle
+!                    if(((HFBasis(i)%isospin + 3)/2) .ne. it) cycle
+!                    
+!                    do j=1,nwt
+!                        if(((HFBasis(j)%parity  + 3)/2) .ne. P ) cycle
+!                        if(((HFBasis(j)%isospin + 3)/2) .ne. it) cycle
+!                        
+!                        compare = HFBasis(i)%eqp  &
+!                        &       + HFBasis(j)%eqp
+
+!                        relE(P,it) = min(relE(P,it), compare)
+!                    enddo
+!                 enddo
+!            enddo
+!        enddo
+!        !-----------------------------------------------------------------------
+!    case(2)
+!        !-----------------------------------------------------------------------
+!        ! When doing HFB, there are some nasty pitfalls that can happen.
+!        ! 
+!        ! The configuration at this particular iteration need not be the lowest
+!        ! in this particular symmetry block.
+!        !   a) we are doing cr8-like blocking for the non-lowest qp
+!        !   b) the HFB solver has not yet found the lowest qp
+!        !   c) probably other things can happen on the way to convergence
+!        !
+!        ! For this reason, the minimum two-qp excitation within the symmetry
+!        ! block need not be positive! In that case we are not in the ground 
+!        ! state and need to figure out which one is 
+!        ! a) the ground state
+!        ! b) the first excited state 
+!        !    (since our configuration can be even higher)
+!        !-----------------------------------------------------------------------
+!        
+!        relE = 100000
+!        do it=1,Iindex
+!            do P=1,Pindex
+!                 N = blocksizes(P,it)
+!                 !--------------------------------------------------------------
+!                 ! Step one: find the minimum sum of two qps
+!                 do i=1,N
+!                    ii = HFBcolumns(i,P,it)
+!                    do j=1,N
+!                        jj = HFBcolumns(j,P,it)
+!                        
+!                        if(.not.TRC) then
+!                            if(i.eq.j) cycle
+!                        endif
+!                        
+!                        compare = QuasiEnergies(ii,P,it)  &
+!                        &       + QuasiEnergies(jj,P,it)
+!                        relE(P,it) = min(relE(P,it), compare)
+!                    enddo
+!                 enddo
+!                 !--------------------------------------------------------------
+!                 ! Step two: if the minimum energy is negative, 
+!                 ! we are not currently in the ground state.
+!                 !
+!                 ! This means we are in a one-qp excitation that is not the 
+!                 ! lowest one. 
+!                 !
+!                 !--------------------------------------------------------------
+!                 if(relE(P,it).lt.0) then
+!!                    ! This is the new reference
+!!                    ground(P,it) = relE(P,it)
+!!                    
+!!                    relE(P,it) = 10000                    
+!!                    ! Find the next state
+!!                    do i=1,N
+!!                        ii = HFBcolumns(i,P,it)
+!!                        do j=1,N
+!!                            jj = HFBcolumns(j,P,it)
+!!        
+!!                            if(.not.TRC) then
+!!                                if(i.eq.j) cycle
+!!                            endif
+
+!!                            compare = QuasiEnergies(ii,P,it)  &
+!!                            &       + QuasiEnergies(jj,P,it)
+!!                            if(compare.gt. ground(P,it)) then
+!!                                relE(P,it) = min(relE(P,it), compare)
+!!                            endif
+!!                        enddo
+!!                    enddo
+!!                    relE(P,it) = relE(P,it) - ground(P,it)
+!                     relE(P,it) = abs(relE(P,it))
+!                 endif
+!            enddo
+!        enddo
+!    end select
+
+!

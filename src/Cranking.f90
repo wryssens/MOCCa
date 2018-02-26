@@ -206,11 +206,16 @@ contains
           Omega(i) = Omega(i) -                                                &                                     
           &               2*CrankIntensity(i)*(TotalAngMom(i) - CrankValues(i))
         case(3)
-          if(Rutz) cycle
-          
-          if(Jtotal.eq.0.0_dp) then
-            Omega(i) = Omega(i) - 2/J2Total(i)*(TotalAngMom(i) - CrankValues(i))
+          if(.not. Rutz) cycle
+          !---------------------------------------------------------------------
+          ! Judge the intensity of the cranking constraints.           
+          if(CrankIntensity(i) .eq. 0.0_dp) then
+            CrankIntensity(i) = 2/J2Total(i)
           endif
+          if(Jtotal.eq.0.0_dp) then
+            Omega(i) = Omega(i) - CrankIntensity(i)*(TotalAngMom(i) - CrankValues(i))
+          endif
+
         end select
     enddo
     

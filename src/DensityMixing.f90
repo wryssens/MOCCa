@@ -71,6 +71,11 @@ contains
         
         Density%laprho(:,:,:,1) = Laplacian(Density%rho(:,:,:,1),1,1,1,1)
         Density%laprho(:,:,:,2) = Laplacian(Density%rho(:,:,:,2),1,1,1,1)
+        
+        if((t1n2.ne.0.0_dp) .or. (t2n2.ne.0.0_dp)) then
+            Density%laplaprho(:,:,:,1) = Laplacian(Density%laprho(:,:,:,1),1,1,1,1)
+            Density%laplaprho(:,:,:,2) = Laplacian(Density%laprho(:,:,:,2),1,1,1,1)
+        endif
         !-----------------------------------------------------------------------
       case(4)
         call DIIS(mod(Iteration,100))

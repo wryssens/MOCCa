@@ -1366,18 +1366,6 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
     enddo
   enddo
 
-!  do it=1,iindex
-!    do p=1,pindex
-!      n = blocksizes(p,it)
-!      print *
-!      do i=1,2*n
-!            print *, real(hfbhamil(i,1:2*n,p,it)) 
-!      enddo
-!      print *
-!    enddo
-!  enddo
-!  stop
-
   if(all(HFBHamil.eq.0.0_dp)) call stp('HFBHamiltonian completely zero!')
   end subroutine ConstructHFBHamiltonian
 
@@ -2410,13 +2398,13 @@ subroutine InsertionSortQPEnergies
   endif
   !-----------------------------------------------------------------------------
   ! Measure convergence
-  do it=1,2
-     do P=1,2   
-        N = blocksizes(P,it)
-        drho  (P,it) = sum( (RhoHFB(1:N,1:N,P,it)   - OldRhoHFB(1:N,1:N,P,it))**2)
-        dkappa(P,it) = sum( (KappaHFB(1:N,1:N,P,it) - OldKappaHFB(1:N, 1:N, P,it))**2)
-     enddo
-  enddo
+!  do it=1,2
+!     do P=1,2   
+!        N = blocksizes(P,it)
+!        drho  (P,it) = sum( (RhoHFB(1:N,1:N,P,it)   - OldRhoHFB(1:N,1:N,P,it))**2)
+!        dkappa(P,it) = sum( (KappaHFB(1:N,1:N,P,it) - OldKappaHFB(1:N, 1:N, P,it))**2)
+!     enddo
+!  enddo
   !-----------------------------------------------------------------------------
   ! Save old density and anomalous density matrix.
   do it=1,Iindex
@@ -3524,8 +3512,8 @@ subroutine PrintBlocking
     print 1
     print 2, drho, dkappa
 
-    do it=1,2
-        do P=1,2
+    do it=1,Iindex
+        do P=1,Pindex
             N = blocksizes(P,it)
             allocate(A(N,N))
             A = matmul(rhoHFB(1:N,1:N,P,it), rhoHFB(1:N,1:N,P,it)) - rhoHFB(1:N,1:N,P,it)

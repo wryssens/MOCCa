@@ -412,6 +412,7 @@ contains
         if(Current%ConstraintType.eq.0) cycle
     endif
     
+   
     select case(Current%Isoswitch)
     case(1)
         !-----------------------------------------------------------------------
@@ -422,6 +423,7 @@ contains
         Targ  = Current%Constraint(1)                   ! Current targeted value
         Des   = Current%TrueConstraint(1)               ! Desired final value
         
+        update = 0.0
         !-----------------------------------------------------------------------
         !Calculate the update
         if(.not. Current%total) then
@@ -441,6 +443,7 @@ contains
         endif
         
         multipole = multipole + Update
+        
     case DEFAULT
         call stp('Alternating constraints do not recognize this type of constraint.')
     end select
@@ -456,7 +459,8 @@ contains
              else
                 if(CrankType(i).eq.0) cycle
              endif
-             CrankFactor(i) = 0.5*(TotalAngMom(i)-CrankValues(i))/(J2Total(i)+d0)
+             
+             CrankFactor(i)= 0.5*(TotalAngMom(i)-CrankValues(i))/(J2Total(i)+d0)
          enddo
      else
         ! Constraints on total J

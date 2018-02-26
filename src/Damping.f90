@@ -108,17 +108,35 @@ contains
     real*8 :: drho(nx,ny,nz,2), residual(nx,ny,nz), update(nx,ny,nz), alpha
     real*8 :: invrho(nx,ny,nz,2), direction(nx,ny,nz), beta, rho(nx,ny,nz,2)
     real*8 :: newresnorm, oldresnorm
-    integer:: it, iter
+    integer:: it, iter, p, s, ts
     	  
-    amix =  preconfac !(dt/hbar)*(abs(B5))*preconfac
-    
+    amix =  preconfac
+    !---------------------------------------------------------------------------
+    ! Symmetries of the problem
+    !---------------------------------------------------------------------------
+    if(PC) then
+        p = 1
+    else
+        p = 0
+    endif
+    if(TSC) then
+        ts = 1
+    else
+        ts = 0
+    endif
+    if(SC) then
+        s = 1
+    else
+        s = 0
+    endif
+    !---------------------------------------------------------------------------
     do it=1,2
           invrho(:,:,:,it) = 0.0
           Residual         = drho(:,:,:,it)
           Direction        = Residual
           newresnorm       = sum(direction**2)*dv
           do iter=1,100
-              update   = Direction - amix*Laplacian(Direction, +1,+1,+1,+1)
+              update   = Direction - amix*Laplacian(Direction, p,s,ts,+1)
               
               alpha  = NewResNorm/(sum(Direction*update)*dv)
               
@@ -134,8 +152,9 @@ contains
               if(newresnorm.lt.1d-9) exit
           enddo
     enddo
+    !---------------------------------------------------------------------------
     print *, 'Preconditioning'
-    print *, amix
+    print *, amix, p
     print *, 'iter in inver', iter
     print *
   end function InverseRho

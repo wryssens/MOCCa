@@ -273,12 +273,14 @@ subroutine Evolve(MaxIterations, iprint)
   do while((Iteration.lt.MaxIterations))
     !Incrementing the iteration number
     Iteration = Iteration + 1
+    !---------------------------------------------------------------------------
     ! Calculate all the different potentials to construct the single particle
     ! hamiltonian h and then substitute every spwf |\Psi> by 1 - dt/hbar*h|\Psi>
     ! or more complicated algorithms in general.
     ! Note that the orthogonalisation is managed by this routine too.
     call EvolveSpwf(Iteration)
 
+    !---------------------------------------------------------------------------
     !Pairing.
     call SolvePairing
     !---------------------------------------------------------------------------
@@ -291,10 +293,11 @@ subroutine Evolve(MaxIterations, iprint)
     ! prescription, there needs to be a correction step, dependent on the
     ! density or angular moment obtained in  the meantime.
     if(RutzCheck .or. AlternateCheck) then
-      call UpdateDensities(0,.true.)
+      ! Save the value used to construct the mean-fields to DensityHistory
+      call UpdateDensities(0,.true.) 
       call CalculateAllMoments(1) ! Save old values to history
       call ReadjustAllMoments(2)  ! Only readjust Rutz-style moments
-      call ReadjustAllMoments(3)
+      call ReadjustAllMoments(3)  ! Only readjust alternating
     endif
     if(RutzCrank .or. AlternateCrank) then
         !Deriving all Spwf
@@ -347,10 +350,18 @@ subroutine Evolve(MaxIterations, iprint)
     !Print a summary
     if(mod(Iteration, PrintIter).ne.0) call PrintSummary(Iteration)
 
-    !Computing the densities, without smoothing.
-    call UpdateDensities(0)
-
-    !Smooth the densities!
+    !Computing the densities.
+    if(AlternateCheck .or. RutzCheck) then
+        ! If we did an intermediate step, don't use the current values in 
+        ! Density as history.
+        call UpdateDensities(1)
+    else
+        ! If we did not do an intermediate step, these are still fine.
+        call UpdateDensities(0)
+    endif
+    
+    !Smooth the densities using the difference between this and the previous
+    ! iteration
     call MixDensities(Iteration)
 
     !See if some moments were temporary
@@ -361,7 +372,6 @@ subroutine Evolve(MaxIterations, iprint)
 
     !Readjust the constraints
     call ReadjustAllMoments(1)
-    call ReadjustAllMoments(4)
     
     call ReadjustCranking(.false.)
 
@@ -440,7 +450,7 @@ logical function ConvergenceCheck() result(Converged)
   Converged = Converged .and. ConverCranking(CrankPrec)
 
   if(TotalEnergy.ge.0.0_dp) then
-    call PrintEnergy
+    call PrintIterationInfo(-1, .true.)
     call stp('Positive total energy!', 'Total Energy', TotalEnergy)
   endif
   return

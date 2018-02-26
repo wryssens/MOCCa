@@ -10,7 +10,7 @@ module Damping
   !---------------------------------------------------------------------------
   ! Effective density mixing factor, for pringting purposes.
   real(KIND=dp)              :: amix
-  real(KIND=dp)              :: preconfac = 1
+  real(KIND=dp)              :: preconfac = 0.15
   !---------------------------------------------------------------------------
   ! Auxiliary arrays. 
   real(KIND=dp), allocatable :: ExpLapCoefX(:,:), ExpLapCoefY(:,:)
@@ -110,7 +110,7 @@ contains
     real*8 :: newresnorm, oldresnorm
     integer:: it, iter
     	  
-    amix =  (dt/hbar)*(abs(B5))*preconfac
+    amix =  preconfac !(dt/hbar)*(abs(B5))*preconfac
     
     do it=1,2
           invrho(:,:,:,it) = 0.0

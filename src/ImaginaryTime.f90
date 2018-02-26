@@ -191,7 +191,7 @@ contains
     ! Step four, estimate dt and the momentum. 
     kappa     = relE/maxE
     momentum  = ((sqrt(kappa) - 1)/(sqrt(kappa) + 1))**2
-    dt        = 4.0/(maxE+relE+2*sqrt(maxE*relE))*hbar*0.95
+    dt        = 4.0/(maxE+relE+2*sqrt(maxE*relE))*hbar*0.90
     
   !-----------------------------------------------------------------------------
   end subroutine IterativeEstimation

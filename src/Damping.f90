@@ -6,11 +6,16 @@ module Damping
   use Spinors
   
   implicit none
-  
+ 
+  !---------------------------------------------------------------------------
+  ! Effective density mixing factor, for pringting purposes.
+  real(KIND=dp)              :: amix
+  real(KIND=dp)              :: preconfac 
+  !---------------------------------------------------------------------------
+  ! Auxiliary arrays. 
   real(KIND=dp), allocatable :: ExpLapCoefX(:,:), ExpLapCoefY(:,:)
   real(KIND=dp), allocatable :: ExpLapCoefZ(:,:)
   real(KIND=dp)              :: ExpLapDiag(3,2)
- 
   integer                    :: IterationCount=0
     
 contains
@@ -62,14 +67,6 @@ contains
     ! Calculating the update
     Update = LapSpinor(Direction,P,S,TS)                                       &
     &      +(E )/(-hbm(it)/(2.0_dp))*Direction
-    !Update = (Bpot(:,:,:,it)/(hbm(it)/(2.0_dp))) * LapSpinor(Direction,P,S,TS) &
-    !  &      -(E )/(hbm(it)/(2.0_dp))*Direction
-
-!      Der = DeriveSpinor(Direction,P,S,TS)
-!      do m=1,3
-!        Update = Update + NablaBPot(:,:,:,m,it)/(hbm(it)/(2.0_dp))*Der(m)
-!      enddo
-
 
     alpha  = NewResNorm/(InproductSpinorReal(Direction, Update))
     !---------------------------------------------------------------------------
@@ -97,6 +94,52 @@ contains
   call AssignFDCoefs(MaxFDOrder, MaxFDLapOrder, CoulombLapOrder)
   
   end function InverseKinetic
+  
+  !-----------------------------------------------------------------------------
+  function InverseRho(drho) result(invrho)
+    !---------------------------------------------------------------------------
+    ! Precondition the difference in densities, in order to penalize the 
+    ! highly oscillatory components.
+    !
+    !
+    !---------------------------------------------------------------------------
+    use Derivatives
+
+    real*8 :: drho(nx,ny,nz,2), residual(nx,ny,nz), update(nx,ny,nz), alpha
+    real*8 :: invrho(nx,ny,nz,2), direction(nx,ny,nz), beta, rho(nx,ny,nz,2)
+    real*8 :: newresnorm, oldresnorm
+    integer:: it, iter
+    	  
+    amix =  (dt/hbar)*(abs(B5))*preconfac
+    
+    do it=1,2
+          invrho(:,:,:,it) = 0.0
+          Residual         = drho(:,:,:,it)
+          Direction        = Residual
+          newresnorm       = sum(direction**2)*dv
+          do iter=1,100
+              update   = Direction - amix*Laplacian(Direction, +1,+1,+1,+1)
+              
+              alpha  = NewResNorm/(sum(Direction*update)*dv)
+              
+              invrho(:,:,:,it) = invrho(:,:,:,it) + alpha * Direction
+              residual         = residual         - alpha * update
+              
+              oldresnorm = newresnorm
+              newresnorm = sum(residual**2)*dv
+              
+              Beta       = NewResNorm/OldResNorm
+              Direction  = Residual + beta * Direction
+
+              if(newresnorm.lt.1d-9) exit
+          enddo
+    enddo
+    print *, 'Preconditioning'
+    print *, amix
+    print *, 'iter in inver', iter
+    print *
+  end function InverseRho
+  !-----------------------------------------------------------------------------
   
   function AverageSpinor(Psi, P,S, TS, I) result(Phi)
     !---------------------------------------------------------------------------

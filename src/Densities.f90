@@ -12,7 +12,7 @@ module Densities
   implicit none
 
   !---------------------------------------------------------------------------
-  ! Damping parameter: only used when not doing Pulay or Broyden
+  ! Damping parameter: parameter for linear damping of the densities.
   real(KIND=dp), save :: DampingParam=0.75_dp
   !---------------------------------------------------------------------------
   ! Change of the density at each iteration, integrated and divided by
@@ -23,7 +23,7 @@ module Densities
   real(KIND=dp),  allocatable :: RhoIn(:), RhoOut(:)
   !-----------------------------------------------------------------------------
   ! Density mixing scheme info: order etc.
-  integer                          :: PulayOrder=0, MixingScheme=0
+  integer  :: PulayOrder=0, MixingScheme=0
   !-----------------------------------------------------------------------------
   ! Flag to determine whether MOCCa calculates the densities at iteration 0
   ! or not.
@@ -368,8 +368,9 @@ contains
     !---------------------------------------------------------------------------
     !Reading the relevant info from input.
     !---------------------------------------------------------------------------
+    use Damping
 
-    NameList /densit/ DampingParam, PulayOrder, MixingScheme, Recalc
+    NameList /densit/ DampingParam, PulayOrder, MixingScheme, Recalc, PreconFac
 
     read(unit=*, NML=densit)
     if(MixingScheme.ge.5 .and. PulayOrder.lt.1) then

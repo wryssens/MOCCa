@@ -397,6 +397,7 @@ contains
     use SpwfStorage, only: nwt
     use Derivatives, only: MaxFDOrder, MaxFDLapOrder
     use Densities, only  : DampingParam, PulayOrder, MixingScheme
+    use Damping
 
     character(len=9) :: Con='Conserved', Broken='Broken   '
 
@@ -430,13 +431,12 @@ contains
    127 format ( '     dt = ', f10.7, ' (initial)')
    128 format ( '     mu = ', f10.7, ' (initial)')
    
-    13 format ( '  Mixing Process : ' , A20)
+    13 format ( '  Mixing Process : ' , A30)
    131 format ( '    Memory       : ' , i3)
    132 format ( '    Damping      : ' , f5.2)
    133 format ( '    MixingScheme : ' , i2)
+   134 format ( '    PreconFactor : ' , f5.2)
    
-
-
     14 format ( 'Convergence Levels')
     15 format ( '  dE  =', e8.1)
     16 format ( '  dQ  =', e8.1)
@@ -514,9 +514,9 @@ contains
     elseif(MixingScheme .eq. 2) then
       print 13, 'Linear (only lap-rho)'
       print 132, DampingParam
-    else
-      print 13, 'Linear (all densities)'
-      print 132, Dampingparam
+    elseif(MixingScheme.eq. 3) then
+      print 13, 'Preconditioned'
+      print 134, Preconfac
     endif
     print 133, MixingScheme
 

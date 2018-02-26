@@ -33,6 +33,7 @@ contains
     
     integer, intent(in) :: Iteration
     real(KIND=dp), allocatable :: temp(:,:,:,:), last(:,:,:,:)
+    real(KIND=dp) :: preconrho(nx,ny,nz,2)
 
     DensityChange = 1 - Density * DensityHistory(1)/(Density * Density)
     select case(MixingScheme)
@@ -56,10 +57,21 @@ contains
             Density%laps = (1-DampingParam)*Density%laps + &
         &                   DampingParam *DensityHistory(1)%laps
         endif
-!      case(3)
-!        !-----------------------------------------------------------------------
-!        ! Look for the best density mixing ratio for every density.
-!        call AdaptiveMixing(Iteration)
+      case(3)
+        !-----------------------------------------------------------------------
+        ! Look for the best density mixing ratio for every density.
+        preconrho = Inverserho(Density%rho - DensityHistory(1)%rho)
+           
+        Density%rho = DensityHistory(1)%rho + preconrho
+    
+        if(any(Density%rho .lt. 0)) then
+            print *, minval(Density%rho)
+            where(Density%rho.lt.0) Density%rho = 0
+        endif   
+        
+        Density%laprho(:,:,:,1) = Laplacian(Density%rho(:,:,:,1),1,1,1,1)
+        Density%laprho(:,:,:,2) = Laplacian(Density%rho(:,:,:,2),1,1,1,1)
+        !-----------------------------------------------------------------------
       case(4)
         call DIIS(mod(Iteration,100))
       case DEFAULT

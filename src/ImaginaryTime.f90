@@ -107,11 +107,9 @@ contains
             !-------------------------------------------------------------------
             ! Hartree-Fock
             do i=1,nwt
-                
                 if(abs(HFBasis(i)%occupation)   .lt.0.5) cycle
                 do ii=1,nwt
                     if(abs(HFBasis(ii)%occupation)   .gt.0.5) cycle
-                    
                     if(HFBasis(ii)%isospin.ne.HFBasis(i)%isospin) cycle
      
                     compare = - HFBasis(i)%energy  &
@@ -119,6 +117,8 @@ contains
                     relE = min(relE, compare)
                 enddo
             enddo
+            
+            if(relE .lt. 0.1) relE = 0.1
         case(1)
             !-------------------------------------------------------------------
             ! BCS pairing 
@@ -162,6 +162,7 @@ contains
             !-------------------------------------------------------------------
     end select
     !---------------------------------------------------------------------------
+    
     
     !---------------------------------------------------------------------------
     ! Temporary printing.

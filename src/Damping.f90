@@ -9,7 +9,6 @@ module Damping
  
   !---------------------------------------------------------------------------
   ! Effective density mixing factor, for pringting purposes.
-  real(KIND=dp)              :: amix
   real(KIND=dp)              :: preconfac = 0.15
   !---------------------------------------------------------------------------
   ! Auxiliary arrays. 
@@ -96,7 +95,7 @@ contains
   end function InverseKinetic
   
   !-----------------------------------------------------------------------------
-  function InverseRho(drho) result(invrho)
+  function InverseRho(drho, rho) result(invrho)
     !---------------------------------------------------------------------------
     ! Precondition the difference in densities, in order to penalize the 
     ! highly oscillatory components.
@@ -106,11 +105,14 @@ contains
     use Derivatives
 
     real*8 :: drho(nx,ny,nz,2), residual(nx,ny,nz), update(nx,ny,nz), alpha
-    real*8 :: invrho(nx,ny,nz,2), direction(nx,ny,nz), beta, rho(nx,ny,nz,2)
-    real*8 :: newresnorm, oldresnorm
+    real*8 :: invrho(nx,ny,nz,2), direction(nx,ny,nz), beta, amix
+    real*8 :: newresnorm, oldresnorm, rho(nx,ny,nz,2)
+    real*8 :: bfactor(nx,ny,nz), meff
     integer:: it, iter, p, s, ts
     	  
-    amix =  preconfac
+    meff = 1 + 1.0/(8.0 * hbm(1))*0.16*(3*t1 + ( 5 + 4 *x2)*t2)
+    meff = 1/meff
+    amix = 0.3 * meff**2
     !---------------------------------------------------------------------------
     ! Symmetries of the problem
     !---------------------------------------------------------------------------
@@ -135,10 +137,12 @@ contains
           Residual         = drho(:,:,:,it)
           Direction        = Residual
           newresnorm       = sum(direction**2)*dv
+          
           do iter=1,100
               update   = Direction - amix*Laplacian(Direction, p,s,ts,+1)
               
-              alpha  = NewResNorm/(sum(Direction*update)*dv)
+
+              alpha   = NewResNorm/(sum(Direction*update)*dv)
               
               invrho(:,:,:,it) = invrho(:,:,:,it) + alpha * Direction
               residual         = residual         - alpha * update
@@ -154,7 +158,7 @@ contains
     enddo
     !---------------------------------------------------------------------------
     print *, 'Preconditioning'
-    print *, amix, p
+    print *, amix, meff
     print *, 'iter in inver', iter
     print *
   end function InverseRho

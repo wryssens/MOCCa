@@ -31,9 +31,9 @@ contains
     !---------------------------------------------------------------------------
     use Damping
     
-    integer, intent(in) :: Iteration
-    real(KIND=dp), allocatable :: temp(:,:,:,:), last(:,:,:,:)
-    real(KIND=dp) :: preconrho(nx,ny,nz,2)
+    integer, intent(in)         :: Iteration
+    real(KIND=dp), allocatable  :: temp(:,:,:,:), last(:,:,:,:)
+    real(KIND=dp)               :: preconrho(nx,ny,nz,2)
 
     DensityChange = 1 - Density * DensityHistory(1)/(Density * Density)
     select case(MixingScheme)
@@ -44,9 +44,9 @@ contains
         Density = (1-DampingParam) * Density + DampingParam*DensityHistory(1)
       case(1)
         !-----------------------------------------------------------------------
-        ! Only mix rho with calculated dampingparam.
+        ! Only mix rho with estimated dampingparam.
         DampingParam = sum(abs(Cdrho))
-        DampingParam = (6*dt/hbar/(dx**2)*DampingParam)  * 1.1
+        DampingParam = (6*dt/hbar/(dx**2)*DampingParam)*1.5
         DampingParam = 1 - 1/DampingParam
 
         print *, 'damping', dampingparam
@@ -54,21 +54,15 @@ contains
         Density%rho = (1-DampingParam)*Density%rho + &
         &                DampingParam *DensityHistory(1)%rho
         
-        Density%laprho(:,:,:,1) = Laplacian(Density%rho(:,:,:,1),1,1,1,1)
-        Density%laprho(:,:,:,2) = Laplacian(Density%rho(:,:,:,2),1,1,1,1)
+        ! Recalculate the derivatives of rho
+        call RecalcRhoDerivatives()
       case(2)
         !-----------------------------------------------------------------------
         ! only mix laprho and laps
         Density%laprho = (1-DampingParam)*Density%laprho + &
         &                   DampingParam *DensityHistory(1)%laprho
-        
-        if(allocated(Density%laps)) then
-            Density%laps = (1-DampingParam)*Density%laps + &
-        &                   DampingParam *DensityHistory(1)%laps
-        endif
       case(3)
         !-----------------------------------------------------------------------
-        ! Look for the best density mixing ratio for every density.
         preconrho = Inverserho(Density%rho - DensityHistory(1)%rho, DensityHistory(1)%rho)
            
         Density%rho = DensityHistory(1)%rho + preconrho
@@ -78,21 +72,69 @@ contains
             where(Density%rho.lt.0) Density%rho = 0
         endif   
         
-        Density%laprho(:,:,:,1) = Laplacian(Density%rho(:,:,:,1),1,1,1,1)
-        Density%laprho(:,:,:,2) = Laplacian(Density%rho(:,:,:,2),1,1,1,1)
-        
-        if((t1n2.ne.0.0_dp) .or. (t2n2.ne.0.0_dp)) then
-            Density%laplaprho(:,:,:,1) = Laplacian(Density%laprho(:,:,:,1),1,1,1,1)
-            Density%laplaprho(:,:,:,2) = Laplacian(Density%laprho(:,:,:,2),1,1,1,1)
-        endif
-        !-----------------------------------------------------------------------
+        ! Recalculate the derivatives of rho
+        call RecalcRhoDerivatives()        
       case(4)
+        !-----------------------------------------------------------------------
         call DIIS(mod(Iteration,100))
       case DEFAULT
         call stp('Mixing scheme not supported!')
     end select
 
   end subroutine MixDensities
+
+  subroutine RecalcRhoDerivatives
+    !---------------------------------------------------------------------------
+    ! Small Subroutine to recalculate the derivatives of the density rho, 
+    ! for use after this density has been mixed.
+    !
+    !---------------------------------------------------------------------------
+    use Force
+    
+    integer :: it, P, S, TS
+    
+    P=0         ; S=0          ; TS=0
+    if(PC) P=1  ; if(SC) S=1  ; if(TSC) TS = 1
+            
+    Density%laprho(:,:,:,1) = Laplacian(Density%rho(:,:,:,1),P,S,TS,1)
+    Density%laprho(:,:,:,2) = Laplacian(Density%rho(:,:,:,2),P,S,TS,1)
+    
+    do it=1,2
+        Density%DerRho(:,:,:,1,it) = DeriveX(Density%Rho(:,:,:,it), P,S,TS,1)
+        Density%DerRho(:,:,:,2,it) = DeriveY(Density%Rho(:,:,:,it), P,S,TS,1)
+        Density%DerRho(:,:,:,3,it) = DeriveZ(Density%Rho(:,:,:,it), P,S,TS,1)
+        Density%LapRho(:,:,:,it)   = Laplacian(Density%Rho(:,:,:,it),P,S,TS,1)
+    enddo
+    
+    if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
+        do it=1,2
+            Density%LapLapRho(:,:,:,it)   = &
+            & Laplacian(Density%LapRho(:,:,:,it),P,S,TS,1)
+        
+            Density%D2Rho(:,:,:,1,1,it) = &
+            & DeriveX(Density%DerRho(:,:,:,1,it), -P,-S, TS,1)
+            Density%D2Rho(:,:,:,2,1,it) = & 
+            & DeriveY(Density%DerRho(:,:,:,1,it), -P,-S, TS,1)
+            Density%D2Rho(:,:,:,3,1,it) = &
+            & DeriveZ(Density%DerRho(:,:,:,1,it), -P,-S, TS,1)
+
+            Density%D2Rho(:,:,:,1,2,it) = &
+            & DeriveX(Density%DerRho(:,:,:,2,it), -P,-S, TS,2)
+            
+            Density%D2Rho(:,:,:,2,2,it) = &
+            & DeriveY(Density%DerRho(:,:,:,2,it), -P,-S, TS,2)
+            Density%D2Rho(:,:,:,3,2,it) = &
+            & DeriveZ(Density%DerRho(:,:,:,2,it), -P,-S, TS,1)
+            
+            Density%D2Rho(:,:,:,1,3,it) = &
+            & DeriveX(Density%DerRho(:,:,:,3,it), -P, S, TS,1)
+            Density%D2Rho(:,:,:,2,3,it) = &
+            & DeriveY(Density%DerRho(:,:,:,3,it), -P, S, TS,1)
+            Density%D2Rho(:,:,:,3,3,it) = &
+            & DeriveZ(Density%DerRho(:,:,:,3,it), -P, S, TS,1)
+        enddo
+    endif
+  end subroutine RecalcRhoDerivatives
 
   subroutine DIIS(Iteration)
     !---------------------------------------------------------------------------

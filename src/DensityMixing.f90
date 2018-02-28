@@ -46,7 +46,7 @@ contains
         !-----------------------------------------------------------------------
         ! Only mix rho with estimated dampingparam.
         DampingParam = sum(abs(Cdrho))
-        DampingParam = (6*dt/hbar/(dx**2)*DampingParam)*1.5
+        DampingParam = (6*dt/hbar/(dx**2)*DampingParam)*1.1
         DampingParam = 1 - 1/DampingParam
 
         print *, 'damping', dampingparam

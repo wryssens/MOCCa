@@ -620,11 +620,13 @@ contains
         
     use HFB, only: blocksizes
     
-    1 format(' Warning! ',/,                                       &
-    &        ' Pairing calculations did not converge.',/,          &
-    &        ' Pairing iterations:  ', i4,/,                       &
-    &        ' Old Fermi Energy:    ', 2f10.6,/,                   &
-    &        ' New Fermi Energy:    ', 2f10.6)
+    1 format('---------------------------------------',/,   &
+    &        ' Warning! ',/,                                &
+    &        ' Pairing calculations did not converge.',/,   &
+    &        ' Pairing iterations:  ', i4,/,                &
+    &        ' Old Fermi:    ', 2f12.7,/,                   &
+    &        ' New Fermi:    ', 2f12.7,/,                   &
+    &        '---------------------------------------')
 
     real(KIND=dp)    :: OldFermi(2), Particles(2)
     integer          :: outeriter,j
@@ -667,6 +669,7 @@ contains
         LNLambda= 0.0_dp
       endif
     endif
+    
     call CompDensityFactor
     !---------------------------------------------------------------------------
     ! Outer iterations: iterating gaps and pairingfield.

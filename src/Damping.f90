@@ -110,9 +110,15 @@ contains
     real*8 :: bfactor(nx,ny,nz), meff
     integer:: it, iter, p, s, ts
     	  
-    meff = 1 + 1.0/(8.0 * hbm(1))*0.16*(3*t1 + ( 5 + 4 *x2)*t2)
-    meff = 1/meff
-    amix = 0.3 * meff**2
+!    meff = 1 + 1.0/(8.0 * hbm(1))*0.16*(3*t1 + ( 5 + 4 *x2)*t2)
+!    meff = 1/meff
+!    amix = 0.3 * meff**2
+
+    amix = sum(abs(Cdrho))!abs(B5)+abs(B6)
+    amix = (6*dt/hbar/(dx**2)*amix) !+ dt/hbar*abs(B3 + B4)/dx*4
+    print *, 1/amix, 1 - 1/amix 
+    
+    amix = preconfac
     !---------------------------------------------------------------------------
     ! Symmetries of the problem
     !---------------------------------------------------------------------------

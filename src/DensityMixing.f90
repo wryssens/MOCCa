@@ -44,9 +44,18 @@ contains
         Density = (1-DampingParam) * Density + DampingParam*DensityHistory(1)
       case(1)
         !-----------------------------------------------------------------------
-        ! Only mix rho
+        ! Only mix rho with calculated dampingparam.
+        DampingParam = sum(abs(Cdrho))
+        DampingParam = (6*dt/hbar/(dx**2)*DampingParam)  * 1.1
+        DampingParam = 1 - 1/DampingParam
+
+        print *, 'damping', dampingparam
+        
         Density%rho = (1-DampingParam)*Density%rho + &
         &                DampingParam *DensityHistory(1)%rho
+        
+        Density%laprho(:,:,:,1) = Laplacian(Density%rho(:,:,:,1),1,1,1,1)
+        Density%laprho(:,:,:,2) = Laplacian(Density%rho(:,:,:,2),1,1,1,1)
       case(2)
         !-----------------------------------------------------------------------
         ! only mix laprho and laps
@@ -60,7 +69,7 @@ contains
       case(3)
         !-----------------------------------------------------------------------
         ! Look for the best density mixing ratio for every density.
-        preconrho = Inverserho(Density%rho - DensityHistory(1)%rho)
+        preconrho = Inverserho(Density%rho - DensityHistory(1)%rho, DensityHistory(1)%rho)
            
         Density%rho = DensityHistory(1)%rho + preconrho
     
@@ -85,29 +94,6 @@ contains
 
   end subroutine MixDensities
 
-!  subroutine AdaptiveMixing(iteration)
-!    !---------------------------------------------------------------------------
-!    !
-!    !
-!    !---------------------------------------------------------------------------
-!    use force
-!    use imaginarytime
-!    
-!    type(DensityVector), save :: rho_last
-!    integer             :: i, iteration
-!    real(KIND=dp)       :: alpha,L, dold(nx,ny,nz,2), dnew(nx,ny,nz,2)
-!    
-!    if(iteration.gt.2) then
-!        alpha = 1/abs(dt_estimate(1)/hbar * B5*6.0/(dx**2))*0.98
-!    else
-!        alpha = 0.25
-!    endif
-!    print *, 'alpha', alpha
-!    rho_last       = density
-!    density%laprho = DensityHistory(1)%laprho+alpha*(Density%laprho-DensityHistory(1)%laprho)
-
-!  end subroutine AdaptiveMixing
-  
   subroutine DIIS(Iteration)
     !---------------------------------------------------------------------------
     ! Simple implementation of the DIIS density mixing scheme.

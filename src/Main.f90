@@ -359,7 +359,7 @@ subroutine Evolve(MaxIterations, iprint)
         ! If we did not do an intermediate step, these are still fine.
         call UpdateDensities(0)
     endif
-    
+  
     !Smooth the densities using the difference between this and the previous
     ! iteration
     call MixDensities(Iteration)
@@ -380,11 +380,10 @@ subroutine Evolve(MaxIterations, iprint)
 
     !Calculating the Energy
     call CompEnergy
-
     !Checking for convergence
     Convergence = ConvergenceCheck()
   	if(Convergence) exit
-
+    
     if(mod(Iteration, PrintIter).eq.0 .or. Iteration.eq.MaxIterations) then
       if((Iteration.eq.MaxIterations) .and. (.not. Maxiterations.eq.0)) print 101
       !Print info after selected amount of iterations.

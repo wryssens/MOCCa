@@ -545,14 +545,12 @@ contains
     !---------------------------------------------------------------------------
     ! Construct the matrices in block form. Note that the Fermi energy does not
     ! get passed in.
-    call BlockHFBHamil(Delta, z, L2)
-    
     if(Lipkin) then
          LN = Lncr8(Delta,DeltaLN,succes)
     elseif(ConstrainDispersion) then 
          Disp = Dispersion()      
     endif
-    
+    call BlockHFBHamil(Delta, z, L2)
     !---------------------------------------------------------------------------
     ! Reduce the dimension of the problem, by checking the pairing window and 
     ! rearranging all of the relevant matrices.
@@ -593,7 +591,6 @@ contains
       !-------------------------------------------------------------------------
       ! Readjust Fermi and L2
       succes = 0
-      if(any(succes.ne.0)) call stp("lncr8 failed")
       if(.not. blockconsistent) then
          corr = block_gradient()
       else
@@ -626,7 +623,7 @@ contains
           ! We don't take this luxury for the L2 variable, as it is kind of a
           ! nonsense to add it anyway.
           if(Lipkin) then
-            L2(it) = LN(it)!L2(it) + 0.1*(LN(it)   - L2(it))
+            L2(it) = LN(it)
           elseif(ConstrainDispersion) then
             L2(it) = L2(it) - 0.01*(Disp(it) - DN2(it))
           endif
@@ -1312,7 +1309,7 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
     QuasiEnergies = 0.0_dp
 
     ! Construct the HFBHamiltonian
-    call ConstructHFBHamiltonian(Fermi,Delta,L2,0.0_dp)
+    call ConstructHFBHamiltonian(Fermi,Delta,L2,HFBgauge)
     
     do it=1,Iindex
         do P=1,Pindex

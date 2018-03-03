@@ -31,9 +31,11 @@ contains
     !---------------------------------------------------------------------------
     use Damping
     
+    
     integer, intent(in)         :: Iteration
-    real(KIND=dp), allocatable  :: temp(:,:,:,:), last(:,:,:,:)
-    real(KIND=dp)               :: preconrho(nx,ny,nz,2)
+    real(KIND=dp)               :: preconrho(nx,ny,nz,2), corr(2), drho(nx,ny,nz,2)
+    real(KIND=dp), save         :: norm, oldnorm=1, alpha, beta
+    integer                     :: it, iter
 
     DensityChange = 1 - Density * DensityHistory(1)/(Density * Density)
     select case(MixingScheme)
@@ -45,10 +47,8 @@ contains
       case(1)
         !-----------------------------------------------------------------------
         ! Only mix rho with estimated dampingparam.
-        DampingParam = sum(abs(Cdrho))
-        DampingParam = (6*dt/hbar/(dx**2)*DampingParam)*1.1
+        DampingParam = 6*sum(abs(Cdrho))*dt/hbar/(dx**2)
         DampingParam = 1 - 1/DampingParam
-
         print *, 'damping', dampingparam
         
         Density%rho = (1-DampingParam)*Density%rho + &
@@ -63,17 +63,38 @@ contains
         &                   DampingParam *DensityHistory(1)%laprho
       case(3)
         !-----------------------------------------------------------------------
-        preconrho = Inverserho(Density%rho - DensityHistory(1)%rho, DensityHistory(1)%rho)
-           
-        Density%rho = DensityHistory(1)%rho + preconrho
-    
+        ! Proposed update of the density
+        drho = Density%rho-DensityHistory(1)%rho
+        
+        !-----------------------------------------------------------------------
+        ! Finding appropriate alpha and beta. 
+        ! (Beta is not used at the moment though)
+        if(preconfac .eq. 0.0) then
+        	alpha = sum(DensityHistory(1)%laprho*drho) -                   &
+        	&            sum(DensityHistory(1)%laprho*DensityHistory(1)%rho)
+        	alpha = alpha/sum(DensityHistory(1)%laprho*DensityHistory(1)%laprho)  
+        	beta  = 1.0
+        else
+        	alpha = preconfac
+        	beta  = 1.0
+        endif
+        !-----------------------------------------------------------------------
+        ! Precondition the proposed update
+        preconrho = Preconditionrho(drho,alpha, beta)
+        print *,'Preconditioned', alpha
+        
+        ! Apply the update
+        Density%rho = DensityHistory(1)%rho + preconrho 
+
+	! Correct for possible errors and rescale the density
         if(any(Density%rho .lt. 0)) then
-            print *, minval(Density%rho)
             where(Density%rho.lt.0) Density%rho = 0
         endif   
-        
+        Density%rho(:,:,:,1) = Density%rho(:,:,:,1)/(sum(Density%rho(:,:,:,1))*dv)*Neutrons
+        Density%rho(:,:,:,2) = Density%rho(:,:,:,2)/(sum(Density%rho(:,:,:,2))*dv)*Protons
+	!-----------------------------------------------------------------------
         ! Recalculate the derivatives of rho
-        call RecalcRhoDerivatives()        
+        call RecalcRhoDerivatives()     
       case(4)
         !-----------------------------------------------------------------------
         call DIIS(mod(Iteration,100))

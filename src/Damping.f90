@@ -109,15 +109,7 @@ contains
     real*8 :: newresnorm, oldresnorm, rho(nx,ny,nz,2)
     real*8 :: bfactor(nx,ny,nz), meff
     integer:: it, iter, p, s, ts
-    	  
-!    meff = 1 + 1.0/(8.0 * hbm(1))*0.16*(3*t1 + ( 5 + 4 *x2)*t2)
-!    meff = 1/meff
-!    amix = 0.3 * meff**2
-
-    amix = sum(abs(Cdrho))!abs(B5)+abs(B6)
-    amix = (6*dt/hbar/(dx**2)*amix) !+ dt/hbar*abs(B3 + B4)/dx*4
-    print *, 1/amix, 1 - 1/amix 
-    
+   
     amix = preconfac
     !---------------------------------------------------------------------------
     ! Symmetries of the problem
@@ -144,8 +136,8 @@ contains
           Direction        = Residual
           newresnorm       = sum(direction**2)*dv
           
-          do iter=1,100
-              update   = Direction - amix*Laplacian(Direction, p,s,ts,+1)
+          do iter=1,500
+              update   = (Direction -amix*Laplacian(Direction, p,s,ts,+1))
               
 
               alpha   = NewResNorm/(sum(Direction*update)*dv)
@@ -163,107 +155,191 @@ contains
           enddo
     enddo
     !---------------------------------------------------------------------------
-    print *, 'Preconditioning'
-    print *, amix, meff
-    print *, 'iter in inver', iter
-    print *
   end function InverseRho
+  
+!===============================================================================
+!===============================================================================
+
   !-----------------------------------------------------------------------------
-  
-  function AverageSpinor(Psi, P,S, TS, I) result(Phi)
+  function PreconditionRho(drho, alpha, beta) result(invrho)
     !---------------------------------------------------------------------------
-    ! Averages the spinor Psi along every spatial direction, weighted with a 
-    ! gaussian exp(-a Delta x^2).
+    !
     !---------------------------------------------------------------------------
-    use Spinors
     use Derivatives
-    integer, intent(in)       :: P,S, TS, I
-    type(Spinor)              :: Psi
-    type(Spinor)              :: Phi
-    real(KIND=dp)             :: a
-    integer                   :: j
-    
-    !---------------------------------------------------------------------------
-    !Change the derivative coefficients
-    deallocate(FDLap)
-    allocate(FDLap(-2:2))
-    !---------------------------------------------------------------------------
-    ! Numerical parameter. Note that this is adjusted semi-empirically. The 
-    ! lower, the faster convergence, but is is bounded from below. The 
-    ! approximation to the exponential should be positive definite.
-    !  See P.G. Reinhardt & Cusson, Nuc. Phys. A A378, 418-442
-    !---------------------------------------------------------------------------
-    a = 2.8_dp
 
-    !Factor dx**2 du to laplacian routines dividing by dx**2
-    do j=1,size(FDLap)/2
-      FDLap(-j) = exp(-j**2*a*dx**2)*dx**2 *sqrt(a/pi)
-      FDLap(j ) = FDLap(-j)
+    real*8 :: drho(nx,ny,nz,2), residual(nx,ny,nz,2), update(nx,ny,nz,2), aCG
+    real*8 :: invrho(nx,ny,nz,2), direction(nx,ny,nz,2), bCG, amix
+    real*8 :: newresnorm, oldresnorm
+    
+    real*8, intent(in) :: alpha, beta
+    integer:: it, iter
+   
+    amix = preconfac
+
+    !---------------------------------------------------------------------------
+    invrho           = 0.0
+    Residual         = drho
+    Direction        = Residual
+    newresnorm       = sum(direction**2)*dv
+          
+    do iter=1,100
+      update   = preconoperator(direction, alpha, beta)
+
+      aCG    = NewResNorm/(sum(Direction*update)*dv)
+      
+      invrho   = invrho   + aCG * Direction
+      residual = residual - aCG * update
+      
+      oldresnorm = newresnorm
+      newresnorm = sum(residual**2)*dv
+      
+      BCG      = NewResNorm/OldResNorm
+      Direction  = Residual + bCG * Direction
+      print *, newresnorm
+      if(newresnorm.lt.1d-8) exit
     enddo
-    !Factor 3.0 due to 3D.
-    FDLap(0)  = dx**2/3.0_dp  *sqrt(a/pi) 
-
-    Phi = LapSpinor(Psi,P,S,TS)
-    !-----------------------------------------------------------------------------
-    ! Resetting the derivation routines
-    call AssignFDCoefs(MaxFDOrder, MaxFDLapOrder, CoulombLapOrder)
-  
-  end function AverageSpinor
-  
-  function AverageDensity(r) result(ar)
-    real(KIND=dp)             :: ar(nx,ny,nz,2), r(nx,ny,nz,2), a
-    integer                   :: it, i,j,k
+    !---------------------------------------------------------------------------
+    print *, 'Inverted, iter = ', iter, newresnorm, sum(invrho(:,:,:,1))*dv,   &
+    &                     sum(invrho(:,:,:,2))*dv
+    print *, 'Deviation', sum((preconoperator(invrho,alpha, beta) - drho)**2)*dv
     
+  end function PreconditionRho
+  
+  function preconoperator(drho, alpha, beta) result(Prho)
     !---------------------------------------------------------------------------
-    ! Numerical parameter. Note that this is adjusted semi-empirically. The 
-    ! lower, the faster convergence, but is is bounded from below. The 
-    ! approximation to the exponential should be positive definite.
-    !  See P.G. Reinhardt & Cusson, Nuc. Phys. A A378, 418-442
+    !
+    !
     !---------------------------------------------------------------------------
-    a = 0.25_dp
+    use Force
+    use Derivatives
+    
+    real(KIND=dp), intent(in) :: drho(nx,ny,nz,2)
+    real(KIND=dp)             :: Prho(nx,ny,nz,2)
+    integer                   :: p, s, ts, it
+    real(KIND=dp)             :: alpha, beta
+    !---------------------------------------------------------------------------
+    ! Symmetries of the problem
+    !---------------------------------------------------------------------------
+    if(PC) then
+        p = 1
+    else
+        p = 0
+    endif
+    if(TSC) then
+        ts = 1
+    else
+        ts = 0
+    endif
+    if(SC) then
+        s = 1
+    else
+        s = 0
+    endif
     
     do it=1,2
-       do k=1,nz
-        do j=1,ny 
-         do i=2,nx-1
-            ar(i,j,k,it) = (1-2*a)*r(i,j,k,it) + a*r(i+1,j,k,it)        &
-            &                                  + a*r(i-1,j,k,it)
-         enddo
-         ar(1,j,k,it)  = (1-2*a)*r(1,j,k,it) + a*r(2,j,k,it)             &
-         &                                  + a*r(1,j,k,it)
-         ar(nx,j,k,it) = (1-2*a)*r(nx,j,k,it) + a*r(nx-1,j,k,it) 
-        enddo
-       enddo
-       
-       !------------------------------------------------------------------------
-       do k=1,nz
-        do i=1,nx 
-         do j=2,ny-1
-            ar(i,j,k,it) = (1-2*a)*r(i,j,k,it) + a*r(i,j+1,k,it) &
-            &                                  + a*r(i,j-1,k,it)
-         enddo
-         ar(i,1,k,it)  = (1-2*a)*r(i,1,k,it)  + a*r(i,2,k,it)    &
-         &                                    + a*r(i,1,k,it)
-         ar(i,ny,k,it) = (1-2*a)*r(i,ny,k,it) + a*r(i,ny-1,k,it)
-        enddo
-       enddo
-       
-       !------------------------------------------------------------------------
-       do j=1,ny
-        do i=1,nx 
-         do k=2,nz-1
-            ar(i,j,k,it) = (1-2*a)*r(i,j,k,it) + a*r(i,j,k+1,it) &
-            &                                  + a*r(i,j,k-1,it)
-         enddo
-         ar(i,j,1,it)  = (1-2*a)*r(i,j,1,it)  + a*r(i,j,2,it)    &
-         &                                    + a*r(i,j,1,it)
-         ar(i,j,nz,it) = (1-2*a)*r(i,j,nz,it) + a*r(i,j,nz,it)
-        enddo
-       enddo
-       
+        Prho(:,:,:,it) = Laplacian(drho(:,:,:,it), p,s,ts,+1)
     enddo
-
-  end function AverageDensity
-  
-  
+    
+    Prho = beta*drho - alpha*Prho
+  end function preconoperator
 end module Damping
+
+!===============================================================================
+! Code ZOO
+!===============================================================================
+!  !-----------------------------------------------------------------------------
+!  
+!  function AverageSpinor(Psi, P,S, TS, I) result(Phi)
+!    !---------------------------------------------------------------------------
+!    ! Averages the spinor Psi along every spatial direction, weighted with a 
+!    ! gaussian exp(-a Delta x^2).
+!    !---------------------------------------------------------------------------
+!    use Spinors
+!    use Derivatives
+!    integer, intent(in)       :: P,S, TS, I
+!    type(Spinor)              :: Psi
+!    type(Spinor)              :: Phi
+!    real(KIND=dp)             :: a
+!    integer                   :: j
+!    
+!    !---------------------------------------------------------------------------
+!    !Change the derivative coefficients
+!    deallocate(FDLap)
+!    allocate(FDLap(-2:2))
+!    !---------------------------------------------------------------------------
+!    ! Numerical parameter. Note that this is adjusted semi-empirically. The 
+!    ! lower, the faster convergence, but is is bounded from below. The 
+!    ! approximation to the exponential should be positive definite.
+!    !  See P.G. Reinhardt & Cusson, Nuc. Phys. A A378, 418-442
+!    !---------------------------------------------------------------------------
+!    a = 2.8_dp
+
+!    !Factor dx**2 du to laplacian routines dividing by dx**2
+!    do j=1,size(FDLap)/2
+!      FDLap(-j) = exp(-j**2*a*dx**2)*dx**2 *sqrt(a/pi)
+!      FDLap(j ) = FDLap(-j)
+!    enddo
+!    !Factor 3.0 due to 3D.
+!    FDLap(0)  = dx**2/3.0_dp  *sqrt(a/pi) 
+
+!    Phi = LapSpinor(Psi,P,S,TS)
+!    !-----------------------------------------------------------------------------
+!    ! Resetting the derivation routines
+!    call AssignFDCoefs(MaxFDOrder, MaxFDLapOrder, CoulombLapOrder)
+!  
+!  end function AverageSpinor
+!  
+!  function AverageDensity(r) result(ar)
+!    real(KIND=dp)             :: ar(nx,ny,nz,2), r(nx,ny,nz,2), a
+!    integer                   :: it, i,j,k
+!    
+!    !---------------------------------------------------------------------------
+!    ! Numerical parameter. Note that this is adjusted semi-empirically. The 
+!    ! lower, the faster convergence, but is is bounded from below. The 
+!    ! approximation to the exponential should be positive definite.
+!    !  See P.G. Reinhardt & Cusson, Nuc. Phys. A A378, 418-442
+!    !---------------------------------------------------------------------------
+!    a = 0.25_dp
+!    
+!    do it=1,2
+!       do k=1,nz
+!        do j=1,ny 
+!         do i=2,nx-1
+!            ar(i,j,k,it) = (1-2*a)*r(i,j,k,it) + a*r(i+1,j,k,it)        &
+!            &                                  + a*r(i-1,j,k,it)
+!         enddo
+!         ar(1,j,k,it)  = (1-2*a)*r(1,j,k,it) + a*r(2,j,k,it)             &
+!         &                                  + a*r(1,j,k,it)
+!         ar(nx,j,k,it) = (1-2*a)*r(nx,j,k,it) + a*r(nx-1,j,k,it) 
+!        enddo
+!       enddo
+!       
+!       !------------------------------------------------------------------------
+!       do k=1,nz
+!        do i=1,nx 
+!         do j=2,ny-1
+!            ar(i,j,k,it) = (1-2*a)*r(i,j,k,it) + a*r(i,j+1,k,it) &
+!            &                                  + a*r(i,j-1,k,it)
+!         enddo
+!         ar(i,1,k,it)  = (1-2*a)*r(i,1,k,it)  + a*r(i,2,k,it)    &
+!         &                                    + a*r(i,1,k,it)
+!         ar(i,ny,k,it) = (1-2*a)*r(i,ny,k,it) + a*r(i,ny-1,k,it)
+!        enddo
+!       enddo
+!       
+!       !------------------------------------------------------------------------
+!       do j=1,ny
+!        do i=1,nx 
+!         do k=2,nz-1
+!            ar(i,j,k,it) = (1-2*a)*r(i,j,k,it) + a*r(i,j,k+1,it) &
+!            &                                  + a*r(i,j,k-1,it)
+!         enddo
+!         ar(i,j,1,it)  = (1-2*a)*r(i,j,1,it)  + a*r(i,j,2,it)    &
+!         &                                    + a*r(i,j,1,it)
+!         ar(i,j,nz,it) = (1-2*a)*r(i,j,nz,it) + a*r(i,j,nz,it)
+!        enddo
+!       enddo
+!       
+!    enddo
+
+!  end function AverageDensity

@@ -34,7 +34,7 @@ contains
     
     integer, intent(in)         :: Iteration
     real(KIND=dp)               :: preconrho(nx,ny,nz,2), corr(2), drho(nx,ny,nz,2)
-    real(KIND=dp), save         :: norm, oldnorm=1, alpha, beta
+    real(KIND=dp), save         :: norm, oldnorm=1, alpha(2), beta(2)
     integer                     :: it, iter
 
     DensityChange = 1 - Density * DensityHistory(1)/(Density * Density)
@@ -70,10 +70,13 @@ contains
         ! Finding appropriate alpha and beta. 
         ! (Beta is not used at the moment though)
         if(preconfac .eq. 0.0) then
-        	alpha = sum(DensityHistory(1)%laprho*drho) -                   &
-        	&            sum(DensityHistory(1)%laprho*DensityHistory(1)%rho)
-        	alpha = alpha/sum(DensityHistory(1)%laprho*DensityHistory(1)%laprho)  
-        	beta  = 1.0
+            do it=1,2 
+            	alpha(it) = &
+                & sum(DensityHistory(1)%laprho(:,:,:,it)*drho(:,:,:,it)) -     &
+            	& sum(DensityHistory(1)%laprho(:,:,:,it)*DensityHistory(1)%rho(:,:,:,it))
+            	alpha(it) = alpha(it)/sum(DensityHistory(1)%laprho(:,:,:,it)*DensityHistory(1)%laprho(:,:,:,it))  
+        	    beta(it)  = 1.0
+            enddo
         else
         	alpha = preconfac
         	beta  = 1.0
@@ -86,13 +89,14 @@ contains
         ! Apply the update
         Density%rho = DensityHistory(1)%rho + preconrho 
 
-	! Correct for possible errors and rescale the density
+        !-----------------------------------------------------------------------
+	    ! Correct for possible errors and rescale the density
         if(any(Density%rho .lt. 0)) then
             where(Density%rho.lt.0) Density%rho = 0
         endif   
         Density%rho(:,:,:,1) = Density%rho(:,:,:,1)/(sum(Density%rho(:,:,:,1))*dv)*Neutrons
         Density%rho(:,:,:,2) = Density%rho(:,:,:,2)/(sum(Density%rho(:,:,:,2))*dv)*Protons
-	!-----------------------------------------------------------------------
+	    !-----------------------------------------------------------------------
         ! Recalculate the derivatives of rho
         call RecalcRhoDerivatives()     
       case(4)

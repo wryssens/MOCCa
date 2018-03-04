@@ -1,4 +1,4 @@
-module Damping
+    module Damping
 
   use Compilationinfo
   use Geninfo
@@ -171,7 +171,7 @@ contains
     real*8 :: invrho(nx,ny,nz,2), direction(nx,ny,nz,2), bCG, amix
     real*8 :: newresnorm, oldresnorm
     
-    real*8, intent(in) :: alpha, beta
+    real*8, intent(in) :: alpha(2), beta(2)
     integer:: it, iter
    
     amix = preconfac
@@ -216,7 +216,7 @@ contains
     real(KIND=dp), intent(in) :: drho(nx,ny,nz,2)
     real(KIND=dp)             :: Prho(nx,ny,nz,2)
     integer                   :: p, s, ts, it
-    real(KIND=dp)             :: alpha, beta
+    real(KIND=dp)             :: alpha(2), beta(2)
     !---------------------------------------------------------------------------
     ! Symmetries of the problem
     !---------------------------------------------------------------------------
@@ -238,9 +238,9 @@ contains
     
     do it=1,2
         Prho(:,:,:,it) = Laplacian(drho(:,:,:,it), p,s,ts,+1)
+        Prho(:,:,:,it) = beta(it)*drho(:,:,:,it) - alpha(it)*Prho(:,:,:,it)
     enddo
     
-    Prho = beta*drho - alpha*Prho
   end function preconoperator
 end module Damping
 

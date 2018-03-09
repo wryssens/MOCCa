@@ -114,7 +114,10 @@ contains
      
                     compare = - HFBasis(i)%energy  &
                     &         + HFBasis(ii)%energy
-                    relE = min(relE, compare)
+                    
+                    if(compare .gt. 0.0) then
+                      relE = min(relE, compare)
+                    endif
                 enddo
             enddo
             
@@ -135,34 +138,35 @@ contains
                  N = blocksizes(P,it)
                  do i=1,N
                     ii = HFBcolumns(i,P,it)
-                    relE = min(relE, abs(QuasiEnergies(ii,P,it)))
+                    if(QuasiEnergies(ii,P,it) .gt. 0.0_dp) then 
+                      relE = min(relE, abs(QuasiEnergies(ii,P,it)))
+                    endif
                  enddo
                enddo
             enddo
-            !-------------------------------------------------------------------
-            ! Minimum over two-qp excitations
-            if(.not. TRC) then
-                do it=1,Iindex
-                   do P=1,Pindex
-                     N = blocksizes(P,it)
-                     do i=1,N
-                        do j=1,N
-                            ii = HFBcolumns(i,P,it)
-                            jj = HFBcolumns(j,P,it)
-                            if(i.eq.j) cycle
-                            compare = QuasiEnergies(ii,P,it) +                 &
-                            &         QuasiEnergies(jj,P,it) 
-                            relE = min(relE, (compare))
-                        enddo
-                     enddo
-                   enddo
-                enddo            
-            endif
-            relE = abs(relE)
+!            !-------------------------------------------------------------------
+!            ! Minimum over two-qp excitations
+!            if(.not. TRC) then
+!                do it=1,Iindex
+!                   do P=1,Pindex
+!                     N = blocksizes(P,it)
+!                     do i=1,N
+!                        do j=1,N
+!                            ii = HFBcolumns(i,P,it)
+!                            jj = HFBcolumns(j,P,it)
+!                            if(i.eq.j) cycle
+!                            compare = QuasiEnergies(ii,P,it) +                 &
+!                            &         QuasiEnergies(jj,P,it) 
+!                            relE = min(relE, (compare))
+!                        enddo
+!                     enddo
+!                   enddo
+!                enddo            
+!            endif
+!            relE = abs(relE)
             !-------------------------------------------------------------------
     end select
     !---------------------------------------------------------------------------
-    
     
     !---------------------------------------------------------------------------
     ! Temporary printing.
@@ -172,9 +176,6 @@ contains
     print *, ' kappa', kappa
     print *, ' dt   ' , dt
     print *, ' mom  ' , momentum
-    
-!    if(relE .lt. 0.1) relE = 0.1
-    
     !---------------------------------------------------------------------------
     ! Step three, find the highest eigenvalue. 
     ! The maximum energy eigenvalue of the quadratic we are minimizing is:
@@ -186,7 +187,6 @@ contains
         endif
     enddo
     maxE = maxE - minh
-    
     !---------------------------------------------------------------------------
     ! Step four, estimate dt and the momentum. 
     kappa     = relE/maxE

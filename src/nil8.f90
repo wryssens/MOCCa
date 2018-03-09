@@ -400,11 +400,18 @@ contains
                 if (nz2.eq.nz1-2) h(i,j) = x*y*sqrt(nz1*(nz1-1)*an*(nx2-1))
             18 h(j,i) = h(i,j)
         17 continue
-        !do i=1,size(h,1)
-!		print *, h(i,:)!
-	!enddo
-        !print *
+!        do i=1,n
+!    		  print ('(200f7.3)'), h(i,1:n)!
+!    	  enddo
+!        print *
+
+        ifail = 0
         call diagoncr8 (h,ndim,n,s,d,wd,'nil8 routine',ifail)
+
+!        do i=1,n
+!          print ('(2f7.3)'), h(i,i), d(i)
+!        enddo
+!        print *
     !c.......................storage and shift of the single particle energies
         irep(ni) = ia
         do i=1,n
@@ -412,7 +419,10 @@ contains
                 ia    = ia + 1
                 a(ia) = s(i,j)
             enddo
-            e(nn+i) = h(i,i)*ho0 - 50.0
+            ! This line is different from nil8, as there the sp energies
+            ! are taken carelessly from h(i,i). The diagonalisation routine
+            ! is however not exactly the same. 
+            e(nn+i) = d(i)*ho0 - 50.0
         enddo
     16 continue
     !if (it.eq.1) print 101,x,y,cb

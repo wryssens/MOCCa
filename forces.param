@@ -688,6 +688,17 @@ COM1BODY=2
  yt3a = 0.1666666666667
  J2TERMS = .true., COM1BODY = 2,
  hbm(1) = 20.73553, 20.73553/
+ 
+  &SKF NAME = "SN2LO1NON2LO", 
+ t0  =  -2486.90786, t1   =    497.51821, t2   =   -451.60715,
+ x0  =   0.57160369, x1   =  -0.05521333, x2   =  -0.99803779,
+ t3a =  13707.18320, t1n2 =   0, t2n2 =    0,
+ x3a =   0.88704830, x1n2 =   0, x2n2 =    0,
+ wso =   117.904418, wsoq =   117.904418, 
+ yt3a = 0.1666666666667
+ J2TERMS = .true., COM1BODY = 2,
+ hbm(1) = 20.73553, 20.73553/
+ 
 !-------------------------------------------------------------------------------
 ! Set of N2LO fits by P. Becker, as SN2LO1, but this time with constraints on 
 ! the intruder centroids. 
@@ -1073,6 +1084,38 @@ COM1BODY=2
  yt3a = 0.166666666667, j2terms=.true.,
  hbm(1) = 20.735530, 20.735530/
 /
+!-------------------------------------------------------------------------------
+!
+!  // P.-G. Reinhard, J. Friedrich, N. Voegler, 
+!  // Z.Phys. A316 (1984) 207-212.
+!  // remarks: 
+!  // leads to HF states without density fluctuations, 
+&SKF NAME = "SKNF1"
+ t0   =  -1052.703, x0  =   0.7205,
+ t1   =     286.785, x1  =    0.0,
+ t2   =   -118.713, x2  =  0.0,
+ t3a  =  13783.78, x3a =    1.545
+ wso  =  108.804, wsoq=108.804,
+ yt3a = 1, j2terms=.false.,
+ hbm(1) = 20.7525, 20.7525/
+
+&SKF NAME = "SKNF2"
+ t0   =  -1030.127, x0  =   1.4721,
+ t1   =     31.186, x1  =    0.0,
+ t2   =  -235.409, x2  =  0.0,
+ t3a  =  22215.39, x3a =    1.545
+ wso  =  122.3, wsoq=122.3,
+ yt3a = 1, j2terms=.false.,
+ hbm(1) = 20.7525, 20.7525/
+
+&SKF NAME = "SKNF3"
+ t0   =    -969.655,  x0  =   1.4261,
+ t1   =     -25.340,  x1  =  -1.5,
+ t2   =     247.720,  x2  =  -2.276,
+ t3a  =   20202.75 ,  x3a =   1.545
+ wso  =     109.645,  wsoq= 109.645,
+ yt3a = 1, j2terms=.false.,
+ hbm(1) =   20.7525, 20.7525/
 
 &skf
 name='END'

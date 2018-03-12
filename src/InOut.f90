@@ -1400,16 +1400,16 @@ end subroutine ReadMOCCa_v1
 
     print 1
     print 2 
-    print 3, nwp
-    print 4, nwn
+    print 3, nwpinit
+    print 4, nwninit
     print 5 
-    print 6
-    print 7
-    print 8
-    print 9
+!    print 6
+!    print 7
+!    print 8
+!    print 9
     print 1
  
-    call nilsson(wfs, kparz, esp1, 5, 4, nwt, nwpinit, nwninit,               &
+    call nilsson(wfs, kparz, esp1, 6, 5, nwt, nwpinit, nwninit,               &
     &       floor(neutrons), floor(protons), nx,ny,nz,dx, 0.2_dp,0.2_dp,0.2_dp)
     
     call ChangeNumberWaveFunctions(nwt)
@@ -1423,7 +1423,7 @@ end subroutine ReadMOCCa_v1
         endif
         value%Grid(:,:,:,:,1) = wfs(:,:,:,:,i)
         HFBasis(i) = NewWaveFunction(Value,it,1,kparz(i),1,1)
-	HFBasis(i)%Energy = esp1(i)
+	      HFBasis(i)%Energy = esp1(i)
     enddo
     
     ! Need to recalculate all of the densities

@@ -118,8 +118,15 @@ contains
 
     !Calculating the CoulombEnergy
     CoulombEnergy   = CompCoulombEnergy(Density)
-    CoulombExchange = CompCoulombExchange(Density)
-
+    
+    if(Cexchange .ge. 1) then
+      ! Calculate the coulomb exchange energy, both if pertubatively included 
+      ! or selfconsistently included
+      CoulombExchange = CompCoulombExchange(Density)
+    else
+      CoulombExchange = 0
+    endif
+    
     !COM Correction
     call CompCOMCorrection
 

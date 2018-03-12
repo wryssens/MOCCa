@@ -152,6 +152,8 @@ contains
   end subroutine ReadCoulombInfo
 
   subroutine PrintCoulombInfo
+    use Force
+    
     !---------------------------------------------------------------------------
     ! A subroutine for printing some info on the Coulomb Calculations.
     !
@@ -164,6 +166,9 @@ contains
     6       format("Error Tolerance      = ", e10.3)
     7       format("MaxLCoul             =", i3)
     8       format("Extra points (X/Y/Z) = (",i2,',',i2,',',i2,')' )
+
+    9       format('Exchange included    =', a11)
+
     character(len=25) :: GS='Gauss-Seidel' , Sor='S. Overrelaxation',          &
     &   CG='Conjugate Gradients', Cheb='GS + Cheby Acceleration',              &
     &   MG='Multigrid', Com = 'Combination'
@@ -195,7 +200,15 @@ contains
     print 6, Prec
     print 7, MaxLCoul
     print 8, CEX, CEY, CEZ
-
+  
+    if(CExchange .eq. 0) then
+      print 9, 'None'
+    elseif(Cexchange .eq. 1) then
+      print 9, 'Perturbative'
+    else
+      print 9, 'Selfconsistent'
+    endif
+  
     return
   end subroutine PrintCoulombInfo
 

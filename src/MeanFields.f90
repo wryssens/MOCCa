@@ -392,6 +392,8 @@ contains
       !-------------------------------------------------------------------------
     use Moments, only : ConstraintEnergy
     use Coulomb, only : CoulombPotential, CoulExchange
+    use Force 
+    
     integer        :: it, at
 
     !Temporary storage for total densities.
@@ -453,8 +455,12 @@ contains
     endif
 
     ! Note that CoulExchange from the Coulomb module already carries a minus.
-    UPot(:,:,:,2)= UPot(:,:,:,2) + CoulombPotential(:,:,:) + CoulExchange(:,:,:)
-
+    UPot(:,:,:,2)= UPot(:,:,:,2) + CoulombPotential(:,:,:) 
+    
+    ! Only include coulomb exchange when it is to be included selfconbsistently
+    if( Cexchange .eq.2) then
+      UPot(:,:,:,2) = UPot(:,:,:,2) + CoulExchange(:,:,:)
+    endif
     !Add the contribution from Constraints on the Multipole Moment
     UPot = UPot + ConstraintEnergy
     return

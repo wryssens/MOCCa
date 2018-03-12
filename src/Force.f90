@@ -122,7 +122,12 @@ module Force
     !      to the total energy and printed!
     !-----------------------------------------------------------------------------
     integer, public              :: COM1Body=2, COM2Body=0
-
+    !---------------------------------------------------------------------------
+    ! Coulomb exhange treatment:
+    ! 0) None
+    ! 1) Perturbatively
+    ! 2) Fully selfconsistent
+    integer :: Cexchange = 2
 
     !---------------------------------------------------------------------------
     ! Temporary parameter to vary the the contribution of the RhoQ term.
@@ -154,7 +159,7 @@ contains
     e2    = 1.43996446_dp
     hbm   = 20.73551910_dp
     nucleonmass = (/939.565379_dp , 938.272046_dp /)
-    hbar = 6.58211928_dp
+    hbar        = 6.58211928_dp
   end subroutine ResetConstants
 
   subroutine ReadForce
@@ -172,7 +177,7 @@ contains
     &                    t1n3, t2n3, x1n3, x2n3,                           &
     &                    hbm,e2,                                           &
     &                    COM1body, COM2body,                               &
-    &                    J2Terms, averagemass, hbar, nucleonmass
+    &                    J2Terms, averagemass, hbar, nucleonmass, Cexchange
 
     inquire(file='forces.param', exist=exists)
     if (.not. exists) call stp("MOCCa can't find forces.param file!")
@@ -186,7 +191,7 @@ contains
     wso=0.0_dp;     wsoq=0.0_dp
     t1n2 = 0 ; t2n2 = 0 ; x1n2 = 0 ; x2n2 = 0 ;
     COM1body=0;     COM2body=0
-    J2Terms=.false. 
+    J2Terms=.false. ;  Cexchange   =2
     call ResetConstants
 
     call get_unit(inunit)

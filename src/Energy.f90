@@ -1118,10 +1118,10 @@ contains
       print 110
       print 112, COMCorrection(1,:), sum(COMCorrection(1,:))
     endif
-    if(any(COMCorrection(2,:) .ne. 0.0_dp)) then
+    !if(any(COMCorrection(2,:) .ne. 0.0_dp)) then
       print 111
       print 113, COMCorrection(2,:), sum(COMCorrection(2,:))
-    endif
+    !endif
 
     print 2
 
@@ -1297,25 +1297,25 @@ contains
     endif
 
     if(COM2Body .gt. 0) then
+      !
+      call compNablaMelements
       ! We sum carelessly over all single-particle wavefunctions, since the
       ! ones forbidden by symmetry are calculated as zero in the Spwfstorage
       ! module.
-      do i=1,size(NablaMElements,1)
-        actuali = mod(i,nwt) + i/nwt
-        it = (HFBasis(actuali)%GetIsospin() + 3)/2
-        do j=1,size(NablaMElements,2)
-          if(i.eq.j) cycle
-          actualj = mod(j,nwt) + j/nwt
-          do m=1,3
-            COMCorrection(2,it) = COMCorrection(2,it)                          &
-            &            + sum(NablaMElements(i,j,m,:)*NablaMElements(j,i,m,:))&
-            &            *HfBasis(actuali)%GetOcc() * HFBasis(actualj)%GetOcc()
-          enddo
+      do i=1,nwt
+        it = (DensityBasis(i)%GetIsospin() + 3)/2
+        do j=1,nwt
+            if(it.ne.(DensityBasis(j)%GetIsospin()+3)/2) cycle
+            COMCorrection(2,it) = COMCorrection(2,it) +                        &
+            &             DensityBasis(i)%GetOcc() * DensityBasis(j)%GetOcc()  &
+            &           *((NablaMElements(i,j,2,2)*NablaMElements(i,j,2,2)))!&
+            !&           + sum(NablaMElements(i,j,:,2)*NablaMElements(i,j,:,2)))
         enddo
       enddo
       !Some more constants
-      COMCorrection(2,:) = COMCorrection(2,:) * nucleonmass/ &
+      COMCorrection(2,:) = COMCorrection(2,:) * hbm * nucleonmass/ &
       &                 (neutrons * nucleonmass(1) + protons * nucleonmass(2))
+
     endif
   end subroutine CompCOMCorrection
 

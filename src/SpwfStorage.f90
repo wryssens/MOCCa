@@ -813,11 +813,7 @@ contains
 
      !Allocating the correct number of NablaMElements
      if(.not.allocated(NablaMElements)) then
-       if(TRC) then
-        allocate(NablaMElements(2*nwt,2*nwt,3,2))
-       else
         allocate(NablaMElements(  nwt,  nwt,3,2))
-       endif
      endif
 
      NablaMElements= 0.0_dp
@@ -825,82 +821,36 @@ contains
      if(.not.TRC) then
       !Looking for the first nwt elements in the list
         do i=1,nwt
-          Value = HFBasis(i)%GetValue()
+          Value = DensityBasis(i)%GetValue()
           do j=1,nwt
             !-------------------------------------------------------------------
             ! Cycling if not the same isospin or same parity
             !-------------------------------------------------------------------
-            if(     HFBasis(i)%GetIsospin().ne.HFBasis(j)%GetIsospin()) cycle
-            if(PC .and. HFBasis(i)%GetParity().eq.HFBasis(j)%GetParity()) cycle
+            if(DensityBasis(i)%GetIsospin().ne.DensityBasis(j)%GetIsospin()) cycle
+            if(DensityBasis(i)%GetParity() .eq.DensityBasis(j)%GetParity())  cycle
 
-            if(SC) then
-              ! If signature is conserved we calculate either (x,y) or (z)
-              if(HFBasis(i)%GetSignature() .eq. HFBasis(j)%GetSignature()) then
-                !Only x,y
-                mstart=1
-                mstop =2
-              else
-               !Only z
-                mstart=3
-                mstop =3
-              endif
+            ! If signature is conserved we calculate either (x,y) or (z)
+            if(DensityBasis(i)%Signature .eq. DensityBasis(j)%Signature) then
+              Der = DensityBasis(j)%GetDer(1)
+              NablaMElements(i,j,1,1) =   InproductSpinorReal(Value,Der)
+              Der = DensityBasis(j)%GetDer(2)
+              NablaMElements(i,j,2,2) =   InproductSpinorImaginary(Value,Der)
+              
+              NablaMElements(i,j,1,2) = 0
+              NablaMElements(i,j,2,1) = 0
+              NablaMElements(i,j,3,:) = 0 
             else
-              !If signature is not conserved, we calculate all the different
-              ! components
-              mstart=1
-              mstop =3
-            endif
-            !Calculate the actual Matrix element
-            do m=mstart,mstop
-              Der = HFBasis(j)%GetDer(m)
-              NablaMElements(i,j,m,:) = InproductSpinor(Value,Der)
-              NablaMElements(j,i,m,1) =  NablaMElements(i,j,m,1)
-              NablaMElements(j,i,m,2) = -NablaMElements(i,j,m,2)
-            enddo
-          enddo
-        enddo
-      else
-        do i=1,nwt
-          Value = HFBasis(i)%GetValue()
-          do j=1,nwt
-            !-------------------------------------------------------------------
-            ! Cycling if not the same isospin or same parity
-            !-------------------------------------------------------------------
-            if(     HFBasis(i)%GetIsospin().ne.HFBasis(j)%GetIsospin()) cycle
-            if(PC .and. HFBasis(i)%GetParity().eq.HFBasis(j)%GetParity()) cycle
-
-            if(SC) then
-              do m=1,2
-                Der = HFBasis(j)%GetDer(m)
-                Der = TimeReverse(Der)
-                !Only the time-reversed contribute for the x and y components
-                NablaMElements(i,j+nwt,m,:) =  Inproductspinor(Value, Der)
-                NablaMElements(j+nwt,i,m,1) =  NablaMElements(i,j+nwt,m,1)
-                NablaMElements(j+nwt,i,m,2) = -NablaMElements(i,j+nwt,m,2)
-              enddo
-
-              !Only same signature contributes for z component
-              Der = HFBasis(j)%GetDer(3)
-              NablaMElements(i,j,3,:) =  Inproductspinor(Value, Der)
-              NablaMElements(j,i,3,1) =  NablaMElements(i,j,3,1)
-              NablaMElements(j,i,3,2) = -NablaMElements(i,j,3,2)
-            else
-              !All Spwfs contribute to all components
-              do m=1,3
-                Der = HFBasis(j)%GetDer(m)
-                NablaMElements(i,j,m,:) =  Inproductspinor(Value, Der)
-                NablaMElements(j,i,m,1) =  NablaMElements(i,j,m,1)
-                NablaMElements(j,i,m,2) = -NablaMElements(i,j,m,2)
-                !Time-reversed states
-                Der = TimeReverse(Der)
-                NablaMElements(i,j+nwt,m,:) =  Inproductspinor(Value, Der)
-                NablaMElements(j+nwt,i,m,1) =  NablaMElements(i,j+nwt,m,1)
-                NablaMElements(j+nwt,i,m,2) = -NablaMElements(i,j+nwt,m,2)
-              enddo
+              Der = DensityBasis(j)%GetDer(3)
+              NablaMElements(i,j,3,1) =   InproductSpinorReal(Value,Der)
+              NablaMElements(i,j,1,:) = 0
+              NablaMElements(i,j,2,:) = 0
+              NablaMElements(i,j,3,2) = 0 
             endif
           enddo
         enddo
-      endif
+     else
+       call stp('2BODY COM only for timereversal breaking calculations.')
+     endif
   end subroutine CompNablaMElements
   
   subroutine AlirotateBasis(aliyangle)

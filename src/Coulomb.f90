@@ -212,7 +212,7 @@ contains
     return
   end subroutine PrintCoulombInfo
 
-  pure function CompCoulombEnergy(Den) result(CEnergy)
+  function CompCoulombEnergy(Den) result(CEnergy)
     !---------------------------------------------------------------------------
     !Function that calculates the Coulomb Energy
     !---------------------------------------------------------------------------

@@ -33,8 +33,10 @@ contains
     
     
     integer, intent(in)         :: Iteration
-    real(KIND=dp)               :: preconrho(nx,ny,nz,2), corr(2), drho(nx,ny,nz,2)
-    real(KIND=dp), save         :: norm, oldnorm=1, alpha(2), beta(2)
+    real(KIND=dp)               :: preconrho(nx,ny,nz,2), drho(nx,ny,nz,2)
+    real(KIND=dp)               :: drho_iso(nx,ny,nz,2), laprho_iso(nx,ny,nz,2)
+    real(KIND=dp)               :: rho_iso(nx,ny,nz,2)
+    real(KIND=dp), save         :: alpha(2), beta(2)
     integer                     :: it, iter
 
     DensityChange = 1 - Density * DensityHistory(1)/(Density * Density)
@@ -65,40 +67,61 @@ contains
         !-----------------------------------------------------------------------
         ! Proposed update of the density
         drho = Density%rho-DensityHistory(1)%rho
-        
+        !-----------------------------------------------------------------------
+        ! Transfer to isospin densities
+        drho_iso(:,:,:,1) = drho(:,:,:,1) + drho(:,:,:,2) 
+        drho_iso(:,:,:,2) = drho(:,:,:,1) - drho(:,:,:,2) 
+        laprho_iso(:,:,:,1) = DensityHistory(1)%laprho(:,:,:,1)                &
+        &                                   +  DensityHistory(1)%laprho(:,:,:,2)
+        laprho_iso(:,:,:,2) = DensityHistory(1)%laprho(:,:,:,1)                &
+        &                                   -  DensityHistory(1)%laprho(:,:,:,2) 
+        rho_iso(:,:,:,1) = DensityHistory(1)%rho(:,:,:,1)                      &
+        &                                      +  DensityHistory(1)%rho(:,:,:,2)
+        rho_iso(:,:,:,2) = DensityHistory(1)%rho(:,:,:,1)                      &
+        &                                      -  DensityHistory(1)%rho(:,:,:,2)
         !-----------------------------------------------------------------------
         ! Finding appropriate alpha and beta. 
         ! (Beta is not used at the moment though)
         if(preconfac .eq. 0.0) then
             do it=1,2 
-            	alpha(it) = &
-                & sum(DensityHistory(1)%laprho(:,:,:,it)*drho(:,:,:,it)) -     &
-            	& sum(DensityHistory(1)%laprho(:,:,:,it)*DensityHistory(1)%rho(:,:,:,it))
-            	alpha(it) = alpha(it)/sum(DensityHistory(1)%laprho(:,:,:,it)*DensityHistory(1)%laprho(:,:,:,it))  
+                alpha(it) = sum(laprho_iso(:,:,:,it)*drho_iso(:,:,:,it))       &
+                &         - sum(laprho_iso(:,:,:,it)*rho_iso(:,:,:,it))
+                alpha(it) = alpha(it)/sum(laprho_iso(:,:,:,it)**2)
         	    beta(it)  = 1.0
             enddo
         else
         	alpha = preconfac
         	beta  = 1.0
         endif
+        
+        alpha = alpha
         !-----------------------------------------------------------------------
         ! Precondition the proposed update
-        preconrho = Preconditionrho(drho,alpha, beta)
+        preconrho = Preconditionrho(drho_iso,alpha, beta)
         print *,'Preconditioned', alpha
-        
-        ! Apply the update
-        Density%rho = DensityHistory(1)%rho + preconrho 
+        !-----------------------------------------------------------------------
+        ! Apply the update, with inversion of the isospin dependency
+        Density%rho(:,:,:,1) = DensityHistory(1)%rho(:,:,:,1)                  &
+        &                        + 0.5*(preconrho(:,:,:,1) + preconrho(:,:,:,2))
+        Density%rho(:,:,:,2) = DensityHistory(1)%rho(:,:,:,2)                  &
+        &                        + 0.5*(preconrho(:,:,:,1) - preconrho(:,:,:,2))
 
         !-----------------------------------------------------------------------
-	    ! Correct for possible errors and rescale the density
+	      ! Correct for possible errors and rescale the density
         if(any(Density%rho .lt. 0)) then
             where(Density%rho.lt.0) Density%rho = 0
         endif   
-        Density%rho(:,:,:,1) = Density%rho(:,:,:,1)/(sum(Density%rho(:,:,:,1))*dv)*Neutrons
-        Density%rho(:,:,:,2) = Density%rho(:,:,:,2)/(sum(Density%rho(:,:,:,2))*dv)*Protons
-	    !-----------------------------------------------------------------------
+        Density%rho(:,:,:,1) =                                                 &
+        &           Density%rho(:,:,:,1)/(sum(Density%rho(:,:,:,1))*dv)*Neutrons
+        Density%rho(:,:,:,2) =                                                 &
+        &           Density%rho(:,:,:,2)/(sum(Density%rho(:,:,:,2))*dv)* Protons
+	      !-----------------------------------------------------------------------
         ! Recalculate the derivatives of rho
-        call RecalcRhoDerivatives()     
+        call RecalcRhoDerivatives()  
+        
+        !-----------------------------------------------------------------------
+        ! Damp the rest of the densities
+        Density = (1-DampingParam) * Density + DampingParam*DensityHistory(1)
       case(4)
         !-----------------------------------------------------------------------
         call DIIS(mod(Iteration,100))

@@ -126,10 +126,10 @@ wso = 0.1146308139E+03 , wsoq=0.1146308139E+03
 yt3a=0.3
 COM1Body=2, J2Terms=.false., COM2Body=1
 hbm(1)= 20.72126890,20.74983164
-nucleonmass=938.9182515,938.9182515
-!averagemass=.false.
+nucleonmass=938.271843946,939.56518281
+averagemass=.false.
+Cexchange = 0
 /
-
 !-------------------------------------------------------------------------------
 ! N2LO interactions fitted on symmetric infinite matter, from
 ! D. Davesne et al., Phys. Rev. C 91, 064303 (2015)

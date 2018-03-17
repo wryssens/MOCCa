@@ -819,7 +819,49 @@ contains
      NablaMElements= 0.0_dp
 
      if(.not.TRC) then
-      !Looking for the first nwt elements in the list
+        do i=1,nwt
+          Value = DensityBasis(i)%GetValue()
+          do j=1,nwt
+            !-------------------------------------------------------------------
+            ! Cycling if not the same isospin or same parity (when P is conserved)
+            !-------------------------------------------------------------------
+            if(DensityBasis(i)%GetIsospin().ne.DensityBasis(j)%GetIsospin()) cycle
+            if(PC .and. (DensityBasis(i)%GetParity() .eq.DensityBasis(j)%GetParity()))  cycle
+            !-------------------------------------------------------------------
+            ! If signature is conserved we calculate either (Nx,Ny) or (Nz)
+            if(SC) then            
+                if(DensityBasis(i)%Signature .ne. DensityBasis(j)%Signature) then
+                  Der = DensityBasis(j)%GetDer(1)
+                  NablaMElements(i,j,1,1) =   InproductSpinorReal(Value,Der)
+                  if(.not. TSC) NablaMElements(i,j,1,2) = InproductSpinorImaginary(Value,Der)
+                  
+                  Der = DensityBasis(j)%GetDer(2)
+                  NablaMElements(i,j,2,2) =   InproductSpinorImaginary(Value,Der)
+                  if(.not. TSC) NablaMElements(i,j,2,2) = InproductSpinorReal(Value,Der)
+                else
+                  Der = DensityBasis(j)%GetDer(3)
+                  NablaMElements(i,j,3,1) =   InproductSpinorReal(Value,Der)
+                  if(.not. TSC) NablaMElements(i,j,3,2) = InproductSpinorImaginary(Value,Der)
+                endif
+            else
+                !---------------------------------------------------------------
+                !  Calculate all matrix elements 
+                Der = DensityBasis(j)%GetDer(1)
+                NablaMElements(i,j,1,1) =   InproductSpinorReal(Value,Der)
+                if(.not. TSC) NablaMElements(i,j,1,2) = InproductSpinorImaginary(Value,Der)               
+                
+                Der = DensityBasis(j)%GetDer(2)
+                NablaMElements(i,j,2,2) =   InproductSpinorImaginary(Value,Der)
+                if(.not. TSC) NablaMElements(i,j,2,1) = InproductSpinorReal(Value,Der)
+
+                Der = DensityBasis(j)%GetDer(3)
+                NablaMElements(i,j,3,1) =   InproductSpinorReal(Value,Der)
+                if(.not. TSC) NablaMElements(i,j,3,2) = InproductSpinorImaginary(Value,Der)
+                !---------------------------------------------------------------
+            endif
+          enddo
+        enddo
+     else
         do i=1,nwt
           Value = DensityBasis(i)%GetValue()
           do j=1,nwt
@@ -827,29 +869,22 @@ contains
             ! Cycling if not the same isospin or same parity
             !-------------------------------------------------------------------
             if(DensityBasis(i)%GetIsospin().ne.DensityBasis(j)%GetIsospin()) cycle
-            if(DensityBasis(i)%GetParity() .eq.DensityBasis(j)%GetParity())  cycle
+            if(PC .and. (DensityBasis(i)%GetParity() .eq.DensityBasis(j)%GetParity()))  cycle
 
             ! If signature is conserved we calculate either (x,y) or (z)
-            if(DensityBasis(i)%Signature .eq. DensityBasis(j)%Signature) then
-              Der = DensityBasis(j)%GetDer(1)
-              NablaMElements(i,j,1,1) =   InproductSpinorReal(Value,Der)
-              Der = DensityBasis(j)%GetDer(2)
-              NablaMElements(i,j,2,2) =   InproductSpinorImaginary(Value,Der)
               
-              NablaMElements(i,j,1,2) = 0
-              NablaMElements(i,j,2,1) = 0
-              NablaMElements(i,j,3,:) = 0 
-            else
-              Der = DensityBasis(j)%GetDer(3)
-              NablaMElements(i,j,3,1) =   InproductSpinorReal(Value,Der)
-              NablaMElements(i,j,1,:) = 0
-              NablaMElements(i,j,2,:) = 0
-              NablaMElements(i,j,3,2) = 0 
-            endif
+            Der = TimeReverse(DensityBasis(j)%GetDer(1))
+            NablaMElements(i,j,1,1) =   InproductSpinorReal(Value,Der)
+            Der = TimeReverse(DensityBasis(j)%GetDer(2))
+            NablaMElements(i,j,2,2) =   InproductSpinorImaginary(Value,Der)
+            Der =DensityBasis(j)%GetDer(3)
+            NablaMElements(i,j,3,1) =   InproductSpinorReal(Value,Der)
+              
+            NablaMElements(i,j,1,2) = 0
+            NablaMElements(i,j,2,1) = 0
+            NablaMElements(i,j,3,2) = 0 
           enddo
-        enddo
-     else
-       call stp('2BODY COM only for timereversal breaking calculations.')
+        enddo     
      endif
   end subroutine CompNablaMElements
   

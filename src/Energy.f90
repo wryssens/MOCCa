@@ -1,4 +1,4 @@
-module Energy
+    module Energy
 !-------------------------------------------------------------------------------
 ! This module contains all the variables to compute the value of the energy
 ! functional: basically everything related to the energy.
@@ -1308,14 +1308,23 @@ contains
             if(it.ne.(DensityBasis(j)%GetIsospin()+3)/2) cycle
             COMCorrection(2,it) = COMCorrection(2,it) +                        &
             &             DensityBasis(i)%GetOcc() * DensityBasis(j)%GetOcc()  &
-            &           *((NablaMElements(i,j,2,2)*NablaMElements(i,j,2,2)))!&
-            !&           + sum(NablaMElements(i,j,:,2)*NablaMElements(i,j,:,2)))
+            &           *(sum(NablaMElements(i,j,:,:)**2))
         enddo
       enddo
       !Some more constants
       COMCorrection(2,:) = COMCorrection(2,:) * hbm * nucleonmass/ &
       &                 (neutrons * nucleonmass(1) + protons * nucleonmass(2))
 
+      if(TRC) then
+        ! Take out the extra factor 4 due to the occupation factors being double
+        ! what they should be.
+        COMCorrection(2,:) = 0.25 * COMCorrection(2,:)
+      else
+        ! Take out the extra factor 2 due to double-counting everything.
+        ! Note that this factor is completely different from the ones above,
+        ! it is not half of the 4 in the T-conserved case.
+        COMCorrection(2,:) = 0.5 * COMCorrection(2,:)
+      endif
     endif
   end subroutine CompCOMCorrection
 

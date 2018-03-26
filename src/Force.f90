@@ -219,7 +219,7 @@ contains
             t1n2 = 0 ;      t2n2 = 0 ; x1n2 = 0 ; x2n2 = 0 ;
             t1n3 = 0 ;      t2n3 = 0 ; x1n3 = 0 ; x2n3 = 0 ;
             b14=0.0_dp;     b15=0.0_dp;     b16=0.0_dp;      b17=0.0_dp
-            COM1body=0;     COM2body=0; ;  Cexchange   =2
+            COM1body=0;     COM2body=0;   Cexchange   =2
             J2Terms=.false. 
             call ResetConstants
         endif

@@ -58,7 +58,7 @@ BEGIN{
             }
             else{
               # Alternate the sorting if the thing is exactly 0
-              if(NP[$2] == NM[$2}){
+              if(NP[$2] == NM[$2]){
                 NP[$2] = NP[$2] +1 
                 plus[$2, NP[$2]] = $0
               }

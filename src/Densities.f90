@@ -373,9 +373,6 @@ contains
     NameList /densit/ DampingParam, PulayOrder, MixingScheme, Recalc, PreconFac
 
     read(unit=*, NML=densit)
-    if(MixingScheme.ge.5 .and. PulayOrder.lt.1) then
-      call stp('PulayOrder should be strictly positive!')
-    endif
 
   end subroutine ReadDensitInfo
 

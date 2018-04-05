@@ -123,6 +123,10 @@ contains
         ! Damp the rest of the densities
         Density = (1-DampingParam) * Density + DampingParam*DensityHistory(1)
       case(4)
+        ! Do nothing as this mixes potentials instead of densities.
+      case(5)
+        ! Do nothing as this mixes potentials instead of densities.
+      case(6)
         !-----------------------------------------------------------------------
         call DIIS(mod(Iteration,100))
       case DEFAULT

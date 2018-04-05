@@ -392,10 +392,12 @@ contains
       !-------------------------------------------------------------------------
     use Moments, only : ConstraintEnergy
     use Coulomb, only : CoulombPotential, CoulExchange
+    use Densities
+    use Damping
     use Force 
     
     integer        :: it, at
-
+    real(KIND=dp)  :: Upotold(nx,ny,nz,2)
     !Temporary storage for total densities.
     real(KIND=dp)  :: RhoTot(nx,ny,nz),VecSTot(nx,ny,nz,3), NablaJTot(nx,ny,nz)
     real(KIND=dp)  :: eps
@@ -410,6 +412,9 @@ contains
     ! Since usually byt3a < 1, this becomes extremely unstable for small values
     ! of rho. Thus we calculate it as Rho**byt3a/(Rho + eps)
     eps = 1.d-20
+  
+    ! Save the previous values
+    UpotOld = Upot 
 
     !B1 & B2
     UPot(:,:,:,1)= (2.0_dp*B1 + 2.0_dp*B2)*Density%Rho(:,:,:,1)                &
@@ -463,6 +468,15 @@ contains
     endif
     !Add the contribution from Constraints on the Multipole Moment
     UPot = UPot + ConstraintEnergy
+    
+    !---------------------------------------------------------------------------
+    ! Mix the Upotential if asked for
+    if(MixingScheme .eq. 4) then
+      Upot = (1-DampingParam)*Upot + DampingParam * UpotOld
+    elseif(MixingScheme .eq. 5) then
+      Upot = UpotOld + Preconditionrho(Upot - UpotOld,(/ 0.001d0, 0.001d0/),(/ 1.0d0, 1.0d0/))
+    endif 
+    
     return
   end subroutine CalcUPot
 

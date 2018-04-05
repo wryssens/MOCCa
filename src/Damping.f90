@@ -167,41 +167,43 @@ contains
     !---------------------------------------------------------------------------
     use Derivatives
 
-    real*8 :: drho(nx,ny,nz,2), residual(nx,ny,nz,2), update(nx,ny,nz,2), aCG
-    real*8 :: invrho(nx,ny,nz,2), direction(nx,ny,nz,2), bCG, amix
+    real*8 :: drho(nx,ny,nz,2), residual(nx,ny,nz), update(nx,ny,nz), aCG
+    real*8 :: invrho(nx,ny,nz,2), direction(nx,ny,nz), bCG, amix
     real*8 :: newresnorm, oldresnorm
-    
     real*8, intent(in) :: alpha(2), beta(2)
+    
     integer:: it, iter
    
     amix = preconfac
 
     !---------------------------------------------------------------------------
     invrho           = 0.0
-    Residual         = drho
-    Direction        = Residual
-    newresnorm       = sum(direction**2)*dv
-          
-    do iter=1,100
-      update   = preconoperator(direction, alpha, beta)
+         
+    do it=1,2 
+        Residual         = drho(:,:,:,it) 
+        Direction        = Residual
+        newresnorm       = sum(direction**2)*dv
 
-      aCG    = NewResNorm/(sum(Direction*update)*dv)
-      
-      invrho   = invrho   + aCG * Direction
-      residual = residual - aCG * update
-      
-      oldresnorm = newresnorm
-      newresnorm = sum(residual**2)*dv
-      
-      BCG      = NewResNorm/OldResNorm
-      Direction  = Residual + bCG * Direction
-      print *, newresnorm
-      if(newresnorm.lt.1d-8) exit
+        do iter=1,300
+          update   = preconoperator(direction, alpha(it), beta(it))
+
+          aCG    = NewResNorm/(sum(Direction*update)*dv)
+          
+          invrho(:,:,:,it)   = invrho(:,:,:,it)  + aCG * Direction
+          residual           = residual          - aCG * update
+          
+          oldresnorm = newresnorm
+          newresnorm = sum(residual**2)*dv
+          
+          BCG      = NewResNorm/OldResNorm
+          Direction  = Residual + bCG * Direction
+          !print *, it, newresnorm
+          if(newresnorm.lt.1d-8) exit
+        enddo
     enddo
     !---------------------------------------------------------------------------
     print *, 'Inverted, iter = ', iter, newresnorm, sum(invrho(:,:,:,1))*dv,   &
     &                     sum(invrho(:,:,:,2))*dv
-    print *, 'Deviation', sum((preconoperator(invrho,alpha, beta) - drho)**2)*dv
     
   end function PreconditionRho
   
@@ -213,10 +215,10 @@ contains
     use Force
     use Derivatives
     
-    real(KIND=dp), intent(in) :: drho(nx,ny,nz,2)
-    real(KIND=dp)             :: Prho(nx,ny,nz,2)
+    real(KIND=dp), intent(in) :: drho(nx,ny,nz)
+    real(KIND=dp)             :: Prho(nx,ny,nz)
     integer                   :: p, s, ts, it
-    real(KIND=dp)             :: alpha(2), beta(2)
+    real(KIND=dp),intent(in)  :: alpha, beta
     !---------------------------------------------------------------------------
     ! Symmetries of the problem
     !---------------------------------------------------------------------------
@@ -236,10 +238,9 @@ contains
         s = 0
     endif
     
-    do it=1,2
-        Prho(:,:,:,it) = Laplacian(drho(:,:,:,it), p,s,ts,+1)
-        Prho(:,:,:,it) = beta(it)*drho(:,:,:,it) - alpha(it)*Prho(:,:,:,it)
-    enddo
+    Prho = Laplacian(drho, p,s,ts,+1)
+    Prho = Laplacian(Prho, p,s,ts,+1)
+    Prho = beta*drho + alpha*Prho
     
   end function preconoperator
 end module Damping

@@ -210,11 +210,12 @@ subroutine Evolve(MaxIterations, iprint)
   call CalculateAllMoments(1)
   call CalculateAllMoments(1)
 
-  if(Pairingtype.eq.2) then
-    !-----------------------------------------------------------------------------
-    !Construct the mean-field potentials
-    call ConstructPotentials
+  !-----------------------------------------------------------------------------
+  !Construct the mean-field potentials
+  call ConstructPotentials
 
+  if(Pairingtype.eq.2) then
+    
     do i=1,nwt
       CanEnergy = InproductSpinorReal(CanBasis(i)%GetValue(),hPsi(Canbasis(i)))
       call Canbasis(i)%SetEnergy(CanEnergy)
@@ -506,6 +507,7 @@ subroutine PrintIterationInfo(Iteration, PrintAll)
   use Pairing,     only : PrintPairing, PairingType, Fermi
   use Energy,      only : PrintEnergy, PairingEnergy
   use HFB, only         : PrintQP
+  use Coulomb
   use ImaginaryTime 
   use geninfo
 
@@ -531,6 +533,8 @@ subroutine PrintIterationInfo(Iteration, PrintAll)
         call PrintCranking
   endif
   call PrintPairing
+  
+  
   call PrintEnergy
 
 end subroutine PrintIterationInfo
@@ -673,7 +677,7 @@ subroutine PrintSummary_v2(Iteration)
     dispersion = dispersion + HFBasis(i)%Occupation*HFBasis(i)%Dispersion
   enddo
 
-  print 6, Dispersion
+  print 6, abs(Dispersion)
 
 end subroutine PrintSummary_v2
 

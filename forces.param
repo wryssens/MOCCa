@@ -124,11 +124,24 @@ t2 = -0.6030802735E+02 , x2 = 0.1259817673E+01
 t3a = 0.1152167193E+05 , x3a= 0.6403012547E+00
 wso = 0.1146308139E+03 , wsoq=0.1146308139E+03
 yt3a=0.3
-COM1Body=2, J2Terms=.false., COM2Body=1
+COM1Body=1, J2Terms=.false., COM2Body=1
 hbm(1)= 20.72126890,20.74983164
-nucleonmass=938.271843946,939.56518281
+nucleonmass=939.56518281,938.271843946
 averagemass=.false.
 Cexchange = 0
+/
+&skf
+name='BSK27K'
+t0 = -0.1837060863E+04 , x0 = 0.4600673712E+00
+t1 =  0.3761855572E+03 , x1 =-0.3858531133E+00
+t2 = -0.6030802735E+02 , x2 = 0.1259817673E+01
+t3a = 0.1152167193E+05 , x3a= 0.6403012547E+00
+wso = 0.1146308139E+03 , wsoq=0.1146308139E+03
+yt3a=0.3
+COM1Body=2, J2Terms=.false., COM2Body=1
+hbm(1)= 20.73555027, 20.73555027
+Cexchange = 0
+e2=1.43996446
 /
 !-------------------------------------------------------------------------------
 ! N2LO interactions fitted on symmetric infinite matter, from

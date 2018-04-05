@@ -652,7 +652,7 @@ contains
           ! 2) the number of particles is close enough to the desired value
           ! 3) the Lambda_2 value is close enough to the calculated one
           !    (if Lipkin is active)
-          if(all(sqrt(abs(GradientNorm(:,it))).lt.prec) .and.                      &
+          if(all(sqrt(abs(GradientNorm(:,it))).lt.prec) .and.                  &
           &     abs(Par(it) - Particles(it)).lt.Prec  ) then
            converged(it)=.true.
            if(Lipkin) then
@@ -703,15 +703,12 @@ contains
             enddo
         enddo
       enddo
-      
+     print *, iter, gradientnorm, par
       if(fermimomentum) then
           step = 4.0/(minqp + maxqp + 2*sqrt(maxqp*minqp)) * 0.80
           kappa= maxqp/minqp
           mu   = ((sqrt(kappa) - 1)/(sqrt(kappa) +1))**2
       endif
-      
-      !print *, iter, step, mu, minqp, maxqp,sum(abs(gradientnorm(:,1)))
-
       !-------------------------------------------------------------------------
       ! Detect convergence or divergence?
       if(any(.not. converged) .and. iter.eq.HFBIter) then
@@ -729,7 +726,7 @@ contains
    !call CheckUandVColumns(HFBColumns)
    call CalcQPEnergies(GradU,gradV,Fermi,L2,Delta)
    
- end subroutine HFBFermiGradient
+  end subroutine HFBFermiGradient
   
   function ConstructRho_nosig(Vlim,S) result(Rho)
     !---------------------------------------------------------------------------
@@ -861,20 +858,9 @@ contains
     if( Fermimomentum .and. (.not.allocated(diffU))) then
         allocate(diffU(N,N), diffV(N,N)) ; diffU = 0 ; diffV = 0
     endif
-    !---------------------------------------------------------------------------
-!    do j=1,N
-!        do i=1,N
-!            U2(i,j) = tempU(i,j) + mu*diffU(i,j) 
-!            V2(i,j) = tempV(i,j) + mu*diffV(i,j)
-!            do k=1,N
-!                U2(i,j) = U2(i,j) - step * tempV(i,k)*Grad(k,j) 
-!                V2(i,j) = V2(i,j) - step * tempU(i,k)*Grad(k,j) 
-!            enddo
-!        enddo
-!    enddo
 
-    U2(1:N,1:N) = U2(1:N,1:N)-step *matmul(tempV(1:N,1:N),Grad(1:N,1:N)) !+mu*diffU(1:N,1:N)
-    V2(1:N,1:N) = V2(1:N,1:N)-step *matmul(tempU(1:N,1:N),Grad(1:N,1:N)) !+mu*diffV(1:N,1:N)
+    U2(1:N,1:N) = U2(1:N,1:N)-step *matmul(tempV(1:N,1:N),Grad(1:N,1:N)) 
+    V2(1:N,1:N) = V2(1:N,1:N)-step *matmul(tempU(1:N,1:N),Grad(1:N,1:N)) 
 
     if(FermiMomentum) then
         U2(1:N,1:N) = U2(1:N,1:N) + mu*diffU(1:N,1:N)
@@ -915,34 +901,18 @@ contains
     !---------------------------------------------------------------------------
     ! Update the current values
     U2(1:N/2  ,1:S)   = U2(1:N/2  ,1:S)                                        &
-    &                 - step * matmul(tempV(1:N/2, S+1:N), Grad(S+1:N,1:S))!   &
-    !&                 + mu*diffU(1:N/2  ,1:S)
+    &                 - step * matmul(tempV(1:N/2, S+1:N), Grad(S+1:N,1:S))
     U2(1+N/2:N,S+1:N) = U2(1+N/2:N,S+1:N)                                      &
-    &                 - step * matmul(tempV(N/2+1:N, 1:S), Grad(1:S,S+1:N))!   &
-    !&                 + mu*diffU(1+N/2:N,S+1:N) 
+    &                 - step * matmul(tempV(N/2+1:N, 1:S), Grad(1:S,S+1:N))
     V2(1:N/2  ,S+1:N) = V2(1:N/2  ,S+1:N)                                      &
-    &                 - step * matmul(tempU(1:N/2, 1:S), Grad(1:S,S+1:N))  !   &
-    !&                 + mu*diffV(1:N/2  ,S+1:N) 
+    &                 - step * matmul(tempU(1:N/2, 1:S), Grad(1:S,S+1:N))  
     V2(N/2+1:N ,1:S)  = V2(N/2+1:N ,1:S)                                       &
-    &                 - step * matmul(tempU(N/2+1:N, S+1:N), Grad(S+1:N,1:S))! &
-    !&                 + mu*diffV(N/2+1:N ,1:S) 
-
-    if(Fermimomentum) then
-        U2(1:N/2  ,1:S)   = U2(1:N/2  ,1:S)   + mu * diffU(1:N/2  ,1:S)
-        U2(1+N/2:N,S+1:N) = U2(1+N/2:N,S+1:N) + mu * diffU(1+N/2:N,S+1:N)
-        V2(1:N/2  ,S+1:N) = V2(1:N/2  ,S+1:N) + mu * diffV(1:N/2  ,1:S)
-        V2(N/2+1:N ,1:S)  = V2(N/2+1:N ,1:S)  + mu * diffV(N/2+1:N ,1:S)
-    endif
+    &                 - step * matmul(tempU(N/2+1:N, S+1:N), Grad(S+1:N,1:S))
 
     !---------------------------------------------------------------------------
     !Don't forget to orthonormalise
     call ortho(U2,V2,S)
     
-    if(Fermimomentum) then
-        diffU = U2 - tempU
-        diffV = V2 - tempV
-    endif
-
   end subroutine GradUpdate_sig
 
 function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)

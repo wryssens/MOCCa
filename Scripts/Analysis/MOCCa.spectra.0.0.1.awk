@@ -1062,6 +1062,12 @@ BEGIN{
                 }
                 
                 getline;
+
+                if($1 == "2-body"){
+                    getline;
+                    getline;
+                }
+
                 getline;
                 getline;
                 

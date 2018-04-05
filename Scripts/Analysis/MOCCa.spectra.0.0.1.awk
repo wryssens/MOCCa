@@ -1093,6 +1093,7 @@ END{
         enoln = Energy[iq,1] - ELN[iq,3];
         printf("%3.0f %17.10f %17.10f %17.10f   %17.10f %17.10f   %17.10f %8.3f %8.3f %8.3f %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f %12.6f \n",
                    iq, Energy[iq,1],Energy[iq,2],Energy[iq,3],Energy[iq,4],ELN[iq,1],ELN[iq,2], rms[iq,1],rms[iq,2],rms[iq,3],OmegaX[iq],Jx[iq],JxT[iq],OmegaY[iq],Jy[iq],JyT[iq],OmegaZ[iq],Jz[iq],JzT[iq],SizeJ[iq],SizeO[iq]) >> "tmp.e.tab"; 
+        #           0      1             2             3           4            5       6           7          8          9        10      11      12        13        14   15         16      17     18        19           20                                                                               
         iq += 1;
     }
     close("tmp.e.tab");

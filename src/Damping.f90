@@ -93,70 +93,7 @@ contains
   call AssignFDCoefs(MaxFDOrder, MaxFDLapOrder, CoulombLapOrder)
   
   end function InverseKinetic
-  
-  !-----------------------------------------------------------------------------
-  function InverseRho(drho, rho) result(invrho)
-    !---------------------------------------------------------------------------
-    ! Precondition the difference in densities, in order to penalize the 
-    ! highly oscillatory components.
-    !
-    !
-    !---------------------------------------------------------------------------
-    use Derivatives
-
-    real*8 :: drho(nx,ny,nz,2), residual(nx,ny,nz), update(nx,ny,nz), alpha
-    real*8 :: invrho(nx,ny,nz,2), direction(nx,ny,nz), beta, amix
-    real*8 :: newresnorm, oldresnorm, rho(nx,ny,nz,2)
-    real*8 :: bfactor(nx,ny,nz), meff
-    integer:: it, iter, p, s, ts
-   
-    amix = preconfac
-    !---------------------------------------------------------------------------
-    ! Symmetries of the problem
-    !---------------------------------------------------------------------------
-    if(PC) then
-        p = 1
-    else
-        p = 0
-    endif
-    if(TSC) then
-        ts = 1
-    else
-        ts = 0
-    endif
-    if(SC) then
-        s = 1
-    else
-        s = 0
-    endif
-    !---------------------------------------------------------------------------
-    do it=1,2
-          invrho(:,:,:,it) = 0.0
-          Residual         = drho(:,:,:,it)
-          Direction        = Residual
-          newresnorm       = sum(direction**2)*dv
-          
-          do iter=1,500
-              update   = (Direction -amix*Laplacian(Direction, p,s,ts,+1))
-              
-
-              alpha   = NewResNorm/(sum(Direction*update)*dv)
-              
-              invrho(:,:,:,it) = invrho(:,:,:,it) + alpha * Direction
-              residual         = residual         - alpha * update
-              
-              oldresnorm = newresnorm
-              newresnorm = sum(residual**2)*dv
-              
-              Beta       = NewResNorm/OldResNorm
-              Direction  = Residual + beta * Direction
-
-              if(newresnorm.lt.1d-9) exit
-          enddo
-    enddo
-    !---------------------------------------------------------------------------
-  end function InverseRho
-  
+ 
 !===============================================================================
 !===============================================================================
 
@@ -172,7 +109,14 @@ contains
     real*8 :: newresnorm, oldresnorm
     real*8, intent(in) :: alpha(2), beta(2)
     
-    integer:: it, iter
+    integer:: it, iter, p, s, ts
+   
+    p = 0
+    if(PC)  p  = 1
+    s = 0
+    if(SC)  s  = 1
+    ts = 0
+    if(TSC) ts = 1
    
     amix = preconfac
 
@@ -185,7 +129,7 @@ contains
         newresnorm       = sum(direction**2)*dv
 
         do iter=1,300
-          update   = preconoperator(direction, alpha(it), beta(it))
+          update   = preconoperator(direction, alpha(it), beta(it),p,s,ts,1)
 
           aCG    = NewResNorm/(sum(Direction*update)*dv)
           
@@ -207,7 +151,60 @@ contains
     
   end function PreconditionRho
   
-  function preconoperator(drho, alpha, beta) result(Prho)
+    !-----------------------------------------------------------------------------
+  function PreconditionPotential(pot,p,s,ts,c) result(invpot)
+    !---------------------------------------------------------------------------
+    ! Precondition a potential instead of the densities. 
+    !
+    !
+    !
+    !
+    !---------------------------------------------------------------------------
+    use Derivatives
+
+    real*8 :: pot(nx,ny,nz,2), residual(nx,ny,nz), update(nx,ny,nz), aCG
+    real*8 :: invpot(nx,ny,nz,2), direction(nx,ny,nz), bCG
+    real*8 :: newresnorm, oldresnorm
+    real*8 :: alpha(2), beta(2)
+    integer, intent(in) :: p,s,ts,c
+    
+    integer:: it, iter
+   
+    
+    !---------------------------------------------------------------------------
+    invpot           = 0.0
+    do it=1,2 
+        Residual         = pot(:,:,:,it) 
+        Direction        = Residual
+        newresnorm       = sum(direction**2)*dv
+        !-----------------------------------------------------------------------
+        alpha = 0.015
+        beta  = 1.0 
+        !-----------------------------------------------------------------------
+        do iter=1,300
+          update   = preconoperator(direction, alpha(it), beta(it),p,s,ts,c)
+
+          aCG    = NewResNorm/(sum(Direction*update)*dv)
+          
+          invpot(:,:,:,it)   = invpot(:,:,:,it)  + aCG * Direction
+          residual           = residual          - aCG * update
+          
+          oldresnorm = newresnorm
+          newresnorm = sum(residual**2)*dv
+          
+          BCG      = NewResNorm/OldResNorm
+          Direction  = Residual + bCG * Direction
+          !print *, it, newresnorm
+          if(newresnorm.lt.1d-8) exit
+        enddo
+    enddo
+    !---------------------------------------------------------------------------
+    print *, 'Inv. Pot., iter = ', iter, newresnorm, sum(invpot(:,:,:,1))*dv,  &
+    &                     sum(invpot(:,:,:,2))*dv
+    
+  end function Preconditionpotential
+  
+  function preconoperator(drho, alpha, beta,p,s,ts,c) result(Prho)
     !---------------------------------------------------------------------------
     !
     !
@@ -217,32 +214,19 @@ contains
     
     real(KIND=dp), intent(in) :: drho(nx,ny,nz)
     real(KIND=dp)             :: Prho(nx,ny,nz)
-    integer                   :: p, s, ts, it
+    integer                   :: p, s, ts,c, it
     real(KIND=dp),intent(in)  :: alpha, beta
     !---------------------------------------------------------------------------
     ! Symmetries of the problem
     !---------------------------------------------------------------------------
-    if(PC) then
-        p = 1
-    else
-        p = 0
-    endif
-    if(TSC) then
-        ts = 1
-    else
-        ts = 0
-    endif
-    if(SC) then
-        s = 1
-    else
-        s = 0
-    endif
-    
-    Prho = Laplacian(drho, p,s,ts,+1)
-    Prho = Laplacian(Prho, p,s,ts,+1)
+
+    Prho = Laplacian(drho, p,s,ts,c)
+    Prho = Laplacian(Prho, p,s,ts,c)
     Prho = beta*drho + alpha*Prho
     
   end function preconoperator
+  
+  
 end module Damping
 
 !===============================================================================

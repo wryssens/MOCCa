@@ -227,17 +227,31 @@ contains
   ! when N2LO terms are present.
   !-----------------------------------------------------------------------------
     use Derivatives
+    use Densities
+    use Damping
     
     integer :: it, at, i
     real(KIND=dp) :: Reducedmass(2)
+    real(KIND=dp) :: BpotOld(nx,ny,nz,2)
 
     Reducedmass=(1.0_dp-nucleonmass/(neutrons*nucleonmass(1)+protons*nucleonmass(2)))
+
+    Bpotold = Bpot
 
     do it=1,2
         at = 3 - it
         BPot(:,:,:,it) =B3*Density%Rho(:,:,:,at) + (B3+B4)*Density%Rho(:,:,:,it)
     enddo
     
+    !---------------------------------------------------------------------------
+    ! Mix the  potential, if asked for
+    if(MixingScheme .eq. 4) then
+      Bpot = (1-DampingParam)*Bpot + DampingParam * BpotOld
+    elseif(MixingScheme .eq. 5) then
+      Bpot = BpotOld + &
+      & PreconditionPotential(Bpot-BpotOld,ParityInt,SignatureInt,TimeSimplexInt, 1)
+    endif 
+    !---------------------------------------------------------------------------
     do it=1,2
       !Gradient of B
       NablaBPot(:,:,:,1,it) = &
@@ -247,6 +261,7 @@ contains
       NablaBPot(:,:,:,3,it) = &
       & DeriveZ(BPot(:,:,:,it), ParityInt,SignatureInt,TimeSimplexInt, 1)
     enddo
+    
     return
   end subroutine CalcBPot
   
@@ -474,7 +489,7 @@ contains
     if(MixingScheme .eq. 4) then
       Upot = (1-DampingParam)*Upot + DampingParam * UpotOld
     elseif(MixingScheme .eq. 5) then
-      Upot = UpotOld + Preconditionrho(Upot - UpotOld,(/ 0.001d0, 0.001d0/),(/ 1.0d0, 1.0d0/))
+      Upot = UpotOld + PreconditionPotential(Upot - UpotOld,1,1,1,1)
     endif 
     
     return
@@ -542,7 +557,8 @@ contains
     
     integer :: m,n,k,it
 
-    WPot=0.0_dp
+    WPot   = 0.0_dp
+    
     do it=1,2
       do m=1,3
          do n=1,3

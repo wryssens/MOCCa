@@ -26,8 +26,9 @@ contains
     ! 0) => Linear Mixing with DampingParam as parameter.
     ! 1) => Linear mixing of ONLY rho.
     ! 2) => Linear mixing of ONLY laplacian of rho and laplacian of S.
-    ! 3) => 
-    ! 4) => DIIS
+    ! 3) => Preconditioning of density rho and further linear mixing
+    ! 4) => Linear mixing of potential U
+    ! 5) => 
     !---------------------------------------------------------------------------
     use Damping
     
@@ -68,44 +69,29 @@ contains
         ! Proposed update of the density
         drho = Density%rho-DensityHistory(1)%rho
         !-----------------------------------------------------------------------
-        ! Transfer to isospin densities
-        drho_iso(:,:,:,1) = drho(:,:,:,1) + drho(:,:,:,2) 
-        drho_iso(:,:,:,2) = drho(:,:,:,1) - drho(:,:,:,2) 
-        laprho_iso(:,:,:,1) = DensityHistory(1)%laprho(:,:,:,1)                &
-        &                                   +  DensityHistory(1)%laprho(:,:,:,2)
-        laprho_iso(:,:,:,2) = DensityHistory(1)%laprho(:,:,:,1)                &
-        &                                   -  DensityHistory(1)%laprho(:,:,:,2) 
-        rho_iso(:,:,:,1) = DensityHistory(1)%rho(:,:,:,1)                      &
-        &                                      +  DensityHistory(1)%rho(:,:,:,2)
-        rho_iso(:,:,:,2) = DensityHistory(1)%rho(:,:,:,1)                      &
-        &                                      -  DensityHistory(1)%rho(:,:,:,2)
-        !-----------------------------------------------------------------------
         ! Finding appropriate alpha and beta. 
         ! (Beta is not used at the moment though)
         if(preconfac .eq. 0.0) then
             do it=1,2 
-                alpha(it) = sum(laprho_iso(:,:,:,it)*drho_iso(:,:,:,it))       &
-                &         - sum(laprho_iso(:,:,:,it)*rho_iso(:,:,:,it))
-                alpha(it) = alpha(it)/sum(laprho_iso(:,:,:,it)**2)
+            	alpha(it) = &
+              &       sum(DensityHistory(1)%laprho(:,:,:,it)*drho(:,:,:,it)) - &
+            	&       sum(DensityHistory(1)%laprho(:,:,:,it)*DensityHistory(1)%rho(:,:,:,it))
+            	
+            	alpha(it) = alpha(it)/                                           &
+            	&  sum(DensityHistory(1)%laprho(:,:,:,it)*                       &
+            	&                              DensityHistory(1)%laprho(:,:,:,it))  
         	    beta(it)  = 1.0
             enddo
         else
         	alpha = preconfac
         	beta  = 1.0
         endif
-        
-        alpha = alpha
         !-----------------------------------------------------------------------
         ! Precondition the proposed update
-        preconrho = Preconditionrho(drho_iso,alpha, beta)
+        preconrho = Preconditionrho(drho,alpha, beta)
         print *,'Preconditioned', alpha
         !-----------------------------------------------------------------------
-        ! Apply the update, with inversion of the isospin dependency
-        Density%rho(:,:,:,1) = DensityHistory(1)%rho(:,:,:,1)                  &
-        &                        + 0.5*(preconrho(:,:,:,1) + preconrho(:,:,:,2))
-        Density%rho(:,:,:,2) = DensityHistory(1)%rho(:,:,:,2)                  &
-        &                        + 0.5*(preconrho(:,:,:,1) - preconrho(:,:,:,2))
-
+        Density%rho = DensityHistory(1)%rho + preconrho 
         !-----------------------------------------------------------------------
 	      ! Correct for possible errors and rescale the density
         if(any(Density%rho .lt. 0)) then
@@ -115,13 +101,13 @@ contains
         &           Density%rho(:,:,:,1)/(sum(Density%rho(:,:,:,1))*dv)*Neutrons
         Density%rho(:,:,:,2) =                                                 &
         &           Density%rho(:,:,:,2)/(sum(Density%rho(:,:,:,2))*dv)* Protons
-	      !-----------------------------------------------------------------------
-        ! Recalculate the derivatives of rho
-        call RecalcRhoDerivatives()  
-        
         !-----------------------------------------------------------------------
         ! Damp the rest of the densities
         Density = (1-DampingParam) * Density + DampingParam*DensityHistory(1)
+	      !-----------------------------------------------------------------------
+        ! Recalculate the derivatives of rho
+        call RecalcRhoDerivatives()  
+
       case(4)
         ! Do nothing as this mixes potentials instead of densities.
       case(5)

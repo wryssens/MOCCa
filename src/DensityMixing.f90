@@ -27,8 +27,8 @@ contains
     ! 1) => Linear mixing of ONLY rho.
     ! 2) => Linear mixing of ONLY laplacian of rho and laplacian of S.
     ! 3) => Preconditioning of density rho and further linear mixing
-    ! 4) => Linear mixing of potential U
-    ! 5) => 
+    ! 4) => Linear mixing of potentials U and B
+    ! 5) => Preconditioning of potentials U and B
     !---------------------------------------------------------------------------
     use Damping
     
@@ -49,23 +49,6 @@ contains
         Density = (1-DampingParam) * Density + DampingParam*DensityHistory(1)
       case(1)
         !-----------------------------------------------------------------------
-        ! Only mix rho with estimated dampingparam.
-        DampingParam = 6*sum(abs(Cdrho))*dt/hbar/(dx**2)
-        DampingParam = 1 - 1/DampingParam
-        print *, 'damping', dampingparam
-        
-        Density%rho = (1-DampingParam)*Density%rho + &
-        &                DampingParam *DensityHistory(1)%rho
-        
-        ! Recalculate the derivatives of rho
-        call RecalcRhoDerivatives()
-      case(2)
-        !-----------------------------------------------------------------------
-        ! only mix laprho and laps
-        Density%laprho = (1-DampingParam)*Density%laprho + &
-        &                   DampingParam *DensityHistory(1)%laprho
-      case(3)
-        !-----------------------------------------------------------------------
         ! Proposed update of the density
         drho = Density%rho-DensityHistory(1)%rho
         !-----------------------------------------------------------------------
@@ -74,14 +57,15 @@ contains
         if(preconfac .eq. 0.0) then
             do it=1,2 
             	alpha(it) = &
-              &       sum(DensityHistory(1)%laprho(:,:,:,it)*drho(:,:,:,it)) - &
-            	&       sum(DensityHistory(1)%laprho(:,:,:,it)*DensityHistory(1)%rho(:,:,:,it))
+              &  sum(DensityHistory(1)%laprho(:,:,:,it)*drho(:,:,:,it)) -      &
+            	&  sum(DensityHistory(1)%laprho(:,:,:,it)*DensityHistory(1)%rho(:,:,:,it))
             	
             	alpha(it) = alpha(it)/                                           &
             	&  sum(DensityHistory(1)%laprho(:,:,:,it)*                       &
             	&                              DensityHistory(1)%laprho(:,:,:,it))  
         	    beta(it)  = 1.0
             enddo
+            alpha = -alpha
         else
         	alpha = preconfac
         	beta  = 1.0
@@ -107,14 +91,8 @@ contains
 	      !-----------------------------------------------------------------------
         ! Recalculate the derivatives of rho
         call RecalcRhoDerivatives()  
-
-      case(4)
+      case(2)
         ! Do nothing as this mixes potentials instead of densities.
-      case(5)
-        ! Do nothing as this mixes potentials instead of densities.
-      case(6)
-        !-----------------------------------------------------------------------
-        call DIIS(mod(Iteration,100))
       case DEFAULT
         call stp('Mixing scheme not supported!')
     end select

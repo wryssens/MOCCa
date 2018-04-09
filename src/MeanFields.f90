@@ -232,7 +232,7 @@ contains
     
     integer :: it, at, i
     real(KIND=dp) :: Reducedmass(2)
-    real(KIND=dp) :: BpotOld(nx,ny,nz,2)
+    real(KIND=dp) :: BpotOld(nx,ny,nz,2), alpha(nx,ny,nz,2), beta(nx,ny,nz,2)
 
     Reducedmass=(1.0_dp-nucleonmass/(neutrons*nucleonmass(1)+protons*nucleonmass(2)))
 
@@ -242,15 +242,6 @@ contains
         at = 3 - it
         BPot(:,:,:,it) =B3*Density%Rho(:,:,:,at) + (B3+B4)*Density%Rho(:,:,:,it)
     enddo
-    
-    !---------------------------------------------------------------------------
-    ! Mix the  potential, if asked for
-    if(MixingScheme .eq. 4) then
-      Bpot = (1-DampingParam)*Bpot + DampingParam * BpotOld
-    elseif(MixingScheme .eq. 5) then
-      Bpot = BpotOld + &
-      & PreconditionPotential(Bpot-BpotOld,ParityInt,SignatureInt,TimeSimplexInt, 1)
-    endif 
     !---------------------------------------------------------------------------
     do it=1,2
       !Gradient of B
@@ -412,7 +403,8 @@ contains
     use Force 
     
     integer        :: it, at
-    real(KIND=dp)  :: Upotold(nx,ny,nz,2)
+    real(KIND=dp)  :: Upotold(nx,ny,nz,2), alpha(nx,ny,nz,2), beta(nx,ny,nz,2)
+    
     !Temporary storage for total densities.
     real(KIND=dp)  :: RhoTot(nx,ny,nz),VecSTot(nx,ny,nz,3), NablaJTot(nx,ny,nz)
     real(KIND=dp)  :: eps
@@ -481,17 +473,19 @@ contains
     if( Cexchange .eq.2) then
       UPot(:,:,:,2) = UPot(:,:,:,2) + CoulExchange(:,:,:)
     endif
+        
     !Add the contribution from Constraints on the Multipole Moment
     UPot = UPot + ConstraintEnergy
     
     !---------------------------------------------------------------------------
     ! Mix the Upotential if asked for
-    if(MixingScheme .eq. 4) then
-      Upot = (1-DampingParam)*Upot + DampingParam * UpotOld
-    elseif(MixingScheme .eq. 5) then
-      Upot = UpotOld + PreconditionPotential(Upot - UpotOld,1,1,1,1)
+    if(MixingScheme .eq. 2) then
+      alpha = - 4*(sum(abs(Cdrho)))*dt/hbar
+!      alpha = -dampingparam
+      beta  =  1
+      Upot = UpotOld + PreconditionPotential(Upot - UpotOld,alpha, beta,1,1,1,1)
     endif 
-    
+
     return
   end subroutine CalcUPot
 

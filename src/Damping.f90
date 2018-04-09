@@ -106,7 +106,8 @@ contains
 
     real*8 :: drho(nx,ny,nz,2), residual(nx,ny,nz), update(nx,ny,nz), aCG
     real*8 :: invrho(nx,ny,nz,2), direction(nx,ny,nz), bCG, amix
-    real*8 :: newresnorm, oldresnorm
+    real*8 :: newresnorm, oldresnorm, ar(nx,ny,nz), br(nx,ny,nz)
+    
     real*8, intent(in) :: alpha(2), beta(2)
     
     integer:: it, iter, p, s, ts
@@ -128,8 +129,11 @@ contains
         Direction        = Residual
         newresnorm       = sum(direction**2)*dv
 
+        ar = alpha(it)
+        br = beta(it)
+        
         do iter=1,300
-          update   = preconoperator(direction, alpha(it), beta(it),p,s,ts,1)
+          update   = preconoperator(direction, ar, br,p,s,ts,1)
 
           aCG    = NewResNorm/(sum(Direction*update)*dv)
           
@@ -152,24 +156,20 @@ contains
   end function PreconditionRho
   
     !-----------------------------------------------------------------------------
-  function PreconditionPotential(pot,p,s,ts,c) result(invpot)
+  function PreconditionPotential(pot,alpha, beta, p,s,ts,c) result(invpot)
     !---------------------------------------------------------------------------
     ! Precondition a potential instead of the densities. 
-    !
-    !
-    !
-    !
     !---------------------------------------------------------------------------
     use Derivatives
 
     real*8 :: pot(nx,ny,nz,2), residual(nx,ny,nz), update(nx,ny,nz), aCG
     real*8 :: invpot(nx,ny,nz,2), direction(nx,ny,nz), bCG
     real*8 :: newresnorm, oldresnorm
-    real*8 :: alpha(2), beta(2)
+    real*8 :: alpha(nx,ny,nz,2), beta(nx,ny,nz,2)
+    
     integer, intent(in) :: p,s,ts,c
     
     integer:: it, iter
-   
     
     !---------------------------------------------------------------------------
     invpot           = 0.0
@@ -177,12 +177,11 @@ contains
         Residual         = pot(:,:,:,it) 
         Direction        = Residual
         newresnorm       = sum(direction**2)*dv
-        !-----------------------------------------------------------------------
-        alpha = 0.015
-        beta  = 1.0 
+
         !-----------------------------------------------------------------------
         do iter=1,300
-          update   = preconoperator(direction, alpha(it), beta(it),p,s,ts,c)
+          update  &
+          &  = preconoperator(direction,alpha(:,:,:,it),beta(:,:,:,it),p,s,ts,c)
 
           aCG    = NewResNorm/(sum(Direction*update)*dv)
           
@@ -194,9 +193,9 @@ contains
           
           BCG      = NewResNorm/OldResNorm
           Direction  = Residual + bCG * Direction
-          !print *, it, newresnorm
           if(newresnorm.lt.1d-8) exit
         enddo
+        !-----------------------------------------------------------------------
     enddo
     !---------------------------------------------------------------------------
     print *, 'Inv. Pot., iter = ', iter, newresnorm, sum(invpot(:,:,:,1))*dv,  &
@@ -204,10 +203,14 @@ contains
     
   end function Preconditionpotential
   
-  function preconoperator(drho, alpha, beta,p,s,ts,c) result(Prho)
+  function preconoperator(drho,alpha,beta,p,s,ts,c) result(Prho)
     !---------------------------------------------------------------------------
+    ! Implement the preconditioning operator
     !
-    !
+    ! Pf(r) = B(r)*f(r) + a(r) * Delta(f(r)) 
+    ! 
+    ! There is at the moment no routine that makes use of the (r) dependence
+    ! of neither B, nor A, but future improvements might depend on it. 
     !---------------------------------------------------------------------------
     use Force
     use Derivatives
@@ -215,116 +218,14 @@ contains
     real(KIND=dp), intent(in) :: drho(nx,ny,nz)
     real(KIND=dp)             :: Prho(nx,ny,nz)
     integer                   :: p, s, ts,c, it
-    real(KIND=dp),intent(in)  :: alpha, beta
+    real(KIND=dp),intent(in)  :: alpha(nx,ny,nz), beta(nx,ny,nz)
     !---------------------------------------------------------------------------
     ! Symmetries of the problem
     !---------------------------------------------------------------------------
 
     Prho = Laplacian(drho, p,s,ts,c)
-    Prho = Laplacian(Prho, p,s,ts,c)
     Prho = beta*drho + alpha*Prho
     
   end function preconoperator
-  
-  
 end module Damping
 
-!===============================================================================
-! Code ZOO
-!===============================================================================
-!  !-----------------------------------------------------------------------------
-!  
-!  function AverageSpinor(Psi, P,S, TS, I) result(Phi)
-!    !---------------------------------------------------------------------------
-!    ! Averages the spinor Psi along every spatial direction, weighted with a 
-!    ! gaussian exp(-a Delta x^2).
-!    !---------------------------------------------------------------------------
-!    use Spinors
-!    use Derivatives
-!    integer, intent(in)       :: P,S, TS, I
-!    type(Spinor)              :: Psi
-!    type(Spinor)              :: Phi
-!    real(KIND=dp)             :: a
-!    integer                   :: j
-!    
-!    !---------------------------------------------------------------------------
-!    !Change the derivative coefficients
-!    deallocate(FDLap)
-!    allocate(FDLap(-2:2))
-!    !---------------------------------------------------------------------------
-!    ! Numerical parameter. Note that this is adjusted semi-empirically. The 
-!    ! lower, the faster convergence, but is is bounded from below. The 
-!    ! approximation to the exponential should be positive definite.
-!    !  See P.G. Reinhardt & Cusson, Nuc. Phys. A A378, 418-442
-!    !---------------------------------------------------------------------------
-!    a = 2.8_dp
-
-!    !Factor dx**2 du to laplacian routines dividing by dx**2
-!    do j=1,size(FDLap)/2
-!      FDLap(-j) = exp(-j**2*a*dx**2)*dx**2 *sqrt(a/pi)
-!      FDLap(j ) = FDLap(-j)
-!    enddo
-!    !Factor 3.0 due to 3D.
-!    FDLap(0)  = dx**2/3.0_dp  *sqrt(a/pi) 
-
-!    Phi = LapSpinor(Psi,P,S,TS)
-!    !-----------------------------------------------------------------------------
-!    ! Resetting the derivation routines
-!    call AssignFDCoefs(MaxFDOrder, MaxFDLapOrder, CoulombLapOrder)
-!  
-!  end function AverageSpinor
-!  
-!  function AverageDensity(r) result(ar)
-!    real(KIND=dp)             :: ar(nx,ny,nz,2), r(nx,ny,nz,2), a
-!    integer                   :: it, i,j,k
-!    
-!    !---------------------------------------------------------------------------
-!    ! Numerical parameter. Note that this is adjusted semi-empirically. The 
-!    ! lower, the faster convergence, but is is bounded from below. The 
-!    ! approximation to the exponential should be positive definite.
-!    !  See P.G. Reinhardt & Cusson, Nuc. Phys. A A378, 418-442
-!    !---------------------------------------------------------------------------
-!    a = 0.25_dp
-!    
-!    do it=1,2
-!       do k=1,nz
-!        do j=1,ny 
-!         do i=2,nx-1
-!            ar(i,j,k,it) = (1-2*a)*r(i,j,k,it) + a*r(i+1,j,k,it)        &
-!            &                                  + a*r(i-1,j,k,it)
-!         enddo
-!         ar(1,j,k,it)  = (1-2*a)*r(1,j,k,it) + a*r(2,j,k,it)             &
-!         &                                  + a*r(1,j,k,it)
-!         ar(nx,j,k,it) = (1-2*a)*r(nx,j,k,it) + a*r(nx-1,j,k,it) 
-!        enddo
-!       enddo
-!       
-!       !------------------------------------------------------------------------
-!       do k=1,nz
-!        do i=1,nx 
-!         do j=2,ny-1
-!            ar(i,j,k,it) = (1-2*a)*r(i,j,k,it) + a*r(i,j+1,k,it) &
-!            &                                  + a*r(i,j-1,k,it)
-!         enddo
-!         ar(i,1,k,it)  = (1-2*a)*r(i,1,k,it)  + a*r(i,2,k,it)    &
-!         &                                    + a*r(i,1,k,it)
-!         ar(i,ny,k,it) = (1-2*a)*r(i,ny,k,it) + a*r(i,ny-1,k,it)
-!        enddo
-!       enddo
-!       
-!       !------------------------------------------------------------------------
-!       do j=1,ny
-!        do i=1,nx 
-!         do k=2,nz-1
-!            ar(i,j,k,it) = (1-2*a)*r(i,j,k,it) + a*r(i,j,k+1,it) &
-!            &                                  + a*r(i,j,k-1,it)
-!         enddo
-!         ar(i,j,1,it)  = (1-2*a)*r(i,j,1,it)  + a*r(i,j,2,it)    &
-!         &                                    + a*r(i,j,1,it)
-!         ar(i,j,nz,it) = (1-2*a)*r(i,j,nz,it) + a*r(i,j,nz,it)
-!        enddo
-!       enddo
-!       
-!    enddo
-
-!  end function AverageDensity

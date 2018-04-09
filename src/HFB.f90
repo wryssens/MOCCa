@@ -75,7 +75,7 @@ module HFB
   !-----------------------------------------------------------------------------
   ! This integer stores all of the columns we want to take from the U and V
   ! to construct Density and anomalous density matrix.
-   integer, allocatable :: HFBColumns(:,:,:)
+   integer, allocatable :: HFBColumns(:,:,:), oldColumns(:,:,:)
   !-----------------------------------------------------------------------------
   ! Logical. Check all kinds of relations that should hold for correct HFB
   ! calculations. Only to be used for debugging purposes.
@@ -154,7 +154,7 @@ module HFB
   !-----------------------------------------------------------------------------
   ! Whether we want to use Broyden (fast and not 100% guaranteed) or Bisection
   ! (slow and guaranteed) method to solve for the Fermi energy
-  character(len=9) :: FermiSolver='Broyden'
+  character(len=12) :: FermiSolver='Broyden'
   !-----------------------------------------------------------------------------
   ! Whether or not to enable momentum in the gradient solver.
   ! HIGHLY EXPERIMENTAL
@@ -162,6 +162,8 @@ module HFB
   !-----------------------------------------------------------------------------
   ! Size of the change in rho and kappa in the last iteration.
   real(KIND=dp) :: drho(2,2), dkappa(2,2)
+  !-----------------------------------------------------------------------------
+  logical       :: HFBcontinuity = .false.
   !-----------------------------------------------------------------------------
   ! Procedure pointer for the diagonalisation of the HFBhamiltonian.
   ! Either with or without signature conservation.
@@ -181,8 +183,9 @@ module HFB
 
   procedure(LNCR8_interface), pointer  :: LNCr8
   procedure(Diag_interface), pointer :: DiagonaliseHFBHamiltonian
-
+  procedure(HFBNumberofParticles_ordinary), pointer :: HFBNumberofParticles
 contains
+  
   subroutine PrepareHFBModule
     !---------------------------------------------------------------------------
     ! This subroutine nicely prepares the module at the start of the program.
@@ -226,7 +229,12 @@ contains
     if(.not.allocated(HFBColumns)) then
       allocate(HFBColumns(HFBSize,Pindex,Iindex))     ; HFBColumns     = 0
     endif
-
+    
+    if(HFBContinuity) then
+      HFBNumberofParticles => HFBNumberofParticles_continuity
+    else
+      HFBNumberofParticles => HFBNumberofParticles_ordinary 
+    endif
     
   end subroutine PrepareHFBModule
 
@@ -434,7 +442,7 @@ contains
     !
     ! NOTE THAT THIS ROUTINE IS NOT READY FOR TIME-SIMPLEX BREAKING AS DELTA
     ! CAN BE COMPLEX IN THAT CASE!
-    !----------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
 
     use Spinors
 
@@ -616,40 +624,7 @@ contains
     enddo
   end subroutine HFBGaps_TIMEREV
 
-  function HFBNumberOfParticles_OLD(Lambda, Delta, LNLambda) result(N)
-  !-----------------------------------------------------------------------------
-  ! Diagonalise the HFB Hamiltonian as a function of Lambda to get the number
-  ! of particles of species it.
-  !-----------------------------------------------------------------------------
-  ! This is NOT a pure function, the HFB hamiltonian gets constructed, as well
-  ! as the HFB density and anomalous density matrix.
-  !-----------------------------------------------------------------------------
-    integer                   :: i, it, P, iter
-    real(Kind=dp), intent(in) :: Lambda(2),LNLambda(2)
-    real(KIND=dp)             :: N(2), N2(2,2), times(5)
-    complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
-
-    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge)
-    ! Diagonalisation of the HFBHamiltonian: computation of U & V matrices.
-    call DiagonaliseHFBHamiltonian
-    ! Construct the generalised density matrix and the anomalous one.
-    call ConstructHFBstate()
-
-    N = 0.0_dp ; N2 = 0.0_dp
-    !Calculating total number of particles, by tracing the density matrix
-    ! Sidenote: RHOHFB is hermitian, thus the imaginary parts of RHoHFB(i,i) are
-    ! zero anyways.
-    do it=1,Iindex
-      do P=1,Pindex
-        do i=1,blocksizes(P,it)
-          N(it) = N(it) + real(RhoHFB(i,i,P,it))
-        enddo
-      enddo
-    enddo
-
-  end function HFBNumberOfParticles_OLD
-
-  function HFBNumberofParticles(Lambda, Delta, LNLambda) result(N)
+  function HFBNumberofParticles_ordinary(Lambda, Delta, LNLambda) result(N)
     !---------------------------------------------------------------------
     ! Constructs the HFB state ( consisting of RhoHFB and KappaHFB) and
     ! returns the number of particles present.
@@ -732,7 +707,79 @@ contains
       enddo
     enddo
 
-  end function HFBNumberofParticles
+  end function HFBNumberofParticles_ordinary
+  
+  function HFBNumberofParticles_continuity(Lambda, Delta, LNLambda) result(N)
+    !---------------------------------------------------------------------------
+    ! Constructs the HFB state ( consisting of RhoHFB and KappaHFB) and
+    ! returns the number of particles present.
+    !---------------------------------------------------------------------------
+    real(Kind=dp), intent(in)                :: Lambda(2),LNLambda(2)
+    complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
+    real(KIND=dp), allocatable               :: Transfo(:,:,:,:)
+    integer                                  :: it, P,i,j,Nn,ii,jj, ind
+    real(KIND=dp)                            :: N(2), overlap
+
+    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge)
+    call DiagonaliseHFBHamiltonian
+
+    !---------------------------------------------------------------------------
+    ! Determining which eigenvectors of the HFB Hamiltonian to use
+    if(.not.allocated(Transfo)) then
+        allocate(Transfo(HFBsize, 4*HFBsize,Pindex,Iindex)) ; Transfo=0
+    endif   
+    
+    do it=1,Iindex
+      do P=1,Pindex
+        Nn = blocksizes(P,it)
+        do i=1,Nn
+          do j=1,2*Nn
+            ii = OldColumns(i,P,it)
+            Transfo(i   ,j   ,P,it)   = sum(OldU(1:Nn,ii,P,it)*U(1:Nn,j,P,it)) &
+            &                         + sum(OldV(1:Nn,ii,P,it)*V(1:Nn,j,P,it))
+            Transfo(i   ,j+2*Nn,P,it) = sum(OldU(1:Nn,ii,P,it)*V(1:Nn,j,P,it)) &
+            &                         + sum(OldV(1:Nn,ii,P,it)*U(1:Nn,j,P,it))
+          enddo
+        enddo
+        !-----------------------------------------------------------------------
+        ! Having calculated the transformation, we now select the correct
+        ! columns.
+        do j=1,Nn          
+          overlap = 0.0
+          ind     = 0
+          do i=1,2*Nn
+            if(abs(Transfo(j,i,P,it)) .gt. overlap) then
+              ind     = i
+              overlap = abs(Transfo(j,i,P,it))
+            endif
+          enddo
+          HFBcolumns(j,P,it) = ind
+        enddo
+        if(any(HFBcolumns(1:Nn,P,it).eq.0)) call stp('wtf')
+!        if(it.eq.1 .and. P.eq.2) then
+!          print *, HFBcolumns(1:Nn,P,it) 
+!          print *, Oldcolumns(1:Nn,P,it)
+!          print *
+!        endif
+      enddo      
+    enddo
+    !call checkUandVcolumns(HFBcolumns)
+    !---------------------------------------------------------------------------
+    call constructRhoHFB(HFBColumns)
+    call constructKappaHFB(HFBColumns)
+    !---------------------------------------------------------------------------
+    ! Calculate the number of particles in this configuration and return.
+    ! The Fermi energy can then use this to get adjusted.
+    N = 0.0_dp
+    do it=1,Iindex
+      do P=1,Pindex
+        do i=1,blocksizes(P,it)
+          N(it) = N(it) + real(RhoHFB(i,i,P,it))
+        enddo
+      enddo
+    enddo
+
+  end function HFBNumberofParticles_continuity
 
   subroutine HFBFindFermiEnergyBisection(Fermi,L2,Delta,DeltaLN,Lipkin,DN2,    &
     &                                                  ConstrainDispersion,Prec)
@@ -885,7 +932,7 @@ contains
 
   subroutine HFBFindFermiEnergyBroyden                                         &
     &         (Fermi,LnLambda,Delta,DeltaLN,Lipkin,DN2,ConstrainDispersion,Prec)
-  !---------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
   ! This routine varies the Fermi energy and LNLambda parameter to get the
   ! number of particles right, and the Lipkin-Nogami parameter equal to its
   ! calculated value.
@@ -921,7 +968,7 @@ contains
   ! |     J = J + F( Fermi_New , LNLambda_New) * DX^T / |DX|**2
   ! | 5) Go back to 2 if not converged.
   ! |--
-  !---------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
   ! Nice to note is that if we do not do the updating of the Jacobian and
   ! instead always calculate a finite-difference Jacobian with a fixed
   ! difference step in Fermi and Lambda, this reduces to the
@@ -932,13 +979,13 @@ contains
   ! This method reduces also to the CR8 situation if we fix the discretisation
   ! in Fermi and Lambda.
   !
-  !---------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
   ! While it might seem like a good idea to let FermiHistory, LNHistory and
   ! the Jacobian persist across mean-field iterations, I have found out that
   ! in practice this is a bad idea. After a mean-field iteration, the Fermi
   ! energy is generally close to the correct one, but the approximation that
   ! was saved might actually be a very bad one.
-  !---------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
   1 format('Attention, unconverged Fermi solver.'/, &
   &        'Iterations : ', i5,                  /, &
   &        'Particles  : ', 2f12.8)
@@ -971,6 +1018,7 @@ contains
   ! Step size
   real(KIND=dp)                         :: step(2) = 0.5_dp
 
+  !-----------------------------------------------------------------------------
   ! First time, take some guess for the histories
   FermiHistory = Fermi    + 0.01_dp
   LNHistory    = LNLambda + 0.01_dp
@@ -978,6 +1026,17 @@ contains
   Particles(2) = Protons
   Converged    = .false.
 
+  !---------------------------------------------------------------------------
+  ! Block some quasiparticles
+  if(allocated(qpexcitations) .and. HFBcontinuity) then
+    call      BlockQuasiParticles
+    deallocate(qpexcitations)
+  endif
+  !----------------------------------------------------------------------------
+  ! Store old U and V for future reference
+  OldU        = U ; OldV = V
+  OldColumns  = HFBColumns
+  
   flag = 0
   !Check were we find ourselves in the phasespace
   N = HFBNumberofParticles(Fermi, Delta, LnLambda ) - Particles
@@ -1060,13 +1119,6 @@ contains
       FermiUpdate = step * FermiUpdate
       LNUpdate    = step * LNUpdate
 
-      ! if(ConstrainDispersion) then
-      !   do it=1,2
-      !     if(abs(LNUpdate(it)).gt.0.5) then
-      !       LNUpdate(it) = 0.1*LNUpdate(it)/abs(LNUpdate(it))
-      !     endif
-      !   enddo
-      ! endif
       !Replace the history and update
       do it=1,2
         ! Replace the history
@@ -1717,107 +1769,6 @@ subroutine InsertionSortQPEnergies
 
   end subroutine InsertionSortQPEnergies
 
-  subroutine ConstructHFBState()
-  !-----------------------------------------------------------------------------
-  ! High-level routine that constructs the generalised HFB density matrix and
-  ! the anomalous density Kappa.
-  !
-  ! rho   = V^* V^T
-  ! kappa = V^* U^T
-  !
-  ! However, this concerns the 'text' U and V matrices, and we still need to
-  ! select the qusiparticle states we want to occupy, i.e. which columns to take.
-  ! This is ofcourse dependent on the number parity.
-  ! To this end, we construct and diagonalise the HFB density multiple times,
-  ! checking whether the number parity is the one we want.
-  !
-  ! Since Rho = V^* V^T = 1 - U^* U^T it is easy to see that the EigenValues
-  ! of Rho that are equal to 1 correspond to the zero eigenvalues of U. It is
-  ! exactly the dimension of the null-space of U that determines the number
-  ! parity of the HFB state. If this dimension is D then:
-  !    \pi_n = (-1)^D
-  !
-  ! For more see:
-  ! G. Bertsch et al., Phys. Rev. A 79, 043602 (2009)
-  !-----------------------------------------------------------------------------
-    integer             :: i,it,P, C,j
-    ! This counts the null-space dimension of U for every signature,parity &
-    ! isospin block.
-    integer             :: NullDimension(2,2)
-    real(KIND=dp)       :: TotalSignature(2,2), prod
-    complex(KIND=dp) :: Temp(HFBSize)
-    !---------------------------------------------------------------------------
-    HFBColumns  = 0
-    do it=1,Iindex
-      do P=1,Pindex
-        !-----------------------------------------------------------------------
-        ! Our first try is always just taking the positive energy quasiparticle
-        ! columns. These are the last columns in U and V, since the Hamiltonian
-        ! diagonalisation ordered the eigenvalues in ascending order.
-        do i=1,blocksizes(P,it)
-          HFBColumns(i,P,it) = i + blocksizes(P,it)
-        enddo
-      enddo
-    enddo
-    ! Switch the columns we want to block
-    if(allocated(QPExcitations)) call BlockQuasiParticles()
-    !---------------------------------------------------------------------------
-    ! Extra check if needed
-    if(HFBCheck) call CheckUandVColumns(HFBColumns)
-    ! We now explicitly construct Rho first
-    call constructRhoHFB(HFBColumns)
-    if(HFBCheck) call CheckRho(RhoHFB)
-    !---------------------------------------------------------------------------
-    !Note that the entire procedure to combat gapless superconductivity is super-
-    !fluous when conserving time-reversal
-    if(.not.TRC) then
-        !-----------------------------------------------------------------------
-        !Now we diagonalise Rho.
-        call DiagonaliseRHOHFB
-        NullDimension = 0 ; TotalSignature = 0.0_dp
-        do it=1,Iindex
-          do P=1,Pindex
-            !-------------------------------------------------------------------
-            ! Now we look for eigenvalues of Rho that are VERY CLOSE to 1, and
-            ! count them for each isospin-parity block.
-            ! Only one `problem' here: when is an eigenvalue close enough to 1?
-            do i=1,blocksizes(P,it)
-              if(abs(Occupations(i,P,it) - 1) .lt. 1d-10) then
-                NullDimension(P,it) = NullDimension(P,it) + 1
-              endif
-            enddo
-
-            ! If the number-parity is even, no problem.
-            if((-1)**NullDimension(P,it) .eq. HFBNumberParity(P,it)) cycle
-
-            !-------------------------------------------------------------------
-            ! Now for the fixing part: if a block has wrong number parity, we
-            ! check for the lowest positive quasiparticle energy of that block
-            ! and 'excite' that quasiparticle by exchanging U and V for that qp.
-            ! Of course we need to check that we excite the qp with the correct
-            ! signature.
-            !-------------------------------------------------------------------
-
-            do i=1,blocksizes(P,it)
-              C = HFBColumns(i,P,it)
-              !if(abs(QuasiSignatures(C,P,it) - TotalSignature(P,it)/2 ).lt.1d-8) then
-                  HFBColumns(i,P,it) = 2*blocksizes(P,it) - C + 1
-                  exit
-              !endif
-            enddo
-           enddo
-        enddo
-      if(HFBCheck) call CheckUandVColumns(HFBColumns)
-      !-------------------------------------------------------------------------
-      ! Reconstruct the density
-     call constructRhoHFB(HFBColumns)
-    endif
-    !---------------------------------------------------------------------------
-    ! Construct the anomalous density matrix
-    call constructKappaHFB(HFBColumns)
-
-  end subroutine ConstructHFBState
-
   subroutine CheckUandVColumns(Columns)
     !---------------------------------------------------------------------------
     ! Routine that checks if the U's and V's obey relations 7.5 in R&S.
@@ -1954,97 +1905,10 @@ subroutine InsertionSortQPEnergies
             enddo
           enddo
         enddo
-!        s = 0
-!        do j=1,blocksizes(P,it)
-!            print ('(100f8.3)'), real(RhoHFB(j,1:blocksizes(P,it),P,it))
-!            s = s + real(RhoHFB(j,j,P,it))
-!        enddo
-!        print *
-!        print *, s
-!        print *
       enddo
     enddo
 
   end subroutine ConstructRHOHFB
-
-!  subroutine DiagonaliseRhoHFB_ZHEEV
-!    !---------------------------------------------------------------------------
-!    ! Diagonalise RhoHFB and find both the occupation numbers and the
-!    ! transformation matrix between HFbasis and the canonical basis.
-!    !
-!    !---------------------------------------------------------------------------
-!    complex(KIND=dp), allocatable, save :: Work(:)
-!    real(KIND=dp), allocatable,    save :: RWork(:)
-!    integer,                       save :: WorkSize
-!    complex(KIND=dp), allocatable, save :: Temp(:,:)
-!    integer                             :: Succes, P, it, N, i, ii, iii
-
-!    !---------------------------------------------------------------------------
-!    ! Some preparations for the diagonalisation routine further on.
-!    if(.not.allocated(WORK)) then
-!      ! This RWORK array has to have a specific size, see the ZHEEV docs at
-!      ! http://www.netlib.org/lapack/explore-html/d6/dee/zheev_8f.html
-!      allocate(RWORK(3*maxval(blocksizes)-2))
-!      allocate(Temp(HFBSize,HFBSize))
-!      Temp = 0.0_dp ;  RWORK = 0.0_dp
-!      WORKSIZE = -1 ; allocate(WORK(1))
-!      ! Preliminary call to determine WORKSIZE
-!      call ZHEEV('V', 'U', maxval(blocksizes), Temp,maxval(blocksizes),      &
-!      &           Occupations, WORK, WORKSIZE, RWORK, Succes)
-!      WORKSIZE = ceiling(real(WORK(1)))
-!      deallocate(WORK); allocate(WORK(WORKSIZE))
-!    endif
-
-!    do it=1,Iindex
-!      do P=1,Pindex
-!          Temp          = 0.0_dp
-!          N             = blocksizes(P,it)
-!          Temp(1:N,1:N) = RhoHFB(1:N,1:N,P,it)
-
-!          !-------------------------------------------------------------------
-!          ! Since our matrices are not split into signature blocks, and in
-!          ! general the eigenvalues of the density matrix are degenerate,
-!          ! we need to ensure that states of different signature do not get
-!          ! mixed. We do this by artificially shifting the eigenvalues of
-!          ! the negative signatures.
-!          !
-!          ! Notice that, if V is some eigenvector of some matrix A with
-!          ! eigenvalue lambda, then V is also an eigenvalue of (A - b*I)
-!          ! where I is the identity matrix and b is a number.
-!          ! Its corresponding eigenvalue is then just shifted, but the
-!          ! the eigenvectors of A and (A - b*I) are the same.
-!          !
-!          ! In this way, we subtract two from the negative signature
-!          ! diagonal elements, thus putting the negative signature
-!          ! eigenvalues in the (-2,-1) range, well separated from the
-!          ! positive signature eigenvalues in the (0,1) range.
-!          if(SC) then
-!            do i=1,blocksizes(P,it)
-!              ii  = blockindices(i,P,it)
-!              iii = mod(ii-1,nwt)+1
-!              if( ii .ne. iii .or. HFBasis(iii)%GetSignature().eq.-1) then
-!                Temp(i,i) = Temp(i,i) - 2.0_dp
-!              endif
-!            enddo
-!          endif
-
-!          call ZHEEV('V', 'U', N, Temp(1:N,1:N), N, Occupations(1:N,P,it)    &
-!          &          , WORK, WORKSIZE, RWORK, Succes)
-!          if(Succes.ne.0) then
-!            call stp('ZHEEV failed to diagonalise RHOHFB', 'Errorcode', Succes)
-!          endif
-
-!          CanTransfo(1:N,1:N,P,it) = Temp(1:N,1:N)
-!          !------------------------------------------------------------------
-!          ! Since we shifted the eigenvalues of the negative signature states
-!          ! by -2, we now need to find the actual occupation numbers.
-!          ! Notice the slight offset to make sure we are not accidentally
-!          ! adding two to positive signature eigenvalues
-!          if(SC) where( Occupations.lt.-0.1_dp) Occupations = Occupations + 2
-!      enddo
-!    enddo
-!    where (abs(CanTransfo) .lt. 1d-11) CanTransfo = 0.0_dp
-!  end subroutine DiagonaliseRhoHFB_ZHEEV
 
   subroutine DiagonaliseRhoHFB!_diagoncr8
         !-----------------------------------------------------------------------
@@ -2229,20 +2093,7 @@ subroutine InsertionSortQPEnergies
   integer                                   :: P2, C, index, N
 
   PairingDisp = 0.0_dp
-  !----------------------------------------------------------------------------
-  ! Store old U and V
-  if(.not.allocated(OldU)) OldU = U ; OldV = V
-  OldU = 0.0 ; OldV = 0.0
-  do it=1,Iindex
-    do P=1,Pindex
-        N = blocksizes(P,it)
-        do i=1,N
-            OldU(1:N,HFBColumns(i,P,it),P,it) = U(1:N,HFBColumns(i,P,it),P,it)
-            OldV(1:N,HFBColumns(i,P,it),P,it) = V(1:N,HFBColumns(i,P,it),P,it)
-        enddo
-    enddo
-  enddo
-
+  !-----------------------------------------------------------------------------
   ! Actual diagonalisation
   call DiagonaliseRHOHFB
   !-----------------------------------------------------------------------------
@@ -3123,7 +2974,7 @@ subroutine PrintBlocking
         ! When found, exchange it with its conjugate partner.
         do j=1,blocksizes(P,it)
             if(HFBColumns(j,P,it) .eq. C) then
-                HFBColumns(j,P,it) = 2*blocksizes(P,it) - HFBColumns(j,P,it) +1
+                HFBColumns(j,P,it) = 2*blocksizes(P,it) - HFBColumns(j,P,it) + 1
             endif
         enddo
     enddo
@@ -3534,16 +3385,20 @@ subroutine PrintBlocking
   end subroutine PrintHFBconvergence
 
   subroutine diagoncr8 (a,ndim,n,v,d,wd, callrout,ifail)
-  !..............................................................................
+  !.............................................................................
   !  diagonalization of a real symmetric matrix a(i,j)                         .
-  !     input : a  n*n matrix           (with declared dimensions ndim*ndim)    .
-  !             a(i,k) * v(k,j) = v(i,k) * d(k)                                 .
-  !     output: v block of eigenvectors (with declared dimensions ndim*ndim)    .
-  !             d eigenvalues in ascending order                                .
-  !             wd working array                                                .
-  !             the content of a is lost (actualy, a(i,i) = d(i)                .
-  !             a(i,j) = v(i,k) * d(k) * v(j,k)                                 .
-  !                      v is an orthogonal matrix : v(i,k)*v(j,k) = delta_ij   .
+  !     input : a  n*n matrix           (with declared dimensions ndim*ndim)   .
+  !             a(i,k) * v(k,j) = v(i,k) * d(k)                                .
+  !     output: v block of eigenvectors (with declared dimensions ndim*ndim)   .
+  !             d eigenvalues in ascending order                               .
+  !             wd working array                                               .
+  !             -------------------------------------------------              .
+  !             the content of a is lost (actualy, a(i,i) = d(i))              .
+  !                THIS IS A LIE, A IS NOT TOUCHED AND DEFINITELY              . 
+  !                         a(i,i) ! = d(i)               .                    .
+  !             -------------------------------------------------              .
+  !             a(i,j) = v(i,k) * d(k) * v(j,k)                                .
+  !                      v is an orthogonal matrix : v(i,k)*v(j,k) = delta_ij  .
   !..............................................................................
       integer,parameter        :: jstop=30
       real(KIND=dp), parameter :: eps=9.0d-12,epsd=1.0d-16,tol=1.0d-36

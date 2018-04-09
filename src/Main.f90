@@ -403,10 +403,6 @@ subroutine Evolve(MaxIterations, iprint)
   !Reanalysis of the result with Lagrange derivatives.
   call FinalIteration()
 
-  !if(recalcN2LO) call N2LOAnalysis()
-
-  !call writeN3LODensities(Density)
-
   if(Convergence) then
      print 5
      print 6, MomentPrec
@@ -416,7 +412,15 @@ subroutine Evolve(MaxIterations, iprint)
      print 4
   endif
   
-  if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) call testN2LOsph
+!  if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) call testN2LOsph
+  
+  !Write densities to files.
+  if(Pictures) then
+    call PlotDensity()
+!    call PlotCurrents(15,1)
+  endif
+  
+  
 end subroutine Evolve
 
 logical function ConvergenceCheck() result(Converged)
@@ -436,7 +440,7 @@ logical function ConvergenceCheck() result(Converged)
   use Energy, only  : ConverEnergy, TotalEnergy, PrintENergy
   use Pairing, only : ConverFermi
   use Cranking, only: ConverCranking
-
+  use InOutput, only: Pictures, PlotDensity
   implicit none
 
   Converged = .true.
@@ -451,6 +455,10 @@ logical function ConvergenceCheck() result(Converged)
 
   if(TotalEnergy.ge.0.0_dp) then
     call PrintIterationInfo(-1, .true.)
+    !Write densities to files.
+    if(Pictures) then
+       call PlotDensity()
+    endif
     call stp('Positive total energy!', 'Total Energy', TotalEnergy)
   endif
   return
@@ -584,12 +592,6 @@ subroutine FinalIteration()
     call DensityBasis(i)%CompDer()
   enddo
 
-  !Write densities to files.
-  if(Pictures) then
-    call PlotDensity()
-    call PlotCurrents(15,1)
-  endif
-  
   call UpdateDensities(0)
 
 end subroutine FinalIteration

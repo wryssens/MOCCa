@@ -431,7 +431,7 @@ contains
    127 format ( '     dt = ', f10.7, ' (initial)')
    128 format ( '     mu = ', f10.7, ' (initial)')
    
-    13 format ( '  Mixing Process : ' , A30)
+    13 format ( 'Mixing Process :   ' , A30)
    131 format ( '    Memory       : ' , i3)
    132 format ( '    Damping      : ' , f5.2)
    133 format ( '    MixingScheme : ' , i2)
@@ -505,20 +505,15 @@ contains
     print 127, dt
     print 128, momentum
 
-    if(PulayOrder.gt.1 .and. Mixingscheme.eq.3) then
-      print 13, 'DIIS   '
-      print 131, PulayOrder
-    elseif(MixingScheme .eq. 1) then
-      print 13, 'Linear (only rho)'
+    if(MixingScheme .eq. 0) then
+      print 13, 'Linear (all)'
+      print 133, MixingScheme
       print 132, DampingParam
-    elseif(MixingScheme .eq. 2) then
-      print 13, 'Linear (only lap-rho)'
-      print 132, DampingParam
-    elseif(MixingScheme.eq. 3) then
-      print 13, 'Preconditioned'
-      print 134, Preconfac
+    elseif(MixingScheme.eq. 1) then
+      print 13, 'Preconditioned rho'
+    elseif(MixingScheme.eq. 2) then
+      print 13, 'Preconditioned Upot'
     endif
-    print 133, MixingScheme
 
     print 14
     print 15, EnergyPrec

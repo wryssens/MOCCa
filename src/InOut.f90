@@ -396,7 +396,7 @@ contains
   !-----------------------------------------------------------------------------
     use SpwfStorage, only: nwt
     use Derivatives, only: MaxFDOrder, MaxFDLapOrder
-    use Densities, only  : DampingParam, PulayOrder, MixingScheme
+    use Densities, only  : DampingParam, PulayOrder, MixingScheme, preconu
     use Damping
 
     character(len=9) :: Con='Conserved', Broken='Broken   '
@@ -435,7 +435,7 @@ contains
    131 format ( '    Memory       : ' , i3)
    132 format ( '    Damping      : ' , f5.2)
    133 format ( '    MixingScheme : ' , i2)
-   134 format ( '    PreconFactor : ' , f5.2)
+   134 format ( '    Preconparam U: ' , f5.2)
    
     14 format ( 'Convergence Levels')
     15 format ( '  dE  =', e8.1)
@@ -513,6 +513,7 @@ contains
       print 13, 'Preconditioned rho'
     elseif(MixingScheme.eq. 2) then
       print 13, 'Preconditioned Upot'
+      print 134, preconu
     endif
 
     print 14

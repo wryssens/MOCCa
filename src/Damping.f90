@@ -123,7 +123,6 @@ contains
 
     !---------------------------------------------------------------------------
     invrho           = 0.0
-         
     do it=1,2 
         Residual         = drho(:,:,:,it) 
         Direction        = Residual
@@ -198,8 +197,8 @@ contains
         !-----------------------------------------------------------------------
     enddo
     !---------------------------------------------------------------------------
-    print *, 'Inv. Pot., iter = ', iter, newresnorm, sum(invpot(:,:,:,1))*dv,  &
-    &                     sum(invpot(:,:,:,2))*dv
+!    print *, 'Inv. Pot., iter = ', iter, newresnorm, sum(invpot(:,:,:,1))*dv,  &
+!    &                     sum(invpot(:,:,:,2))*dv
     
   end function Preconditionpotential
   

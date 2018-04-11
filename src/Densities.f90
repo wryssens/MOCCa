@@ -28,6 +28,9 @@ module Densities
   ! Flag to determine whether MOCCa calculates the densities at iteration 0
   ! or not.
   logical :: Recalc=.false.
+  !-----------------------------------------------------------------------------
+  ! Real parameter to use in the preconditioning of the U-potential
+  real(KIND=dp) :: preconu = 0.5
 
   type DensityVector
     !---------------------------------------------------------------------------
@@ -370,7 +373,7 @@ contains
     !---------------------------------------------------------------------------
     use Damping
 
-    NameList /densit/ DampingParam, PulayOrder, MixingScheme, Recalc, PreconFac
+    NameList /densit/ DampingParam, PulayOrder, MixingScheme, Recalc, preconu
 
     read(unit=*, NML=densit)
 

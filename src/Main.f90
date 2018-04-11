@@ -29,6 +29,8 @@ program MOCCa
     use Pairing, only     : PairingType
     use Testing
     use Transform
+    
+    
     implicit none
 
     real*8 :: time(2)
@@ -71,6 +73,9 @@ program MOCCa
      !--------------------------------------------------------------------------
      ! Write wavefunctions to file!
      call Output
+     
+     call TestN2LOspH
+     
      call stp('MOCCa exits correctly.')
 
 end program MOCCa
@@ -84,8 +89,8 @@ subroutine Evolve(MaxIterations, iprint)
   use CompilationInfo
   use GenInfo
   use WaveFunctions
-  use Derivatives,only  : MaxFDOrder
-  use MeanFields, only  : ConstructPotentials
+  use Derivatives,     only : MaxFDOrder
+  use PotentialMixing, only : ConstructPotentials
   use ImaginaryTime
   use SpwfStorage
   use Densities, only   : UpdateDensities, DampingParam, Density, Recalc
@@ -210,21 +215,19 @@ subroutine Evolve(MaxIterations, iprint)
   call CalculateAllMoments(1)
   call CalculateAllMoments(1)
 
+  !Calculating  The Energy
+  call CompEnergy()
   !-----------------------------------------------------------------------------
   !Construct the mean-field potentials
   call ConstructPotentials
 
   if(Pairingtype.eq.2) then
-    
     do i=1,nwt
       CanEnergy = InproductSpinorReal(CanBasis(i)%GetValue(),hPsi(Canbasis(i)))
       call Canbasis(i)%SetEnergy(CanEnergy)
     enddo
   endif
 
-  !Calculating  The Energy
-  call CompEnergy()
-  
   !Printing observables
   if(maxiterations .eq.0) print 101
   call PrintIterationInfo(0, .true.)
@@ -256,10 +259,11 @@ subroutine Evolve(MaxIterations, iprint)
       call compEnergy()
       !Printing observables
       call PrintIterationInfo(0, .true.)
+      
+      !-------------------------------------------------------------------------
+      !Construct the mean-field potentials
+      call ConstructPotentials
   endif
-  !-----------------------------------------------------------------------------
-  !Construct the mean-field potentials
-  call ConstructPotentials
 
   !Checking for the presence of Rutz-Type constraints
   RutzCheck      = CheckForRutzMoments()
@@ -280,7 +284,7 @@ subroutine Evolve(MaxIterations, iprint)
     ! or more complicated algorithms in general.
     ! Note that the orthogonalisation is managed by this routine too.
     call EvolveSpwf(Iteration)
-
+    
     !---------------------------------------------------------------------------
     !Pairing.
     call SolvePairing
@@ -376,11 +380,12 @@ subroutine Evolve(MaxIterations, iprint)
     
     call ReadjustCranking(.false.)
 
-    !Construct the mean-field potentials
-    call ConstructPotentials
-
     !Calculating the Energy
     call CompEnergy
+
+    !Construct the mean-field potentials
+    call ConstructPotentials
+    
     !Checking for convergence
     Convergence = ConvergenceCheck()
   	if(Convergence) exit
@@ -419,8 +424,6 @@ subroutine Evolve(MaxIterations, iprint)
     call PlotDensity()
 !    call PlotCurrents(15,1)
   endif
-  
-  
 end subroutine Evolve
 
 logical function ConvergenceCheck() result(Converged)

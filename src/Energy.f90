@@ -21,6 +21,7 @@
   use Force
   use SpwfStorage
   use Pairing
+  use Meanfields
 
   implicit none
 
@@ -1137,6 +1138,9 @@ contains
         &          abs((TotalEnergy - SpEnergy)/TotalEnergy),                  &
         &          DensityChange
       endif
+      
+      print *,'from potentials:', SpwfEnergy_func(Upot, Bpot, Wpot)
+      
     else
       !Note that oldenergy(1) now contains the last total energy that was
       !calculated with non-lagrange derivatives.
@@ -1273,6 +1277,50 @@ contains
     endif
     return
   end function SpwfEnergy
+  
+  !-----------------------------------------------------------------------------
+  real(KIND=dp) function SpwfEnergy_func(U,B,W) result(SE)
+    !---------------------------------------------------------------------------
+    ! Calculates the total energy with the current densities for a given set
+    ! of mean-field potentials.
+    !
+    !---------------------------------------------------------------------------
+    real(KIND=dp), intent(in) :: U(nx,ny,nz,2), B(nx,ny,nz,2), W(nx,ny,nz,3,3,2)
+    real(KIND=dp) :: exchange, compare, reducedmass(2)
+    integer       :: it
+   
+    
+    SE = 0.5* sum(Density%rho * U)*dv 
+    SE = SE + 0.5*sum(Density%tau * B)*dv 
+    
+    Reducedmass= &
+    &    (1.0_dp-nucleonmass/(neutrons*nucleonmass(1)+protons*nucleonmass(2)))    
+     
+    do it=1,2
+      SE = SE + 0.25*hbm(it)*Reducedmass(it)*sum(density%tau(:,:,:,it))*dv
+    enddo
+     
+    exchange = B7a*sum(sum(Density%rho,4)**(2+byt3a))*dv
+    do it=1,2
+     exchange = exchange + &
+     &         B8a*sum(Density%Rho(:,:,:,it)**2*sum(Density%rho,4)**byt3a)*dv
+    enddo
+    
+    ! We are shamelessly taking the Coulomb exchange from last time, supposing
+    ! it doesn't change.
+    compare = Totalenergy  - CoulombExchange/3.d0+ 0.5*byt3a * exchange
+    call CompKinetic()
+    compare = compare - 0.5*sum(Kinetic) 
+
+    if(COM1body.gt.0) then
+      call CompComCorrection()
+    	compare = compare  - sum(COMCorrection(1,:))/2.0
+    endif
+    
+    SE = Compare - SE
+    
+  end function SpwfEnergy_func 
+  !-----------------------------------------------------------------------------
 
   subroutine CompCOMCorrection()
     !---------------------------------------------------------------------------

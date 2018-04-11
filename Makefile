@@ -11,7 +11,7 @@ SRC    +=   CoulombDerivatives.f90 Mesh.f90 Spinor.f90
 SRC    +=   Spwf.f90 SpwfStorage.f90 Damping.f90 Densities.f90 
 SRC    +=   Moments.f90 SpecialMoments.f90 MultiGrid.f90 Coulomb.f90 PairingInteraction.f90 
 SRC    +=   LipkinNogami.f90 HartreeFock.f90 HFB.f90 GradientHFB.f90 BCS.f90 Pairing.f90 Cranking.f90 
-SRC    +=   MeanFields.f90 Energy.f90 ImaginaryTime.f90  DensityMixing.f90 
+SRC    +=   MeanFields.f90 Energy.f90 PotentialMixing.f90 ImaginaryTime.f90  DensityMixing.f90 
 SRC    +=   Transform.f90 nil8.f90 SpwfFactory.f90 Interfaces.f90 nil8.f90 InOut.f90 Test.f90
 
 CLUSRC := $(SRC)

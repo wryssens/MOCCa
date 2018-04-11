@@ -108,114 +108,6 @@ module MeanFields
 contains
 
   !=============================================================================
-  ! Computing all the potentials.
-  !=============================================================================
-  subroutine ConstructPotentials
-    !---------------------------------------------------------------------------
-    ! This subroutine constructs the following potentials for use in the
-    ! single-particle Hamiltonian.
-    !  - B, U, S, W, A, C, D and Coulomb
-    !---------------------------------------------------------------------------
-
-    use Coulomb, only: SolveCoulomb
-    use Derivatives
-    !Allocate the potentials if this has not already happened
-    if(.not.allocated(UPot)) then
-      !-------------------------------------------------------------------------
-      ! Time-even potentials
-      allocate(BPot(nx,ny,nz,2), NablaBPot(nx,ny,nz,3,2), UPot(nx,ny,nz,2))
-      allocate(Wpot(nx,ny,nz,3,3,2))
-      BPot     =0.0_dp ; NablaBPot=0.0_dp ; Upot = 0.0_dp
-      Wpot     =0.0_dp 
-      if(.not. TRC) then
-        !-----------------------------------------------------------------------
-        ! Time-odd potentials
-        allocate(SPot(nx,ny,nz,3,2),APot(nx,ny,nz,3,2))
-        SPot     =0.0_dp ; Apot = 0.0_dp
-      endif
-     
-      !-------------------------------------------------------------------------
-      ! N2LO potentials, time-even 
-      if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
-        allocate(Bmunu(nx,ny,nz,3,3,2))     ; allocate(DmuBmunu(nx,ny,nz,3,3,2))
-        allocate(DN2LO(nx,ny,nz,2))         ; allocate(Xpot(nx,ny,nz,3,3,2))
-        allocate(DXpot(nx,ny,nz,3,3,3,2))   ; allocate(ImTfield(nx,ny,nz,3,3,2))
-        
-        Bmunu = 0.0_dp    ; DmuBmunu  = 0.0_dp
-        DN2LO = 0.0_dp    ; Xpot    = 0.0_dp
-        DXpot = 0.0_dp    ; ImTField= 0.0_dp
-        
-        if(.not. TRC) then
-            !-------------------------------------------------------------------
-            ! Time-odd N2LO potentials
-            allocate(SN2LOField(nx,ny,nz,3,2))   ; SN2LOField = 0.0_dp
-            allocate(ReTfield(nx,ny,nz,3,3,3,2)) ; ReTfield   = 0.0_dp 
-            allocate(ReDTfield(nx,ny,nz,3,3,2))  ; ReDTfield  = 0.0_dp
-            allocate(PiField(nx,ny,nz,3,2))      ; PiField    = 0.0_dp
-        endif
-      endif
-      
-      !-------------------------------------------------------------------------
-      ! Tensor potentials, all time-odd
-      if(B15.ne.0.0_dp .or. B16.ne.0.0_dp .or. &
-      &  B17.ne.0.0_dp .or. B18.ne.0.0_dp) then
-        allocate(Cpot(nx,ny,nz,3,2),DPot(nx,ny,nz,3,2))
-        allocate(DerCPot(nx,ny,nz,3,3,2),DerDPot(nx,ny,nz,3,3,2))
-        allocate(DivDpot(nx,ny,nz,2))
-        
-        CPot     =0.0_dp ; DPot     =0.0_dp
-        DerCPot  =0.0_dp ; DerDPot  =0.0_dp
-        DivDpot  =0.0_dp
-      endif    
-    endif
-
-    !---------------------------------------------------------------------------
-    ! Decide on the way to calculate the action of the kinetic field B_mn.
-    ! Done here for the ifort compiler
-    if (BStack) then
-      if(t1n2 .ne. 0.0_dp .or. t2n2 .ne. 0.0_dp) then
-        ! Derivatives are stacked multiple times for the N2LO functional, 
-        ! thus it is only safe to calculate it with Lagrange derivatives.
-        call stp('Cannot stack derivatives for the B-field with N2LO.')
-      else
-        ActionOfB=> ActionOfBOld
-      endif
-    else
-      if(t1n2 .ne. 0.0_dp .or. t2n2 .ne. 0.0_dp) then
-        ActionOfB=> ActionOfBN2LO
-      else
-        ActionOfB=> ActionOfBNew
-      endif
-    endif
-    !---------------------------------------------------------------------------    
-    !Calculate the Coulomb Potential
-    call SolveCoulomb()
-    !Construct the mean-field potentials
-    call CalcUPot() !=> This includes the contribution of constraints & Coulomb
-    call CalcWPot()
-    call CalcBPot()  
-        
-    if(.not.TRC) then
-        call CalcSPot()
-        call CalcAPot()
-        call CalcCPot()
-        call CalcDPot()
-    endif
-    !---------------------------------------------------------------------------
-    if(t1n2 .ne. 0.0_dp .or. t2n2 .ne. 0.0_dp) then
-        ! All of the N2LO potentials
-        call CalcBMunu()
-        call CalcXpot()
-        call calcDN2LO()
-        call calcTfield()
-        if(.not. TRC) then
-            call calcPifield()
-            call calcSN2LOField()
-        endif
-    endif
-  end subroutine ConstructPotentials
-
-  !=============================================================================
   ! Subroutines for calculating all the different potentials.
   !=============================================================================
   subroutine CalcBPot()
@@ -373,7 +265,7 @@ contains
     enddo
   end subroutine calcSN2LOField
 
-  subroutine CalcUPot()
+  function CalcUPot() result(U)
       !-------------------------------------------------------------------------
       ! This subroutine calculates the single particle potential U.
       !
@@ -403,11 +295,9 @@ contains
     use Force 
     
     integer        :: it, at
-    real(KIND=dp)  :: Upotold(nx,ny,nz,2), alpha(nx,ny,nz,2), beta(nx,ny,nz,2)
-    
     !Temporary storage for total densities.
     real(KIND=dp)  :: RhoTot(nx,ny,nz),VecSTot(nx,ny,nz,3), NablaJTot(nx,ny,nz)
-    real(KIND=dp)  :: eps
+    real(KIND=dp)  :: eps, U(nx,ny,nz,2)
 
     RhoTot = sum(Density%Rho,4)
     if(.not.TRC) then
@@ -420,18 +310,16 @@ contains
     ! of rho. Thus we calculate it as Rho**byt3a/(Rho + eps)
     eps = 1.d-20
   
-    ! Save the previous values
-    UpotOld = Upot 
-
+   
     !B1 & B2
-    UPot(:,:,:,1)= (2.0_dp*B1 + 2.0_dp*B2)*Density%Rho(:,:,:,1)                &
+    U(:,:,:,1)= (2.0_dp*B1 + 2.0_dp*B2)*Density%Rho(:,:,:,1)                   &
     &            + 2.0_dp*B1*Density%Rho(:,:,:,2)
-    UPot(:,:,:,2)= (2.0_dp*B1 + 2.0_dp*B2)*Density%Rho(:,:,:,2)                &
+    U(:,:,:,2)= (2.0_dp*B1 + 2.0_dp*B2)*Density%Rho(:,:,:,2)                   &
     &            + 2.0_dp*B1*Density%Rho(:,:,:,1)
 
     do it=1,2
             at = 3 - it
-            UPot(:,:,:,it) = UPot(:,:,:,it)                                    &
+            U(:,:,:,it) = U(:,:,:,it)                                          &
             & + (B3+B4)*Density%Tau(:,:,:,it) + B3*Density%Tau(:,:,:,at)       &
             & + 2.0_dp*((B5 + B6)*Density%LapRho(:,:,:,it)                     &
             &          + B5      *Density%LapRho(:,:,:,at))                    &
@@ -447,7 +335,7 @@ contains
                 !---------------------------------------------------------------
                 ! n2lo contribution
                 !---------------------------------------------------------------
-                upot(:,:,:,it) = upot(:,:,:,it)                                &
+                u(:,:,:,it) = u(:,:,:,it)                                      &
                 &              + 2*N2D2rho(1)*sum(density%laplaprho,4)         &
                 &              + 2*N2D2rho(2)*    density%laplaprho(:,:,:,it)  &
                 &              +   N2rhoQ(1) *sum(density%qn2lo,4)             &
@@ -460,34 +348,25 @@ contains
     if(.not. TRC) then
        do it=1,2
           at = 3- it
-          Upot(:,:,:,it) = Upot(:,:,:,it) + byt3a*RhoTot**(byt3a)/(RhoTot + eps) &
+          U(:,:,:,it) = U(:,:,:,it)     + byt3a*RhoTot**(byt3a)/(RhoTot + eps) &
           & * ( B12a*sum(VecSTot**2,4) + B13a*sum(Density%VecS(:,:,:,:,it)**2,4) &
           &                            + B13a*sum(Density%VecS(:,:,:,:,at)**2,4))
        enddo
     endif
 
     ! Note that CoulExchange from the Coulomb module already carries a minus.
-    UPot(:,:,:,2)= UPot(:,:,:,2) + CoulombPotential(:,:,:) 
+    U(:,:,:,2)= U(:,:,:,2) + CoulombPotential(:,:,:) 
     
     ! Only include coulomb exchange when it is to be included selfconbsistently
     if( Cexchange .eq.2) then
-      UPot(:,:,:,2) = UPot(:,:,:,2) + CoulExchange(:,:,:)
+      U(:,:,:,2) = U(:,:,:,2) + CoulExchange(:,:,:)
     endif
         
     !Add the contribution from Constraints on the Multipole Moment
-    UPot = UPot + ConstraintEnergy
-    
-    !---------------------------------------------------------------------------
-    ! Mix the Upotential if asked for
-    if(MixingScheme .eq. 2) then
-      alpha = - 4*(sum(abs(Cdrho)))*dt/hbar
-!      alpha = -dampingparam
-      beta  =  1
-      Upot = UpotOld + PreconditionPotential(Upot - UpotOld,alpha, beta,1,1,1,1)
-    endif 
+    U = U + ConstraintEnergy
 
     return
-  end subroutine CalcUPot
+  end function CalcUPot
 
   subroutine CalcAPot()
   !-----------------------------------------------------------------------------

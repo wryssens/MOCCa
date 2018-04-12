@@ -120,7 +120,6 @@ contains
   !-----------------------------------------------------------------------------
     use Derivatives
     use Densities
-    use Damping
     
     integer :: it, at, i
     real(KIND=dp) :: Reducedmass(2)
@@ -291,7 +290,6 @@ contains
     use Moments, only : ConstraintEnergy
     use Coulomb, only : CoulombPotential, CoulExchange
     use Densities
-    use Damping
     use Force 
     
     integer        :: it, at

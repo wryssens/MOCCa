@@ -68,6 +68,19 @@ contains
         endif
       endif
       
+      !-------------------------------------------------------------------------
+      ! Tensor potentials, all time-odd
+      if(B15.ne.0.0_dp .or. B16.ne.0.0_dp .or. &
+      &  B17.ne.0.0_dp .or. B18.ne.0.0_dp) then
+        allocate(Cpot(nx,ny,nz,3,2),DPot(nx,ny,nz,3,2))
+        allocate(DerCPot(nx,ny,nz,3,3,2),DerDPot(nx,ny,nz,3,3,2))
+        allocate(DivDpot(nx,ny,nz,2))
+        
+        CPot     =0.0_dp ; DPot     =0.0_dp
+        DerCPot  =0.0_dp ; DerDPot  =0.0_dp
+        DivDpot  =0.0_dp
+      endif  
+      ! Define the preconditioning constant      
       aeff = -preconu
     endif 
     !---------------------------------------------------------------------------

@@ -30,7 +30,7 @@ module Densities
   logical :: Recalc=.false.
   !-----------------------------------------------------------------------------
   ! Real parameter to use in the preconditioning of the U-potential
-  real(KIND=dp) :: preconu = 0.5
+  real(KIND=dp) :: preconu = 1.0
 
   type DensityVector
     !---------------------------------------------------------------------------

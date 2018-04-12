@@ -517,7 +517,7 @@ contains
       
   end subroutine CalcXpot
 
-  subroutine CalcSPot()
+  function CalcSPot() result(S)
     !---------------------------------------------------------------------------
     ! This subroutine calculates the S potential (V potential in 24Mg paper).
     !
@@ -534,9 +534,9 @@ contains
     use Cranking, only : CrankSPot
 
     integer        :: it,at,l,i,j,k
-    real(KIND=dp)  :: RhoT(nx,ny,nz), RhoVecS(nx,ny,nz,3,2)
+    real(KIND=dp)  :: RhoT(nx,ny,nz), RhoVecS(nx,ny,nz,3,2), S(nx,ny,nz,3,2)
 
-    Spot = 0.0_dp
+    S = 0.0_dp
     RhoT = Density%Rho(:,:,:,1) + Density%Rho(:,:,:,2)
 
     do it=1,2
@@ -546,7 +546,7 @@ contains
     enddo
     do it=1,2
       at = 3 - it
-      Spot(:,:,:,:,it) = &
+      S(:,:,:,:,it) = &
        &          + (B9 + B9q)         *Density%RotVecJ(:,:,:,:,it)   &
        &          +  B9                *Density%RotVecJ(:,:,:,:,at)   &
        &          + 2.0_dp*((B10+B11)  *Density%Vecs(:,:,:,:,it)      &
@@ -555,17 +555,17 @@ contains
        &          +          B12a      *        RhoVecS(:,:,:,:,at))
 
        if(B14.ne.0.0_dp .or. B15.ne.0.0_dp) then
-        SPot(:,:,:,:,it) = SPot(:,:,:,:,it) &
+        S(:,:,:,:,it) = S(:,:,:,:,it) &
         &          -         (B14+B15)  *Density%VecT(:,:,:,:,it)     &
         &          -          B14       *Density%VecT(:,:,:,:,at)
        endif
        if(B16.ne.0.0_dp .or. B17.ne.0.0_dp) then
-         SPot(:,:,:,:,it) = SPot(:,:,:,:,it) &
+         S(:,:,:,:,it) = S(:,:,:,:,it) &
          &          - 2.0_dp* (B16+B17)  *Density%VecF(:,:,:,:,it)             &
          &          - 2.0_dp*  B16       *Density%VecF(:,:,:,:,at)
        endif
        if(B18.ne.0.0_dp.or.B19.ne.0.0_dp.or.B20.ne.0.0_dp .or. B21.ne.0.0_dp)then
-         SPot(:,:,:,:,it) = SPot(:,:,:,:,it) &
+         S(:,:,:,:,it) = S(:,:,:,:,it) &
          &          + 2.0_dp*((B18+B19)  *Density%LapS(:,:,:,:,it)             &
          &          + B18                *Density%LapS(:,:,:,:,at))            &
          &          - 2.0_dp*((B20+B21)  *Density%GradDivS(:,:,:,:,it)         &
@@ -579,7 +579,7 @@ contains
         !-----------------------------------------------------------------------
         do it=1,2
             at = 3 - it
-            Spot(:,:,:,:,it)= Spot(:,:,:,:,it)   &
+            S(:,:,:,:,it)= S(:,:,:,:,it)   &
             &             +  2*(N2D2S(1)+N2D2S(2))*Density%LapLapS(:,:,:,:,it)&
             &             +  2*N2D2S(1)          *Density%LapLapS(:,:,:,:,at)&
             &             +   (N2sS(1)+N2sS(2))*Density%SN2LO(:,:,:,:,it)    &
@@ -588,11 +588,11 @@ contains
             &   - 2* N2TmnD2S(1)               *Density%ReD2TN2LO(:,:,:,:,at)
         enddo
     endif
-
+    !---------------------------------------------------------------------------
     !Add the contribution from cranking
-    SPot = SPot + CrankSPot()
+    S = S + CrankSPot()
     return
-  end subroutine CalcSPot
+  end function CalcSPot
 
   subroutine CalcDPot()
   !-----------------------------------------------------------------------------

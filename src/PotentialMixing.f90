@@ -8,8 +8,8 @@ module PotentialMixing
   
   implicit none
   
-  real(KIND=dp),allocatable  :: Upotold(:,:,:,:)
-  real(KIND=dp), allocatable :: du(:,:,:,:,:)
+  real(KIND=dp),allocatable  :: Upotold(:,:,:,:), Spotold(:,:,:,:,:)
+  real(KIND=dp), allocatable :: du(:,:,:,:), ds(:,:,:,:,:) 
     
 contains  
 
@@ -21,11 +21,10 @@ contains
     !
     !---------------------------------------------------------------------------
   
-    real(KIND=dp) :: alpha(nx,ny,nz,2), beta(nx,ny,nz,2) , a, b, update(nx,ny,nz,2)
-    
+    real(KIND=dp) :: alpha(nx,ny,nz,2), beta(nx,ny,nz,2) , update(nx,ny,nz,2)
     real(KIND=dp), save :: olddiff, aeff
   
-    integer :: i 
+    integer :: i , P, S, TS
     
     !---------------------------------------------------------------------------
     !Allocate the potentials if this has not already happened
@@ -33,7 +32,8 @@ contains
       !-------------------------------------------------------------------------
       ! Time-even potentials
       allocate(BPot(nx,ny,nz,2), NablaBPot(nx,ny,nz,3,2), UPot(nx,ny,nz,2))
-      allocate(UpotOld(nx,ny,nz,2)); allocate(du(nx,ny,nz,2,2))
+      allocate(UpotOld(nx,ny,nz,2)); allocate(du(nx,ny,nz,2))
+      
       
       allocate(Wpot(nx,ny,nz,3,3,2))
       BPot     =0.0_dp ; NablaBPot=0.0_dp ; Upot = 0.0_dp
@@ -43,6 +43,8 @@ contains
         ! Time-odd potentials
         allocate(SPot(nx,ny,nz,3,2),APot(nx,ny,nz,3,2))
         SPot     =0.0_dp ; Apot = 0.0_dp
+        allocate(ds(nx,ny,nz,3,2)) ; ds = 0
+        allocate(SpotOld(nx,ny,nz,3,2)) ; SpotOld = 0.0
       endif
      
       !-------------------------------------------------------------------------
@@ -96,8 +98,9 @@ contains
     call CalcWPot()
     call CalcBPot()  
     
-    if(.not.TRC) then
-        call CalcSPot()
+    if(.not.TRC) then 
+        SpotOld = Spot
+        Spot = CalcSPot()
         call CalcAPot()
         call CalcCPot()
         call CalcDPot()
@@ -115,17 +118,32 @@ contains
         endif
     endif
     !---------------------------------------------------------------------------
-    ! Precondition the Upotential
+    ! Precondition the Upotential and Spotential
     !---------------------------------------------------------------------------
     if(MixingScheme .eq. 2 .and. (.not. all(UpotOld.eq.0.0))) then
+    
+      P = 0          ; S=0           ; TS=0
+      if(PC) P = 1   ; if(SC) S = 1  ; if(TSC) TS = 1
+    
       alpha =  aeff
       beta  =  1.0
       
-      du(:,:,:,:,2) = du(:,:,:,:,1)
-      du(:,:,:,:,1) = Upot-Upotold
-
-      update=  PreconditionPotential(du(:,:,:,:,1),alpha,beta,1,1,1,1)
+      du    = Upot-Upotold
+      update=  PreconditionPotential(du,alpha,beta, P,S,TS,1)
       Upot  =  UpotOld + update
+      
+      if(.not. TRC) then
+        ds = Spot - SpotOld
+        ! First component
+        update=  PreconditionPotential(ds(:,:,:,1,:),alpha,beta,P,-S,TS,1)
+        Spot(:,:,:,3,:)  = Spotold(:,:,:,3,:) + update
+        ! Second component
+        update=  PreconditionPotential(ds(:,:,:,2,:),alpha,beta,P,-S,TS,1)
+        Spot(:,:,:,3,:)  = Spotold(:,:,:,3,:) + update
+        ! Third component
+        update=  PreconditionPotential(ds(:,:,:,3,:),alpha,beta,P, S,TS,1)
+        Spot(:,:,:,3,:)  = Spotold(:,:,:,3,:) + update
+      endif
     endif    
     !---------------------------------------------------------------------------
   end subroutine ConstructPotentials

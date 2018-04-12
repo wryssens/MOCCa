@@ -74,8 +74,6 @@ program MOCCa
      ! Write wavefunctions to file!
      call Output
      
-     call TestN2LOspH
-     
      call stp('MOCCa exits correctly.')
 
 end program MOCCa

@@ -552,7 +552,7 @@ contains
     integer, intent(in)        :: mx,my,mz
     real(KIND=dp), intent(in)  :: Mesh(3,mx,my,mz)
 
-    real(KIND=dp)  :: LegendreMesh (mx,my,mz,0:MaxMoment,0:MaxMoment)
+    real(KIND=dp)  :: LegendreMesh (mx,my,mz,0:MaxMoment)
     real(KIND=dp)  :: SpherHarmMesh(mx,my,mz,0:MaxMoment,0:MaxMoment,2)
     !r, Sin(\theta),Cos(\theta),\phi, sin(m*\Phi) and cos(m*\Phi)
     real(KIND=dp)  :: r,cosTheta,sinTheta, phi,sinmPhi, cosmPhi
@@ -612,7 +612,7 @@ contains
           !Calculating the values of the spherical harmonics
           do m=0,MaxMoment
             ! Finding the associated Legendre Polynomials
-            LegendreMesh(i,j,k,:,m)=legendre_pnm(MaxMoment, m, cosTheta)
+            LegendreMesh(i,j,k,:)=legendre_pnm(MaxMoment, m, cosTheta)
             sinmPhi=sin(m*Phi)
             cosmPhi=cos(m*Phi)
 
@@ -628,9 +628,9 @@ contains
               fac=(-1)**m*sqrt(factorialquotient)*r**l
               fac = fac * sqrt((2*l +1)/(4 * pi))
               ! Real part of Y_{lm}
-              SpherHarmMesh(i,j,k,l,m,1)=fac*LegendreMesh(i,j,k,l,m)*cosmPhi
+              SpherHarmMesh(i,j,k,l,m,1)=fac*LegendreMesh(i,j,k,l)*cosmPhi
               ! Imaginary part of Y_{lm}
-              SpherHarmMesh(i,j,k,l,m,2)=fac*LegendreMesh(i,j,k,l,m)*sinmPhi
+              SpherHarmMesh(i,j,k,l,m,2)=fac*LegendreMesh(i,j,k,l)*sinmPhi
             enddo
           enddo
         enddo

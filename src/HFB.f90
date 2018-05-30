@@ -163,7 +163,10 @@ module HFB
   ! Size of the change in rho and kappa in the last iteration.
   real(KIND=dp) :: drho(2,2), dkappa(2,2)
   !-----------------------------------------------------------------------------
+  ! Experimental parameter for using continuity as a HFB selection criterion.
   logical       :: HFBcontinuity = .false.
+  !-----------------------------------------------------------------------------
+  real(KIND=dp) :: pf(2,2) = 0, oldpf(2,2) = 0
   !-----------------------------------------------------------------------------
   ! Procedure pointer for the diagonalisation of the HFBhamiltonian.
   ! Either with or without signature conservation.
@@ -638,12 +641,17 @@ contains
     integer          :: it, P, i,j,k,S, ind(2,2)
 
     call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge)
+    !---------------------------------------------------------------------------
+    ! Calculate the pfaffian of the hamiltonian in the Majorana representation
+    pf   = Pfaffian_HFBHamil()
+
+    !---------------------------------------------------------------------------
     call DiagonaliseHFBHamiltonian
 
-    !----------------------------------------------------------------------
+    !---------------------------------------------------------------------------
     ! Determining which eigenvectors of the HFB Hamiltonian to use
     HFBColumns  = 0
-    !----------------------------------------------------------------------
+    !---------------------------------------------------------------------------
     ! Do as in CR8: take only the first half of the matrix, and conjugate
     ! the first quarter.
     if(SC) then
@@ -659,7 +667,7 @@ contains
             enddo
         enddo
     else
-        !-----------------------------------------------------------------
+        !-----------------------------------------------------------------------
         ! If signature is not conserved, just take all the positive
         ! qp energies and pray it will work.
         ind = 1
@@ -676,7 +684,7 @@ contains
         enddo
     endif
     
-    !--------------------------------
+    !---------------------------------------------------------------------------
     ! Block some quasiparticles
     if(allocated(qpexcitations)) then
       call BlockQuasiParticles
@@ -695,7 +703,7 @@ contains
     enddo
 
     call constructKappaHFB(HFBColumns)
-    !--------------------------------------------------------------------
+    !---------------------------------------------------------------------------
     ! Calculate the number of particles in this configuration and return.
     ! The Fermi energy can then use this to get adjusted.
     N = 0.0_dp
@@ -930,7 +938,7 @@ contains
 
   end subroutine HFBFindFermiEnergyBisection
 
-  subroutine HFBFindFermiEnergyBroyden                                         &
+subroutine HFBFindFermiEnergyBroyden                                          &
     &         (Fermi,LnLambda,Delta,DeltaLN,Lipkin,DN2,ConstrainDispersion,Prec)
   !-----------------------------------------------------------------------------
   ! This routine varies the Fermi energy and LNLambda parameter to get the
@@ -1026,21 +1034,23 @@ contains
   Particles(2) = Protons
   Converged    = .false.
 
-  !---------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
   ! Block some quasiparticles
   if(allocated(qpexcitations) .and. HFBcontinuity) then
     call      BlockQuasiParticles
     deallocate(qpexcitations)
   endif
-  !----------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
   ! Store old U and V for future reference
   OldU        = U ; OldV = V
   OldColumns  = HFBColumns
   
   flag = 0
+  !-----------------------------------------------------------------------------
   !Check were we find ourselves in the phasespace
-  N = HFBNumberofParticles(Fermi, Delta, LnLambda ) - Particles
-  
+  N     = HFBNumberofParticles(Fermi, Delta, LnLambda ) - Particles
+  oldpf = Pfaffian_HFBHamil()   
+
   if(Lipkin) then
     LN   = LNLambda - LNCR8(Delta,DeltaLN, flag)
   else if(ConstrainDispersion) then
@@ -1165,7 +1175,11 @@ contains
           print 2, abs(LN)
       endif
   enddo
-  end subroutine HFBFindFermiEnergyBroyden
+
+  print *, 'Pfaffian',    pf/abs(pf)
+  print *, 'OldPf   ', oldpf/abs(oldpf)
+
+end subroutine HFBFindFermiEnergyBroyden
 
 subroutine ConstructRHOHFBLimited(Vlim)
     !------------------------------------------------------------------
@@ -1217,7 +1231,6 @@ subroutine ConstructKappaHFBLimited(Ulim,Vlim)
         enddo
     enddo
 end subroutine ConstructKappaHFBLimited
-
 
 subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
     !-------------------------------------------------------------------------------------
@@ -1351,15 +1364,10 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
   ! Note that the Rho & Kappa from the past mean-field iteration are used. This
   ! to combat a hysteresis-effect for the Fermi-solver routines.
   !-----------------------------------------------------------------------------
-  use pfaff
   
   real(KIND=dp), intent(in)                :: lambda(2), LNLambda(2), Gauge
   integer                                  :: i,j, it, ii,iii,P,N,k
   complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
-  
-  real(KIND=dp)                            :: pf(2,2)
-  integer ,allocatable                     :: ipv(:,:)
-  real(KIND=dp), allocatable               :: Hamcopy(:,:)
    
   !-----------------------------------------------------------------------------
   HFBHamil = 0.0_dp
@@ -1425,42 +1433,53 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
   enddo
 
   if(all(HFBHamil.eq.0.0_dp)) call stp('HFBHamiltonian completely zero!')
-  
-  !-----------------------------------------------------------------------------
-  ! Calculate the pfaffian of the Hamiltonian
-  !
-  
-  if(.not.allocated(ipv)) then
-    N = maxval(blocksizes)
-    allocate(ipv(2*N,2))
-  endif
-  if(.not.allocated(Hamcopy)) then
-    N = maxval(blocksizes)
-    allocate(Hamcopy(2*N,2*N))
-  endif
-  
-  pf = 0.0
-  do it=1,Iindex
-    do P=1,Pindex
-    
-      N = blocksizes(P,it)
-    
-      Hamcopy(1:2*N, 1:2*N) = MajoranaTransform(real(HFBHamil(1:2*N, 1:2*N, P,it)) ) 
-    
-!      do i=1,2*N
-!        print ('(99f10.3)'), Hamcopy(i,1:2*N)
-!      enddo
-      call PfaffianF(Hamcopy(1:2*N,1:2*N), 2*N, 2*N, ipv(1:2*N,:), pf(p,it)) 
-    enddo
-  enddo
-  print *, 'Pfaffian', pf
-  
   end subroutine ConstructHFBHamiltonian
   
+  function Pfaffian_HFBHamil() result(pf)
+        !-----------------------------------------------------------------------
+        ! Calculate the pfaffian of the Hamiltonian in the Majorana 
+        ! representation. 
+        !-----------------------------------------------------------------------
+        ! Currently only valid when time-simplex is conserved.
+        !-----------------------------------------------------------------------
+        
+        use pfaff
+
+        real(KIND=dp)                            :: pf(2,2)
+        integer ,allocatable                     :: ipv(:,:)
+        real(KIND=dp), allocatable               :: Hamcopy(:,:)
+        integer                                  :: it, P, N
+
+        !-----------------------------------------------------------------------
+        if(.not.allocated(ipv)) then
+          N = maxval(blocksizes)
+          allocate(ipv(2*N,2))
+        endif
+        if(.not.allocated(Hamcopy)) then
+          N = maxval(blocksizes)
+          allocate(Hamcopy(2*N,2*N))
+        endif
+        !-----------------------------------------------------------------------
+        pf = 0.0
+        do it=1,Iindex
+          do P=1,Pindex
+          
+            N = blocksizes(P,it)
+          
+            Hamcopy(1:2*N, 1:2*N) = & 
+            &              MajoranaTransform(real(HFBHamil(1:2*N, 1:2*N, P,it))) 
+          
+            call PfaffianF(Hamcopy(1:2*N,1:2*N),2*N,2*N,ipv(1:2*N,:),pf(p,it)) 
+          enddo
+        enddo
+  
+  end function Pfaffian_HFBHamil
+ 
   function MajoranaTransform( Hin ) result(Maj)
     !---------------------------------------------------------------------------
     ! Transform a HFB hamiltonian into a Majorana representation.
-    ! 
+    !-----------------------------------------------------------------------
+    ! Currently only valid when time-simplex is conserved. 
     !---------------------------------------------------------------------------
     real(KIND=dp) :: Hin(:,:)
     real(KIND=dp) :: Maj(size(Hin,1),size(Hin,2))
@@ -1473,7 +1492,7 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
     
     Maj(1:N    ,1:N    )     = 0
     Maj(N+1:2*N,N+1:2*N)     = 0
-    Maj(1:N    ,N+1:2*N) = - Hin(1:N,1:N) + Hin(1:N,N+1:2*N) 
+    Maj(1:N    ,N+1:2*N) =   Hin(1:N,1:N) - Hin(1:N,N+1:2*N) 
     Maj(N+1:2*N,1:N)     = - Maj(1:N    ,N+1:2*N)
   
   end function MajoranaTransform
@@ -1573,7 +1592,7 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
                 V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(N/2+1:N   ,1:N)
                 QuasiEnergies(N+1:2*N  ,P,it) = EigenValues(     1:N)
             endif
-            !if(it.eq.1 .and. P.eq.1) print *, QuasiEnergies(1:2*N,P,it)
+!            if(it.eq.1 .and. P.eq.1) print *, sqrt(product(QuasiEnergies(1:2*N,P,it)))
         enddo
     enddo
     !

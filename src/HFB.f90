@@ -1351,10 +1351,16 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
   ! Note that the Rho & Kappa from the past mean-field iteration are used. This
   ! to combat a hysteresis-effect for the Fermi-solver routines.
   !-----------------------------------------------------------------------------
+  use pfaff
+  
   real(KIND=dp), intent(in)                :: lambda(2), LNLambda(2), Gauge
   integer                                  :: i,j, it, ii,iii,P,N,k
   complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
-
+  
+  real(KIND=dp)                            :: pf(2,2)
+  integer ,allocatable                     :: ipv(:,:)
+  real(KIND=dp), allocatable               :: Hamcopy(:,:)
+   
   !-----------------------------------------------------------------------------
   HFBHamil = 0.0_dp
   do it=1,Iindex
@@ -1419,7 +1425,58 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
   enddo
 
   if(all(HFBHamil.eq.0.0_dp)) call stp('HFBHamiltonian completely zero!')
+  
+  !-----------------------------------------------------------------------------
+  ! Calculate the pfaffian of the Hamiltonian
+  !
+  
+  if(.not.allocated(ipv)) then
+    N = maxval(blocksizes)
+    allocate(ipv(2*N,2))
+  endif
+  if(.not.allocated(Hamcopy)) then
+    N = maxval(blocksizes)
+    allocate(Hamcopy(2*N,2*N))
+  endif
+  
+  pf = 0.0
+  do it=1,Iindex
+    do P=1,Pindex
+    
+      N = blocksizes(P,it)
+    
+      Hamcopy(1:2*N, 1:2*N) = MajoranaTransform(real(HFBHamil(1:2*N, 1:2*N, P,it)) ) 
+    
+!      do i=1,2*N
+!        print ('(99f10.3)'), Hamcopy(i,1:2*N)
+!      enddo
+      call PfaffianF(Hamcopy(1:2*N,1:2*N), 2*N, 2*N, ipv(1:2*N,:), pf(p,it)) 
+    enddo
+  enddo
+  print *, 'Pfaffian', pf
+  
   end subroutine ConstructHFBHamiltonian
+  
+  function MajoranaTransform( Hin ) result(Maj)
+    !---------------------------------------------------------------------------
+    ! Transform a HFB hamiltonian into a Majorana representation.
+    ! 
+    !---------------------------------------------------------------------------
+    real(KIND=dp) :: Hin(:,:)
+    real(KIND=dp) :: Maj(size(Hin,1),size(Hin,2))
+    integer          :: N
+    
+    ! Trivial to do when S^T_y is conserved.
+    if(.not. TSC) call stp('Majorana transform invalid when timesimplex is broken.')
+  
+    N = size(Hin,1)/2
+    
+    Maj(1:N    ,1:N    )     = 0
+    Maj(N+1:2*N,N+1:2*N)     = 0
+    Maj(1:N    ,N+1:2*N) = - Hin(1:N,1:N) + Hin(1:N,N+1:2*N) 
+    Maj(N+1:2*N,1:N)     = - Maj(1:N    ,N+1:2*N)
+  
+  end function MajoranaTransform
 
   subroutine DiagonaliseHFBHamiltonian_Signature
     !-------------------------------------------------------------------------------

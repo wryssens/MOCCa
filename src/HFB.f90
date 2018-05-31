@@ -163,9 +163,6 @@ module HFB
   ! Size of the change in rho and kappa in the last iteration.
   real(KIND=dp) :: drho(2,2), dkappa(2,2)
   !-----------------------------------------------------------------------------
-  ! Experimental parameter for using continuity as a HFB selection criterion.
-  logical       :: HFBcontinuity = .false.
-  !-----------------------------------------------------------------------------
   real(KIND=dp) :: pf(2,2) = 0, oldpf(2,2) = 0
   !-----------------------------------------------------------------------------
   ! Procedure pointer for the diagonalisation of the HFBhamiltonian.
@@ -233,11 +230,7 @@ contains
       allocate(HFBColumns(HFBSize,Pindex,Iindex))     ; HFBColumns     = 0
     endif
     
-    if(HFBContinuity) then
-      HFBNumberofParticles => HFBNumberofParticles_continuity
-    else
-      HFBNumberofParticles => HFBNumberofParticles_ordinary 
-    endif
+    HFBNumberofParticles => HFBNumberofParticles_ordinary 
     
   end subroutine PrepareHFBModule
 
@@ -716,78 +709,6 @@ contains
     enddo
 
   end function HFBNumberofParticles_ordinary
-  
-  function HFBNumberofParticles_continuity(Lambda, Delta, LNLambda) result(N)
-    !---------------------------------------------------------------------------
-    ! Constructs the HFB state ( consisting of RhoHFB and KappaHFB) and
-    ! returns the number of particles present.
-    !---------------------------------------------------------------------------
-    real(Kind=dp), intent(in)                :: Lambda(2),LNLambda(2)
-    complex(KIND=dp), allocatable,intent(in) :: Delta(:,:,:,:)
-    real(KIND=dp), allocatable               :: Transfo(:,:,:,:)
-    integer                                  :: it, P,i,j,Nn,ii,jj, ind
-    real(KIND=dp)                            :: N(2), overlap
-
-    call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge)
-    call DiagonaliseHFBHamiltonian
-
-    !---------------------------------------------------------------------------
-    ! Determining which eigenvectors of the HFB Hamiltonian to use
-    if(.not.allocated(Transfo)) then
-        allocate(Transfo(HFBsize, 4*HFBsize,Pindex,Iindex)) ; Transfo=0
-    endif   
-    
-    do it=1,Iindex
-      do P=1,Pindex
-        Nn = blocksizes(P,it)
-        do i=1,Nn
-          do j=1,2*Nn
-            ii = OldColumns(i,P,it)
-            Transfo(i   ,j   ,P,it)   = sum(OldU(1:Nn,ii,P,it)*U(1:Nn,j,P,it)) &
-            &                         + sum(OldV(1:Nn,ii,P,it)*V(1:Nn,j,P,it))
-            Transfo(i   ,j+2*Nn,P,it) = sum(OldU(1:Nn,ii,P,it)*V(1:Nn,j,P,it)) &
-            &                         + sum(OldV(1:Nn,ii,P,it)*U(1:Nn,j,P,it))
-          enddo
-        enddo
-        !-----------------------------------------------------------------------
-        ! Having calculated the transformation, we now select the correct
-        ! columns.
-        do j=1,Nn          
-          overlap = 0.0
-          ind     = 0
-          do i=1,2*Nn
-            if(abs(Transfo(j,i,P,it)) .gt. overlap) then
-              ind     = i
-              overlap = abs(Transfo(j,i,P,it))
-            endif
-          enddo
-          HFBcolumns(j,P,it) = ind
-        enddo
-        if(any(HFBcolumns(1:Nn,P,it).eq.0)) call stp('wtf')
-!        if(it.eq.1 .and. P.eq.2) then
-!          print *, HFBcolumns(1:Nn,P,it) 
-!          print *, Oldcolumns(1:Nn,P,it)
-!          print *
-!        endif
-      enddo      
-    enddo
-    !call checkUandVcolumns(HFBcolumns)
-    !---------------------------------------------------------------------------
-    call constructRhoHFB(HFBColumns)
-    call constructKappaHFB(HFBColumns)
-    !---------------------------------------------------------------------------
-    ! Calculate the number of particles in this configuration and return.
-    ! The Fermi energy can then use this to get adjusted.
-    N = 0.0_dp
-    do it=1,Iindex
-      do P=1,Pindex
-        do i=1,blocksizes(P,it)
-          N(it) = N(it) + real(RhoHFB(i,i,P,it))
-        enddo
-      enddo
-    enddo
-
-  end function HFBNumberofParticles_continuity
 
   subroutine HFBFindFermiEnergyBisection(Fermi,L2,Delta,DeltaLN,Lipkin,DN2,    &
     &                                                  ConstrainDispersion,Prec)
@@ -1036,7 +957,7 @@ subroutine HFBFindFermiEnergyBroyden                                          &
 
   !-----------------------------------------------------------------------------
   ! Block some quasiparticles
-  if(allocated(qpexcitations) .and. HFBcontinuity) then
+  if(allocated(qpexcitations)) then
     call      BlockQuasiParticles
     deallocate(qpexcitations)
   endif
@@ -1436,42 +1357,42 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
   end subroutine ConstructHFBHamiltonian
   
   function Pfaffian_HFBHamil() result(pf)
-        !-----------------------------------------------------------------------
-        ! Calculate the pfaffian of the Hamiltonian in the Majorana 
-        ! representation. 
-        !-----------------------------------------------------------------------
-        ! Currently only valid when time-simplex is conserved.
-        !-----------------------------------------------------------------------
-        
-        use pfaff
+    !---------------------------------------------------------------------------
+    ! Calculate the pfaffian of the Hamiltonian in the Majorana 
+    ! representation. 
+    !---------------------------------------------------------------------------
+    ! Currently only valid when time-simplex is conserved.
+    !---------------------------------------------------------------------------
 
-        real(KIND=dp)                            :: pf(2,2)
-        integer ,allocatable                     :: ipv(:,:)
-        real(KIND=dp), allocatable               :: Hamcopy(:,:)
-        integer                                  :: it, P, N
+    use pfaff
 
-        !-----------------------------------------------------------------------
-        if(.not.allocated(ipv)) then
-          N = maxval(blocksizes)
-          allocate(ipv(2*N,2))
-        endif
-        if(.not.allocated(Hamcopy)) then
-          N = maxval(blocksizes)
-          allocate(Hamcopy(2*N,2*N))
-        endif
-        !-----------------------------------------------------------------------
-        pf = 0.0
-        do it=1,Iindex
-          do P=1,Pindex
-          
-            N = blocksizes(P,it)
-          
-            Hamcopy(1:2*N, 1:2*N) = & 
-            &              MajoranaTransform(real(HFBHamil(1:2*N, 1:2*N, P,it))) 
-          
-            call PfaffianF(Hamcopy(1:2*N,1:2*N),2*N,2*N,ipv(1:2*N,:),pf(p,it)) 
-          enddo
-        enddo
+    real(KIND=dp)                            :: pf(2,2)
+    integer ,allocatable                     :: ipv(:,:)
+    real(KIND=dp), allocatable               :: Hamcopy(:,:)
+    integer                                  :: it, P, N
+
+    !---------------------------------------------------------------------------
+    if(.not.allocated(ipv)) then
+      N = maxval(blocksizes)
+      allocate(ipv(2*N,2))
+    endif
+    if(.not.allocated(Hamcopy)) then
+      N = maxval(blocksizes)
+      allocate(Hamcopy(2*N,2*N))
+    endif
+    !---------------------------------------------------------------------------
+    pf = 0.0
+    do it=1,Iindex
+      do P=1,Pindex
+      
+        N = blocksizes(P,it)
+      
+        Hamcopy(1:2*N, 1:2*N) = & 
+        &              MajoranaTransform(real(HFBHamil(1:2*N, 1:2*N, P,it))) 
+      
+        call PfaffianF(Hamcopy(1:2*N,1:2*N),2*N,2*N,ipv(1:2*N,:),pf(p,it)) 
+      enddo
+    enddo
   
   end function Pfaffian_HFBHamil
  

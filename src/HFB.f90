@@ -163,6 +163,8 @@ module HFB
   ! Size of the change in rho and kappa in the last iteration.
   real(KIND=dp) :: drho(2,2), dkappa(2,2)
   !-----------------------------------------------------------------------------
+  ! Storing the pfaffian of the HFBHamiltonian in every subspace
+  logical       :: PfSolver = .false.
   real(KIND=dp) :: pf(2,2) = 0, oldpf(2,2) = 0
   !-----------------------------------------------------------------------------
   ! Procedure pointer for the diagonalisation of the HFBhamiltonian.
@@ -631,7 +633,7 @@ contains
 
     real(KIND=dp)    :: N(2), E, MinE
     complex(KIND=dp) :: Overlaps(nwt,nwt)
-    integer          :: it, P, i,j,k,S, ind(2,2)
+    integer          :: it, P, i,j,k,S, ind(2,2), minind(2,2)
 
     call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge)
     !---------------------------------------------------------------------------
@@ -640,43 +642,99 @@ contains
 
     !---------------------------------------------------------------------------
     call DiagonaliseHFBHamiltonian
-
     !---------------------------------------------------------------------------
     ! Determining which eigenvectors of the HFB Hamiltonian to use
     HFBColumns  = 0
-    !---------------------------------------------------------------------------
-    ! Do as in CR8: take only the first half of the matrix, and conjugate
-    ! the first quarter.
-    if(SC) then
-        do it=1,Iindex
-            do P=1,Pindex
-                S = blocksizes(P,it)
-                do i=1,S/2
-                    HFBColumns(i,P,it) = 2*S - i + 1
-                enddo
-                do i=S/2+1,S
-                    HFBColumns(i,P,it) = i
-                enddo
-            enddo
-        enddo
-    else
-        !-----------------------------------------------------------------------
-        ! If signature is not conserved, just take all the positive
-        ! qp energies and pray it will work.
-        ind = 1
-        do it=1,Iindex
-            do P=1,Pindex
-                S = blocksizes(P,it)
-                do i=1,2*S
-                    if(QuasiEnergies(i,P,it) .gt. 0.0_dp) then
-                        HFBColumns(ind(P,it),P,it) = i
-                        ind(P,it) = ind(P,it) + 1
-                    endif
-                enddo
-            enddo
-        enddo
-    endif
     
+    if(PfSolver) then
+      !-------------------------------------------------------------------------
+      ! Use the relative sign of the Pfaffians to decide.
+      do it=1,Iindex
+        do P=1,Pindex
+          ! First find all of the positive energy ones
+          minE = 2000000
+          ind(P,it) = 1
+          S = blocksizes(P,it)
+          do i=1,2*S
+             if(QuasiEnergies(i,P,it) .gt. 0.0_dp) then
+                HFBColumns(ind(P,it),P,it) = i
+                
+                if(QuasiEnergies(i,P,it) .lt. minE) then
+                  minE = QuasiEnergies(i,P,it)
+                  minind(P,it) = ind(P,it)
+                endif
+                
+                ind(P,it)                  = ind(P,it) + 1
+                
+             endif
+          enddo
+          
+
+          if(all(oldpf.eq.0)) then
+            cycle
+          endif
+          
+          if(int(pf(p,it)/abs(pf(p,it))).eq. int(oldpf(p,it)/abs(oldpf(p,it)))) then
+            !-------------------------------------------------------------------
+            !Everything is in order, do nothing.
+            
+          else
+            ! Something changed. 
+            ! Then switch the lowest one
+            
+            print *, 'Switching nr. ',HFBColumns(minind(P,it),P,it),  2*S - HFBColumns(minind(P,it),P,it) + 1
+            print *, minE
+            HFBColumns(minind(P,it),P,it) = 2*S - HFBColumns(minind(P,it),P,it) + 1
+            
+          endif
+          print *, 'P, it', P, it
+          print *, oldpf(P,it)/abs(oldpf(P,it))
+          print *, pf(P,it)/abs(pf(P,it))
+          print *, HFBcolumns(1:ind(P,it)-1, P,it)
+          print *
+        enddo
+      enddo
+    else
+      !-------------------------------------------------------------------------
+      ! Do as in CR8: take only the first half of the matrix, and conjugate
+      ! the first quarter.
+      if(SC) then
+          do it=1,Iindex
+              do P=1,Pindex
+                  S = blocksizes(P,it)
+                  do i=1,S/2
+                      HFBColumns(i,P,it) = 2*S - i + 1
+                  enddo
+                  do i=S/2+1,S
+                      HFBColumns(i,P,it) = i
+                  enddo
+                  
+                  print *, 'P, it', P, it
+                  print *, oldpf(P,it)/abs(oldpf(P,it))
+                  print *, pf(P,it)/abs(pf(P,it))
+                  print *, HFBcolumns(1:S, P,it)
+              enddo
+          enddo
+          
+          
+      else
+          !---------------------------------------------------------------------
+          ! If signature is not conserved, just take all the positive
+          ! qp energies and pray it will work.
+          ind = 1
+          do it=1,Iindex
+              do P=1,Pindex
+                  S = blocksizes(P,it)
+                  do i=1,2*S
+                      if(QuasiEnergies(i,P,it) .gt. 0.0_dp) then
+                          HFBColumns(ind(P,it),P,it) = i
+                          ind(P,it) = ind(P,it) + 1
+                      endif
+                  enddo
+              enddo
+          enddo
+      endif
+    endif
     !---------------------------------------------------------------------------
     ! Block some quasiparticles
     if(allocated(qpexcitations)) then
@@ -970,7 +1028,12 @@ subroutine HFBFindFermiEnergyBroyden                                          &
   !-----------------------------------------------------------------------------
   !Check were we find ourselves in the phasespace
   N     = HFBNumberofParticles(Fermi, Delta, LnLambda ) - Particles
-  oldpf = Pfaffian_HFBHamil()   
+  
+  if(all(oldpf .eq. 0)) then
+    oldpf = Pfaffian_HFBHamil()   
+  else
+    oldpf = pf
+  endif
 
   if(Lipkin) then
     LN   = LNLambda - LNCR8(Delta,DeltaLN, flag)
@@ -1464,13 +1527,6 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
                     Temp(j+N/2,i)     = Temp(i,j+N/2)
                 enddo
             enddo
-!            print *
-!            do j=1,N
-!                print ('(100f8.3)'), Temp(j,1:N)
-!            enddo
-!            print * 
-!            print *
-!            
             !-------------------------------------------------------------------------
             ! Diagonalize
             call diagoncr8(temp,Nmax,N, Eigenvectors, Eigenvalues, Work, 'DiagHamil ',ifail)
@@ -1513,29 +1569,8 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
                 V(      1:N/2,N+1:2*N  ,P,it) = Eigenvectors(N/2+1:N   ,1:N)
                 QuasiEnergies(N+1:2*N  ,P,it) = EigenValues(     1:N)
             endif
-!            if(it.eq.1 .and. P.eq.1) print *, sqrt(product(QuasiEnergies(1:2*N,P,it)))
         enddo
     enddo
-    !
-    ! where (abs(U) .lt. 1d-8) U = 0.0d0
-    ! where (abs(V) .lt. 1d-8) V = 0.0d0
-
-!     do it=1,2
-!       do P=1,Pindex
-!           N = blocksizes(P,it)
-!           print *,QuasiEnergies(1:2*N,P,it)
-!           do i=1,N
-!             print ('(100f8.3)'), DBLE(U(i , 1:2*N,P,it))
-!           enddo
-!  
-!       print *
-!  
-!!       do i=1,N
-!!         print *, DBLE(V(i,1:2*N,P,it))
-!!       enddo
-!!       print *
-!     enddo
-!   enddo
   
 end subroutine DiagonaliseHFBHamiltonian_Signature
 

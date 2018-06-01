@@ -117,7 +117,8 @@ module Pairing
   !-----------------------------------------------------------------------------
   ! If MOCCa should look for a particular HF configuration
   logical       :: HFConfig=.false.
-  !------------------------------------------------------
+
+  !-----------------------------------------------------------------------------
   ! Temporary array for the pairing density rho~, until a
   ! more general implementation is available.
   complex(KIND=dp),allocatable :: PairDensity(:,:,:,:)
@@ -156,7 +157,7 @@ contains
      &                  QPinHFBasis, SolvePairingStart,QPPrintWindow, Block,   &
      &                  FermiSolver, HFBIter,HFBgauge,HFConfig, LNFixN, LNFixP,&
      &                  DN2P, DN2N, ConstrainDispersion, HFBlock, HFBreduce,   &
-     &                  Blockconsistent, aliyangle, fermimomentum
+     &                  Blockconsistent, aliyangle, fermimomentum, PfSolver
 
      read(unit=*, NML=Pairing)
 
@@ -368,10 +369,6 @@ contains
         elseif(trim(FermiSolver).eq.'GRADIENT') then
           FindFermiEnergy   => HFBFermiGradient
           if(HFBIter.eq.-1) HFBIter=500
-!          if(ConstrainDispersion) then
-!            call stp('MOCCa can not yet constrain the dispersion'// &
-!            &        ' in combination with gradient solver.')
-!          endif
         elseif(trim(FermiSolver).eq.'BISECTION') then
           FindFermiEnergy   => HFBFindFermiEnergyBisection
           if(HFBIter.eq.-1) HFBIter=50

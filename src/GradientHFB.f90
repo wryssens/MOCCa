@@ -131,6 +131,7 @@ contains
                   do i=1,S/2
                       HFBColumns(i,P,it) = 2*S - i + 1
                   enddo
+                  
                   do i=S/2+1,S
                       HFBColumns(i,P,it) = i
                   enddo
@@ -550,6 +551,7 @@ contains
     elseif(ConstrainDispersion) then 
          Disp = Dispersion()      
     endif
+    
     call BlockHFBHamil(Delta, z, L2)
     !---------------------------------------------------------------------------
     ! Reduce the dimension of the problem, by checking the pairing window and 
@@ -703,7 +705,7 @@ contains
             enddo
         enddo
       enddo
-     print *, iter, gradientnorm, par
+     !print *, iter, gradientnorm, par
       if(fermimomentum) then
           step = 4.0/(minqp + maxqp + 2*sqrt(maxqp*minqp)) * 0.80
           kappa= maxqp/minqp
@@ -1281,6 +1283,9 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
     ! Construct the HFBHamiltonian
     call ConstructHFBHamiltonian(Fermi,Delta,L2,HFBgauge)
     
+    ! Calculate the Pfaffian for printing purposes  
+    pf = Pfaffian_HFBHamil()   
+ 
     do it=1,Iindex
         do P=1,Pindex
             N = blocksizes(P,it)

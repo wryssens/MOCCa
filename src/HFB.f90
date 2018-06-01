@@ -633,7 +633,7 @@ contains
 
     real(KIND=dp)    :: N(2), E, MinE
     complex(KIND=dp) :: Overlaps(nwt,nwt)
-    integer          :: it, P, i,j,k,S, ind(2,2), minind(2,2)
+    integer          :: it, P, i,j,k,S, ind(2,2), minind(2,2), s1, s2
 
     call ConstructHFBHamiltonian(Lambda, Delta, LNLambda,HFBGauge)
     !---------------------------------------------------------------------------
@@ -663,35 +663,24 @@ contains
                   minE = QuasiEnergies(i,P,it)
                   minind(P,it) = ind(P,it)
                 endif
-                
                 ind(P,it)                  = ind(P,it) + 1
-                
              endif
           enddo
           
-
+          ! Don't decide on the basis of the Pfaffian if things are not ok.
           if(all(oldpf.eq.0)) then
             cycle
           endif
           
-          if(int(pf(p,it)/abs(pf(p,it))).eq. int(oldpf(p,it)/abs(oldpf(p,it)))) then
+          s1 = int(pf(p,it)/abs(pf(p,it)))
+          s2 = int(oldpf(p,it)/abs(oldpf(p,it)))
+          if( s1 .eq. s2 ) then
             !-------------------------------------------------------------------
             !Everything is in order, do nothing.
-            
           else
-            ! Something changed. 
-            ! Then switch the lowest one
-            
-            print *, 'Switching nr. ',HFBColumns(minind(P,it),P,it),  2*S - HFBColumns(minind(P,it),P,it) + 1
-            print *, minE
-            HFBColumns(minind(P,it),P,it) = 2*S - HFBColumns(minind(P,it),P,it) + 1
-            
+            ! Something changed, switch the lowest qp in the block. 
+            HFBColumns(minind(P,it),P,it) = 2*S-HFBColumns(minind(P,it),P,it)+1
           endif
-          print *, 'P, it', P, it
-          print *, oldpf(P,it)/abs(oldpf(P,it))
-          print *, pf(P,it)/abs(pf(P,it))
-          print *, HFBcolumns(1:ind(P,it)-1, P,it)
-          print *
         enddo
       enddo
     else
@@ -708,11 +697,6 @@ contains
                   do i=S/2+1,S
                       HFBColumns(i,P,it) = i
                   enddo
-                  
-                  print *, 'P, it', P, it
-                  print *, oldpf(P,it)/abs(oldpf(P,it))
-                  print *, pf(P,it)/abs(pf(P,it))
-                  print *, HFBcolumns(1:S, P,it)
               enddo
           enddo
           
@@ -1029,10 +1013,9 @@ subroutine HFBFindFermiEnergyBroyden                                          &
   !Check were we find ourselves in the phasespace
   N     = HFBNumberofParticles(Fermi, Delta, LnLambda ) - Particles
   
+  ! Get the sign that the Pfaffian of HFB hamiltonian should h
   if(all(oldpf .eq. 0)) then
     oldpf = Pfaffian_HFBHamil()   
-  else
-    oldpf = pf
   endif
 
   if(Lipkin) then
@@ -1159,9 +1142,6 @@ subroutine HFBFindFermiEnergyBroyden                                          &
           print 2, abs(LN)
       endif
   enddo
-
-  print *, 'Pfaffian',    pf/abs(pf)
-  print *, 'OldPf   ', oldpf/abs(oldpf)
 
 end subroutine HFBFindFermiEnergyBroyden
 
@@ -3222,6 +3202,7 @@ subroutine PrintBlocking
    11 format(' Number Parities (from counting particles)') 
   111 format(' precision = 1d-5'   )
   112 format(' precision = 1d-6'   ) 
+ 1111 format(' Pfaffian of the HFB hamiltonian in the subblocks')
     3 format(' P =+1', 17x, i5,5x,i5)
     2 format(' P =-1', 17x, i5,5x,i5)
     4 format(' P = 0', 17x, i5,5x,i5)
@@ -3231,26 +3212,26 @@ subroutine PrintBlocking
 
     NP = 0
     do it=1,Iindex
-        do P=1,Pindex
-            NP(P,it) = blocksizes(P,it)/2
-            do j=1,Blocksizes(P,it)    
-                !--------------------------------------------------------------------
-                ! For reasons I do not completely understand yet, the detection
-                ! of number parity is less dependent on the method used when counting
-                ! the total number of holes rather than the total number of particles.
-                ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                ! The cutoff precision also seems to be 'optimal' in the following 
-                ! sense: pairs in the canonical basis have the same occupation up to
-                ! about 10**-9 in some cases (but often better). Test case was 
-                ! one neutron qp state in Th223.
-                ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                ! 
-                !--------------------------------------------------------------------
-                if(abs(Occupations(j,P,it)).lt.1d-8) NP(P,it) = NP(P,it) - 1
-                !if(abs(Occupations(j,P,it) - 1.0_dp).lt.1d-5) NP(P,it) = NP(P,it) + 1
-                !if(abs(Occupations(j,P,it) - 2.0_dp).lt.1d-5) NP(P,it) = NP(P,it) + 1
-            enddo
-            if(TRC) NP(P,it) = NP(P,it)*2
+      do P=1,Pindex
+        NP(P,it) = blocksizes(P,it)/2
+        do j=1,Blocksizes(P,it)    
+          !--------------------------------------------------------------------
+          ! For reasons I do not completely understand yet, the detection
+          ! of number parity is less dependent on the method used when counting
+          ! the total number of holes rather than the total number of particles.
+          ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+          ! The cutoff precision also seems to be 'optimal' in the following 
+          ! sense: pairs in the canonical basis have the same occupation up to
+          ! about 10**-9 in some cases (but often better). Test case was 
+          ! one neutron qp state in Th223.
+          ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+          ! 
+          !--------------------------------------------------------------------
+          if(abs(Occupations(j,P,it)).lt.1d-8) NP(P,it) = NP(P,it) - 1
+          !if(abs(Occupations(j,P,it) - 1.0_dp).lt.1d-5) NP(P,it) = NP(P,it) + 1
+          !if(abs(Occupations(j,P,it) - 2.0_dp).lt.1d-5) NP(P,it) = NP(P,it) + 1
+        enddo
+        if(TRC) NP(P,it) = NP(P,it)*2
         enddo
     enddo
     
@@ -3265,21 +3246,25 @@ subroutine PrintBlocking
 
     NP = 0
     do it=1,Iindex
-        do P=1,Pindex
-            NP(P,it) = 0
-            do j=1,Blocksizes(P,it)    
-                !--------------------------------------------------------------------
-                ! For completeness' sake, MOCCa also prints the number parities
-                ! by counting eigenvalues close to 1
-                !--------------------------------------------------------------------
-                if(TRC) then
-                    if(abs(Occupations(j,P,it) - 2.0_dp).lt.1d-5) NP(P,it) = NP(P,it) + 1
-                else
-                    if(abs(Occupations(j,P,it) - 1.0_dp).lt.1d-5) NP(P,it) = NP(P,it) + 1
+      do P=1,Pindex
+        NP(P,it) = 0
+        do j=1,Blocksizes(P,it)    
+            !-------------------------------------------------------------------
+            ! For completeness' sake, MOCCa also prints the number parities
+            ! by counting eigenvalues close to 1
+            !-------------------------------------------------------------------
+            if(TRC) then
+                if(abs(Occupations(j,P,it) - 2.0_dp).lt.1d-5) then
+                  NP(P,it) = NP(P,it) + 1
                 endif
-            enddo
-            if(TRC) NP(P,it) = NP(P,it)*2
+            else
+                if(abs(Occupations(j,P,it) - 1.0_dp).lt.1d-5) then
+                  NP(P,it) = NP(P,it) + 1
+                endif
+            endif
         enddo
+        if(TRC) NP(P,it) = NP(P,it)*2
+      enddo
     enddo
     
     print *
@@ -3294,21 +3279,25 @@ subroutine PrintBlocking
 
     NP = 0
     do it=1,Iindex
-        do P=1,Pindex
-            NP(P,it) = 0
-            do j=1,Blocksizes(P,it)    
-                !--------------------------------------------------------------------
-                ! For completeness' sake, MOCCa also prints the number parities
-                ! by counting eigenvalues close to 1
-                !--------------------------------------------------------------------
-                if(TRC) then
-                    if(abs(Occupations(j,P,it) - 2.0_dp).lt.1d-6) NP(P,it) = NP(P,it) + 1
-                else
-                    if(abs(Occupations(j,P,it) - 1.0_dp).lt.1d-6) NP(P,it) = NP(P,it) + 1
-                endif
-            enddo
-            if(TRC) NP(P,it) = NP(P,it)*2
+      do P=1,Pindex
+        NP(P,it) = 0
+        do j=1,Blocksizes(P,it)    
+          !---------------------------------------------------------------------
+          ! For completeness' sake, MOCCa also prints the number parities
+          ! by counting eigenvalues close to 1
+          !---------------------------------------------------------------------
+          if(TRC) then
+              if(abs(Occupations(j,P,it) - 2.0_dp).lt.1d-6) then
+                NP(P,it) = NP(P,it) + 1
+              endif
+          else
+              if(abs(Occupations(j,P,it) - 1.0_dp).lt.1d-6) then
+                NP(P,it) = NP(P,it) + 1
+              endif
+          endif
         enddo
+        if(TRC) NP(P,it) = NP(P,it)*2
+      enddo
     enddo
     
     print 112
@@ -3318,29 +3307,16 @@ subroutine PrintBlocking
     else
       print 4, NP(1,:)
     endif
-!    
-!    print *
-!    if((.not. SC).and.(.not.PC)) then
-!        ! Check for the number parities in the x-simplex blocks. This is
-!        ! probably not to be trusted.
-!        NS = 0
-!        do it=1,Iindex
-!            do j = 1,blocksizes(1,it)
-!                i = blockindices(j,1,it)
-!                if(abs(Occupations(j,1,it)).lt.1d-6)  then
-!                    if(CanBasis(i)%xsimplexr > 0) then
-!                        NS(2,it) = NS(2,it) + 1 
-!                    else
-!                        NS(1,it) = NS(1,it) + 1
-!                    endif
-!                endif
-!            enddo
-!        enddo
-!        print 1
-!        print 5, NS(2,:)
-!        print 6, NS(1,:)
-!    endif
 
+  !-----------------------------------------------------------------------------
+  print *
+  print 1111
+  if(PC) then
+    print 2, int(pf(1,:)/abs(pf(1,:)))
+    print 3, int(pf(2,:)/abs(pf(2,:)))
+  else
+    print 4, int(pf(1,:)/abs(pf(1,:)))
+  endif
   end subroutine PrintNumberParities
 
   function Dispersion()

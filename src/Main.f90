@@ -213,11 +213,12 @@ subroutine Evolve(MaxIterations, iprint)
   call CalculateAllMoments(1)
   call CalculateAllMoments(1)
 
-  !Calculating  The Energy
-  call CompEnergy()
   !-----------------------------------------------------------------------------
   !Construct the mean-field potentials
   call ConstructPotentials
+
+  !Calculating  The Energy
+  call CompEnergy()
 
   if(Pairingtype.eq.2) then
     do i=1,nwt
@@ -254,13 +255,16 @@ subroutine Evolve(MaxIterations, iprint)
       else
         call DeriveAll()  
       endif
-      call compEnergy()
-      !Printing observables
-      call PrintIterationInfo(0, .true.)
       
       !-------------------------------------------------------------------------
       !Construct the mean-field potentials
       call ConstructPotentials
+      
+      call compEnergy()
+      !Printing observables
+      call PrintIterationInfo(0, .true.)
+      
+
   endif
 
   !Checking for the presence of Rutz-Type constraints
@@ -378,11 +382,11 @@ subroutine Evolve(MaxIterations, iprint)
     
     call ReadjustCranking(.false.)
 
-    !Calculating the Energy
-    call CompEnergy
-
     !Construct the mean-field potentials
     call ConstructPotentials
+
+    !Calculating the Energy
+    call CompEnergy
     
     !Checking for convergence
     Convergence = ConvergenceCheck()

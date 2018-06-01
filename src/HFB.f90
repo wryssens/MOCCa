@@ -1001,7 +1001,6 @@ subroutine HFBFindFermiEnergyBroyden                                          &
   ! Block some quasiparticles
   if(allocated(qpexcitations)) then
     call      BlockQuasiParticles
-    deallocate(qpexcitations)
   endif
   !-----------------------------------------------------------------------------
   ! Store old U and V for future reference

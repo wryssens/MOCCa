@@ -1688,7 +1688,8 @@ subroutine PrintAllMoments()
     if(Tocalculate%ConstrainStartValue) then
        select case(ToCalculate%Isoswitch)
        case(1)
-            Tocalculate%Constraint = sum(Tocalculate%value)
+            Tocalculate%Constraint     = sum(Tocalculate%value)
+            Tocalculate%TrueConstraint = sum(Tocalculate%value)
             Tocalculate%ConstrainStartValue = .false.
        case DEFAULT
             call stp('ConstrainstartValue not implemented for this isoswitch.')

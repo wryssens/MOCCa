@@ -1044,6 +1044,8 @@ contains
 
     10   format (28x, 'Temporary for ', i4, ' iterations.')
 
+    6    format ('Constrained on value at iteration 0')
+
     type(Moment), pointer :: Current
     character(len=2)      :: ReIm
     character(len=20)     :: ConType
@@ -1105,6 +1107,9 @@ contains
           if(.not.Current%Impart) ReIm = 'Re'
           if(     Current%Impart) ReIm = 'Im'
           print 5,  ReIm, Current%l, Current%m,Current%Constraint,ConType
+          if(Current%ConstrainStartValue) then
+            print 6
+          endif
         end select
         if (Current%iteration .gt. 0) print 10, Current%iteration
       enddo

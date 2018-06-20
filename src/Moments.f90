@@ -215,6 +215,10 @@ implicit none
       !-------------------------------------------------------------------------
       ! Procedure pointer to the routine used to print output of the moment.
       procedure(PrintMoment_Multipole), pointer,nopass :: PrintMoment
+      !-------------------------------------------------------------------------
+      ! Logical to decide whether the value of the constraint should be on the
+      ! value at iteration 0
+      logical  :: ConstrainStartValue = .false.
 
     contains
       procedure, pass, public :: WriteMoment
@@ -1040,6 +1044,8 @@ contains
 
     10   format (28x, 'Temporary for ', i4, ' iterations.')
 
+    6    format ('Constrained on value at iteration 0')
+
     type(Moment), pointer :: Current
     character(len=2)      :: ReIm
     character(len=20)     :: ConType
@@ -1101,6 +1107,9 @@ contains
           if(.not.Current%Impart) ReIm = 'Re'
           if(     Current%Impart) ReIm = 'Im'
           print 5,  ReIm, Current%l, Current%m,Current%Constraint,ConType
+          if(Current%ConstrainStartValue) then
+            print 6
+          endif
         end select
         if (Current%iteration .gt. 0) print 10, Current%iteration
       enddo
@@ -1677,6 +1686,20 @@ subroutine PrintAllMoments()
         endif
     endif
     call CalcBeta(ToCalculate)
+
+    ! If the user asked for a constraint on the value of the multipole moment
+    ! a) Set the constraint
+    ! b) Turn off the flag
+    if(Tocalculate%ConstrainStartValue) then
+       select case(ToCalculate%Isoswitch)
+       case(1)
+            Tocalculate%Constraint     = sum(Tocalculate%value)
+            Tocalculate%TrueConstraint = sum(Tocalculate%value)
+            Tocalculate%ConstrainStartValue = .false.
+       case DEFAULT
+            call stp('ConstrainstartValue not implemented for this isoswitch.')
+       end select
+    endif
 
     return
   end subroutine Calculate_Multipole
@@ -3182,7 +3205,7 @@ subroutine PrintAllMoments()
 
     integer             :: iostat, iteration
     integer             :: l,m, ConstraintType, isoswitch
-    logical             :: Impart
+    logical             :: Impart, ConstrainStart
     real(KIND=dp)       :: Intensity, ConstraintNeutrons, ConstraintProtons
     real(KIND=dp)       :: Constraint, iq1, iq2
     real(KIND=dp)       :: iq1neutron, iq2neutron, iq1proton, iq2proton, mult
@@ -3200,7 +3223,8 @@ subroutine PrintAllMoments()
     NameList /MomentConstraint/ l,m,Impart, Isoswitch, Intensity,              &
     &                           ConstraintNeutrons,ConstraintProtons,          &
     &                           Constraint, MoreConstraints, ConstraintType,   &
-    &                           iq1, iq2, Total, iteration, mult, J0
+    &                           iq1, iq2, Total, iteration, mult, J0,          &
+    &                           ConstrainStart
 
     nullify(Current)
 
@@ -3252,7 +3276,7 @@ subroutine PrintAllMoments()
         MoreConstraints=.false.   ; ConstraintType=3         ; J0 = .false.
         iq1=0.0_dp       ; iq2=0.0_dp            ; mult = 0.0_dp
         iq1neutron=0.0_dp; iq2neutron=0.0_dp; iq1proton=0.0_dp;iq2proton=0.0_dp
-        Total = .false.  ; iteration = -1
+        Total = .false.  ; iteration = -1 ; ConstrainStart= .false.
 
         read(unit=*, NML=MomentConstraint, IOSTAT=iostat)
         if(iostat .ne. 0) then
@@ -3311,6 +3335,8 @@ subroutine PrintAllMoments()
         if(ConstraintType.ne.0) then
             Current%Isoswitch = Isoswitch
             Current%Total     = Total
+            Current%ConstrainStartValue = Constrainstart
+            
             if(Isoswitch .eq. 1 .or. Isoswitch.eq. 3) then
                 ! To be able to override data from input
                 if(allocated(Current%Constraint)) then

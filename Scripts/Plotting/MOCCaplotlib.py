@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import glob
 import sys
 import math
+import levellab
 
 def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
     
@@ -66,6 +67,19 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
             xcolumn = 4
         if(SC !=1 and PC != 1):
             xcolumn = 6
+    elif(XARG=='B22') :
+        xfname =PREFIX + '.t.qlm.tab'
+        xcolumn=4
+
+        if(PC != 1) :
+            xcolumn = 6
+        if(SC != 1) :
+            xcolumn = 6
+        if( SC !=1 and PC != 1):
+            xcolumn = 10
+        derivY = 0
+        xlabel=r'$\beta_{22}$'
+            
     elif(XARG=='B30') :
         if(PC == 1) :
             print "Can't plot Q30 when parity is conserved."
@@ -102,6 +116,8 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
         xlabel =r'$\langle \hat{J}_{z} \rangle$ ($\hbar$)'
         xfname =PREFIX + '.e.tab'
         xcolumn=17
+        if(LEGACY == 1):
+          xcolumn = 15
         
     elif(XARG=='JTX') :
         xlabel =r'$\langle J_{x}\check{T}\rangle$ ($\hbar$) '
@@ -151,8 +167,10 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
         xfname =PREFIX + '.t.qlm.tab'
         if(PC == 1) :
             xcolumn=6
-        else:
+        elif(SC == 1):
             xcolumn=12
+        else: 
+            xcolumn=18
     elif(XARG=='B60') :
         xlabel =r'$\beta_{60}$ '
         xfname =PREFIX + '.t.qlm.tab'
@@ -252,6 +270,16 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
         yfname =PREFIX + '.e.tab'
         ycolumn=17
         derivY = 0
+    elif(YARG=='JNX') :
+        ylabel =r'$\langle \hat{J}_{n,z} \rangle$ ($\hbar$)'
+        yfname =PREFIX + '.jdecomp.tab'
+        ycolumn= 5
+        derivY = 0
+    elif(YARG=='JPX') :
+        ylabel =r'$\langle \hat{J}_{n,z} \rangle$ ($\hbar$)'
+        yfname =PREFIX + '.jdecomp.tab'
+        ycolumn=15
+        derivY = 0
     elif(YARG=='JX') :
         ylabel =r'$\langle \hat{J}_{x} \rangle$ ($\hbar$)'
         yfname =PREFIX + '.e.tab'
@@ -281,8 +309,10 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
         # Dynamical moment of inertia. 
         ylabel =r'$\mathcal{I}^{(2)}$ ($\hbar^2$ MeV$^{-1}$)'
         yfname =PREFIX + '.e.tab'
-        ycolumn=15
+        ycolumn=17
         derivY = 1
+        if(LEGACY == 1):
+          ycolumn = 15
     elif(YARG=='I2X') :
         # Dynamical moment of inertia.
         ylabel =r'$\mathcal{I}^{(2)}$ ($\hbar^2$ MeV$^{-1}$)'
@@ -294,8 +324,18 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
         ylabel =r'$\mathcal{I}^{(1)}$ ($\hbar^2$ MeV$^{-1}$)'
         yfname =PREFIX + '.e.tab'
         ycolumn= 11
-        divy = 1
+        divy   = 1
         derivY = 0
+    elif(YARG=='I1Z') :
+        # Dynamical moment of inertia.
+        ylabel =r'$\mathcal{I}^{(1)}$ ($\hbar^2$ MeV$^{-1}$)'
+        yfname =PREFIX + '.e.tab'
+        ycolumn= 17
+        divy   = 1
+        derivY = 0
+        
+        if(LEGACY == 1):
+          ycolumn = 15
 
     elif(YARG=='B20') :
         ylabel =r'$\beta_{20}$ '
@@ -317,6 +357,11 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
         derivY=0
         fac = np.sqrt(5/( 16 * np.pi))
 
+    elif(YARG=='Q0'):
+        ylabel  =r'$Q_{0}$  (fm$^2$)'
+        yfname  =PREFIX + '.qgamma.tab'
+        ycolumn = 4
+        derivY = 0
     elif(YARG=='gamma'):
         ylabel  =r'$\gamma (^{\circ})$ '
         yfname  =PREFIX + '.qgamma.tab'
@@ -366,6 +411,15 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
         if (SC != 1 ):
             ycolumn=16
         derivY=0
+    elif(YARG=='B3') :
+        ylabel =r'$\beta_{3}$ '
+        yfname =PREFIX + '.t.ql.tab'
+        if(SC != 1):
+          ycolumn = 6
+        derivY=0
+        fac = np.sqrt(7/( 16 * np.pi))
+        
+        
     elif(YARG=='RRMS') :
         ylabel =r'$\langle r^2 \rangle$ (fm$^2$)'
         yfname =PREFIX + '.e.tab'
@@ -511,7 +565,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
               LINESTYLE='-' ,  MARKER='', COLOR='', OFFSET=None, 
               XMIN     =None,  XMAX=None, MINRANGE=None, MAXRANGE=None,
               LINEWIDTH=1.0, INTERKIND='cubic', SORT='', INVERTINTERPOL=0,     
-              YMAX=None, FORCESYM=None, LEGACY=0):
+              YMAX=None, FORCESYM=None, LEGACY=0, SORTMAX=None, SORTMIN=None):
     #===========================================================================
     # Function that plots two values obtained in a set of data files, labelled
     # by PREFIX, onto the axes passed into the routine.
@@ -565,6 +619,17 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
                 tempy = np.delete(tempy,indices)
                 tempsort = np.delete(tempsort,indices)            
             
+            if(SORTMAX !=None):
+                indices = []
+                for j in range(len(tempsort)):
+                    if(tempsort[j] > SORTMAX[i]):
+                        indices.append(j)
+                tempx = np.delete(tempx,indices)
+                tempy = np.delete(tempy,indices)
+                tempsort = np.delete(tempsort,indices)  
+                
+                print 'sortmax'
+                
             if(i==0) :
                 xdata=tempx
                 ydata=tempy
@@ -573,6 +638,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
                 xdata    = np.append(xdata, tempx)
                 ydata    = np.append(ydata, tempy)
                 sortdata = np.append(sortdata, tempsort)
+
             
             ydata= fac * ydata
             if(absy == 1):
@@ -584,8 +650,10 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         dataX=np.loadtxt(xfname,skiprows=1)
         dataY=np.loadtxt(yfname,skiprows=1)
         sortdata = np.loadtxt(sortname, skiprows=1)
+        
         xdata=dataX[:,xcolumn]
         sortdata = sortdata[:,sortcolumn]
+        
         if( ycolumn != -1): 
                 tempy=dataY[:,ycolumn]
         else:
@@ -609,11 +677,31 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
     
         if(YMAX != None):
             indices = []
-            for j in range(len(tempy)):
-                if(tempy[j] > YMAX):
+            for j in range(len(ydata)):
+                if(ydata[j] > YMAX):
                     indices.append(j)
-            tempx = np.delete(tempx,indices)
-            tempy = np.delete(tempy,indices)
+            xdata = np.delete(xdata,indices)
+            ydata = np.delete(ydata,indices)
+            
+        if(SORTMAX !=None):
+              indices = []
+              for j in range(len(sortdata)):
+                  if(sortdata[j] > SORTMAX):
+                      indices.append(j)
+              xdata = np.delete(xdata,indices)
+              ydata = np.delete(ydata,indices)
+              sortdata = np.delete(sortdata,indices)  
+
+        if(SORTMIN !=None):
+              indices = []
+              for j in range(len(sortdata)):
+                  if(sortdata[j] < SORTMIN):
+                      indices.append(j)
+              xdata = np.delete(xdata,indices)
+              ydata = np.delete(ydata,indices)
+              sortdata = np.delete(sortdata,indices)  
+
+
     
         if(altx != 0):
             altxdata = dataX[:, altx]
@@ -646,6 +734,7 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         ydata = abs(deriv)
         xdata = xdata[0:-1]
         sortdata = xdata
+        print 'Derived'
         
     if(INTERPOLATE > 0):
         if(INVERTINTERPOL == 0):
@@ -738,10 +827,10 @@ def MOCCaPlot(XARG, YARG, PREFIX,  PC=1,  SC=1, PC2=1, SC2=1,
         argmax = np.argmax(ydata[maskmax])
         maxx = xdata[maskmax][argmax]
         emax = max(ydata[maskmax])
-    
-
+    # Alternative return
+    #return(xdata[0], ydata[0], xdata[-1], ydata[-1])
     return (minx, ymin, maxx, emax) #, xdata, ydata)
-
+    #return (xdata, ydata)
 #################################################################################
 def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[], INTERPOL=1):
     
@@ -837,14 +926,14 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[], INTERPOL=1):
 def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1, 
             PLOTDATA=-1, MARKER='', FERMIWINDOW=-1, XARG='B20', PC=1, SC=1, HF=0
             , LINESTYLES=['-.','-', '--'], LINEWIDTH=1, DASHES=None, SIMPLEX=0, 
-            SIMPLEXSORT=0, MARKERSIZE=1, ALLOWMARKING=1):
+            SIMPLEXSORT=0, MARKERSIZE=1, ALLOWMARKING=1, LABELS=0, LABELWINDOW=[0,0]
+            , LABELOFFSET=0.0):
 
     #Default to current axis
     if AXIS is None:
         AXIS = plt.gca()
-
     
-    (xlabel, ylabel, xfname,yfname,sortfname,xcolumn,ycolumn,sortcolumn,derivY,altx,alty, divy, absy, fac)= Determinedata(PREFIX, XARG,'E' ,PC,SC, SORT='', LEGACY=LEGACY)
+    (xlabel, ylabel, xfname,yfname,sortfname,xcolumn,ycolumn,sortcolumn,derivY,altx,alty, divy, absy, fac)= Determinedata(PREFIX, XARG,'E' ,PC,SC, SORT='')
     
     dataX=np.loadtxt(xfname,skiprows=1)
     xdata = dataX[:,xcolumn]
@@ -858,7 +947,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
     fermi     = fermidata[:,fermicolumn]
 
     xdata, fermi = zip(*sorted(zip(xdata, fermi)))
-    AXIS.plot(xdata, fermi, 'k'+LINESTYLES[0], label='$\epsilon_{\\rm fermi}$')
+    AXIS.plot(xdata, fermi, 'k'+LINESTYLES[0]) #, label='$\epsilon_{\\rm fermi}$')
     xdata = dataX[:,xcolumn]
 
     minx = 10000000.0
@@ -879,8 +968,12 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
 
     colors   = ['b', 'r', 'c', 'g', 'k', 'm', 'y', 'salmon', 'y' ]  
     
+    levellabels    = []
+    labelenergies  = []
+    labelcolors    = []
     for P in PAR:
         shells[P] = {}
+        
         for S in SIG:
             if(SIMPLEXSORT == 0):
                 fnametemp=PREFIX + '.' + BASIS + '.' + ISO + '.' + 'par=' + P + '.' + 'sig=' + S 
@@ -910,7 +1003,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                     try:
                         tokens = tokenizer(fname)
                         tokens.next()
-                        spwfs = [np.loadtxt(A) for A in tokens]
+                        spwfs = [np.loadtxt(A, usecols=range(0,11)) for A in tokens]
                     except IOError:
                         #This happens if KMAX is too big
                         break
@@ -926,7 +1019,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                         
                         xdata   = dataX[indexes,xcolumn]
                         if(PLOTDATA == 1):
-                            AXIS.plot(xdata, ydata, c +'x')
+                            AXIS.plot(xdata, ydata, c, marker='x')
                         if(INTERPOLATE > 0):
                             try:
                                 f     = interp1d(xdata, ydata, kind='cubic')
@@ -948,18 +1041,26 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                         lw = LINEWIDTH
                         
                         xdata, ydata = zip(*sorted(zip(xdata, ydata)))
+                        
+                        
                         if(i == 0 and P == PAR[0] ):
                             if(DASHES != None):
-                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$j_z = \frac{%d}{2}$'%K, marker=m,linewidth=lw, dashes=DASHES, markevery=me, ms=ms)
+                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$ \frac{%d}{2}$'%K, marker=m,linewidth=lw, dashes=DASHES, markevery=me, ms=ms)
                             else :
-                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$j_z = \frac{%d}{2}$'%K, marker=m,linewidth=lw, markevery=me, ms=ms)
+                                AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, label=r'$ \frac{%d}{2}$'%K, marker=m,linewidth=lw, markevery=me, ms=ms)
                         
                         else:
                             if(DASHES != None):
                                 AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, marker=m, linewidth=lw, dashes=DASHES, markevery=me, ms=ms)
                             else:
                                 AXIS.plot(xdata, ydata, color=c, linestyle=linestyle, marker=m, linewidth=lw, markevery=me,ms=ms)
-                                
+                         
+                        if(LABELS == 1):
+                            if(ydata[-1] < LABELWINDOW[1] and ydata[-1] > LABELWINDOW[0]):
+                                labelenergies.append(ydata[-1])
+                                levellabels.append('%d/2'%K)
+                                labelcolors.append(c)
+                                    
                         # Find the point of the spwf closest to x = 0 and add it
                         # to shells
                         minx = 10000000.0
@@ -1020,7 +1121,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                         
                     xdata   = dataX[indexes,xcolumn]
                     if(PLOTDATA == 1):
-                        AXIS.plot(xdata, ydata, c +'x')
+                        AXIS.plot(xdata, ydata, c +'d')
                     if(INTERPOLATE > 0):
                         try:
                             f     = interp1d(xdata, ydata, kind='cubic')
@@ -1033,6 +1134,17 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
                         AXIS.plot(xdata, ydata, c+linestyle, marker=m, ms=ms, markevery=me)
                     else:
                         AXIS.plot(xdata, ydata, c+linestyle, marker=m, ms=ms, markevery=me)
+     
+    ############################################################################      
+    # Figure out the labelling
+    if(LABELS == 1):
+        (labelenergies, levellabels,labelcolors) = zip(*sorted(zip(labelenergies, levellabels,labelcolors)))
+        finalpos = levellab.LabelPositions(labelenergies, 0.25)
+            
+        if(finalpos != None):
+          for i in range(len(labelenergies)):
+            AXIS.text(xdata[-1]+LABELOFFSET, finalpos[i], levellabels[i], color=labelcolors[i], horizontalalignment='left', verticalalignment='center')
+#                            
                
     AXIS.set_xlabel(xlabel)
     AXIS.set_ylabel(r'E (MeV)')
@@ -1042,7 +1154,7 @@ def Nilsson(PREFIX, BASIS, ISO, PAR, SIG, KMAX=0, AXIS=None, INTERPOLATE=-1,
     return (fermispher,shells)
 
 ################################################################################
-def Qps(PREFIX, PAR, ISO, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER=''):
+def Qps(PREFIX, PAR, ISO, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER='', COLOR=['C0', 'C1'], LINESTYLES=['--', '-']):
     
     #Default to current axis
     if AXIS is None:
@@ -1055,9 +1167,9 @@ def Qps(PREFIX, PAR, ISO, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER=''):
     
     for P in PAR:
         if (P == '-1'):
-            linestyle = '--'
+            linestyle = LINESTYLES[0]
         else:
-            linestyle = '-'
+            linestyle = LINESTYLES[1]
 
         fname =PREFIX + '.%s.qp.'%ISO + 'P=' + P + '.tab'
         efname=PREFIX + '.ef.tab'
@@ -1087,7 +1199,7 @@ def Qps(PREFIX, PAR, ISO, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER=''):
             ydata = np.asarray(ydata)
 
             if(PLOTDATA == 1):
-                AXIS.plot(xdata, ydata, c +'x')
+                AXIS.plot(xdata, ydata, 'x')
             if(INTERPOLATE > 0):
                 try:
                     f     = interp1d(xdata, ydata, kind='cubic')
@@ -1096,12 +1208,16 @@ def Qps(PREFIX, PAR, ISO, AXIS=None, INTERPOLATE=-1, PLOTDATA=-1, MARKER=''):
                 interx= np.arange(min(xdata), max(xdata) - (max(xdata) - min(xdata))/100, INTERPOLATE) 
                 ydata = f(interx)
                 xdata = interx
+#            if(P == PAR[0]):
+#              c = COLOR[0]
+#            else:
+#              c = COLOR[1]
             if(i == 0 and P == PAR[0] ):
-                AXIS.plot(xdata,  ydata, linestyle=linestyle, marker=MARKER)
-                AXIS.plot(xdata, -ydata, linestyle=linestyle, marker=MARKER)
+                AXIS.plot(xdata,  ydata, linestyle=linestyle, marker=MARKER, color=COLOR[0])
+                AXIS.plot(xdata, -ydata, linestyle=linestyle, marker=MARKER, color=COLOR[1])
             else:
-                AXIS.plot(xdata,  ydata, linestyle=linestyle, marker=MARKER)
-                AXIS.plot(xdata, -ydata, linestyle=linestyle, marker=MARKER)
+                AXIS.plot(xdata,  ydata, linestyle=linestyle, marker=MARKER, color=COLOR[0])
+                AXIS.plot(xdata, -ydata, linestyle=linestyle, marker=MARKER, color=COLOR[1])
 
     AXIS.set_ylabel(r'$E_{qp}$ (MeV)')
 

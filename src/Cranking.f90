@@ -204,7 +204,7 @@ contains
         case(2)
           if(Rutz) cycle
           Omega(i) = Omega(i) -                                                &                                     
-          &               2*CrankIntensity(i)*(TotalAngMom(i) - CrankValues(i))
+          &     2*CrankIntensity(i)*Crankreadj*(TotalAngMom(i) - CrankValues(i))
         case(3)
           if(.not. Rutz) cycle
           !---------------------------------------------------------------------

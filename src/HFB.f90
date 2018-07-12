@@ -722,7 +722,7 @@ contains
     !---------------------------------------------------------------------------
     ! Block some quasiparticles
     if(allocated(qpexcitations)) then
-      call BlockQuasiParticles
+      call BlockQuasiParticles(Lambda)
     endif
     call constructRhoHFB(HFBColumns)
 
@@ -1000,7 +1000,7 @@ subroutine HFBFindFermiEnergyBroyden                                          &
   !-----------------------------------------------------------------------------
   ! Block some quasiparticles
   if(allocated(qpexcitations)) then
-    call      BlockQuasiParticles
+    call      BlockQuasiParticles(Fermi)
   endif
   !-----------------------------------------------------------------------------
   ! Store old U and V for future reference
@@ -2791,14 +2791,16 @@ subroutine InsertionSortQPEnergies
     QPexcitations=blocked
   end subroutine ReadBlockingInfo
 
-  subroutine QPindices
+  subroutine QPindices(Fermi)
     !---------------------------------------------------------------------------
     ! Subroutine that looks for the correct blockindices of the HFBasis
     ! wavefunctions.
     !
     !---------------------------------------------------------------------------
 
-    integer :: i, N, P,it,j, index, S
+    integer :: i, N, P,it,j, index, S, tempind
+    real(KIND=dp) :: diffe
+    real(KIND=dp), intent(in) :: Fermi(2)
 
     if(.not. allocated(Blockindices)) then
         call stp('QPindices cannot work before the HFBmodule is properly'     &
@@ -2814,6 +2816,33 @@ subroutine InsertionSortQPEnergies
 
     do i=1,N
         index = QPExcitations(i)
+      
+        if (index .eq. -1) then
+            diffe = 1000000
+            do j=1,nwt
+                  It  = (HFBasis(j)%GetIsospin()+3)/2
+                  if(It .eq. 2) cycle
+                  
+                  if(abs(HFBasis(j)%energy - Fermi(1)).lt.diffe) then
+                        diffe = abs(HFBasis(j)%energy - Fermi(1))
+                        tempind = j
+                  endif
+            enddo            
+            index = tempind
+        elseif(index .eq.-2) then
+            diffe = 1000000
+            do j=1,nwt
+                  It  = (HFBasis(j)%GetIsospin()+3)/2
+                  if(It .eq. 1) cycle
+                  
+                  if(abs(HFBasis(j)%energy - Fermi(2)).lt.diffe) then
+                        diffe = abs(HFBasis(j)%energy - Fermi(2))
+                        tempind = j
+                  endif
+            enddo            
+            index = tempind
+        endif
+
         ! Getting the Quantum Numbers
         P  = (HFBasis(index)%GetParity()+3)/2
         It = (HFBasis(index)%GetIsospin()+3)/2
@@ -2896,7 +2925,7 @@ subroutine PrintBlocking
     endif
   end subroutine PrintBlocking
 
- subroutine BlockQuasiParticles()
+ subroutine BlockQuasiParticles(Fermi)
     !---------------------------------------------------------------------------
     ! Subroutine that arranges the blocking of quasiparticles. It should be used
     ! after diagonalisation of the HFB harmiltonian, but before the calculation
@@ -2920,11 +2949,12 @@ subroutine PrintBlocking
     integer          :: N, i, index , j, P, it, C, K, loc(1), CT, B, D, DT
     complex(KIND=dp) :: TempU(HFBSize), TempV(HFBSize)
     real(KIND=dp)    :: TempU2, Overlap, theta
+    real(KIND=dp), intent(in) :: Fermi(2)
 
     N = size(QPExcitations)
     
     
-    if(.not.allocated(QPBlockind)) call QPindices()
+    if(.not.allocated(QPBlockind)) call QPindices(Fermi)
     do i=1,N
         index = QPblockind(i)
         P     = QPParities(i)

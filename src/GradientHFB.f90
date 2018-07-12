@@ -105,7 +105,7 @@ module GradientHFB
 
 contains
 
-  subroutine GetUandV
+  subroutine GetUandV(Fermi)
     !---------------------------------------------------------------------------
     ! Get U and V values from the HFB module.
     ! Also very important: counts the number of of (U,V) vectors in every block.
@@ -114,6 +114,7 @@ contains
     !---------------------------------------------------------------------------
     integer :: it,P,i,j,N, ind(2,2), Rzindex,k, S
     logical :: incolumns
+    real(KIND=dp), intent(in) :: Fermi(2)
     !----------------------------------------
     ! Initialize the matrices.
     !----------------------------------------
@@ -143,7 +144,7 @@ contains
     endif
 
     if(allocated(qpexcitations) .and. BlockConsistent) then
-      call BlockQuasiParticles
+      call BlockQuasiParticles(Fermi)
     endif
 
     do it=1,Iindex
@@ -184,11 +185,12 @@ contains
     
   end subroutine GetUandV
 
-  subroutine OutHFBModule
+  subroutine OutHFBModule(Fermi)
       !-------------------------------------------------------------------------
       ! Put our solution into the HFB module correctly.if(SC) then
       integer :: i,j,P,it,N, S, E, ii,jj
-    
+      real(KIND=dp), intent(in) :: Fermi(2)
+
       1 format ('indices ', 50i3)
       
       if(HFBreduce) then
@@ -244,7 +246,7 @@ contains
         enddo
         if(allocated(qpexcitations) .and. (.not.BlockConsistent)) then
             ! Don't consistently block qps
-            call BlockQuasiParticles
+            call BlockQuasiParticles(Fermi)
             call constructRhoHFB(HFBColumns)
             call constructKappaHFB(HFBColumns)            
         else
@@ -518,7 +520,7 @@ contains
         N = maxval(blocksizes)
         !-----------------------------------------------------------------------
         ! Get U and V from the HFB module
-        call GetUandV()
+        call GetUandV(Fermi)
         OldgradU = GradU
         OldgradV = GradV
 
@@ -594,7 +596,7 @@ contains
       ! Readjust Fermi and L2
       succes = 0
       if(.not. blockconsistent) then
-         corr = block_gradient()
+         corr = block_gradient(Fermi)
       else
          corr = 0.0_dp
       endif
@@ -724,7 +726,7 @@ contains
    enddo
    !----------------------------------------------------------------------------
    ! Make the HFB module happy again and hand control back.
-   call OutHFBModule
+   call OutHFBModule(Fermi)
    !call CheckUandVColumns(HFBColumns)
    call CalcQPEnergies(GradU,gradV,Fermi,L2,Delta)
    
@@ -1219,7 +1221,7 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
       
   end subroutine ortho_sig
   
-  function block_gradient() result(Correction)
+  function block_gradient(Fermi) result(Correction)
     !---------------------------------------------------------------------------
     ! Subroutine to determine which column in V is the one that will end up  
     ! blocked, in order to correctly determine the particle number.
@@ -1227,13 +1229,13 @@ function H20_nosig(Ulim,Vlim,hlim,Dlim,S) result(H20)
     
     integer       :: N, j, i, C, loc(1), index, it, P
     real(KIND=dp) :: tempU2, overlap
-    real(KIND=dp) :: Correction(2)
+    real(KIND=dp) :: Correction(2), Fermi(2)
     
     N = size(QPExcitations)
     
     Correction = 0.0_dp
 
-    if(.not.allocated(QPBlockind)) call QPindices()
+    if(.not.allocated(QPBlockind)) call QPindices(Fermi)
     do i=1,N
         index = QPblockind(i)
         P     = QPParities(i)

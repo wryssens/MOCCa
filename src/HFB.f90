@@ -2785,7 +2785,7 @@ subroutine InsertionSortQPEnergies
     ! Change the aliyangle to radians
     aliyangle = aliyangle/180*pi
     
-    if(any(Blocked.le.0) .or. any(Blocked.gt.nwt)) then
+    if(any(Blocked.le.-5) .or. any(Blocked.gt.nwt)) then
         call stp('Invalid quasiparticle index.')
     endif
     QPexcitations=blocked
@@ -2798,7 +2798,7 @@ subroutine InsertionSortQPEnergies
     !
     !---------------------------------------------------------------------------
 
-    integer :: i, N, P,it,j, index, S, tempind
+    integer :: i, N, P,it,j, index, S, tempind, refIt, refP
     real(KIND=dp) :: diffe
     real(KIND=dp), intent(in) :: Fermi(2)
 
@@ -2816,27 +2816,49 @@ subroutine InsertionSortQPEnergies
 
     do i=1,N
         index = QPExcitations(i)
-      
-        if (index .eq. -1) then
+        
+        !-----------------------------------------------------------------------
+        ! Checking for special values of the blocking
+        !
+        ! index = -1 : P = - 1, neutron
+        ! index = -2 : P = + 1, neutron
+        ! index = -3 : P = - 1, proton
+        ! index = -4 : P = + 1, proton
+        !
+        !-----------------------------------------------------------------------
+        select case(index)
+        case(-1)
+          ! Negative parity neutron
+          refP = 1
+          refIt= 1
+        case(-2)
+          ! Positive parity neutron
+          refP = 2
+          refIt= 1
+        case(-3)
+          ! Negative parity proton
+          refP = 1
+          refIt= 2
+        case(-4)
+          ! Positive parity proton
+          refP = 2
+          refIt= 2
+        case DEFAULT
+          refP = 0
+          refIt = 0
+        end select
+        
+        if(index.lt.0) then
             diffe = 1000000
             do j=1,nwt
                   It  = (HFBasis(j)%GetIsospin()+3)/2
-                  if(It .eq. 2) cycle
+                  P   = (HFBasis(j)%GetParity()+3)/2
+                  
+                  if(It .ne. refIt ) cycle
+                  if(P  .ne. refP  ) cycle
                   
                   if(abs(HFBasis(j)%energy - Fermi(1)).lt.diffe) then
                         diffe = abs(HFBasis(j)%energy - Fermi(1))
-                        tempind = j
-                  endif
-            enddo            
-            index = tempind
-        elseif(index .eq.-2) then
-            diffe = 1000000
-            do j=1,nwt
-                  It  = (HFBasis(j)%GetIsospin()+3)/2
-                  if(It .eq. 1) cycle
-                  
-                  if(abs(HFBasis(j)%energy - Fermi(2)).lt.diffe) then
-                        diffe = abs(HFBasis(j)%energy - Fermi(2))
                         tempind = j
                   endif
             enddo            

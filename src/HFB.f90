@@ -2862,7 +2862,8 @@ subroutine InsertionSortQPEnergies
                         tempind = j
                   endif
             enddo            
-            index = tempind
+            index            = tempind
+            QPExcitations(i) = index 
         endif
 
         ! Getting the Quantum Numbers

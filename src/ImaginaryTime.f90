@@ -77,7 +77,7 @@ contains
         con       = con - maxE
         !-----------------------------------------------------------------------
         ! notice the sign, we are maximising instead of minimising.
-        update        = dt*hbar*(actionofh-maxE*maxspwf%value)+momentum*update 
+        update        = dt/hbar*(actionofh-maxE*maxspwf%value)+momentum*update 
         maxspwf%value = maxspwf%value + update
         !-----------------------------------------------------------------------
         ! Normalize

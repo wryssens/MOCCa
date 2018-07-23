@@ -8,6 +8,7 @@ module Densities
   use CompilationInfo
   use Geninfo
   use Derivatives
+  use Force
 
   implicit none
 
@@ -248,7 +249,7 @@ contains
         Sum%LapLapRho  = Den1%LapLapRho    + Den2%LapLapRho
     endif    
     
-    if(.not.TRC) then
+    if((.not.TRC) .and. (.not.TurnoffTimeOdd)) then
       Sum%Vecj   = Den1%VecJ     + Den2%VecJ
       Sum%RotVecj= Den1%RotVecJ  + Den2%RotVecJ
       Sum%Vecs   = Den1%vecs     + Den2%vecs
@@ -315,7 +316,7 @@ contains
     if(allocated(Prod%Jmunu)) then
       Prod%JMuNu = A*Den%Jmunu
     endif
-    if(.not.TRC) then
+    if((.not.TRC) .and. (.not.TurnoffTimeOdd)) then
       Prod%Vecj   = A*Den%VecJ
       Prod%RotVecj= A*Den%RotVecJ
       Prod%Vecs   = A*Den%vecs
@@ -487,7 +488,7 @@ contains
         &                           Occupation * DensityBasis(i)%GetNablaJ()
       endif
       !Only compute time-odd densities when Time Reversal is broken
-      if(.not.TRC) then
+      if((.not.TRC) .and. (.not.TurnoffTimeOdd)) then
         DenIn%Vecj(:,:,:,:,it)= DenIn%Vecj(:,:,:,:,it) +                       &
         &                       Occupation*DensityBasis(i)%GetVecj()
         DenIn%Vecs(:,:,:,:,it)= DenIN%Vecs(:,:,:,:,it) +                       &
@@ -512,7 +513,7 @@ contains
         DenIn%VN2LO(:,:,:,:,:,it)     = DenIn%VN2LO(:,:,:,:,:,it) +            &
         &                              Occupation * DensityBasis(i)%GetVN2LO()
         
-        if(.not. TRC) then
+        if((.not.TRC) .and. (.not.TurnoffTimeOdd)) then
             DenIn%ITauN2LO(:,:,:,:,:,it)  = DenIn%ITauN2LO(:,:,:,:,:,it) +     &
             &                         Occupation * DensityBasis(i)%GetITauN2LO()
             DenIn%ReKN2LO(:,:,:,:,:,:,it) = DenIn%ReKN2LO(:,:,:,:,:,:,it) +    &
@@ -998,7 +999,7 @@ contains
       !DenIn%NablaJ = DeriveJMunu(Denin%JMuNu)
     endif
     !Computing the derivatives of vecj & vecs
-    if(.not.TRC) then
+    if((.not.TRC) .and. (.not.TurnoffTimeOdd)) then
         ! Derive vecj
         do it=1,2
           !See Table V in V. Hellemans et al., Phys. Rev. C 85 (2012), 014326

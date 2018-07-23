@@ -477,7 +477,7 @@ contains
     nullify(Current); nullify(NextMoment)
     !---------------------------------------------------------------------------
     ! b) the magnetic moments
-    if(.not. TRC) then
+    if((.not.TRC) .and. (.not. TurnOffTimeOdd)) then
         nullify(Current)   ;  allocate(Current)
         Current=>Root_spin
         nullify(Current%Next) ;  nullify(Current%Prev) ; nullify(NextMoment)
@@ -1577,7 +1577,7 @@ subroutine PrintAllMoments()
       print 102
       
       !-------------------------------------------------------------------------
-      if(.not. TRC) then
+      if((.not.TRC) .and. (.not. TurnOffTimeOdd)) then
           print 101
           print 10, Ax
           print 11, SecAx1, SecAx2

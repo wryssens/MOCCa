@@ -10,7 +10,7 @@ module Force
     use GenInfo
 
     implicit none
-    !-----------------------------------------------------------------------------
+    !----------------------------------------------------------------------------
     ! Flag on how to calculate and print the energy of the Skyrme terms.
     ! Possible options at the moment:
     !  BTerms     => Calculate everything per coupling constant B 
@@ -18,15 +18,15 @@ module Force
     !  TermByTerm => Calculate everything terms by term           
     !                DEFAULT option, and more reliable.
     character(len=200), public   :: SkyrmeTreatment='TERMBYTERM'
-    !-----------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
     !Name of the force
     character(len=200), public   :: afor
-    !-----------------------------------------------------------------------------
-    ! The diverse constants in the Skyrme force and their combinations (the Bi,Ci)
-    ! that enter the energy density.
+    !---------------------------------------------------------------------------
+    ! The diverse constants in the Skyrme force and their combinations 
+    ! (the Bi,Ci) that enter the energy density.
     ! For the various definitions, see:
     !  P.Bonche, H.Flocard, P.H.Heenen; Nucl. Phys. A467 (1987); 115-135
-    !-----------------------------------------------------------------------------
+    !---------------------------------------------------------------------------
     !Skyrme Force parameters
     real(KIND=dp) :: t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,te,to
     real(KIND=dp) :: wso,wsoq
@@ -35,8 +35,8 @@ module Force
     ! N3LO parameters
     real(KIND=dp) :: t1n3, t2n3, x1n3, x2n3
     !Functional parameters in the BFH representation
-    real(KIND=dp), public :: B1,B2,B3,B4,B5,B6,B7a,B7b,B8a,B8b,Byt3a,Byt3b,B9,B9q
-    real(KIND=dp), public :: B10,B11,B12a,B12b,B13a,B13b,B14
+    real(KIND=dp), public :: B1,B2,B3,B4,B5,B6,B7a,B7b,B8a,B8b,Byt3a,Byt3b,B9
+    real(KIND=dp), public :: B9q,B10,B11,B12a,B12b,B13a,B13b,B14
     real(KIND=dp), public :: B15,B16, B17, B18,B19,B20,B21
     !Functional parameters in the C-representation
     !Note: first component is the isoscalar constant, second the isovector part
@@ -135,13 +135,18 @@ module Force
     real(KIND=dp) :: RhoQFactor = 1.0_dp
     real(KIND=dp) :: rhodrhofactor(2) = 1.0_dp
     
+    !---------------------------------------------------------------------------
+    ! TurnOffTimeOdd: if .true., turn off all of the time-odd terms.
+    logical :: TurnOffTimeOdd = .false.
+    
 contains
 
     subroutine ReadForceInfo()
-        !---------------------------------------------------------------------------
-        ! Subroutine governing the user input of parameters regarding this module.
-        !---------------------------------------------------------------------------
-        NameList /Force/ afor, SkyrmeTreatment, RhoQFactor, rhodrhofactor
+        !-----------------------------------------------------------------------
+        ! Subroutine governing the user input of parameters.
+        !-----------------------------------------------------------------------
+        NameList /Force/ afor, SkyrmeTreatment, RhoQFactor, rhodrhofactor,     &
+        &                TurnOffTimeOdd
 
         !Read the correct name from input
         read(unit=*, NML=Force)
@@ -270,6 +275,11 @@ contains
     107     format(' Two-body c.o.m. correction included perturbatively.')
     108     format(' Two-body c.o.m. correction included selfconsistently.')
 
+    109     format(80("-"), /, &
+    &              '!>>>>>>  ATTENTION <<<<<<<! ', /, &
+    &              ' All time-odd terms set to zero!' , /, &
+    &              80("-"))
+
     110     format(" EDF Coefficients (BFH representation)")
     111     format ( &
     &' B1 =',f13.6,'  B2 =',f13.6,'  B3 =',f13.6,/, &
@@ -371,6 +381,9 @@ contains
     case(2)
         print 108
     end select
+    
+    if(TurnOffTimeOdd) print 109
+    
 
     print *
     print 112

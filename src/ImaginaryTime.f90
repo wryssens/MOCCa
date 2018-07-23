@@ -237,33 +237,34 @@ contains
     !---------------------------------------------------------------------------
     ! Time-odd part 
     if(.not.TRC) then
-        S = ActionOfS(Psi)  ! Field of (small) s density
-        A = ActionOfA(Psi)  ! Field of j density
-        hPsi = hPsi + S + A
-        
-        if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
-            !--------------------------------------
-            ! Time-odd N2LO fields
-            T  = ActionOfReTField(Psi) ! Field of Re Tmnk density
-            P  = ActionOfPi(Psi)       ! Field of Pi density
-            S  = ActionOfSN2LO(Psi)    ! Field of (big) S density
-            hPsi = hPsi + T + P + S         
-        endif
+      if(.not. TurnOffTimeOdd) then
+          S = ActionOfS(Psi)  ! Field of (small) s density
+          A = ActionOfA(Psi)  ! Field of j density
+          hPsi = hPsi + S + A
+          
+          if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
+              !--------------------------------------
+              ! Time-odd N2LO fields
+              T  = ActionOfReTField(Psi) ! Field of Re Tmnk density
+              P  = ActionOfPi(Psi)       ! Field of Pi density
+              S  = ActionOfSN2LO(Psi)    ! Field of (big) S density
+              hPsi = hPsi + T + P + S         
+          endif
 
-        if(B14.ne.0.0_dp .or. B15 .ne. 0.0_dp) then
-            !--------------------------------------
-            ! time-odd tensor fields
-            C = ActionOfC(Psi)
-            hPsi = hPsi + C
-        endif
+          if(B14.ne.0.0_dp .or. B15 .ne. 0.0_dp) then
+              !--------------------------------------
+              ! time-odd tensor fields
+              C = ActionOfC(Psi)
+              hPsi = hPsi + C
+          endif
 
-        if(B16.ne.0.0_dp .or. B17 .ne. 0.0_dp) then
-            !--------------------------------------
-            ! Other time-odd tensor field
-            D = ActionOfD(Psi)
-            hPsi = hPsi + D
-        endif
-        
+          if(B16.ne.0.0_dp .or. B17 .ne. 0.0_dp) then
+              !--------------------------------------
+              ! Other time-odd tensor field
+              D = ActionOfD(Psi)
+              hPsi = hPsi + D
+          endif
+      endif        
     endif
   end function hPsi
 

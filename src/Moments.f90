@@ -761,15 +761,17 @@ contains
 
     select case(QuantisationAxis)
     case(1)
+        ! Conservation of y-timesimplex
         if((ImPart.eq.1.).and.TSC) then
           return
         endif
-
+        ! Conservations of signature
         if((mod(m,2).ne.0).and.SC) then
           return
         endif
-        if((.not.SC) .or. (.not. TSC) .or. (.not.PC)) then
-          call stp('Newmoments not correctly treated when X is the quantisation axis.')
+        
+        if((.not.SC) .or. (.not. TSC)) then
+          call stp('Newmoments problem with X.')
         endif
     case(2)
         if((mod(l,2) .ne. 0) .and. (mod(m,2).eq.0) .and. TSC ) then
@@ -784,6 +786,12 @@ contains
         endif
         if((Impart.eq.1) .and. (mod(m,2).eq.0).and.SC) then
           return
+        endif
+        
+        
+        
+        if((.not.SC) .or. (.not. TSC)) then
+          call stp('Newmoments problem with Y.')
         endif
          
     case(3)

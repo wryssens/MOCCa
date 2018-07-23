@@ -421,8 +421,6 @@ contains
     else
       call ComputeDensity(Density,.false.)
     endif
-
-
   end subroutine UpdateDensities
 
   subroutine ComputeDensity(DenIn, OnlyRho, Response)

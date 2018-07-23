@@ -133,6 +133,7 @@ module Force
     ! Temporary parameter to vary the the contribution of the RhoQ term.
     !---------------------------------------------------------------------------
     real(KIND=dp) :: RhoQFactor = 1.0_dp
+    real(KIND=dp) :: rhodrhofactor(2) = 1.0_dp
     
 contains
 
@@ -140,7 +141,7 @@ contains
         !---------------------------------------------------------------------------
         ! Subroutine governing the user input of parameters regarding this module.
         !---------------------------------------------------------------------------
-        NameList /Force/ afor, SkyrmeTreatment, RhoQFactor
+        NameList /Force/ afor, SkyrmeTreatment, RhoQFactor, rhodrhofactor
 
         !Read the correct name from input
         read(unit=*, NML=Force)
@@ -433,6 +434,10 @@ contains
 
     B5   =-(3.0_dp*t1*(1  + x1/2.0_dp)-t2*(1  + x2/2.0_dp))/16.0_dp
     B6   = (3.0_dp*t1*(x1 +  1/2.0_dp)+t2*(x2 +  1/2.0_dp))/16.0_dp
+
+    ! Experimenting
+    B5 = rhodrhofactor(1) * B5
+    B6 = rhodrhofactor(2) * B6
 
     B7a  = t3a*( 1   + x3a/2.0_dp)/12.0_dp
     B8a  =-t3a*( x3a +   1/2.0_dp)/12.0_dp

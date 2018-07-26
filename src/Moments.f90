@@ -2598,7 +2598,7 @@ subroutine PrintAllMoments()
         if(ToReadjust%Intensity(1) == 0.0) then
             ! Set the intensity if none was there before
             O2 = sum(ToReadjust%Squared)
-            ToReadjust%Intensity(1) = sqrt(2/sum(O2))
+            ToReadjust%Intensity(1) = 2/sum(O2)
             ReadjustSlowdown        = 2*ToReadjust%Intensity(1)
         endif
         if(.not.ToReadjust%Total) then

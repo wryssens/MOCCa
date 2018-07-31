@@ -449,16 +449,26 @@ contains
                 if(.not.SC .and. TRC) then
                     Temp2 = TimeReverse(HFBasis(nw)%Value)
                     MatrixElement(1)  = InproductSpinorReal(Temp2, HFBasis(mw)%Value)
+
                     if(.not.TSC) then
                         MatrixElement(2)  = InproductSpinorImaginary(Temp2, HFBasis(mw)%Value)
-                        Temp2 = MultiplyI(Temp2)
-                        Temp = Temp - MatrixElement(2)*Temp2
-                        Temp2 = -MultiplyI(Temp2)
-                    endif
+                    endif   
+                  
                     do i=1,4*nx*ny*nz
-                        HFBasis(mw)%Value%Grid(i,1,1,1,1) = HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
-                        &                                   MatrixElement(1) * Temp2%Grid(i,1,1,1,1)
+                        HFBasis(mw)%Value%Grid(i,1,1,1,1) =                    &
+                        &                  HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
+                        &               MatrixElement(1) * Temp2%Grid(i,1,1,1,1)
                     enddo
+                    if(.not. TSC)then
+                        ! Also orthonormalize against the time-reversed partner, 
+                        ! for the imaginary part of 
+                        temp2 = multiplyI(temp2)
+                        do i=1,4*nx*ny*nz
+                            HFBasis(mw)%Value%Grid(i,1,1,1,1) =                &
+                            &              HFBasis(mw)%Value%Grid(i,1,1,1,1) - &
+                            &           MatrixElement(2) * Temp2%Grid(i,1,1,1,1)
+                        enddo
+                    endif
                 endif
             enddo
         enddo

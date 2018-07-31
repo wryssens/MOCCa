@@ -426,7 +426,7 @@ contains
         do k=1,nz
           do j=1,ny
             do i=1,nx
-              Psi%Grid(i,j,k,:,:) = Phi%Grid(nx-i+1, ny-i+1, nz-i+1, :,:)
+              Psi%Grid(i,j,k,:,:) = Phi%Grid(nx-i+1, ny-j+1, nz-k+1, :,:)
             enddo
           enddo
         enddo

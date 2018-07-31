@@ -12,17 +12,14 @@ SRC    +=   Spwf.f90 SpwfStorage.f90 Damping.f90 Densities.f90
 SRC    +=   Moments.f90 SpecialMoments.f90 MultiGrid.f90 Coulomb.f90 PairingInteraction.f90 
 SRC    +=   LipkinNogami.f90 HartreeFock.f90 HFB.f90 GradientHFB.f90 BCS.f90 Pairing.f90 Cranking.f90 
 SRC    +=   MeanFields.f90 Energy.f90 PotentialMixing.f90 ImaginaryTime.f90 DensityMixing.f90 
-SRC    +=   Transform.f90 nil8.f90 SpwfFactory.f90 Interfaces.f90 nil8.f90 InOut.f90 Test.f90
+SRC    +=   Transform.f90 nil8.f90 SpwfFactory.f90 Interfaces.f90 InOut.f90 Test.f90
 
-CLUSRC := $(SRC)
-CLUSRC += Clusters.f90 
-SRC    += Main.f90
+SRC    += Main.version.f90
 
 LIBS   :=   -llapack -lblas
 
 #Make the lists of objects
 OBJ    :=      $(patsubst %.f90,$(OBJDIR)/%.o,$(SRC))
-CLUOBJ :=      $(patsubst %.f90,$(OBJDIR)/%.o,$(CLUSRC))
 #-------------------------------------------------------------------------------
 # Compilers and some recommended options
 #Default compiler is gfortran
@@ -69,16 +66,15 @@ else ifeq ($(CXX),ifort)
 	CXXFLAGS += -module $(MODDIR)
 endif
 
+#-------------------------------------------------------------------------------
+PRE    :=  getgitinfo setversioninfo 
 
 #-------------------------------------------------------------------------------
 
 .PHONY: all clean
 
-$(TARGET): $(OBJ)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS)
-
-Clusters.exe : $(CLUOBJ)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIBS)
+$(TARGET): $(PRE) $(OBJ)
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJ) $(LIBS)
 
 clean:
 	rm  -f $(OBJDIR)/*
@@ -87,6 +83,17 @@ clean:
 $(OBJDIR)/%.o : $(SRCDIR)/%.f90
 	$(CXX) $(CXXFLAGS) -c  $< -o $@ 
 
+setversioninfo:
+	cp $(SRCDIR)/Main.f90 $(SRCDIR)/Main.version.f90
+	sed -i 's/VERSION1/${GIT_INFO1}/' $(SRCDIR)/Main.version.f90 
+	sed -i 's/VERSION2/${GIT_INFO2}/' $(SRCDIR)/Main.version.f90 
+	sed -i 's/VERSION3/${GIT_INFO3}/' $(SRCDIR)/Main.version.f90 
+
+getgitinfo:
+	$(eval GIT_INFO1=$(shell git show | head -1))
+	$(eval GIT_INFO2=$(shell git show | head -2 | tail -1))
+	$(eval GIT_INFO3=$(shell git show | head -3 | tail -1))
+	
 #-------------------------------------------------------------------------------
 # Some observations on my experiences of compiling MOCCa.
 #

@@ -52,7 +52,20 @@ program MOCCa
      &       /,'|                                                          |', &
      &       /,'|__________________________________________________________|')
 
+ 299 format (  ' ----------------------------------------------------------')
+ 300 format (  ' Version information from GIT' )
+ 301 format (  '  VERSION1') ! Git commit
+ 302 format (  '  VERSION2') ! Author of commit
+ 303 format (  '  VERSION3') ! Date
+
      print 200
+     
+     print 299
+     print 300
+     print 301
+     print 302
+     print 303
+     print 299
 
      !--------------------------------------------------------------------------
      ! Reading the user input and the wavefunction input.

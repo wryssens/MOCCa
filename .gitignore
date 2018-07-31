@@ -4,3 +4,4 @@
 mod/*
 obj/*
 MOCCa.exe
+src/Main.version.f90

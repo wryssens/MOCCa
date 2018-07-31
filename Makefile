@@ -85,9 +85,10 @@ $(OBJDIR)/%.o : $(SRCDIR)/%.f90
 
 setversioninfo:
 	cp $(SRCDIR)/Main.f90 $(SRCDIR)/Main.version.f90
-	sed -i 's/VERSION1/${GIT_INFO1}/' $(SRCDIR)/Main.version.f90 
-	sed -i 's/VERSION2/${GIT_INFO2}/' $(SRCDIR)/Main.version.f90 
-	sed -i 's/VERSION3/${GIT_INFO3}/' $(SRCDIR)/Main.version.f90 
+	sed -i.bak 's/VERSION1/${GIT_INFO1}/' $(SRCDIR)/Main.version.f90 
+	sed -i.bak 's/VERSION2/${GIT_INFO2}/' $(SRCDIR)/Main.version.f90 
+	sed -i.bak 's/VERSION3/${GIT_INFO3}/' $(SRCDIR)/Main.version.f90 
+	rm $(SRCDIR)/Main.version.f90.bak
 
 getgitinfo:
 	$(eval GIT_INFO1=$(shell git show | grep 'commit'))

@@ -90,9 +90,9 @@ setversioninfo:
 	sed -i 's/VERSION3/${GIT_INFO3}/' $(SRCDIR)/Main.version.f90 
 
 getgitinfo:
-	$(eval GIT_INFO1=$(shell git show | head -1))
-	$(eval GIT_INFO2=$(shell git show | head -2 | tail -1))
-	$(eval GIT_INFO3=$(shell git show | head -3 | tail -1))
+	$(eval GIT_INFO1=$(shell git show | grep 'commit'))
+	$(eval GIT_INFO2=$(shell git show | grep 'Author:'))
+	$(eval GIT_INFO3=$(shell git show | grep 'Date:'))
 	
 #-------------------------------------------------------------------------------
 # Some observations on my experiences of compiling MOCCa.

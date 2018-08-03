@@ -38,6 +38,8 @@ module Force
     real(KIND=dp), public :: B1,B2,B3,B4,B5,B6,B7a,B7b,B8a,B8b,Byt3a,Byt3b,B9
     real(KIND=dp), public :: B9q,B10,B11,B12a,B12b,B13a,B13b,B14
     real(KIND=dp), public :: B15,B16, B17, B18,B19,B20,B21
+    real(KIND=dp), public :: C14,C15,C18,C19,T14,T15,T18,T19
+
     !Functional parameters in the C-representation
     !Note: first component is the isoscalar constant, second the isovector part
     real(KIND=dp), public :: Crho(2),Crhosat(2), Ctau(2), Cdrho(2), CnablaJ(2)
@@ -349,6 +351,17 @@ contains
     &   ' C^(4 Ds  )_0 = ', f13.6, ' C^(4 Ds  )_1 = ', f13.6,/,&
     &   ' C^(4 Ms  )_0 = ', f13.6, ' C^(4 Ms  )_1 = ', f13.6,/)
 
+    114  format(' Tensor EDF Coefficients (BFH representation)', / &
+    &' C14=',f13.6,'  C15=',f13.6,/, &
+    &' T14=',f13.6,'  T15=',f13.6,/, &
+    &' C18=',f13.6,'  C18=',f13.6,/, &
+    &' T18=',f13.6,'  T19=',f13.6/)
+
+    1141 format(' Tensor EDF Coefficients ', / &
+    &   ' C^J(0)_0     = ', f13.6, ' C^J(0)_1     =  ', f13.6,/,&
+    &   ' C^J(0)_1     = ', f13.6, ' C^J(0)_1     =  ', f13.6,/,&
+    &   ' C^J(0)_2     = ', f13.6, ' C^J(0)_2     =  ', f13.6,/)
+
     print 1
     print 98, e2
     print 97, nucleonmass
@@ -389,10 +402,19 @@ contains
     print 112
     print 113, Crho,Crhosat, Cs, Cssat, Ctau, Cdrho, CnablaJ, Ct, Cf, Cds,     &
     &          Cnablas
+
+    if(te .ne. 0.0d0 .or. to.ne.0.0d0) then
+      print 1141,CJ0,CJ1,CJ2
+    endif
+
     print 110
     print 111, B1,B2,B3,B4,B5,B6,B7a,B8a,B9,B9q,B10,B11,B12a,B13a,B14,B15,B16, &
     &          B17,B18,B19,B20,B21
    
+    if(te .ne. 0.0d0 .or. to.ne.0.0d0) then
+      print 114, C14,C15,T14,T15,C18,C19,T18,T19
+    endif
+    
     if(t1n2 .ne. 0 .or. t2n2 .ne. 0) then
         print 1131, CN2LO(1:8)
     endif
@@ -478,22 +500,26 @@ contains
     endif
 
     if(J2Terms) then
-      B14  = -(1.0_dp/8.0_dp) * (t1*x1 + t2*x2)
-      B15  =  (1.0_dp/8.0_dp) * (t1 - t2)
+      C14 = -(1.0_dp/8.0_dp) * (t1*x1 + t2*x2)
+      C15 =  (1.0_dp/8.0_dp) * (t1 - t2)
       ! Tensor contribution
-      B14 = B14 + (1.0_dp/4.0_dp) * (te + to)
-      B15 = B15 - (1.0_dp/4.0_dp) * (te - to)
+      T14 =  (1.0_dp/4.0_dp) * (te + to)
+      T15 = -(1.0_dp/4.0_dp) * (te - to)
+      B14 = C14 + T14
+      B15 = C15 + T15
     endif
     !
     B16  =-(3.0_dp/8.0_dp) * (te + to)
     B17  = (3.0_dp/8.0_dp) * (te - to)
     !
     if(J2Terms .and. (.not. TRC)) then
-      B18 =-(1.0_dp/32.0_dp)* (3 * t1 * x1 - t2 *x2)
-      B19 = (1.0_dp/32.0_dp)* (3 * t1      + t2    )
+      C18 = -(1.0_dp/32.0_dp)* (3 * t1 * x1 - t2 *x2)
+      C19 =  (1.0_dp/32.0_dp)* (3 * t1      + t2    )
       !Tensor contribution
-      B18 = B18 + (1.0_dp/16.0_dp) * (3*te - to)
-      B19 = B19 - (1.0_dp/16.0_dp) * (3*te + to)
+      T18 =  (1.0_dp/16.0_dp) * (3*te - to)
+      T19 = -(1.0_dp/16.0_dp) * (3*te + to)
+      B18 = C18 + T18
+      B19 = C19 + T19
     endif
     if(.not.TRC) then
       B20 = (3.0_dp/16.0_dp) * (3*te - to)

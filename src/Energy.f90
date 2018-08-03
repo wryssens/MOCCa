@@ -10,6 +10,7 @@
 !       ConverEnergy()
 !       CompKinetic()
 !       SkyrmeTerms()
+!       recoupleTensorNLO() 
 !       PrintEnergy()
 !       EnergyEV8Style
 !       EnergyCR8Style
@@ -35,6 +36,9 @@
 
   ! Two different ways of calculating and treating Skyrme terms
   real(KIND=dp) :: Skyrmeterms(32),BTerm(21), N2LOterms(32), N3LOterms(12)
+
+  ! Recoupled tensor terms
+  real(KIND=dp) :: Tensorterms(3,6)
 
   ! Signal to the Nesterov iteration whether or not the energy decreased
   integer       :: NesterovSignal=0
@@ -102,6 +106,10 @@ contains
         !Calculate the Skyrme terms term-by-term
         SkyrmeTerms = compSkyrme(Density)
         TotalEnergy = sum(SkyrmeTerms)
+    endif
+
+    if (J2Terms) then
+       Tensorterms = recoupleTensorNLO(Density)
     endif
 
     ! Calculate the N2LO terms
@@ -808,6 +816,177 @@ contains
 
   end function compSkyrme
 
+  function recoupleTensorNLO(Den) result(Tterms)
+    !--------------------------------------------------------------------------
+    ! Recoupling of the cartesian NLO tensor terms into pseudoscalar, vector 
+    ! and pseudotensor contributions. This function is an adaptation of what 
+    ! has been implemented in EV4. Used for diagnostic purposes only. Only 
+    ! called when true tensor terms are present in the EDF.
+    ! For each of the three recoupled terms, there are 6 components for maximum 
+    ! diagnostics: total (1), T=0 (2) T=1 (3) nn (4) pp (5) np (6). 
+    ! These are separately calculated for the contributions from the central
+    ! and the tensor force, but so far combined in the end for common printing.
+    ! The explicit calculation of the (1) components is redundant, but kept
+    ! for historical reasons.
+    !--------------------------------------------------------------------------
+    type(DensityVector), intent(in) :: Den
+    real(KIND=dp)                   :: Tterms(3,6)
+    integer                         :: it
+
+    !--------------------------------------------------------------------------
+    real(KIND=dp) :: J0(nx,ny,nz,2), J1(nx,ny,nz,3,2), J2(nx,ny,nz,3,3,2) 
+    real(KIND=dp) :: ref
+    real(KIND=dp) :: er(3)
+    real(KIND=dp) :: eJ0c(6),eJ1c(6),eJ2c(6)
+    real(KIND=dp) :: eJ0t(6),eJ1t(6),eJ2t(6)
+
+    eJ0c(:) = 0
+    eJ1c(:) = 0
+    eJ2c(:) = 0
+    eJ0t(:) = 0
+    eJ1t(:) = 0
+    eJ2t(:) = 0
+
+    if(allocated(Den%JmuNu)) then
+
+      !----------- recouple cartesian tensor to spherical tensors of rank 0,1,2
+      ! note that the J2(:,:,:,2,1,it), J2(:,:,:,3,1,it), and J2(:,:,:,3,2,it)
+      ! components of the pseudotensor are allocated but not calculated as the
+      ! pseudotensor is symmetric by construction.
+      !------------------------------------------------------------------------
+      do it=1,2
+        J0(:,:,:,it) = Den%JMuNu(:,:,:,1,1,it) &
+        &             +Den%JMuNu(:,:,:,2,2,it) &
+        &             +Den%JMuNu(:,:,:,3,3,it)
+      enddo
+      do it=1,2
+        J1(:,:,:,1,it) = Den%JMuNu(:,:,:,2,3,it) - Den%JMuNu(:,:,:,3,2,it)
+        J1(:,:,:,2,it) = Den%JMuNu(:,:,:,3,1,it) - Den%JMuNu(:,:,:,1,3,it)
+        J1(:,:,:,3,it) = Den%JMuNu(:,:,:,1,2,it) - Den%JMuNu(:,:,:,2,1,it)
+      enddo
+      do it=1,2
+        J2(:,:,:,1,1,it) = Den%JMuNu(:,:,:,1,1,it) - 1/3.0_dp * J0(:,:,:,it)
+        J2(:,:,:,2,2,it) = Den%JMuNu(:,:,:,2,2,it) - 1/3.0_dp * J0(:,:,:,it)
+        J2(:,:,:,3,3,it) = Den%JMuNu(:,:,:,3,3,it) - 1/3.0_dp * J0(:,:,:,it)
+        J2(:,:,:,1,2,it) = 0.5_dp * ( Den%JMuNu(:,:,:,1,2,it) &
+        &                            +Den%JMuNu(:,:,:,2,1,it) )
+        J2(:,:,:,1,3,it) = 0.5_dp * ( Den%JMuNu(:,:,:,1,3,it) &
+        &                            +Den%JMuNu(:,:,:,3,1,it) )
+        J2(:,:,:,2,3,it) = 0.5_dp * ( Den%JMuNu(:,:,:,2,3,it) &
+        &                            +Den%JMuNu(:,:,:,3,2,it) )
+      enddo
+
+      !------------------------------------ energy of the J^{(0)} J^{(0)} term 
+      er(1) =          dv * sum(J0(:,:,:,1)*J0(:,:,:,1))  !   J^(0)_n J^(0)_n
+      er(2) =          dv * sum(J0(:,:,:,2)*J0(:,:,:,2))  !   J^(0)_p J^(0)_p
+      er(3) = 2.0_dp * dv * sum(J0(:,:,:,1)*J0(:,:,:,2))  ! 2 J^(0)_n J^(0)_p
+
+      eJ0c(1) = 1/3.0_dp *(C14+C15       )*(er(1)+er(2))             & ! total
+      &        +1/3.0_dp * C14            * er(3)                     
+      eJ0c(2) = 1/3.0_dp *(C14+C15*0.5_dp)*(er(1)+er(2)+er(3))         ! T=0
+      eJ0c(3) = 1/3.0_dp *(    C15*0.5_dp)*(er(1)+er(2)-er(3))         ! T=1
+      eJ0c(4) = 1/3.0_dp *(C14+C15       )* er(1)                      ! nn
+      eJ0c(5) = 1/3.0_dp *(C14+C15       )* er(2)                      ! pp
+      eJ0c(6) = 1/3.0_dp * C14            * er(3)                      ! np
+      eJ0t(1) = 1/3.0_dp *(T14+T15       )*(er(1)+er(2))             & ! total
+      &        +1/3.0_dp * T14            * er(3)                    & 
+      &        +4/3.0_dp *(B16+B17       )*(er(1)+er(2))             &
+      &        +4/3.0_dp * B16            * er(3)
+      eJ0t(2) = 1/3.0_dp *(T14+T15*0.5_dp)*(er(1)+er(2)+er(3))       & ! T=0
+      &        +4/3.0_dp *(B16+B17*0.5_dp)*(er(1)+er(2)+er(3))
+      eJ0t(3) = 1/3.0_dp *(    T15*0.5_dp)*(er(1)+er(2)-er(3))       & ! T=1
+      &        +4/3.0_dp *(    B17*0.5_dp)*(er(1)+er(2)-er(3))
+      eJ0t(4) = 1/3.0_dp *(T14+T15       )* er(1)                    & ! nn
+      &        +4/3.0_dp *(B16+B17       )* er(1)
+      eJ0t(5) = 1/3.0_dp *(T14+T15       )* er(2)                    & ! pp
+      &        +4/3.0_dp *(B16+B17       )* er(2)
+      eJ0t(6) = 1/3.0_dp * T14            * er(3)                    & ! np
+      &        +4/3.0_dp * B16            * er(3)
+
+      !------------------------------------ energy of the J^{(1)} J^{(1)} term
+      er(1) =          dv * ( sum(J1(:,:,:,1,1)*J1(:,:,:,1,1)) &
+      &                      +sum(J1(:,:,:,2,1)*J1(:,:,:,2,1)) &
+      &                      +sum(J1(:,:,:,3,1)*J1(:,:,:,3,1)))
+      er(2) =          dv * ( sum(J1(:,:,:,1,2)*J1(:,:,:,1,2)) &
+      &                      +sum(J1(:,:,:,2,2)*J1(:,:,:,2,2)) &
+      &                      +sum(J1(:,:,:,3,2)*J1(:,:,:,3,2)))
+      er(3) = 2.0_dp * dv * ( sum(J1(:,:,:,1,1)*J1(:,:,:,1,2)) &
+      &                      +sum(J1(:,:,:,2,1)*J1(:,:,:,2,2)) &
+      &                      +sum(J1(:,:,:,3,1)*J1(:,:,:,3,2)))
+
+      eJ1c(1) = 0.5_dp *(C14+C15       )*(er(1)+er(2)) &             ! total
+      &        +0.5_dp * C14             *er(3)                     
+      eJ1c(2) = 0.5_dp *(C14+C15*0.5_dp)*(er(1)+er(2)+er(3))         ! T=0
+      eJ1c(3) = 0.5_dp *(    C15*0.5_dp)*(er(1)+er(2)-er(3))         ! T=1
+      eJ1c(4) = 0.5_dp *(C14+C15       )* er(1)                      ! nn
+      eJ1c(5) = 0.5_dp *(C14+C15       )* er(2)                      ! pp
+      eJ1c(6) = 0.5_dp * C14            * er(3)                      ! np
+      eJ1t(1) = 0.5_dp *(T14+T15       )*(er(1)+er(2)) &             ! total
+      &        +0.5_dp * T14             *er(3)        &            
+      &        -0.5_dp *(B16+B17       )*(er(1)+er(2)) &
+      &        -0.5_dp * B16            * er(3)
+      eJ1t(2) = 0.5_dp *(T14+T15*0.5_dp)*(er(1)+er(2)+er(3))       & ! T=0
+      &        -0.5_dp *(B16+B17*0.5_dp)*(er(1)+er(2)+er(3))
+      eJ1t(3) = 0.5_dp *(    T15*0.5_dp)*(er(1)+er(2)-er(3))       & ! T=1
+      &        -0.5_dp *(    B17*0.5_dp)*(er(1)+er(2)-er(3))
+      eJ1t(4) = 0.5_dp *(T14+T15       )* er(1)                    & ! nn
+      &        -0.5_dp *(B16+B17       )* er(1)
+      eJ1t(5) = 0.5_dp *(T14+T15       )* er(2)                    & ! pp
+      &        -0.5_dp *(B16+B17       )* er(2)
+      eJ1t(6) = 0.5_dp * T14            * er(3)                    & ! np
+      &        -0.5_dp * B16            * er(3)
+
+      !------------------------------------ energy of the J^{(2)} J^{(2)} term 
+      er(1) = dv * (          sum(J2(:,:,:,1,1,1)*J2(:,:,:,1,1,1)) &
+      &             +2.0_dp * sum(J2(:,:,:,1,2,1)*J2(:,:,:,1,2,1)) &
+      &             +2.0_dp * sum(J2(:,:,:,1,3,1)*J2(:,:,:,1,3,1)) &
+      &             +         sum(J2(:,:,:,2,2,1)*J2(:,:,:,2,2,1)) &
+      &             +2.0_dp * sum(J2(:,:,:,2,3,1)*J2(:,:,:,2,3,1)) &
+      &             +         sum(J2(:,:,:,3,3,1)*J2(:,:,:,3,3,1)))
+      er(2) = dv * (          sum(J2(:,:,:,1,1,2)*J2(:,:,:,1,1,2)) &
+      &             +2.0_dp * sum(J2(:,:,:,1,2,2)*J2(:,:,:,1,2,2)) &
+      &             +2.0_dp * sum(J2(:,:,:,1,3,2)*J2(:,:,:,1,3,2)) &
+      &             +         sum(J2(:,:,:,2,2,2)*J2(:,:,:,2,2,2)) &
+      &             +2.0_dp * sum(J2(:,:,:,2,3,2)*J2(:,:,:,2,3,2)) &
+      &             +         sum(J2(:,:,:,3,3,2)*J2(:,:,:,3,3,2)))
+      er(3) = dv * ( 2.0_dp * sum(J2(:,:,:,1,1,1)*J2(:,:,:,1,1,2)) &
+      &             +4.0_dp * sum(J2(:,:,:,1,2,1)*J2(:,:,:,1,2,2)) &
+      &             +4.0_dp * sum(J2(:,:,:,1,3,1)*J2(:,:,:,1,3,2)) &
+      &             +2.0_dp * sum(J2(:,:,:,2,2,1)*J2(:,:,:,2,2,2)) &
+      &             +4.0_dp * sum(J2(:,:,:,2,3,1)*J2(:,:,:,2,3,2)) &
+      &             +2.0_dp * sum(J2(:,:,:,3,3,1)*J2(:,:,:,3,3,2)))
+      eJ2c(1) = (C14+C15       )*(er(1)+er(2))             & ! total
+      &        + C14            * er(3)
+      eJ2c(2) = (C14+C15*0.5_dp)*(er(1)+er(2)+er(3))         ! T=0
+      eJ2c(3) = (    C15*0.5_dp)*(er(1)+er(2)-er(3))         ! T=1
+      eJ2c(4) = (C14+C15       )* er(1)                      ! nn
+      eJ2c(5) = (C14+C15       )* er(2)                      ! pp
+      eJ2c(6) =  C14            * er(3)                      ! np
+      eJ2t(1) = (T14+T15       )*(er(1)+er(2))             & ! total
+      &        + T14            * er(3)                    &
+      &        +(B16+B17       )*(er(1)+er(2))             &
+      &        + B16            * er(3)
+      eJ2t(2) = (T14+T15*0.5_dp)*(er(1)+er(2)+er(3))       & ! T=0
+      &        +(B16+B17*0.5_dp)*(er(1)+er(2)+er(3))        
+      eJ2t(3) = (    T15*0.5_dp)*(er(1)+er(2)-er(3))       & ! T=1
+      &        +(    B17*0.5_dp)*(er(1)+er(2)-er(3))
+      eJ2t(4) = (T14+T15       )* er(1)                    & ! nn
+      &        +(B16+B17       )* er(1)
+      eJ2t(5) = (T14+T15       )* er(2)                    & ! pp
+      &        +(B16+B17       )* er(2)
+      eJ2t(6) =  T14            * er(3)                    & ! np
+      &        + B16            * er(3)
+
+    endif
+
+    !------------------------------------ map on variable to be returned
+    Tterms(1,:) = eJ0c(:) + eJ0t(:) 
+    Tterms(2,:) = eJ1c(:) + eJ1t(:)
+    Tterms(3,:) = eJ2c(:) + eJ2t(:)
+
+    return
+  end function recoupleTensorNLO
+
   subroutine PrintEnergy_Bterms(Lagrange)
     !---------------------------------------------------------------------------
     ! This subroutine prints all relevant info that is contained in this
@@ -949,6 +1128,18 @@ contains
      26 format (2x,' s D s_t     =', f12.5, 5x , ' s D s_t     = ', f12.5, ' t', f12.5)
      27 format (2x,' (N s)^2_t   =', f12.5, 5x , ' (N s)^2_q   = ', f12.5, ' t', f12.5)
 
+    200 format ('Recoupled Tensor Terms')
+    201 format (2x,' J0 * J0_0   =', f12.5, 5x , ' J0 * J0_1   = ', f12.5, ' t', f12.5)
+    202 format (2x,' J1 * J1_0   =', f12.5, 5x , ' J1 * J1_1   = ', f12.5, ' t', f12.5)
+    203 format (2x,' J2 * J2_0   =', f12.5, 5x , ' J2 * J2_1   = ', f12.5, ' t', f12.5)
+    204 format (2x,' J * J_0     =', f12.5, 5x , ' J * J_1     = ', f12.5, ' t', f12.5)
+    205 format (2x,'              ',  12x , 5x , '               ',  12x,  ' t', f12.5)
+    211 format (2x,' J0 * J0_0e  =',es12.4, 5x , ' J0 * J0_1e  = ',es12.4, ' t', es12.4)
+    212 format (2x,' J1 * J1_0e  =',es12.4, 5x , ' J1 * J1_1e  = ',es12.4, ' t', es12.4)
+    213 format (2x,' J2 * J2_0e  =',es12.4, 5x , ' J2 * J2_1e  = ',es12.4, ' t', es12.4)
+    214 format (2x,' J * J_0e    =',es12.4, 5x , ' J * J_1e    = ',es12.4, ' t', es12.4)
+    215 format (2x,'              ',  12x , 5x , '               ',  12x,  ' t', es12.4)
+
     300 format ('N2LO Terms')
      31 format (2x,' DrhoDrho_t  =', f12.5, 5x ,' DrhoDrho_q  = ', f12.5, ' t', f12.5)
      32 format (2x,' rhoQ_t      =', f12.5, 5x ,' rhoQ_q      = ', f12.5, ' t', f12.5)
@@ -1042,6 +1233,28 @@ contains
     print 27, SkyrmeTerms(31), SkyrmeTerms(32), sum(SkyrmeTerms(31:32))
     print *
     
+    if(any(Tensorterms.ne.0)) then
+      print 200
+      print 201,Tensorterms(1,2),Tensorterms(1,3),Tensorterms(1,1)
+      print 202,Tensorterms(2,2),Tensorterms(2,3),Tensorterms(2,1)
+      print 203,Tensorterms(3,2),Tensorterms(3,3),Tensorterms(3,1)
+      print 204,Tensorterms(1,2)+Tensorterms(2,2)+Tensorterms(3,2), &
+      &         Tensorterms(1,3)+Tensorterms(2,3)+Tensorterms(3,3), &
+      &         Tensorterms(1,1)+Tensorterms(2,1)+Tensorterms(3,1)
+   !   print 205,SkyrmeTerms(19)+SkyrmeTerms(20)+SkyrmeTerms(23) &
+   !   &        +SkyrmeTerms(24)+SkyrmeTerms(25)+SkyrmeTerms(26)
+      print *
+      print 211,Tensorterms(1,2),Tensorterms(1,3),Tensorterms(1,1)
+      print 212,Tensorterms(2,2),Tensorterms(2,3),Tensorterms(2,1)
+      print 213,Tensorterms(3,2),Tensorterms(3,3),Tensorterms(3,1)
+      print 214,Tensorterms(1,2)+Tensorterms(2,2)+Tensorterms(3,2), &
+      &         Tensorterms(1,3)+Tensorterms(2,3)+Tensorterms(3,3), &
+      &         Tensorterms(1,1)+Tensorterms(2,1)+Tensorterms(3,1)
+   !   print 215,SkyrmeTerms(19)+SkyrmeTerms(20)+SkyrmeTerms(23) &
+   !   &        +SkyrmeTerms(24)+SkyrmeTerms(25)+SkyrmeTerms(26)
+       print *
+    endif
+
     if(any(N2LOterms.ne.0)) then
         print 300
         print 31, N2LOterms(1:2)  , N2LOterms(1)+N2LOterms(2)  

@@ -418,7 +418,21 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
           ycolumn = 6
         derivY=0
         fac = np.sqrt(7/( 16 * np.pi))
-        
+
+    elif(YARG=='Q20') :
+        ylabel =r'$\langle \hat{Q}_{20} \rangle$ (fm$^2$)'
+        yfname =PREFIX + '.t.qlm.tab'
+        ycolumn=1
+        if(PC != 1) :
+            ycolumn = 3
+        derivY=0
+    elif(YARG=='Q20P') :
+        ylabel =r'$\langle \hat{Q}_{20,p} \rangle$ (fm$^2$)'
+        yfname =PREFIX + '.p.qlm.tab'
+        ycolumn=1
+        if(PC != 1) :
+            ycolumn = 3     
+        derivY = 0
         
     elif(YARG=='RRMS') :
         ylabel =r'$\langle r^2 \rangle$ (fm$^2$)'

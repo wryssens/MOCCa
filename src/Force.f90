@@ -284,14 +284,19 @@ contains
 
     110     format(" EDF Coefficients (BFH representation)")
     111     format ( &
-    &' B1 =',f13.6,'  B2 =',f13.6,'  B3 =',f13.6,/, &
-    &' B4 =',f13.6,'  B5 =',f13.6,'  B6 =',f13.6,/, &
-    &' B7 =',f13.6,'  B8 =',f13.6,/,  &
-    &' B9 =',f13.6,'  B9q=',f13.6,/, &
-    &' B10=',f13.6,'  B11=',f13.6,'  B12=',f13.6,/, &
-    &' B13=',f13.6,'  B14=',f13.6,'  B15=',f13.6,/, &
-    &' B16=',f13.6,'  B17=',f13.6,'  B18=',f13.6/, &
-    &' B19=',f13.6,'  B20=',f13.6,'  B21=',f13.6/)
+    &' B1   =',f13.6,'  B2   =',f13.6,/, &  
+    &' B3   =',f13.6,'  B4   =',f13.6,/, &
+    &' B5   =',f13.6,'  B6   =',f13.6,/, &
+    &' B7a  =',f13.6,'  B8a  =',f13.6,' Byt3a =',f12.3,/, &  
+    &' B7b  =',f13.6,'  B8b  =',f13.6,' Byt3b =',f12.3,/, &
+    &' B9   =',f13.6,'  B9q  =',f13.6,/, &
+    &' B10  =',f13.6,'  B11  =',f13.6,/, &
+    &' B12a =',f13.6,'  B13a =',f13.6,' Byt3a =',f12.3,/, &
+    &' B12b =',f13.6,'  B13b =',f13.6,' Byt3b =',f12.3,/, &
+    &' B14  =',f13.6,'  B15  =',f13.6,/, &
+    &' B16  =',f13.6,'  B17  =',f13.6,/, &
+    &' B18  =',f13.6,'  B19  =',f13.6,/, &
+    &' B20  =',f13.6,'  B21  =',f13.6/)
     
     1111    format(' N2LO coefficients (BFH representation)', / &
     &' B5^(4) =',f13.6, ' B6^(4) =',f13.6, ' r ', f13.6,/ &
@@ -397,7 +402,6 @@ contains
     
     if(TurnOffTimeOdd) print 109
     
-
     print *
     print 112
     print 113, Crho,Crhosat, Cs, Cssat, Ctau, Cdrho, CnablaJ, Ct, Cf, Cds,     &
@@ -408,7 +412,8 @@ contains
     endif
 
     print 110
-    print 111, B1,B2,B3,B4,B5,B6,B7a,B8a,B9,B9q,B10,B11,B12a,B13a,B14,B15,B16, &
+    print 111, B1,B2,B3,B4,B5,B6,B7a,B8a,Byt3a,B7b,B8b,Byt3b,B9,B9q, &
+    &          B10,B11,B12a,B13a,Byt3a,B12b,B13b,Byt3b,B14,B15,B16, &
     &          B17,B18,B19,B20,B21
    
     if(te .ne. 0.0d0 .or. to.ne.0.0d0) then

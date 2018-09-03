@@ -273,13 +273,16 @@ contains
       ! U   =   2 B1  rho      + 2 B2 rho_q
       !       +   B3  tau      +   B4 tau_q
       !       + 2 B5 Delta rho + 2 B6 Delta rho_q
-      !       + (2+\byt3a) B7 rho^(alpha+1) 
-      !       + (2+\byt3a) B8 rho^(alpha-1) [rho_n^2 + rho_p^2]  
+      !       + (2+\byt3a) B7a rho^(byt3a+1) 
+      !       + (2+\byt3b) B8b rho^(byt3b-1) [rho_n^2 + rho_p^2]  
+      !       + (2+\byt3a) B7a rho^(byt3a+1) 
+      !       + (2+\byt3b) B8b rho^(byt3b-1) [rho_n^2 + rho_p^2]  
       !       +   B9  D_k Jmn  + B9 D_k Jmn_q
       ! 
       !        Time-odd part
       !        -------------
-      ! U   =    B12 alpha*rho^alpha s^2 + B13 alpha*rho^alpha [s_n^2 + s_p^2]
+      ! U   =    B12a byt3a*rho^byt3a s^2 + B13a byt3a*rho^byt3a [s_n^2 + s_p^2]
+      !        + B12b byt3b*rho^byt3b s^2 + B13b byt3b*rho^byt3b [s_n^2 + s_p^2]
       !
       !
       !        N2LO part
@@ -329,6 +332,19 @@ contains
             & )                                                                &
             & + B9*NablaJTot + B9q*Density%NablaJ(:,:,:,it)
 
+            if( B7b .ne. 0.0_dp .or. B8b .ne. 0.0_dp ) then
+                !---------------------------------------------------------------
+                ! contribution from second density dependence
+                !---------------------------------------------------------------
+                u(:,:,:,it) = u(:,:,:,it)                                      &
+                &     + (2+byt3b)*B7b*(RhoTot+eps)**(1+byt3b)                  &
+                &     + B8b*(                                                  &
+                &       byt3b*(RhoTot**(byt3b))/(RhoTot+eps)*                  &
+                &       (Density%Rho(:,:,:,it)**2 + Density%Rho(:,:,:,at)**2)  &
+                &     + 2.0_dp*(RhoTot)**(byt3b)*Density%Rho(:,:,:,it)         &
+                &       )
+            endif
+
             if(t1n2 .ne. 0.0_dp .or. t2n2 .ne. 0.0_dp) then
                 !---------------------------------------------------------------
                 ! n2lo contribution
@@ -346,16 +362,27 @@ contains
     if(.not. TRC) then
        do it=1,2
           at = 3- it
-          U(:,:,:,it) = U(:,:,:,it)     + byt3a*RhoTot**(byt3a)/(RhoTot + eps) &
+          U(:,:,:,it) = U(:,:,:,it)    + byt3a*RhoTot**(byt3a)/(RhoTot + eps)    &
           & * ( B12a*sum(VecSTot**2,4) + B13a*sum(Density%VecS(:,:,:,:,it)**2,4) &
           &                            + B13a*sum(Density%VecS(:,:,:,:,at)**2,4))
        enddo
+       if( B12b .ne. 0.0_dp .or. B13b .ne. 0.0_dp )then
+         !---------------------------------------------------------------
+         ! contribution from second density dependence
+         !---------------------------------------------------------------
+         do it=1,2
+           at = 3- it
+           U(:,:,:,it) = U(:,:,:,it)    + byt3b*RhoTot**(byt3b)/(RhoTot + eps)    &
+           & * ( B12b*sum(VecSTot**2,4) + B13b*sum(Density%VecS(:,:,:,:,it)**2,4) &
+           &                            + B13b*sum(Density%VecS(:,:,:,:,at)**2,4))
+         enddo
+       endif
     endif
 
     ! Note that CoulExchange from the Coulomb module already carries a minus.
     U(:,:,:,2)= U(:,:,:,2) + CoulombPotential(:,:,:) 
     
-    ! Only include coulomb exchange when it is to be included selfconbsistently
+    ! Only include coulomb exchange when it is to be included selfconsistently
     if( Cexchange .eq.2) then
       U(:,:,:,2) = U(:,:,:,2) + CoulExchange(:,:,:)
     endif
@@ -522,6 +549,7 @@ contains
     ! \vec{S}_q =   B9 \nabla x \vec{j} + B9_q \nabla x \vec{j}_q
     !             + B10*2*\vec{s} + B11*2*\vec{s}_q
     !             + B12a*2*rho^byt3a \vec{s} + B13a*2*rho^byt3a \vec{s}_q
+    !             + B12b*2*rho^byt3a \vec{s} + B13b*2*rho^byt3b \vec{s}_q
     !             - B14*2*\vec{T} - B15*2*\vec{T}_q
     !             - B16*2*\vec{F} - B17*2*\vec{F}_q
     !             + B18*2*\Delta \vec{s} + B19*2*\Delta \vec{s}_q
@@ -570,6 +598,24 @@ contains
          &          - B20                *Density%GradDivS(:,:,:,:,at))
        endif
     enddo
+
+    if(B12b .ne. 0.0_dp .or. B13b .ne. 0.0_dp) then
+      !-----------------------------------------------------------------------
+      ! second density dependence
+      !-----------------------------------------------------------------------
+      do it=1,2
+        do l=1,3
+          RhoVecS(:,:,:,l,it) = (RhoT**(byt3b))*Density%VecS(:,:,:,l,it)
+        enddo
+      enddo
+      do it=1,2
+        at = 3 - it
+         S(:,:,:,:,it) = S(:,:,:,:,it) &
+          &                + 2.0_dp*((B12b+B13b)* RhoVecS(:,:,:,:,it)   &
+          &                +          B12b      * RhoVecS(:,:,:,:,at)) 
+      enddo
+    endif
+
 
     if( BN2LO(5).ne.0.0_dp .or. BN2LO(6) .ne. 0.0_dp) then
         !-----------------------------------------------------------------------

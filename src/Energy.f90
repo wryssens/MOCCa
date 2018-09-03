@@ -35,7 +35,8 @@
   real(KIND=dp),public :: LNEnergy(2), Routhian, OldRouthian(7)
 
   ! Two different ways of calculating and treating Skyrme terms
-  real(KIND=dp) :: Skyrmeterms(32),BTerm(21), N2LOterms(32), N3LOterms(12)
+  real(KIND=dp) :: Skyrmeterms(36),BTerm(21), N2LOterms(32), N3LOterms(12)
+  real(KIND=dp) :: Skyrmeterms2dd(2)
 
   ! Recoupled tensor terms
   real(KIND=dp) :: Tensorterms(3,6)
@@ -480,6 +481,9 @@ contains
     !B7 Terms
     B(7) = B7a*sum(RhoT**(2+byt3a))*dv
 
+    if(B7b.ne. 0.0_dp .or. B7b.ne. 0.0_dp) &
+     & call stp(' compSkyrmeTerms not prepared for 2nd density dependence!')
+
     !B8 Terms
     do it=1,2
      B(8) = B(8) + sum(Den%Rho(:,:,:,it)**2*RhoT**byt3a)
@@ -609,7 +613,7 @@ contains
   function compSkyrme(Den) result(terms)
 
     type(DensityVector), intent(in) :: Den
-    real(KIND=dp)                   :: terms(32)
+    real(KIND=dp)                   :: terms(36)
     integer                         :: it, l, m
 
     !--------------------------------------------------------------------------
@@ -669,13 +673,25 @@ contains
       Terms(8) = Terms(8) + B6*sum(Den%Rho(:,:,:,it)*Den%LapRho(:,:,:,it))
     enddo
 
-    !B7 \rho_t**(2+byt3a)
+    !B7a \rho_t**(2+byt3a)
     Terms(9) = B7a*sum(RhoT**(2+byt3a))
 
-    !B8 \rho_t**(byt3a) * \rho**2_q
+    !B8a \rho_t**(byt3a) * \rho**2_q
     do it=1,2
      terms(10) = terms(10) + B8a*sum(Den%Rho(:,:,:,it)**2*RhoT**byt3a)
     enddo
+
+    !B7b \rho_t**(2+byt3a) -- for evolutionary reasons added to end of array
+    if(B7b .ne. 0.0_dp) then
+      Terms(33) = B7b*sum(RhoT**(2+byt3b))
+    endif
+
+    !B8b \rho_t**(byt3b) * \rho**2_q -- for evolutionary reasons added to end of array
+    if(B8b .ne. 0.0_dp) then
+      do it=1,2
+       terms(34) = terms(34) + B8b*sum(Den%Rho(:,:,:,it)**2*RhoT**byt3b)
+      enddo
+    endif
 
     !B9 * \rho_t \Nabla J_t
     Terms(11) = B9 * sum(RhoT*NablaJT)
@@ -711,11 +727,27 @@ contains
         Terms(17)= B12a*sum( RhoT**byt3a*(sum(vecSt(:,:,:,:)**2,4)))
     endif
 
-    !B13 \rho_t^{byt3a} * \vecs**2_q
+    !B13a \rho_t^{byt3a} * \vecs**2_q
     if(.not.TRC) then
         do it=1,2
-            Terms(18)=  Terms(18) + B13a* sum(RhoT**byt3a*(sum(Den%vecs(:,:,:,:,it)**2,4)))
+            Terms(18)= Terms(18) + B13a* sum(RhoT**byt3a*(sum(Den%vecs(:,:,:,:,it)**2,4)))
         enddo
+    endif
+
+    !B12b \rho_t^{byt3b} * \vecs**2_t -- for evolutionary reasons added to end of array
+    if(B12b .ne. 0.0_dp) then
+      if(.not. TRC) then
+        Terms(35)= B12b*sum( RhoT**byt3b*(sum(vecSt(:,:,:,:)**2,4)))
+      endif
+    endif
+
+    !B13b \rho_t^{byt3b} * \vecs**2_q -- for evolutionary reasons added to end of array
+    if(B13b .ne. 0.0_dp) then
+      if(.not.TRC) then
+        do it=1,2
+          Terms(36)= Terms(36) + B13b* sum(RhoT**byt3b*(sum(Den%vecs(:,:,:,:,it)**2,4)))
+        enddo
+      endif
     endif
 
     !B14 \J_{mu mu}
@@ -1116,17 +1148,19 @@ contains
      14 format (2x,'       j^2_t =', f12.5, 5x , ' j^2_q       = ', f12.5, ' t', f12.5)
      15 format (2x,' rho D rho_t =', f12.5, 5x , ' rho D rho_q = ', f12.5, ' t', f12.5)
      16 format (2x,' rho^(2+a)_t =', f12.5, 5x , ' rho^(2+a)_q = ', f12.5, ' t', f12.5)
-     17 format (2x,' rho d J_t   =', f12.5, 5x , ' rho d J_q   = ', f12.5, ' t', f12.5)
-     18 format (2x,' j d x s_t   =', f12.5, 5x , ' j d x s_q   = ', f12.5, ' t', f12.5)
-     19 format (2x,' s^2_t       =', f12.5, 5x , ' s^2_q       = ', f12.5, ' t', f12.5)
-     20 format (2x,' rho^a s^2_t =', f12.5, 5x , ' rho^a s^2_q = ', f12.5, ' t', f12.5)
-     21 format (2x,' JmnJmn_t    =', f12.5, 5x , ' JmnJmn_t    = ', f12.5, ' t', f12.5)
-     22 format (2x,' s * T_t     =', f12.5, 5x , ' s * T_q     = ', f12.5, ' t', f12.5)
-     23 format (2x,' JmmJmm_t    =', f12.5, 5x , ' JmmJmm_q    = ', f12.5, ' t', f12.5)
-     24 format (2x,' JmnJnm_t    =', f12.5, 5x , ' JmnJnm_q    = ', f12.5, ' t', f12.5)
-     25 format (2x,' s * F_t     =', f12.5, 5x , ' s * F_q     = ', f12.5, ' t', f12.5)
-     26 format (2x,' s D s_t     =', f12.5, 5x , ' s D s_t     = ', f12.5, ' t', f12.5)
-     27 format (2x,' (N s)^2_t   =', f12.5, 5x , ' (N s)^2_q   = ', f12.5, ' t', f12.5)
+     17 format (2x,' rho^(2+b)_t =', f12.5, 5x , ' rho^(2+b)_q = ', f12.5, ' t', f12.5)
+     18 format (2x,' rho d J_t   =', f12.5, 5x , ' rho d J_q   = ', f12.5, ' t', f12.5)
+     19 format (2x,' j d x s_t   =', f12.5, 5x , ' j d x s_q   = ', f12.5, ' t', f12.5)
+     20 format (2x,' s^2_t       =', f12.5, 5x , ' s^2_q       = ', f12.5, ' t', f12.5)
+     21 format (2x,' rho^a s^2_t =', f12.5, 5x , ' rho^a s^2_q = ', f12.5, ' t', f12.5)
+     22 format (2x,' rho^b s^2_t =', f12.5, 5x , ' rho^b s^2_q = ', f12.5, ' t', f12.5)
+     23 format (2x,' JmnJmn_t    =', f12.5, 5x , ' JmnJmn_t    = ', f12.5, ' t', f12.5)
+     24 format (2x,' s * T_t     =', f12.5, 5x , ' s * T_q     = ', f12.5, ' t', f12.5)
+     25 format (2x,' JmmJmm_t    =', f12.5, 5x , ' JmmJmm_q    = ', f12.5, ' t', f12.5)
+     26 format (2x,' JmnJnm_t    =', f12.5, 5x , ' JmnJnm_q    = ', f12.5, ' t', f12.5)
+     27 format (2x,' s * F_t     =', f12.5, 5x , ' s * F_q     = ', f12.5, ' t', f12.5)
+     28 format (2x,' s D s_t     =', f12.5, 5x , ' s D s_t     = ', f12.5, ' t', f12.5)
+     29 format (2x,' (N s)^2_t   =', f12.5, 5x , ' (N s)^2_q   = ', f12.5, ' t', f12.5)
 
     200 format ('Recoupled Tensor Terms')
     201 format (2x,' J0 * J0_0   =', f12.5, 5x , ' J0 * J0_1   = ', f12.5, ' t', f12.5)
@@ -1173,8 +1207,8 @@ contains
     305 format (2x,' M^odd(rho)  =', f12.5) 
     306 format (2x,' M^odd( s )  =', f12.5) 
     
-     28 format (2x,'Time-even    =', f12.5, 5x , ' Time-odd   = ', f12.5 )
-     29 format (2x,'Skyrme Total =', f12.5)
+     58 format (2x,'Time-even    =', f12.5, 5x , ' Time-odd   = ', f12.5 )
+     59 format (2x,'Skyrme Total =', f12.5)
     
     310 format (2x,'T-even N2LO  =', f12.5, 5x , 'T-odd N2LO  = ', f12.5 )
     311 format (2x,'N2LO total   =', f12.5)
@@ -1220,17 +1254,19 @@ contains
     print 14, SkyrmeTerms(5),  SkyrmeTerms(6),  sum(SkyrmeTerms(5:6))
     print 15, SkyrmeTerms(7),  SkyrmeTerms(8),  sum(SkyrmeTerms(7:8))
     print 16, SkyrmeTerms(9),  SkyrmeTerms(10), sum(SkyrmeTerms(9:10))
-    print 17, SkyrmeTerms(11), SkyrmeTerms(12), sum(SkyrmeTerms(11:12))
-    print 18, SkyrmeTerms(13), SkyrmeTerms(14), sum(SkyrmeTerms(13:14))
-    print 19, SkyrmeTerms(15), SkyrmeTerms(16), sum(SkyrmeTerms(15:16))
-    print 20, SkyrmeTerms(17), SkyrmeTerms(18), sum(SkyrmeTerms(17:18))
-    print 21, SkyrmeTerms(19), SkyrmeTerms(20), sum(SkyrmeTerms(19:20))
-    print 22, SkyrmeTerms(21), SkyrmeTerms(22), sum(SkyrmeTerms(21:22))
-    print 23, SkyrmeTerms(23), SkyrmeTerms(24), sum(SkyrmeTerms(23:24))
-    print 24, SkyrmeTerms(25), SkyrmeTerms(26), sum(SkyrmeTerms(25:26))
-    print 25, SkyrmeTerms(27), SkyrmeTerms(28), sum(SkyrmeTerms(27:28))
-    print 26, SkyrmeTerms(29), SkyrmeTerms(30), sum(SkyrmeTerms(29:30))
-    print 27, SkyrmeTerms(31), SkyrmeTerms(32), sum(SkyrmeTerms(31:32))
+    print 17, SkyrmeTerms(33), SkyrmeTerms(34), sum(SkyrmeTerms(33:34))
+    print 18, SkyrmeTerms(11), SkyrmeTerms(12), sum(SkyrmeTerms(11:12))
+    print 19, SkyrmeTerms(13), SkyrmeTerms(14), sum(SkyrmeTerms(13:14))
+    print 20, SkyrmeTerms(15), SkyrmeTerms(16), sum(SkyrmeTerms(15:16))
+    print 21, SkyrmeTerms(17), SkyrmeTerms(18), sum(SkyrmeTerms(17:18))
+    print 22, SkyrmeTerms(35), SkyrmeTerms(36), sum(SkyrmeTerms(35:36))
+    print 23, SkyrmeTerms(19), SkyrmeTerms(20), sum(SkyrmeTerms(19:20))
+    print 24, SkyrmeTerms(21), SkyrmeTerms(22), sum(SkyrmeTerms(21:22))
+    print 25, SkyrmeTerms(23), SkyrmeTerms(24), sum(SkyrmeTerms(23:24))
+    print 26, SkyrmeTerms(25), SkyrmeTerms(26), sum(SkyrmeTerms(25:26))
+    print 27, SkyrmeTerms(27), SkyrmeTerms(28), sum(SkyrmeTerms(27:28))
+    print 28, SkyrmeTerms(29), SkyrmeTerms(30), sum(SkyrmeTerms(29:30))
+    print 29, SkyrmeTerms(31), SkyrmeTerms(32), sum(SkyrmeTerms(31:32))
     print *
     
     if(any(Tensorterms.ne.0)) then
@@ -1300,7 +1336,7 @@ contains
     &         SkyrmeTerms(17)  + SkyrmeTerms(18) + SkyrmeTerms(21) + &
     &         SkyrmeTerms(22)  + SkyrmeTerms(27) + SkyrmeTerms(28) + &
     &         SkyrmeTerms(29)  + SkyrmeTerms(30) + SkyrmeTerms(31) + &
-    &         SkyrmeTerms(32) 
+    &         SkyrmeTerms(32)  + SkyrmeTerms(35) + SkyrmeTerms(36)
     
     N2LOODD = N2LOterms(11)    + N2LOterms(12)   + &
     &         N2LOterms(17)    + N2LOterms(18)   + N2LOterms(19)   + & 
@@ -1309,8 +1345,8 @@ contains
     &         N2LOterms(26)    + N2LOterms(27)   + N2LOterms(28)   + &
     &         N2LOterms(29)    + N2LOterms(30)     
 
-    print 28, sum(SkyrmeTerms) -  SkTodd , SkTodd
-    print 29, sum(SkyrmeTerms)
+    print 58, sum(SkyrmeTerms) -  SkTodd , SkTodd
+    print 59, sum(SkyrmeTerms)
 
     if(t1n2.ne.0.0) then
          print 310, sum(N2LOterms) - N2LOODD, N2LOODD
@@ -1460,7 +1496,8 @@ contains
     ! dependence and Coulomb Exchange.
     if(trim(SkyrmeTreatment).eq.'TERMBYTERM') then
         SpwfEnergy = 0.5_dp*      (SpwfEnergy + sum(Kinetic))                       &
-        &          - 0.5_dp*byt3a*(sum(SkyrmeTerms(9:10)) + sum(SkyrmeTerms(17:18)))& 
+        &          - 0.5_dp*byt3a*(sum(SkyrmeTerms( 9:10)) + sum(SkyrmeTerms(17:18)))& 
+        &          - 0.5_dp*byt3b*(sum(SkyrmeTerms(33:34)) + sum(SkyrmeTerms(35:36)))& 
         &          + CoulombExchange/3.d0
     elseif(trim(SkyrmeTreatment).eq.'BTERMS') then
         SpwfEnergy = 0.5_dp*(SpwfEnergy + sum(Kinetic))                   &
@@ -1513,15 +1550,23 @@ contains
       SE = SE + 0.25*hbm(it)*Reducedmass(it)*sum(density%tau(:,:,:,it))*dv
     enddo
      
-    exchange = B7a*sum(sum(Density%rho,4)**(2+byt3a))*dv
+    exchange = 0.5*byt3a * B7a*sum(sum(Density%rho,4)**(2+byt3a))*dv
     do it=1,2
      exchange = exchange + &
-     &         B8a*sum(Density%Rho(:,:,:,it)**2*sum(Density%rho,4)**byt3a)*dv
+     &  0.5*byt3a*B8a*sum(Density%Rho(:,:,:,it)**2*sum(Density%rho,4)**byt3a)*dv
     enddo
     
+    if( B7b.ne. 0.0_dp .or. B7b.ne. 0.0_dp ) then
+      exchange = exchange + 0.5*byt3b * B7b*sum(sum(Density%rho,4)**(2+byt3b))*dv
+      do it=1,2
+        exchange = exchange + &
+        &  0.5*byt3b*B8b*sum(Density%Rho(:,:,:,it)**2*sum(Density%rho,4)**byt3b)*dv
+      enddo
+    endif
+
     ! We are shamelessly taking the Coulomb exchange from last time, supposing
     ! it doesn't change.
-    compare = Totalenergy  - CoulombExchange/3.d0+ 0.5*byt3a * exchange
+    compare = Totalenergy  - CoulombExchange/3.d0 + exchange
     call CompKinetic()
     compare = compare - 0.5*sum(Kinetic) 
 

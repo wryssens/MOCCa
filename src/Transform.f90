@@ -1,7 +1,8 @@
 module Transform
   !-----------------------------------------------------------------------------
   ! This module contains all the routines that transform wavefunctions in
-  ! relevant ways. Breaking symmetries, translating wavefunctions etc...
+  ! relevant ways. Breaking symmetries, translating wavefunctions, putting them 
+  ! into boxes of different size etc...
   ! One single routine is also included that transforms densities. They are much
   ! easier to deal with.
   !-----------------------------------------------------------------------------
@@ -41,8 +42,10 @@ contains
   integer, intent(in)       :: filenx,fileny,filenz,filenwt
   real(KIND=dp), intent(in) :: filedx
   type(Spwf), allocatable   :: HFBasisTransformed(:)
+  integer                   :: nxa,nxe,iox,nya,nye,ioy,nza,nze,ioz
   integer                   :: wave, index
   logical                   :: interpolx, interpoly, interpolz
+  logical                   :: ChangeBoxSize
     
     !---------------------------------------------------------------------------
     ! Checking for Time Reversal breaking first!
@@ -104,22 +107,65 @@ contains
       call HFBasis(wave)%SymmetryOperators()
     enddo    
     !---------------------------------------------------------------------------
-    ! Transforming the densities
+    ! Transforming the densities - does nothing if symmetries are the same as before
     call TransformDensities(inSC, inTSC, inPC , filenx, fileny, filenz)
+
     !---------------------------------------------------------------------------
-    ! Interpolation 
+    ! Change of box size (unchanged dx but changed nx/ny/nz)
+    ChangeBoxSize = .false.
+
+    if ( dx .eq. filedx ) then
+      if ( (nx.ne.filenx) .or. (ny.ne.fileny) .or. (nz.ne.filenz) ) then
+        if( SC .neqv. inSC ) then
+          if ( (nx.ne.2*filenx) .or. (ny.ne.fileny) .or. (nz.ne.filenz) ) &
+           & call stp("Dont break SC and change box size in other directions!")
+        endif
+        if(TSC .neqv. inTSC ) then
+          if ( (nx.ne.filenx) .or. (ny.ne.2*fileny) .or. (nz.ne.filenz) ) &
+           & call stp("Dont break TSC and change box size in other directions!")
+        endif
+        if( PC .neqv. inPC ) then
+          if ( (nx.ne.filenx) .or. (ny.ne.fileny) .or. (nz.ne.2*filenz) ) &
+           & call stp("Dont break PC and change box size in other directions!")
+        endif
+        if( (TSC.eqv.inTSC) .and. (PC.eqv.inPC) .and. (SC.eqv.TSC) ) then 
+          if( nx.ne.filenx .or. ny.ne.fileny .or. nz.ne.filenz ) ChangeBoxSize = .true.
+        endif
+      endif
+    endif
+
+    if ( ChangeBoxSize ) then
+      !---------------------------------------------------------------------------
+      ! figure out how to shift wave functions from old to new box
+      call PrepareBoxSizeChange(filenx,fileny,filenz,nxa,nxe,iox,nya,nye,ioy,nza,nze,ioz)
+
+      !---------------------------------------------------------------------------
+      ! put densities from old to new box
+      call ChangeBoxSizeDensities(nxa,nxe,iox,nya,nye,ioy,nza,nze,ioz)
+
+      !---------------------------------------------------------------------------
+      ! put wavefunctions from old to new box 
+      do wave=1,nwt
+        HFBasis(wave) = ChangeBoxSizeSpwf(HFBasis(wave),nxa,nxe,iox,nya,nye,ioy,nza,nze,ioz)
+      enddo
+    endif
+
+    !---------------------------------------------------------------------------
+    ! Interpolation (changed dx, combined with possible change(s) of nx/ny/nz)
     interpolx = .false.
     interpoly = .false.
     interpolz = .false.
 
-    if(( SC .eqv.  inSC  ).and.( nx.ne.  filenx)) interpolx = .true.
-    if(( SC .neqv. inSC  ).and.( nx.ne.2*filenx)) interpolx = .true.
+    if ( dx .ne. filedx ) then
+      if(( SC .eqv.  inSC  ).and.(nx.ne.  filenx)) interpolx = .true.
+      if(( SC .neqv. inSC  ).and.(nx.ne.2*filenx)) interpolx = .true.
 
-    if((TSC .eqv.  inTSC ).and.( ny.ne.  fileny)) interpoly = .true.
-    if((TSC .neqv. inTSC ).and.( ny.ne.2*fileny)) interpoly = .true.
+      if((TSC .eqv.  inTSC ).and.(ny.ne.  fileny)) interpoly = .true.
+      if((TSC .neqv. inTSC ).and.(ny.ne.2*fileny)) interpoly = .true.
 
-    if(( PC .eqv.  inPC  ).and.( nz.ne.  filenz)) interpolz = .true.
-    if(( PC .neqv. inPC  ).and.( nz.ne.2*filenz)) interpolz = .true.
+      if(( PC .eqv.  inPC  ).and.(nz.ne.  filenz)) interpolz = .true.
+      if(( PC .neqv. inPC  ).and.(nz.ne.2*filenz)) interpolz = .true.
+    endif
 
     if(interpolx .or. interpoly .or. interpolz) then
       call ConstructInterpolationFunctions(size(HFBasis(1)%Value%Grid,1)         &
@@ -133,9 +179,10 @@ contains
       !---------------------------------------------------------------------------
       ! Make sure the densities get recalculated
       Density = NewDensityVector()
-      Recalc=.true.  
+      Recalc  = .true.  
     endif
-    end subroutine TransformInput
+
+  end subroutine TransformInput
 
   subroutine BreakParity(wf)
    !---------------------------------------------------------------------------
@@ -344,7 +391,7 @@ contains
     ! V.Hellemans, P.H. Heenen and M. Bender, Phys. Rev. C, 85, 014326 (2012)
     ! Appendix B, table 5
     !
-    ! Octant(x >0 , y > 0, z > 0) (This is ofcourse just copying...)
+    ! Octant(x >0 , y > 0, z > 0) (This is of course just copying...)
     Oct = 1
     call FillOct(NewDen%Rho              , Density%Rho              , Oct,+1)
     call FillOct(NewDen%DerRho(:,:,:,1,:), Density%DerRho(:,:,:,1,:), Oct,+1)
@@ -828,7 +875,7 @@ contains
     ! both are broken in the calculation
     if((inPC.neqv.PC) .and. (inTSC.neqv.TSC)) then
       Oct = 7
-     call FillOct(NewDen%Rho              , Density%Rho              , Oct,+1)
+      call FillOct(NewDen%Rho              , Density%Rho              , Oct,+1)
       call FillOct(NewDen%DerRho(:,:,:,1,:), Density%DerRho(:,:,:,1,:), Oct,+1)
       call FillOct(NewDen%DerRho(:,:,:,2,:), Density%DerRho(:,:,:,2,:), Oct,-1)
       call FillOct(NewDen%DerRho(:,:,:,3,:), Density%DerRho(:,:,:,3,:), Oct,-1)
@@ -2007,7 +2054,7 @@ end subroutine TransformHFBMatrices
     enddo
     
   end subroutine ConstructInterpolationFunctions
-    
+
   function InterpolateSpwf(Phi) result(Psi)
     !---------------------------------------------------------------------------
     ! Interpolate a given wave-function from a certain mesh to 
@@ -2123,5 +2170,274 @@ end subroutine TransformHFBMatrices
 !    print *
 
   end function InterpolateSpwf
+
+  subroutine PrepareBoxSizeChange(oldnx,oldny,oldnz,nxa,nxe,iox,nya,nye,ioy,nza,nze,ioz)
+    !----------------------------------------------------------------------------------
+    ! Calculate various index shifts for boxsize change in function ChangeBoxSizeSpwf()
+    ! Stops the code when there are simulatneous symmetry changes and box size changes.
+    ! Figuring out how to handle each case in connection with the other manipulations
+    ! will take longer than running a sequence of MOCCa runs each doing one change.
+    !----------------------------------------------------------------------------------
+    integer, intent(in) :: oldnx,oldny,oldnz
+    integer :: nxa,nxe,iox,nya,nye,ioy,nza,nze,ioz
+
+    iox = 0 ; ioy = 0 ; ioz = 0
+
+    if ( SC ) then 
+      iox = 0                        ! no shift of points
+      nxa = 1                        ! start at 1
+      nxe = oldnx                    ! end at old nx, additional points will be 0
+      if ( oldnx .gt. nx ) nxe = nx  ! end already at nx, points outside will be cut
+    else
+      iox = (oldnx - nx)/2           ! shift index of old wf by iox < 0
+      if ( nx .ge. oldnx ) then
+        nxa = 1  - iox               ! start putting old wf 
+        nxe = nx + iox               ! end putting
+      else
+        nxa = 1                      ! start putting old wf 
+        nxe = nx                     ! end putting
+      endif      
+    endif
+    if ( TSC ) then 
+      ioy = 0                        ! no shift of points
+      nya = 1                        ! start at 1
+      nye = oldny                    ! end at old ny, additional points will be 0
+      if ( oldny .gt. ny ) nye = ny  ! end already at ny, points outside will be cut
+    else
+      ioy = (oldny - ny)/2           ! shift index of old wf by ioy < 0
+      if ( ny .ge. oldny) then
+        nya = 1  - ioy               ! start putting old wf 
+        nye = ny + ioy               ! end putting
+      else
+        nya = 1                      ! start putting old wf 
+        nye = ny                     ! end putting
+      endif      
+    endif
+    if ( PC ) then 
+      ioz = 0                        ! no shift of points
+      nza = 1                        ! start at 1
+      nze = oldnz                    ! end at old nz, additional points will be 0
+      if ( oldnz .gt. nz ) nze = nz  ! end already at nz, points outside will be cut
+    else
+      ioz = (oldnz - nz)/2           ! shift index of old wf by ioz < 0
+      if ( nz .ge. oldnz ) then
+        nza = 1  - ioz               ! start putting old wf 
+        nze = nz + ioz               ! end putting
+      else
+        nza = 1                      ! start putting old wf 
+        nze = nz                     ! end putting
+      endif      
+    endif
+
+    if (   (nxa+iox).lt.1 .or. (nxe+iox).gt.oldnx .or. &
+         & (nya+ioy).lt.1 .or. (nye+ioy).gt.oldny .or. &
+         & (nza+ioz).lt.1 .or. (nze+ioz).gt.oldnz ) then
+      print '(/," *********************************************************")'
+      print '(  " * PrepareBoxSizeChange                                  *")'
+      print '(  " * old box: nx,ny,nz :",3i4,23x,"*"  )',oldnx,oldny,oldnz
+      print '(  " * new box: nx,ny,nz :",3i4,23x,"*"  )',nx,ny,nz
+      print '(  " * nxa,nxe,iox       :",3i4,23x,"*"  )',nxa,nxe,iox
+      print '(  " * nya,nye,ioy       :",3i4,23x,"*"  )',nya,nye,ioy
+      print '(  " * nza,nze,ioz       :",3i4,23x,"*",/)',nza,nze,ioz
+      call stp(' PrepareBoxSizeChange: impossible iox/ioy/ioz!')
+    endif
+
+  end subroutine PrepareBoxSizeChange
+
+  function ChangeBoxSizeSpwf(Phi,nxa,nxe,iox,nya,nye,ioy,nza,nze,ioz) result(Psi)
+    !---------------------------------------------------------------------------
+    ! Put a given wave-function from a mesh with dx to 
+    ! the new mesh (nx,ny,nz,dx) with same dx.
+    !---------------------------------------------------------------------------
+    
+    type(Spwf), intent(in) :: Phi
+    integer , intent(in)   :: nxa,nxe,iox,nya,nye,ioy,nza,nze,ioz
+    type(Spwf)             :: Psi
+    integer                :: oldnx,oldny,oldnz
+    integer                :: i,j,k
+    integer                :: io,jo,ko
+    real(KIND=dp)          :: norm(2)
+
+    oldnx = size(Phi%Value%Grid,1)
+    oldny = size(Phi%Value%Grid,2)
+    oldnz = size(Phi%Value%Grid,3)
+
+    if ((nxa+iox).lt.1 .or. (nxe+iox).gt.oldnx) call stp(' ChangeBoxSizeSpwf: io!')
+    if ((nya+ioy).lt.1 .or. (nye+ioy).gt.oldny) call stp(' ChangeBoxSizeSpwf: jo!')
+    if ((nza+ioz).lt.1 .or. (nze+ioz).gt.oldnz) call stp(' ChangeBoxSizeSpwf: ko!')
+  
+    Psi = CopyWaveFunction(Phi)
+    
+    Psi%Value = NewSpinor()
+    Psi%Der(1)= NewSpinor()
+    Psi%Der(2)= NewSpinor()
+    Psi%Der(3)= NewSpinor()
+    Psi%Lap   = NewSpinor()
+
+    Psi%Value%Grid(:,:,:,:,1) = 0.0_dp
+
+    do i=nxa,nxe
+      io = i+iox
+      do j=nya,nye
+        jo = j+ioy
+        do k=nza,nze
+          ko = k+ioz
+          Psi%Value%Grid(i,j,k,1,1) = Phi%Value%Grid(io,jo,ko,1,1)
+          Psi%Value%Grid(i,j,k,2,1) = Phi%Value%Grid(io,jo,ko,2,1)
+          Psi%Value%Grid(i,j,k,3,1) = Phi%Value%Grid(io,jo,ko,3,1)
+          Psi%Value%Grid(i,j,k,4,1) = Phi%Value%Grid(io,jo,ko,4,1) 
+        enddo
+      enddo
+    enddo
+
+  end function ChangeBoxSizeSpwf
+
+  subroutine ChangeBoxSizeDensities(nxa,nxe,iox,nya,nye,ioy,nza,nze,ioz)
+  !-----------------------------------------------------------------------------
+  ! Transform the densities as they were read on file to ones that are usable
+  ! by the program.
+  !-----------------------------------------------------------------------------
+    use Densities, only : DensityVector, NewDensityVector, Density
+    use Derivatives
+
+    type(DensityVector)       :: NewDen
+    integer                   :: nxa,nxe,iox,nya,nye,ioy,nza,nze,ioz
+    integer                   :: i,j,k,io,jo,ko
+
+    !real(KIND=dp)             :: norm(2)
+    !integer                   :: l
+    !print '(" ChangeBoxSizeDensities called")'
+    !print '(  " * nxa,nxe,iox       :",3i4,23x,"*")',nxa,nxe,iox
+    !print '(  " * nya,nye,ioy       :",3i4,23x,"*")',nya,nye,ioy
+    !print '(  " * nza,nze,ioz       :",3i4,23x,"*")',nza,nze,ioz
+    !print '(  " * nx ,ny ,nz        :",3i4,23x,"*")',nx,ny,nz
+ 
+    !Create new densityvectortype with normal (nx,ny,nz) size
+    NewDen = NewDensityVector()
+
+    NewDen%Rho               = 0.0_dp
+    NewDen%DerRho(:,:,:,1,:) = 0.0_dp
+    NewDen%DerRho(:,:,:,2,:) = 0.0_dp
+    NewDen%DerRho(:,:,:,3,:) = 0.0_dp
+    NewDen%LapRho            = 0.0_dp
+    NewDen%Tau               = 0.0_dp
+    NewDen%NablaJ            = 0.0_dp
+
+    do i=nxa,nxe
+      io = i+iox
+      do j=nya,nye
+        jo = j+ioy
+        do k=nza,nze
+          ko = k+ioz
+          NewDen%Rho   (i,j,k,:)   = Density%Rho   (io,jo,ko,:)
+          NewDen%DerRho(i,j,k,1,:) = Density%DerRho(io,jo,ko,1,:)
+          NewDen%DerRho(i,j,k,2,:) = Density%DerRho(io,jo,ko,2,:)
+          NewDen%DerRho(i,j,k,3,:) = Density%DerRho(io,jo,ko,3,:)
+          NewDen%LapRho(i,j,k,:)   = Density%LapRho(io,jo,ko,:)
+          NewDen%Tau   (i,j,k,:)   = Density%Tau   (io,jo,ko,:)
+          NewDen%NablaJ(i,j,k,:)   = Density%NablaJ(io,jo,ko,:)
+        enddo
+      enddo
+    enddo
+      
+    if(allocated(NewDen%JMuNu)) then
+      NewDen%JMunu = 0.0_dp
+      do i=nxa,nxe
+        io = i+iox
+        do j=nya,nye
+          jo = j+ioy
+          do k=nza,nze
+            ko = k+ioz
+            NewDen%JMunu(i,j,k,:,:,:) = Density%JMuNu(io,jo,ko,:,:,:)
+          enddo
+        enddo
+      enddo
+    endif
+
+    if(.not.TRC) then
+      NewDen%vecj    = 0.0_dp
+      NewDen%vecs    = 0.0_dp
+      NewDen%rots    = 0.0_dp
+      NewDen%rotvecj = 0.0_dp
+      NewDen%ders    = 0.0_dp
+      do i=nxa,nxe
+        io = i+iox
+        do j=nya,nye
+          jo = j+ioy
+          do k=nza,nze
+            ko = k+ioz
+            NewDen%vecj   (i,j,k,:,:)   = Density%vecj   (io,jo,ko,:,:)
+            NewDen%vecs   (i,j,k,:,:)   = Density%vecs   (io,jo,ko,:,:)
+            NewDen%rots   (i,j,k,:,:)   = Density%rots   (io,jo,ko,:,:)
+            NewDen%rotvecj(i,j,k,:,:)   = Density%rotvecj(io,jo,ko,:,:)
+            NewDen%ders   (i,j,k,:,:,:) = Density%ders   (io,jo,ko,:,:,:)
+          enddo
+        enddo
+      enddo
+    endif
+
+    if(allocated(NewDen%LapS)) then
+      NewDen%LapS     = 0.0_dp
+      NewDen%graddivS = 0.0_dp
+      NewDen%divs     = 0.0_dp
+      do i=nxa,nxe
+        io = i+iox
+        do j=nya,nye
+          jo = j+ioy
+          do k=nza,nze
+            ko = k+ioz
+            NewDen%LapS    (i,j,k,:,:) = Density%LapS    (io,jo,ko,:,:)
+            NewDen%graddivS(i,j,k,:,:) = Density%gradDivS(io,jo,ko,:,:)
+            NewDen%divs    (i,j,k,:)   = Density%divs    (io,jo,ko,:)
+          enddo
+        enddo
+      enddo
+    endif
+
+    if(allocated(NewDen%VecF)) then
+      NewDen%vecF = 0.0_dp
+      do i=nxa,nxe
+        io = i+iox
+        do j=nya,nye
+          jo = j+ioy
+          do k=nza,nze
+            ko = k+ioz
+            NewDen%vecF(i,j,k,:,:) = Density%vecF(io,jo,ko,:,:)
+          enddo
+        enddo
+      enddo
+    endif
+
+    if(allocated(NewDen%vecT)) then
+      NewDen%vecT = 0.0_dp
+      do i=nxa,nxe
+        io = i+iox
+        do j=nya,nye
+          jo = j+ioy
+          do k=nza,nze
+            ko = k+ioz
+            NewDen%vecT(i,j,k,:,:) = Density%vecT(io,jo,ko,:,:)
+          enddo
+        enddo
+      enddo
+    endif
+    !---------------------------------------------------------------------------
+    ! Save the new density
+    Density =  NewDen
+
+    ! norm = 0.0_dp
+    ! do l=1,2
+    !   do k=1,nz
+    !     do j=1,ny
+    !       do i=1,nx
+    !         norm(l) = norm(l) + Density%Rho(i,j,k,l)
+    !       enddo
+    !     enddo
+    !   enddo
+    ! enddo
+    ! norm = norm*dv
+    ! print '(" ChangeBoxSizeDensities 2 N,Z",2f16.8)',norm(1),norm(2)
+  
+  end subroutine ChangeBoxSizeDensities
 
 end module Transform

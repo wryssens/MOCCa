@@ -126,7 +126,7 @@ contains
 
     1 format (' *********************************************************'  ,/,&
     &         ' * ATTENTION                                             *'  ,/,&
-    &         ' * Wavefunction file did not correspond to symmetries    *'  ,/,&
+    &         ' * Wavefunction file did not correspond to same box      *'  ,/,&
     &         ' * on input. MOCCa made the following changes :          *'  ,/,&
     &         ' *                FILE      INPUT                        *'  ,/,&
     &         ' * Parity          ',L1, '         ',L1,27(' '),        '*'  ,/,&
@@ -138,9 +138,10 @@ contains
     &         ' * nx             ',i3,'       ',i3,26(' '),            '*'  ,/,&
     &         ' * ny             ',i3,'       ',i3,26(' '),            '*'  ,/,&
     &         ' * nz             ',i3,'       ',i3,26(' '),            '*'  ,/,&
+    &         ' * dx        ',f8.6,'  ',f8.6,' (fm)'21(' '),           '*'  ,/,&       
+    &         ' *                                                       *'  ,/,&
     &         ' * nwt            ',i3,'       ',i3,26(' '),            '*'  ,/,&
     &         ' *********************************************************')
-    
     2 format (' *********************************************************'  ,/,&
     &         ' * ATTENTION                                             *'  ,/,&
     &         ' * The HFBasis from file has been alirotated along y.    *'  ,/,&
@@ -165,7 +166,7 @@ contains
       call TransformInput(inTRC,inTSC,inIC,inPC,inSC,                          &
       &                   filenx,fileny,filenz,filenwt,filedx)
       print 1, inPC, PC, inSC, SC, inTSC, TSC, inTRC, TRC, inIC, IC,           &
-      &       filenx,nx,fileny,ny,filenz,nz,filenwt, nwt
+      &       filenx,nx,fileny,ny,filenz,nz,filedx,dx,filenwt,nwt
     endif
     ! Special mention here for the HFB matrices.
     if(allocated(InputKappa)) then
@@ -610,10 +611,10 @@ contains
     endif
     if( (PC .neqv. inPC) .or. (SC .neqv. inSC) .or. (TSC .neqv. inTSC)) then
         if(.not. AllowTransform) then
-            call stp("MOCCa needs to break symmetries, but you don't allow it.")
+            call stp("MOCCa needs to break symmetries, but you don't allow for it.")
         endif
     endif 
-    
+
     !---------------------------------------------------------------------------
     if(filenx.ne.nx) then
       if( 2*filenx.ne.nx .or. SC ) then
@@ -1126,6 +1127,25 @@ subroutine ReadMOCCa_v1(Ichan)
     endif
     !---------------------------------------------------------------------------
     ! b) Mesh parameters & number of wavefunctions must correspond
+    !---------------------------------------------------------------------------
+    ! MB 180902: this should be checked here, but can't as AllowTransform is not 
+    ! known yet.
+    !---------------------------------------------------------------------------
+    !if( (filedx.ne.dx) .and. (.not. AllowTransform) ) then
+    !  call stp("MOCCa needs to interpolate between meshes, but you don't allow for it.")      
+    !endif
+    !if (filedx.eq.dx) then
+    !  if( ( SC.eqv. inSC) .and. (filenx.ne.nx) .and. (.not. AllowTransform)) then
+    !    call stp("MOCCa needs to transform to different box size, but you don't allow for it.")
+    !  endif
+    !  if( (TSC.eqv.inTSC) .and. (fileny.ne.ny) .and. (.not. AllowTransform)) then
+    !    call stp("MOCCa needs to transform to different box size, but you don't allow for it.")
+    !  endif
+    !  if( ( PC.eqv. inPC) .and. (filenz.ne.nz) .and. (.not. AllowTransform)) then
+    !    call stp("MOCCa needs to transform to different box size, but you don't allow for it.")
+    !  endif
+    !endif
+
     !if(filenx.ne.nx) then
     !  if( 2*filenx.ne.nx .or. SC ) then
     !    call stp(' nx is not compatible between file and data.',               &

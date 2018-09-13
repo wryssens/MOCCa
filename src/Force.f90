@@ -461,6 +461,9 @@ contains
   !-----------------------------------------------------------------------------
   ! Note again for the C's: they are BUGGED!
   !-----------------------------------------------------------------------------
+  ! MB: rhosat should be the self-consistent minimum of the EOS of INM for a given
+  ! parameterization, i.e. the density for which pressure is zero.
+  !-----------------------------------------------------------------------------
     real(KIND=dp), parameter :: rhosat=0.16_dp
 
     !---------------------------------------------------------------------------
@@ -532,6 +535,29 @@ contains
     endif
 
     !---------------------------------------------------------------------------
+    ! override coupling constants for EDFs that cannot be mapped on the existing
+    ! relations between coupling constants. Not particularly elegant, but the 
+    ! most efficient way to use these parameterizations without large-scale 
+    ! coding efforts.
+    !---------------------------------------------------------------------------    
+    if (trim(afor) .eq. 'sly4t' ) then
+      B14 =   15.0_dp
+      B15 = -120.0_dp
+      B16 =    0.0_dp
+      B17 =    0.0_dp
+      print '(/," parameterization sly4t")'
+      print '(  " override relations for EDF tensor coupling constants")'
+    endif
+    if (trim(afor) .eq. 'sly4tmin' ) then
+      B14 =   15.0_dp
+      B15 = -120.0_dp
+      B16 =    0.0_dp
+      B17 =    0.0_dp
+      print '(/," parameterization sly4tmin")'
+      print '(  " override relations for EDF tensor coupling constants")'
+    endif
+
+    !---------------------------------------------------------------------------
     !Calculating the C-s
     !---------------------------------------------------------------------------
     !Careful: Crho is density dependent in general. Crho contains the value at
@@ -549,7 +575,7 @@ contains
 
     !Same remark for Cs: it is density dependent!
     Cs(1)   = B10 + 0.5_dp * B11
-    Cs(2)=       0.5_dp * B11
+    Cs(2)   =       0.5_dp * B11
 
     Cssat(1)= Cs(1) + (B10  + 0.5_dp*B11)                                      &
             &       + (B12a + 0.5_dp*B13a) * rhosat**byt3a &

@@ -346,9 +346,6 @@ contains
 
     call ReadDensitInfo()
 
-    !Allocating the densities and setting them to zero
-    call Iniden
-
     !Allocating and initialising the Mesh variables
     call IniMesh
 
@@ -386,6 +383,9 @@ contains
 
     !Reading the Cranking Namelist
     call ReadCrankingInfo()
+
+    !Allocating the densities and setting them to zero
+    call Iniden
 
     return
   end subroutine ReadRunInfo

@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import glob
 import sys
 import math
-import levellab
+#import levellab
 
 def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
     
@@ -241,6 +241,22 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
         yfname =PREFIX + '.e.tab'
         ycolumn=2
         derivY = 0
+    elif(YARG=='Q40') :
+        ylabel =r'$Q_{40}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        if(PC == 1) :
+            ycolumn=5
+        else:
+            ycolumn=11
+        derivY = 0
+    elif(YARG=='Q40P') :
+        ylabel =r'$Q_{40}$ '
+        yfname =PREFIX + '.p.qlm.tab'
+        if(PC == 1) :
+            ycolumn=5
+        else:
+            ycolumn=11
+        derivY = 0
     elif(YARG=='B40') :
         ylabel =r'$\beta_{40}$ '
         yfname =PREFIX + '.t.qlm.tab'
@@ -248,6 +264,14 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
             ycolumn=6
         else:
             ycolumn=12
+        derivY = 0
+    elif(YARG=='Q42') :
+        ylabel =r'$Q_{42}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        if(PC == 1) :
+            ycolumn=7
+        else:
+            ycolumn=13
         derivY = 0
     elif(YARG=='B42') :
         ylabel =r'$\beta_{42}$ '
@@ -257,13 +281,62 @@ def Determinedata(PREFIX, XARG, YARG,PC,SC, SORT, LEGACY=0):
         else:
             ycolumn=14
         derivY = 0
+    elif(YARG=='Q44') :
+        ylabel =r'$Q_{44}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        if(PC == 1) :
+            ycolumn=9
+        else:
+            ycolumn=15
+        derivY = 0
+    elif(YARG=='B44') :
+        ylabel =r'$\beta_{44}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        if(PC == 1) :
+            ycolumn=10
+        else:
+            ycolumn=16
+        derivY = 0
+    elif(YARG=='Q60') :
+        ylabel =r'$Q_{60}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        if(PC == 1) :
+            ycolumn=11
+        else:
+            ycolumn=23
+        derivY = 0  
+    elif(YARG=='Q60P') :
+        ylabel =r'$Q_{60}$ '
+        yfname =PREFIX + '.p.qlm.tab'
+        if(PC == 1) :
+            ycolumn=11
+        else:
+            ycolumn=23
+        derivY = 0    
     elif(YARG=='B60') :
         ylabel =r'$\beta_{60}$ '
         yfname =PREFIX + '.t.qlm.tab'
         if(PC == 1) :
             ycolumn=12
         else:
-            ycolumn=22
+            ycolumn=24
+        derivY = 0
+    elif(YARG=='Q64') :
+        ylabel =r'$Q_{64}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        if(PC == 1) :
+            ycolumn=15
+        else:
+            ycolumn=27
+        derivY = 0    
+    
+    elif(YARG=='B64') :
+        ylabel =r'$\beta_{64}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        if(PC == 1) :
+            ycolumn=16
+        else:
+            ycolumn=28
         derivY = 0
     elif(YARG=='JZ') :
         ylabel =r'$\langle \hat{J}_{z} \rangle$ ($\hbar$)'
@@ -905,6 +978,21 @@ def mini(PREFIX, XARG, YARG, PC=1, SC=1, XRANGE=[], INTERPOL=1):
         yfname =PREFIX + '.t.qlm.tab'
         ycolumn= 12
         derivY = 0
+    elif(YARG=='Q20P') :
+        yfname =PREFIX + '.p.qlm.tab'
+        ycolumn=1
+        if(PC != 1) :
+            ycolumn = 3     
+        derivY = 0
+    elif(YARG=='B30') :
+        ylabel =r'$\beta_{30}$ '
+        yfname =PREFIX + '.t.qlm.tab'
+        ycolumn=8
+        if (SC != 1 ):
+            ycolumn=12
+        derivY=0
+        if(PC == 1) :
+            ycolumn=-1
 
     
     efname = PREFIX + '.e.tab'

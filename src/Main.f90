@@ -428,7 +428,7 @@ subroutine Evolve(MaxIterations, iprint)
      print 6, MomentPrec
      print 7, EnergyPrec
      print 8, TotalDispersion
-     print 9, TotalDispersion/nwt
+     print 9, TotalDispersion/(protons+neutrons)
      print 4
   endif
   
@@ -769,6 +769,7 @@ subroutine PrintSummary_v1(Iteration)
   do i=1,nwt
     dispersion = dispersion + HFBasis(i)%Occupation*HFBasis(i)%Dispersion
   enddo
+  dispersion = dispersion/(neutrons + protons)
 
   print 1, abs((TotalEnergy - OldEnergy(1))/TotalEnergy), DensityChange,       &
   &        adjustl(adjustr(MomString)//adjustl(CrankString))

@@ -1404,6 +1404,7 @@ contains
     do i=1,nwt
         dispersion = dispersion + HFBasis(i)%Occupation*HFBasis(i)%Dispersion
     enddo
+    dispersion = dispersion/(protons+neutrons)
     print 115, Dispersion
     
     print 3

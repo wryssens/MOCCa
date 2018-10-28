@@ -545,6 +545,10 @@ contains
       B15 = -120.0_dp
       B16 =    0.0_dp
       B17 =    0.0_dp
+      C14 = B14 ! needed for correct diagnostic printing of tensor energies ...
+      C15 = B15 ! ... in recoupleTensorNLO() of Energy.f90
+      T14 = 0.0_dp 
+      T15 = 0.0_dp 
       print '(/," parameterization sly4t")'
       print '(  " override relations for EDF tensor coupling constants")'
     endif
@@ -553,7 +557,24 @@ contains
       B15 = -120.0_dp
       B16 =    0.0_dp
       B17 =    0.0_dp
+      C14 = B14 ! needed for correct diagnostic printing of tensor energies ...
+      C15 = B15 ! ... in recoupleTensorNLO() of Energy.f90
+      T14 = 0.0_dp 
+      T15 = 0.0_dp 
       print '(/," parameterization sly4tmin")'
+      print '(  " override relations for EDF tensor coupling constants")'
+    endif
+    ! coupling constants reverse-engineered, see forces.param
+    if (trim(afor) .eq. 'unedf2' ) then
+      B14 = -54.4333635973721002_dp + 65.9030310445938028_dp
+      B15 = -65.9030310445938028_dp * 2.0_dp
+      B16 =   0.0_dp
+      B17 =   0.0_dp
+      C14 = B14 ! needed for correct diagnostic printing of tensor energies ...
+      C15 = B15 ! ... in recoupleTensorNLO() of Energy.f90
+      T14 = 0.0_dp 
+      T15 = 0.0_dp 
+      print '(/," parameterization unedf2")'
       print '(  " override relations for EDF tensor coupling constants")'
     endif
 

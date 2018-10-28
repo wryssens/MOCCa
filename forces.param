@@ -283,27 +283,100 @@ yt3a=0.16666666666667, j2terms = .false.
 ! MB 2018/09/21: bug fix: J^2 terms are not present (which is not clear from the
 ! original paper, but the supplementary material to the UNEDF2 paper)
 !-------------------------------------------------------------------------------
-! j2terms = .true.
+!t0 = -1883.687810, x0 =    0.009744,
+!t1 =   277.500212, x1 =   -1.777844,
+!t2 =   608.430905, x2 =   -1.676990,
+!t3a = 13901.948300, x3a =   -0.380790,  yt3a = 0.321955989588264435
+!wso = 250.322, wsoq = -182.5208
+!---------------------------------------
+! update MB 2018/10/28
+! source: supplementary material of the original submission of the UN2DF2 paper; 
+! the tables containing these disappeared in the final version
+! In P.-G's notation , spin-orbit constants are b4 = wso/2 = 125.161 ,  b4' = wsoq/2 = -91.2604
+!---------------------------------------
 &skf
 name = "unedf0",
-t0 = -1883.687810, x0 =    0.009744,
-t1 =   277.500212, x1 =   -1.777844,
-t2 =   608.430905, x2 =   -1.676990,
-t3a = 13901.948300, x3a =   -0.380790,  yt3a =  0.321956,
+t0  = -1883.68781034247695  , x0  =  0.00974374651612197606
+t1  =   277.500212238931113 , x1  = -1.77784394560870229
+t2  =   608.430905591534383 , x2  = -1.67699034528797575
+t3a = 13901.9483446343256   , x3a = -0.38079041463310026 , yt3a = 0.321955989588264435
 wso = 250.322, wsoq = -182.5208
 j2terms = .false.
 COM1Body = 1
 hbm(1) = 20.73553, 20.73553  
 /
 !-------------------------------------------------------------------------------
-&SKF NAME = "unedf1",
-t0 =  -2078.328020, t1 =    239.400812, t2 =   1575.11954, t3a = 14263.6462
-x0 =  0.053757, x1 = -5.077232, x2 = -1.366506, x3a = -0.162491d0
-yt3a = 0.270018
-wso  = 76.736144, wsoq= 142.63304,
+!t0  = -2078.328020  , x0  =  0.053757
+!t1  =   239.400812  , x1  = -5.077232
+!t2  =  1575.11954   , x2  = -1.366506
+!t3a = 14263.6462    , x3a = -0.162491 , yt3a = 0.270018011502707600
+!wso = 76.736144     , wsoq = 142.63304,
+!---------------------------------------
+! update MB 2018/10/28
+! source: supplementary material of the original submission of the UN2DF2 paper; 
+! the tables containing these disappeared in the final version
+! In P.-G's notation, spin-orbit constants are b4 = wso/2 = 38.3680720616682009 ,  b4' = wsoq/2 = 71.3165222295833985
+!---------------------------------------
+&skf 
+name = "unedf1",
+t0  = -2078.3280232556408   , x0  =  0.0537569206858470316
+t1  =   239.400812041522045 , x1  = -5.07723238187693671
+t2  =  1575.11954189757989  , x2  = -1.36650561394298609
+t3a = 14263.646247077595    , x3a = -0.162491168089956339 , yt3a = 0.2700180115027076
+wso = 76.7361441233364019   , wsoq = 142.6330444591667970
 j2terms = .false.
-COM1body=0
-hbm(1)=20.7355300, 20.7355300
+COM1body = 0
+hbm(1) = 20.73553, 20.73553
+/
+!-------------------------------------------------------------------------------
+! MB 2018/10/28
+! NOTE: this is a functional that cannot be mapped on the standard notation and needs further manipulation in Force.f90
+! source: supplementary material of the  original submission of the UN2DF2 paper; 
+! the tables containing these disappeared in the final version
+! In P.-G's notation, spin-orbit constants are b4 = wso/2 = 25.658667730648304 , b4' = wsoq/2 = 77.3003893702710059
+! For spherical nuclei, b14 and b15 are obtained from the following procedure:
+! calculate tensor coefficients 
+! C^J(0)_0     =   -213.319314 C^J(0)_1     =     -26.990814
+! C^J(0)_1     =    -27.216682 C^J(0)_1     =     -32.951516
+! C^J(0)_2     =    335.916356 C^J(0)_2     =     -55.856757
+! combining the central force and the tensor force te  = -240.140598215558754   , to  = -266.930662318713644
+! as provided by the supplement of the original submission. These values confirm that the convention used is such that 
+! 2 * C^J(0)_0 = C_0^JJ = -54.43336359737210020
+! 2 * C^J(0)_1 = C_1^JJ = -65.9030310445938028
+! as given in the supplementary material. From these values, b14 and b15 are obtained from inversion of
+!   -C_0^JJ = Ct_1 = -(B14 + 0.5 * B15)
+!   -C_1^JJ = Ct_2 = -       0.5 * B15
+! such that
+! b15 = 2 * C_1^JJ 
+! b14 =     C_0^JJ - C_1^JJ
+! the necessary manipulation is done in Force.f90
+!------------------------------------------------
+&skf 
+name = "unedf2",
+t0  = -1735.45685190850349   , x0  =  0.172247227624101162
+t1  =   262.814456235313969  , x1  = -3.76692685046941023
+t2  =  1183.31263243304011   , x2  = -1.38349812677880979
+t3a = 12293.2432941125371    , x3a =  0.0528642727436126059 , yt3a = 0.351455132555483607
+wso = 51.3173354612966079    , wsoq = 154.6007787405420117
+j2terms = .true.
+COM1body = 0 , COM2Body = 0
+hbm(1) = 20.73553, 20.73553
+/
+!----------------------------------------------------------------------------------------------------
+! the UNEDF2 "force" giving the same coupling constants in spherical nuclei as the unedf2 functional
+! for Pb208, it converges to the same solution as the UNEDF2 functional within 0.1 keV.
+! source: supplementary material of the  original submission of the UN2DF2 paper (see above)
+!----------------------------------------------------------------------------------------------------
+&SKF NAME = "unedf2force",
+t0  = -1735.45685190850349   , x0  =  0.172247227624101162
+t1  =   262.814456235313969  , x1  = -3.76692685046941023
+t2  =  1183.31263243304011   , x2  = -1.38349812677880979
+t3a = 12293.2432941125371    , x3a =  0.0528642727436126059 , yt3a = 0.351455132555483607
+wso = 51.3173354612966079    , wsoq = 154.6007787405420117
+te  = -240.140598215558754   , to  = -266.930662318713644
+j2terms = .true.
+COM1body = 0 , COM2Body = 0
+hbm(1) = 20.73553, 20.73553
 /
 !-------------------------------------------------------------------------------
 ! SLy5s1-8 parameterizations from 

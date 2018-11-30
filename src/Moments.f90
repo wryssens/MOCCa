@@ -225,8 +225,8 @@ implicit none
       generic                 :: Write=> WriteMoment
   end type Moment
   !-----------------------------------------------------------------------------
-  !Maximum degree of the multipole components that are considered. Default = 6
-  integer, public :: MaxMoment=6, maxmoment_J0=2
+  !Maximum degree of the multipole components that are considered. Default = 10
+  integer, public :: MaxMoment=10, maxmoment_J0=2
   !-----------------------------------------------------------------------------
   ! Starting point for the linked list of moments.
   !-----------------------------------------------------------------------------

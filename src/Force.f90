@@ -466,6 +466,8 @@ contains
   !-----------------------------------------------------------------------------
     real(KIND=dp), parameter :: rhosat=0.16_dp
 
+    character(len=200) :: Name, UpName, UpAfor
+
     !---------------------------------------------------------------------------
     !Calculating the B-s
     !---------------------------------------------------------------------------
@@ -540,7 +542,8 @@ contains
     ! most efficient way to use these parameterizations without large-scale 
     ! coding efforts.
     !---------------------------------------------------------------------------    
-    if (trim(afor) .eq. 'sly4t' ) then
+    call to_upper(afor, upafor)
+    if (trim(upafor) .eq. 'SLY4T' ) then
       B14 =   15.0_dp
       B15 = -120.0_dp
       B16 =    0.0_dp
@@ -552,7 +555,7 @@ contains
       print '(/," parameterization sly4t")'
       print '(  " override relations for EDF tensor coupling constants")'
     endif
-    if (trim(afor) .eq. 'sly4tmin' ) then
+    if (trim(upafor) .eq. 'SLY4TMIN' ) then
       B14 =   15.0_dp
       B15 = -120.0_dp
       B16 =    0.0_dp
@@ -565,7 +568,7 @@ contains
       print '(  " override relations for EDF tensor coupling constants")'
     endif
     ! coupling constants reverse-engineered, see forces.param
-    if (trim(afor) .eq. 'unedf2' ) then
+    if (trim(upafor) .eq. 'UNEDF2' ) then
       B14 = -54.4333635973721002_dp + 65.9030310445938028_dp
       B15 = -65.9030310445938028_dp * 2.0_dp
       B16 =   0.0_dp

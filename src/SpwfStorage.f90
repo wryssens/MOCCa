@@ -553,11 +553,18 @@ contains
     &          1x,'JzT',1x,'J', 3x, 'Sx' )
     !---------------------------------------------------------------------------
     ! HFB calculations
+    ! MB 18/12/16 adding the last label 'SzT' to this produces a crash at the CC
+    ! with the message:
+    !
+    ! forrtl: severe (66): output statement overflows record, unit -5, file
+    ! Internal Formatted Write
+    !
     3  format (5x,'n',3x,'<P>',3x,'<Rz>',3x,'Rhoii',2x,' Delta ', 1x, ' m ',3x,&
-    &          'E_sp', 4x,'Var(h)',4x,   &
-    &         'r^2',4x, 'Jx',4x,'JxT',4x,'Jy',4x,'JyT',4x,'Jz',4x,'JzT',3x,'J',&
-    &         3x, 'Sx' )
-    
+    &          'E_sp', 4x,'Var(h)',4x,                                         &
+    &         'r^2',4x, 'Jx',5x,'JxT',4x,'Jy',5x,'JyT',4x,'Jz',5x,'JzT',5x,'J',&
+    &         3x,'Simplex',2x,'Sx',5x,'SxT',4x,'Sy',5x,'SyT',                  &
+    &         4X,'Sz' ,5x )
+ 
     ! Headers for Canonical basis
     !---------------------------------------------------------------------------
     4  format (5x,'n',3x,'<P>',3x,'<Rz>',4x,'v^2', 5x,'E_sp', 5x,  &
@@ -653,6 +660,7 @@ contains
     JTR = 0.0_dp  ; JTI = 0.0_dp     !;  AMTIsoblock = 0.0_dp 
     
     do wave=1,nwt
+      call HFBasis(wave)%DiagSpin()
       call HFBasis(wave)%DiagAng()
       ! When canonical basis is allocated we need to recalculate the angular
       ! momentum for that basis too.

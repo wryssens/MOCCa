@@ -1436,7 +1436,7 @@ subroutine PrintAllMoments()
       !-------------------------------------------------------------------------
       type(Moment), pointer :: Current => null()
       integer               :: currentl
-      real(KIND=dp)         :: ql(2), factor, R
+      real(KIND=dp)         :: ql(2), factorN, factorZ, factorA, R
       character(len=1)      :: AX='Z',secAx1='Y', secAx2='Z'
 
     100 format (15('-'),' Electric Multipole Moments ', 16('-'))
@@ -1556,17 +1556,19 @@ subroutine PrintAllMoments()
       print 1
       nullify(Current)
       !-------------------------------------------------------------------------
-      !Printing Beta_l deformation parameters
+      ! Printing Beta_l deformation parameters
       print 2
       print 1
       nullify(Current)
       do currentl=1, MaxMoment
         R = 1.2_dp  * (neutrons + protons)**(1.0_dp/3.0_dp)
-        factor = 4.0_dp * pi /(3.0_dp * (neutrons+ protons) * R**(Currentl))
+        factorN = 4.0_dp * pi /(3.0_dp *  neutrons           * R**(Currentl))
+        factorZ = 4.0_dp * pi /(3.0_dp *            protons  * R**(Currentl))
+        factorA = 4.0_dp * pi /(3.0_dp * (neutrons+ protons) * R**(Currentl))
 
         ql = CalculateTotalQl(currentl)
         if(all(ql.eq.0.0_dp)) cycle
-        print 71, currentl,factor*ql,factor*sum(ql)
+        print 71, currentl,factorN*ql(1),factorZ*ql(2),factorA*sum(ql)
         Current => FindMoment(Currentl,0,.false.)
         if(.not.associated(Current)) cycle
       enddo
@@ -3136,13 +3138,17 @@ subroutine PrintAllMoments()
   ! a multipole moment Q_lm.
   !-----------------------------------------------------------------------------
     type(Moment), intent(inout) :: Mom
-    real(KIND=dp)               :: R, factor
+    real(KIND=dp)               :: factorN, factorZ, factorA, R
 
+    ! MB 16/12/2018: correct isospin dependence of scaling factors
     R = 1.2_dp  * (neutrons + protons)**(1.0_dp/3.0_dp)
-    factor = 4.0_dp * pi /(3.0_dp * (neutrons+ protons) * R**(Mom%l))
+    factorN = 4.0_dp * pi /(3.0_dp *  neutrons           * R**(Mom%l))
+    factorZ = 4.0_dp * pi /(3.0_dp *            protons  * R**(Mom%l))
+    factorA = 4.0_dp * pi /(3.0_dp * (neutrons+ protons) * R**(Mom%l))
 
-    Mom%Beta(1:2) = factor*Mom%Value
-    Mom%Beta(3)   = factor*sum(Mom%Value)
+    Mom%Beta(1) = factorN * Mom%Value(1)
+    Mom%Beta(2) = factorZ * Mom%Value(2)
+    Mom%Beta(3) = factorA * sum(Mom%Value)
   end subroutine CalcBeta
 
   subroutine CalculateTotalDeviation

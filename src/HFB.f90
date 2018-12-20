@@ -1063,12 +1063,33 @@ subroutine HFBFindFermiEnergyBroyden                                          &
 
       !Invert the jacobian
       if(Lipkin .or. ConstrainDispersion) then
-       invJ(1,1,:) =   Jacobian(2,2,:)/det
-       invJ(1,2,:) = - Jacobian(1,2,:)/det
-       invJ(2,1,:) = - Jacobian(2,1,:)/det
-       invJ(2,2,:) =   Jacobian(1,1,:)/det
+        invJ(1,1,:) =   Jacobian(2,2,:)/det
+        invJ(1,2,:) = - Jacobian(1,2,:)/det
+        invJ(2,1,:) = - Jacobian(2,1,:)/det
+        invJ(2,2,:) =   Jacobian(1,1,:)/det
+       !do it=1,2
+       !  if ( det(it) .lt. 0.001 ) then
+       !    print '(" WARNING det = ",i2,6es16.8)',it,det(it), &
+       !    &     Jacobian(1,1,it),Jacobian(1,2,it), &
+       !    &     Jacobian(2,1,it),Jacobian(2,2,it)
+       !  endif
+       !enddo
       else
-       invJ(1,1,:) = 1.0/det
+       ! invJ(1,1,:) = 1.0/det
+       ! MB 2018/12/02
+       ! experimental: set a ceiling to inverse Jacobian
+       ! apparently often needed when HFB pairing breaks down
+       ! in broken signature case, but sometimes also in more
+       ! elementary cr8-like calculations
+       ! MB 2018/12/17: Attention: this does not safeguard against
+       ! small negative determinants. They seem to be rarer, though
+       do it=1,2
+         if ( det(it) .lt. 0.001 ) then
+           invJ(1,1,it) = 0.99
+         else
+           invJ(1,1,it) = 1.0/det(it)
+         endif
+       enddo
       endif
 
       !Find a good direction to update in

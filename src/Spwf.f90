@@ -54,6 +54,12 @@ module WaveFunctions
     ! Expectation value of J2
     real(KIND=dp) :: J2(3)
     real(KIND=dp) :: AngQuantum
+    ! Real and imaginary parts of the expectation value of spin
+    real(KIND=dp) :: Sp(3)
+    ! Real and imaginary parts of the expectation value of the JT.
+    real(KIND=dp) :: SpTR(3), SpTI(3)
+    ! Expectation value of S2
+    real(KIND=dp) :: Sp2(3)
     !---------------------------------------------------------------------------
     ! The following integers are the quantum numbers of the wavefunction.
     ! For each of them, 0 indicates that the symmetry is broken.
@@ -176,6 +182,7 @@ module WaveFunctions
     procedure, pass, public :: CalcRMSRadius
     procedure, pass, public :: ResetWf
     procedure, pass, public :: DiagAng
+    procedure, pass, public :: DiagSpin
     !---------------------------------------------------------------------------
     !In/Output
     !---------------------------------------------------------------------------
@@ -247,6 +254,10 @@ contains
     SumWF%JTI          = 0.0_dp
     SumWF%JTR          = 0.0_dp
     SumWF%J2           = 0.0_dp
+    SumWF%Sp           = 0.0_dp
+    SumWF%SpTI         = 0.0_dp
+    SumWF%SpTR         = 0.0_dp
+    SumWF%Sp2          = 0.0_dp
   end function AddSpwf
 
   function MultiplySpwfReal(A, WF) result(AWF)
@@ -1288,6 +1299,189 @@ contains
     WF%AngQuantum= - 0.5_dp*(1.0_dp-sqrt( 1.0_dp + 4.0_dp*sum(WF%J2)))
   end subroutine DiagAng
 
+  subroutine DiagSpin(WF)
+    !---------------------------------------------------------------------------
+    ! Calculates the diagonal matrix element of the spin operators
+    ! S and ST.
+    !---------------------------------------------------------------------------
+    class(spwf)   :: WF
+    type(Spinor)  :: phi
+    real(KIND=dp) :: Sp(3),SpTR(3),SpTI(3),Sp2(3)
+    real(KIND=dp) :: l1,l2,l3,l4,r1,r2,r3,r4
+    integer       :: i
+    
+    phi = WF%GetValue()
+    
+    !---------------------------------------------------------------------------
+    ! First the matrix elements of S
+    !---------------------------------------------------------------------------
+    ! X-direction
+    if(SC) then
+        Sp(1) = 0
+    else 
+        !-----------------------------------------------------------------------
+        ! Real part of <Sx>
+        Sp(1) = 0.0_dp
+        do i=1,nx*ny*nz
+            !-------------------------------------------------------------------
+            ! Spin part
+            Sp(1) = Sp(1) + 0.5_dp * (                                         &
+            &                          Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,3,1) &
+            &                        + Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,4,1) &
+            &                        + Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,1,1) &
+            &                        + Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,2,1))
+        enddo
+    endif
+    !---------------------------------------------------------------------------
+    ! Y-direction
+    if(SC .or. TSC) then
+        Sp(2) = 0
+    else
+        Sp(2) = 0
+        !-----------------------------------------------------------------------
+        ! Real part of <Sy>
+        do i=1,nx*ny*nz
+            Sp(2) = Sp(2) + 0.5_dp * (                                         &
+            &                      Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,4,1)     &
+            &                    - Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,3,1)     &
+            &                    - Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,2,1)     &
+            &                    + Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,1,1))
+        enddo
+    endif
+    
+    !---------------------------------------------------------------------------
+    ! Z-direction
+    !---------------------------------------------------------------------------
+    ! Real part of <Sz>
+    Sp(3) = 0
+    
+    do i=1,nx*ny*nz
+            Sp(3) = Sp(3)+ 0.5_dp * (                                          &
+            &                          Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) &
+            &                        + Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
+            &                        - Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) &
+            &                        - Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
+    enddo
+    !---------------------------------------------------------------------------
+    ! Setting the values
+    WF%Sp = Sp * dv
+    
+    !---------------------------------------------------------------------------
+    ! Matrix elements of ST
+    ! X-direction
+    SpTR(1) = 0.0d0
+    do i=1,nx*ny*nz
+        SpTR(1) = SpTR(1) + 0.5_dp * (                                         &
+        &                            - Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1) &
+        &                            + Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1) &
+        &                            + Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1) &
+        &                            - Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
+    enddo
+    SpTI(1) = 0.0d0
+    if(.not. TSC) then
+     do i=1,nx*ny*nz
+        SpTI(1) = SpTI(1) + 0.5_dp * (                                         &
+        &                            - Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,2,1) &
+        &                            - Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,1,1) &
+        &                            + Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,4,1) &
+        &                            + Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,3,1))
+     enddo
+    endif
+    ! Y-direction
+    SpTI(2) = 0.0_dp
+    do i=1,nx*ny*nz
+        SpTI(2) = SpTI(2) + 0.5_dp * (                                     &
+        &                    - Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,1,1)     &
+        &                    + Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,2,1)     &
+        &                    - Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,3,1)     &
+        &                    + Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,4,1))
+    enddo
+
+    SpTR(2) = 0.0_dp
+    if(.not. TSC) then
+      do i=1,nx*ny*nz
+        ! Not implemented yet
+      enddo 
+    endif
+    
+    ! Z-direction
+    SpTR(3) = 0.0_dp
+    if(.not. SC) then
+        do i=1,nx*ny*nz
+            SpTR(3) = SpTR(3) + 0.5_dp * (                                     &
+            &                          Phi%Grid(i,1,1,1,1)*Phi%Grid(i,1,1,3,1) &
+            &                        - Phi%Grid(i,1,1,2,1)*Phi%Grid(i,1,1,4,1) &
+            &                        + Phi%Grid(i,1,1,3,1)*Phi%Grid(i,1,1,1,1) &
+            &                        - Phi%Grid(i,1,1,4,1)*Phi%Grid(i,1,1,2,1))
+        enddo
+    endif
+    SpTI(3) = 0.0_dp
+    if(.not.TSC) then
+        ! Not implemented yet.
+    endif
+    
+    ! Setting values
+    WF%SpTR = SpTR * dv
+    WF%SpTI = SpTI * dv
+    
+    !---------------------------------------------------------------------------
+    ! Quadratic
+    !---------------------------------------------------------------------------
+    ! X direction
+    Sp2(1) =0
+    do i=1,nx*ny*nz
+       ! Action of S_x to the right
+       r1 =   0.5_dp        * Phi%Grid(i,1,1,3,1)
+       r2 =   0.5_dp        * Phi%Grid(i,1,1,4,1)
+       r3 =   0.5_dp        * Phi%Grid(i,1,1,1,1)
+       r4 =   0.5_dp        * Phi%Grid(i,1,1,2,1)
+       !Action of S_x to the left
+       l1 =   0.5_dp        * Phi%Grid(i,1,1,3,1)
+       l2 =   0.5_dp        * Phi%Grid(i,1,1,4,1)
+       l3 =   0.5_dp        * Phi%Grid(i,1,1,1,1)
+       l4 =   0.5_dp        * Phi%Grid(i,1,1,2,1)
+       Sp2(1) = Sp2(1) + l1*r1 + l2*r2 + l3*r3 + l4*r4
+    enddo
+    !---------------------------------------------------------------------------
+    ! Y direction
+    Sp2(2) =0
+    do i=1,nx*ny*nz
+       ! Action of S_y to the right
+       r1 =   0.5_dp        * Phi%Grid(i,1,1,4,1)
+       r2 = - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+       r3 = - 0.5_dp        * Phi%Grid(i,1,1,2,1)
+       r4 =   0.5_dp        * Phi%Grid(i,1,1,1,1)
+       !Action of S_y to the left
+       l1 =   0.5_dp        * Phi%Grid(i,1,1,4,1)
+       l2 = - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+       l3 = - 0.5_dp        * Phi%Grid(i,1,1,2,1)
+       l4 =   0.5_dp        * Phi%Grid(i,1,1,1,1)
+       Sp2(2) = Sp2(2) + l1*r1 + l2*r2 + l3*r3 + l4*r4
+    enddo
+
+    !---------------------------------------------------------------------------
+    ! Z direction
+    Sp2(3) = 0
+    do i=1,nx*ny*nz
+        ! Action of S_z to the right
+        r1 =   0.5_dp        * Phi%Grid(i,1,1,1,1)
+        r2 =   0.5_dp        * Phi%Grid(i,1,1,2,1)
+        r3 = - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+        r4 = - 0.5_dp        * Phi%Grid(i,1,1,4,1)
+        !Action of S_z to the left
+        l1 =   0.5_dp        * Phi%Grid(i,1,1,1,1)
+        l2 =   0.5_dp        * Phi%Grid(i,1,1,2,1)
+        l3 = - 0.5_dp        * Phi%Grid(i,1,1,3,1)
+        l4 = - 0.5_dp        * Phi%Grid(i,1,1,4,1)
+        Sp2(3) = Sp2(3) + l1*r1 + l2*r2 + l3*r3 + l4*r4
+    enddo
+    
+    !---------------------------------------------------------------------------
+    ! Setting values
+    ! WF%Sp2 = Sp2 * dv
+    
+  end subroutine DiagSpin
+
   function AngularMomentum(WF2,WF1, quadratic,TRX,TRY,TRZ) result(AngMom)
     !---------------------------------------------------------------------------
     ! Optimized routine for the computation of angularmomentum.
@@ -1597,25 +1791,25 @@ contains
   !-----------------------------------------------------------------------------
   ! Hartree-Fock calculations
   !           n   <P>     <Rz>      v^2        E_sp      d2H  
-  1 format (i3,1x,f5.2,1x,f5.2, 1x, f7.4 , 1x, f8.3, 1x, es9.2,1x,9(f6.2))
+  1 format (i3,1x,f5.2,1x,f5.2, 1x, f7.4 , 1x, f8.3, 1x, es9.2,1x,15(f6.2))
   !-----------------------------------------------------------------------------
   ! BCS calculations
   !           n   <P>     <Rz>     v^2    Delta    E_sp      d2H  
-  2 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x, f8.3, 1x,es9.2, 9(f7.2))
+  2 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x, f8.3, 1x,es9.2, 15(f7.2))
   !-----------------------------------------------------------------------------
   ! HFB calculations
   !           n      <P>  <Rz>    RhoII   Delta  Partner E d2H 
-  3 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x, f8.3,1x,es9.2,9f7.3)
+  3 format (i3,1x,f5.2,1x,f5.2,1x,f7.4,1x,f7.2,1x,i3,1x, f8.3,1x,es9.2,15f7.3)
 
   class(Spwf), intent(in) :: WF
   integer, intent(in)     :: i
   integer, intent(in)     :: PrintType
   real(KIND =dp)          :: PrintOcc, J(6)
+  real(KIND =dp)          :: Sp(6)
 
   PrintOcc = WF%Occupation
   ! Don't print double the occupation number when Time-reversal is conserved.
   if(TRC) PrintOcc = PrintOcc/2
-  
 
   J(1) = WF%J(1)
   J(3) = WF%J(2)
@@ -1624,20 +1818,27 @@ contains
   J(4) = WF%JTI(2)
   J(6) = WF%JTR(3)
 
+  Sp(1) = WF%Sp(1)
+  Sp(3) = WF%Sp(2)
+  Sp(5) = WF%Sp(3)
+  Sp(2) = WF%SpTR(1)
+  Sp(4) = WF%SpTI(2)
+  Sp(6) = WF%SpTR(3)
+
   select case(PrintType)
     case(1) !HF calculations
       print 1, i,WF%ParityR,WF%SignatureR, PrintOcc,                    &
       &          WF%Energy, WF%Dispersion,WF%RMSRadius,J, WF%AngQuantum &
-      &          , wf%xsimplexr    
+      &          , wf%xsimplexr , Sp
     case(2) !BCS calculations
       print 2, i,WF%ParityR,WF%SignatureR,PrintOcc,Real(WF%Delta),     &
       &          WF%Energy,WF%Dispersion, WF%RMSRadius, J,WF%AngQuantum&
-      &          , wf%xsimplexr 
+      &          , wf%xsimplexr , Sp
         
     case(3) !HFB calculations
       print 3,   i,WF%ParityR,WF%SignatureR, PrintOcc, Real(WF%Delta), &
       &          WF%PairPartner,WF%Energy,WF%Dispersion,WF%RMSRadius,  &
-      &          J, WF%angquantum, wf%xsimplexr
+      &          J, WF%angquantum, wf%xsimplexr , Sp
     case DEFAULT
         !call stp('Undefined printtype in subroutine PrintHF.')
   end select

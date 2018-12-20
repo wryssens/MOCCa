@@ -57,10 +57,10 @@ else ifeq ($(CXX),ifort)
   #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ifeq ($(DEBUG),no)
 		#Optimal flag
-		CXXFLAGS=-O3 -assume realloc-lhs  -assume byterecl
+		CXXFLAGS=-O3 -assume realloc-lhs  -assume byterecl -no-wrap-margin
   else
 		# Debugging flag
-		CXXFLAGS=-g -traceback -check bounds -warn all -assume realloc-lhs
+		CXXFLAGS=-g -traceback -check bounds -warn all -assume realloc-lhs -no-wrap-margin
   endif
 	#Move the .mod files to their own directory
 	CXXFLAGS += -module $(MODDIR)

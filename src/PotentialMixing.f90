@@ -141,7 +141,7 @@ contains
       alpha =  aeff
       beta  =  1.0
       
-      du    = Upot-Upotold
+      du    =  Upot-Upotold
       update=  PreconditionPotential(du,alpha,beta, P,S,TS,1)
       Upot  =  UpotOld + update
       
@@ -149,13 +149,14 @@ contains
         ds = Spot - SpotOld
         ! First component
         update=  PreconditionPotential(ds(:,:,:,1,:),alpha,beta,P,-S,TS,1)
-        Spot(:,:,:,3,:)  = Spotold(:,:,:,3,:) + update
+        Spot(:,:,:,1,:)  = Spotold(:,:,:,1,:) + update
         ! Second component
-        update=  PreconditionPotential(ds(:,:,:,2,:),alpha,beta,P,-S,TS,1)
-        Spot(:,:,:,3,:)  = Spotold(:,:,:,3,:) + update
+        update=  PreconditionPotential(ds(:,:,:,2,:),alpha,beta,P,-S,TS,2)
+        Spot(:,:,:,2,:)  = Spotold(:,:,:,2,:) + update
         ! Third component
         update=  PreconditionPotential(ds(:,:,:,3,:),alpha,beta,P, S,TS,1)
         Spot(:,:,:,3,:)  = Spotold(:,:,:,3,:) + update
+
       endif
     endif    
     !---------------------------------------------------------------------------

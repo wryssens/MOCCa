@@ -128,6 +128,7 @@ module WaveFunctions
     procedure, pass, public :: GetTimeReversal
     procedure, pass, public :: GetValue
     procedure, pass, public :: GetEqp
+    procedure, pass, public :: GetPairPartner
     !---------------------------------------------------------------------------
     !Setter Procedures
     !---------------------------------------------------------------------------
@@ -553,6 +554,11 @@ contains
     class (Spwf), intent (in) :: WaveFunction
     Eqp=WaveFunction%eqp
   end function Geteqp
+
+  integer function GetPairPartner(WaveFunction) result(partner)
+    class(Spwf), intent(in) :: WaveFunction
+    partner = WaveFunction%PairPartner
+  end function GetPairPartner
 
   subroutine SetEqp(WaveFunction, eqp)
     class(Spwf), intent(inout) :: WaveFunction

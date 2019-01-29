@@ -76,6 +76,7 @@ module HFB
   ! This integer stores all of the columns we want to take from the U and V
   ! to construct Density and anomalous density matrix.
    integer, allocatable :: HFBColumns(:,:,:), oldColumns(:,:,:)
+   integer, allocatable :: NonBlockedHFBColumns(:,:,:)
   !-----------------------------------------------------------------------------
   ! Logical. Check all kinds of relations that should hold for correct HFB
   ! calculations. Only to be used for debugging purposes.
@@ -114,14 +115,37 @@ module HFB
   ! in the canonical basis.
   logical :: QPinHFBasis=.false.
   !-----------------------------------------------------------------------------
-  ! Indices of the quasiparticle states that we want to block.
-  ! NOTE THAT THESE ARE IN THE HFBasis, as this is truely the only
-  ! sensible thing to do.  The rest of the arrays take the quantum numbers. 
+  ! Indices and other properties of the quasiparticle states that we want to block.
   !-----------------------------------------------------------------------------
-  ! Only QPBlockind takes the indices of the HF wavefunctions in their 
-  ! respective parity/isospin blocks.  
-  integer,allocatable :: QPExcitations(:), QPblockind(:)
+  ! Positive QPExcitations(i) is the index of the single-particle statexs in 
+  !   the HF basis that is supposed to be the dominant components of the blocked
+  !   qp state i. For QPFilled(i) = 1 the U matrix is scanned for the largest
+  !   overlap with this HF state, for PFilled(i) = 0 the V matrix is scanned for
+  !   the largest overlap with this HF state instead. If the norm of the 
+  ! Negative QPExcitations(i) indicates that the lowest qp state
+  !   in some parity/isospin block is to be blocked.
+  ! QPParities(i) indicates the parity block in which the HF state with index
+  !   QPExcitations(i) can be found
+  ! QPIsospins(i) indicates the isospin block in which the HF state with index
+  !   QPExcitations(i) can be found
+  ! QPSignatures (seems to be obsolete?)
+  ! QPBlockind(i) is the index of the HF state QPExcitations(i) in the 
+  !   respective parity/isospin block it can be found in.
+  ! QPFilled(i) is the information if the HF state that dominates this QP is to 
+  !   be (almost) filled (QPFilled(i) = 1) or to be (almost) empty 
+  !   (QPFilled(i) = 0). The default value is 1, which is what was implied in
+  !   early code versions.
+  ! QPBlockPartnerInd(i) contains (if defined on input) the HF index of the partner
+  !   state in the HF basis that is to be blocked when the V matrix is scanned.
+  !   When not defined on input, the code scans for the HF state whose
+  !   time-reversed has the largest overlap with the HF state with index
+  !   QPExcitations(i) instead.
+  ! QPBlockLog(i)
+  !-----------------------------------------------------------------------------
+  integer,allocatable :: QPExcitations(:), QPblockind(:), QPFilled(:)
+  integer,allocatable :: QPPartners(:), QPBlockPartnerInd(:)
   integer,allocatable :: QPParities(:),QPIsospins(:), QPSignatures(:)
+  character(len=1),allocatable :: QPBlockLog(:)
   !-----------------------------------------------------------------------------
   ! Angle for the alirotation in the y-direction in degrees. Use with care.
   real(KIND=dp), allocatable :: aliyangle(:)
@@ -346,7 +370,7 @@ contains
               if(TRC .and. ( ii.ne. iii  .or. jj.ne.jjj ) .and. .not. (ii .ne. iii .and. jj .ne. jjj )) then
                 TR = .true.
               else
-                ! Should only happen when Time⁻reversal is conserved, but signature
+                ! Should only happen when Time-reversal is conserved, but signature
                 ! isn't.
                 TR = .false.
               endif
@@ -398,7 +422,7 @@ contains
               if(TRC .and. ( ii.ne. iii  .or. jj.ne.jjj ) .and. .not. (ii .ne. iii .and. jj .ne. jjj )) then
                 TR = .true.
               else
-                ! Should only happen when Time⁻reversal is conserved, but signature
+                ! Should only happen when Time-reversal is conserved, but signature
                 ! isn't.
                 TR = .false.
               endif
@@ -425,7 +449,7 @@ contains
   subroutine HFBGaps(Delta,DeltaLN,PairingField,PairingFieldLN,Gaps,ConstantGap)
     !---------------------------------------------------------------------------
     ! Subroutine that computes the Delta_{i j} for the HFB model.
-    ! The formula (see Ring & Shuck, page 254 eq. (7.41))
+    ! The formula (see Ring & Schuck, page 254 eq. (7.41))
     ! is the following:
     !
     ! Delta_{i, j} = \int dr <i,j | Delta(r) | r >
@@ -505,7 +529,7 @@ contains
             if(TRC .and. ( ii.ne. iii  .or. jj.ne.jjj ) .and. .not. (ii .ne. iii .and. jj .ne. jjj )) then
               TR = .true.
             else
-              ! Should only happen when Time⁻reversal is conserved, but signature
+              ! Should only happen when Time-reversal is conserved, but signature
               ! isn't.
               TR = .false.
             endif
@@ -514,13 +538,13 @@ contains
             ! Don't forget the complex conjugate here!
             Delta(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*                        &
             &            (sum(   DBLE(Temp)  * DBLE( PairingField(:,:,:,it)))  &
-            &            +sum(   AIMAG(Temp) * AIMAG(PairingField(:,:,:,it))))
+            &            +sum(   DIMAG(Temp) * DIMAG(PairingField(:,:,:,it))))
             !Delta is antisymmetric
             Delta(j,i,P,it) = - Delta(i,j,P,it)
             if(allocated(DeltaLN)) then
                 DeltaLN(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*                  &
                 &   (sum(   DBLE(TEMP) * DBLE (PairingFieldLN(:,:,:,it)))      &
-                &   +sum(   AIMAG(TEMP)* aimag(PairingFieldLN(:,:,:,it))))
+                &   +sum(   DIMAG(TEMP)* DIMAG(PairingFieldLN(:,:,:,it))))
                 DeltaLN(j,i,P,it) =  - DeltaLN(i,j,P,it)
             endif
           enddo
@@ -533,7 +557,7 @@ contains
   subroutine HFBGaps_TIMEREV(Delta,DeltaLN,PairingField,PairingFieldLN,Gaps,ConstantGap)
     !---------------------------------------------------------------------------
     ! Subroutine that computes the Delta_{i j} for the HFB model.
-    ! The formula (see Ring & Shuck, page 254 eq. (7.41))
+    ! The formula (see Ring & Schuck, page 254 eq. (7.41))
     ! is the following:
     !
     ! Delta_{i, j} = \int dr <i,j | Delta(r) | r >
@@ -608,19 +632,113 @@ contains
             ! Only valid when TimeSimplex is conserved!
             Delta(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*                    &
             &            (sum(   TempReal * DBLE(PairingField(:,:,:,it)))  &
-            &            -sum(   TempIm   * AIMAG(PairingField(:,:,:,it))))
+            &            -sum(   TempIm   * DIMAG(PairingField(:,:,:,it))))
             Delta(j,i,P,it) = - Delta(i,j,P,it)
 
             !Only valid when TimeSimplex is conserved
             DeltaLN(i,j,P,it) =   dv*Cutoff(1)*Cutoff(2)*              &
             &   (sum(   TempReal * DBLE (PairingFieldLN(:,:,:,it)))    &
-            &   -sum(   TempIm   * aimag(PairingFieldLN(:,:,:,it))))
+            &   -sum(   TempIm   * DIMAG(PairingFieldLN(:,:,:,it))))
             DeltaLN(j,i,P,it) =  - DeltaLN(i,j,P,it)
           enddo
         enddo
       enddo
     enddo
   end subroutine HFBGaps_TIMEREV
+
+  subroutine HFBoverlapT2(overlapT2)
+    !---------------------------------------------------------------------------
+    ! Subroutine that computes overlaps between a state and the time-reversed
+    ! of another state in order to identify partner states in the HF basis.
+    ! Uses the same storage scheme as Delta(:,:,:,:) in order to be usable
+    ! in the same way.
+    !---------------------------------------------------------------------------
+    ! Note that < psi | T phi > =   < T^+ T psi | T phi >
+    !                           =   < T^+ T phi | T^+ psi >
+    !                           =   < phi | T^+ psi >
+    !                           = - < phi | T psi >
+    ! is a complex skew-symmetric matrix (use relations from appendix A of 
+    ! my thesis). For the purpose of this routine, however, it is sufficient 
+    ! to calculate the real matrix | < psi | T phi > |^2.
+    !---------------------------------------------------------------------------
+    ! NOTE THAT THIS ROUTINE IS NOT READY FOR TIME-SIMPLEX BREAKING AS DELTA
+    ! CAN BE COMPLEX IN THAT CASE!
+    !---------------------------------------------------------------------------
+    integer                                     :: i, ii , iii , j , jj , jjj
+    integer                                     :: it , P
+    integer                                     :: sig1, sig2
+    integer                                     :: minj, maxj
+    real(KIND=dp)                               :: reo , imo
+    real(KIND=dp), allocatable,intent(inout)    :: overlapT2(:,:,:,:)
+    logical                                     :: TR
+
+    if(.not.allocated(overlapT2)) allocate ( overlapT2(HFBSize,HFBSize,2,2) )
+
+    overlapT2 = 0.0_dp
+
+    do it=1,Iindex
+      do P=1,Pindex
+        do i=1,Blocksizes(P,it)
+          ii   = Blockindices(i,P,it)
+          iii  = mod(ii-1,nwt)+1
+          sig1 = HFBasis(iii)%GetSignature()
+          if(TRC .and. ii.ne.iii) then
+            sig1 = - sig1
+          endif
+
+          if(.not. BCSinHFB(it)) then
+            ! overlapT is antisymmetric, only compute the upper-diagonal part.
+            ! (and thus overlapT_{ii} = 0)
+            minj=i+1; maxj=Blocksizes(P,it)
+          else
+            ! only compute the 'diagonal' part of overlapT2_{i, ibar}
+            if(Blockindices(i,P,it).le.Blocksizes(P,it)/2) then
+                minj = i + Blocksizes(P,it)/2 ; maxj = i + Blocksizes(P,it)/2
+            else
+                minj = i - Blocksizes(P,it)/2 ; maxj = i - Blocksizes(P,it)/2
+            endif
+          endif
+          do j=minj,maxj
+            jj   = Blockindices(j,P,it)
+            jjj  = mod(jj-1,nwt)+1
+            sig2 = HFBasis(jjj)%GetSignature()
+            if(TRC .and. jj.ne.jjj) sig2 = -sig2
+            !-------------------------------------------------------------------
+            !Selection on quantum numbers:
+            ! only explicitly on signature, parity and isospin are taken care of
+            ! by the loop structure
+            if(sig1.ne.-sig2)  cycle
+
+            if(TRC .and. ( ii.ne. iii  .or. jj.ne.jjj ) .and. & 
+              & .not. (ii .ne. iii .and. jj .ne. jjj )) then
+              TR = .true.
+            else
+              ! Should only happen when Time-reversal is conserved,
+              ! but signature isn't.
+              TR = .false.
+            endif
+            !-------------------------------------------------------------------
+            reo = InproductSpinorReal(HFBasis(iii)%GetValue(),  &
+              &                       TimeReverse(HFBasis(jjj)%GetValue()))
+            imo = 0.0_dp
+            if(.not.TSC) then
+            imo = InproductSpinorImaginary(HFBasis(iii)%GetValue(), &
+              &                            TimeReverse(HFBasis(jjj)%GetValue()))
+            endif
+            overlapT2(i,j,P,it) = reo*reo + imo*imo
+            ! use skew-symmetry of this overlap to determine the other half
+            overlapT2(j,i,P,it) = overlapT2(i,j,P,it)
+            ! if ( iii .eq. 265 .or. iii .eq. 345 .or. &
+            !   &  jjj .eq. 265 .or. jjj .eq. 345 ) then
+            ! print '(" overlapT : ",4i4,3f13.8)',it,P,i,j,reo,imo, &
+            !   &   overlapT2(i,j,P,it)
+            ! endif
+          enddo
+        enddo
+      enddo
+    enddo
+    !---------------------------------------------------------------------------
+  end subroutine HFBoverlapT2
 
   function HFBNumberofParticles_ordinary(Lambda, Delta, LNLambda) result(N)
     !---------------------------------------------------------------------
@@ -679,6 +797,7 @@ contains
             !Everything is in order, do nothing.
           else
             ! Something changed, switch the lowest qp in the block. 
+            print '(" Warning: HFBNumberofParticles_ordinary : switch lowest qp")'
             HFBColumns(minind(P,it),P,it) = 2*S-HFBColumns(minind(P,it),P,it)+1
           endif
         enddo
@@ -959,8 +1078,8 @@ subroutine HFBFindFermiEnergyBroyden                                          &
   !-----------------------------------------------------------------------------
   1 format('Attention, unconverged Fermi solver.'/, &
   &        'Iterations : ', i5,                  /, &
-  &        'Particles  : ', 2f12.8)
-  2 format('Lipkin parameter deviation: ', 2f12.8)
+  &        'Particles  : ', 2f15.8)
+  2 format('Lipkin parameter deviation: ', 2f15.8)
 
 
   real(KIND=dp), intent(inout)              :: Fermi(2), LnLambda(2)
@@ -999,11 +1118,19 @@ subroutine HFBFindFermiEnergyBroyden                                          &
 
   !-----------------------------------------------------------------------------
   ! Block some quasiparticles
-  if(allocated(qpexcitations)) then
-    call      BlockQuasiParticles(Fermi)
-  endif
+  ! don't block qp first time round, this can cause many problems. 
+  ! - During the very first call in a program run the U and V cannot be trusted.
+  ! - I'm suspicious that during the first call in a later mean-field iteration, 
+  !   the HFBColumns indexation is the blocked one from the previous iteration, but I have 
+  !   not checked in detail. In any event, it sometimes happens that the blocked
+  !   HF state cannot be found in neither the U nor V columns.
+  !   Commenting the call out makes the blocking more stable.
+  ! if(allocated(qpexcitations)) then
+  !   call      BlockQuasiParticles(Fermi)
+  ! endif
   !-----------------------------------------------------------------------------
   ! Store old U and V for future reference
+  ! MB 19/01/22 it seems that OldU and OldV are never used in the Broyden solver
   OldU        = U ; OldV = V
   OldColumns  = HFBColumns
   
@@ -1076,15 +1203,16 @@ subroutine HFBFindFermiEnergyBroyden                                          &
        !enddo
       else
        ! invJ(1,1,:) = 1.0/det
-       ! MB 2018/12/02
        ! experimental: set a ceiling to inverse Jacobian
        ! apparently often needed when HFB pairing breaks down
        ! in broken signature case, but sometimes also in more
        ! elementary cr8-like calculations
-       ! MB 2018/12/17: Attention: this does not safeguard against
-       ! small negative determinants. They seem to be rarer, though
+       ! Attention: this does not safeguard against small negative 
+       ! determinants. They seem to be rarer, though
        do it=1,2
          if ( det(it) .lt. 0.001 ) then
+      !    print '("HFBFindFermiEnergyBroyden: det",i2,es16.8)', &
+      !    & it,det(it)
            invJ(1,1,it) = 0.99
          else
            invJ(1,1,it) = 1.0/det(it)
@@ -2788,28 +2916,42 @@ subroutine InsertionSortQPEnergies
 
     integer, intent(in) :: Block
     integer             :: io
-    integer, allocatable :: Blocked(:)
+    integer, allocatable :: Blocked(:), Filled(:) , Partners(:)
     integer, allocatable :: Temp(:)
 
-    Namelist /Blocking/ Blocked, aliyangle
+    Namelist /Blocking/ Blocked, Filled, Partners, aliyangle
 
     io = 0
-    allocate(QPExcitations(Block)) ; QPExcitations=0
-    allocate(aliyangle(Block))     ; aliyangle=0
+    allocate(QPExcitations(Block)) ; QPExcitations = 0
+    allocate(QPFilled(Block))      ; QPFilled      = 1
+    allocate(QPPartners(Block))    ; QPPartners    = 0
+    allocate(aliyangle(Block))     ; aliyangle     = 0
 
     ! Read the namelist
     allocate(Blocked(block))
+    allocate(Filled(block))
+    allocate(Partners(block))
+    Partners = 0
+    Filled   = 1
     read(unit=*,NML=Blocking, iostat=io)
     if(io.ne.0) call stp('Error on reading blocked particle indices', 'Iostat', io)
-    
+ 
     !---------------------------------------------------------------------------
     ! Change the aliyangle to radians
     aliyangle = aliyangle/180*pi
     
     if(any(Blocked.le.-5) .or. any(Blocked.gt.nwt)) then
-        call stp('Invalid quasiparticle index.')
+       call stp('Invalid quasiparticle index.')
     endif
-    QPexcitations=blocked
+    if(any(Filled .lt. 0) .or. any(Filled .gt. 1)) then
+       call stp('Invalid filling of blocked quasiparticle.')
+    endif
+    if(any(Partners.le.-1) .or. any(Partners.gt.nwt)) then
+       call stp('Invalid quasiparticle partner index.')
+    endif
+    QPExcitations = Blocked
+    QPFilled      = Filled 
+    QPPartners    = Partners
   end subroutine ReadBlockingInfo
 
   subroutine QPindices(Fermi)
@@ -2819,7 +2961,7 @@ subroutine InsertionSortQPEnergies
     !
     !---------------------------------------------------------------------------
 
-    integer :: i, N, P,it,j, index, S, tempind, refIt, refP
+    integer :: i, N, P,it,j, index, indexc , fill , S, tempind, refIt, refP
     real(KIND=dp) :: diffe
     real(KIND=dp), intent(in) :: Fermi(2)
 
@@ -2830,14 +2972,15 @@ subroutine InsertionSortQPEnergies
 
     N = size(QPexcitations)
 
-    allocate(QPParities(N))    ; QPParities   =0
-    allocate(QPIsospins(N))    ; QPIsospins   =0
-    allocate(QPSignatures(N))  ; QPSignatures =0
-    allocate(QPblockind(N))    ; QPBlockind = 0.0_dp
-
+    allocate(QPParities(N))        ; QPParities        = 0
+    allocate(QPIsospins(N))        ; QPIsospins        = 0
+    allocate(QPSignatures(N))      ; QPSignatures      = 0
+    allocate(QPBlockInd(N))        ; QPBlockInd        = 0
+    allocate(QPBlockPartnerInd(N)) ; QPBlockPartnerInd = 0
+    allocate(QPBlockLog(N))        ; QPBlockLog        = 'x'
     do i=1,N
         index = QPExcitations(i)
-        
+ 
         !-----------------------------------------------------------------------
         ! Checking for special values of the blocking
         !
@@ -2885,6 +3028,7 @@ subroutine InsertionSortQPEnergies
             enddo            
             index            = tempind
             QPExcitations(i) = index 
+            QPFilled(i)      = 1
         endif
 
         ! Getting the Quantum Numbers
@@ -2899,14 +3043,17 @@ subroutine InsertionSortQPEnergies
         HFBNumberparity(P,it) = -1 * HFBNumberparity(P,it)
     enddo
 
-    index = 0
+    index  = 0
+    indexc = 0
     do i=1,N
         P = QPParities(i)
         it= QPIsospins(i)
         do j=1,blocksizes(P,it)
-          if(blockindices(j,P,it) .eq. QPExcitations(i) ) index = j
+          if ( Blockindices(j,P,it) .eq. QPExcitations(i) ) index  = j
+          if ( Blockindices(j,P,it) .eq. QPPartners(i)    ) indexc = j
         enddo
-        QPBlockind(i) = index
+        QPBlockind(i)        = index
+        QPBlockPartnerInd(i) = indexc
     enddo
   end subroutine QPindices
 
@@ -2919,11 +3066,10 @@ subroutine PrintBlocking
     integer :: N, i
 
     1 format('Blocking parameters')
-    2 format(2x,'  Index     Parity     Isospin      Signature')
-    3 format(2x,'---------------------------------------------')
-    4 format(i7, 5x, i6, 5x, i8,5x,i8)
-
-    5 format(2x,'---------------------------------------------')
+    2 format('   Index  Filled  Partner  Parity Isospin Signature')
+    3 format(2x,'-------------------------------------------------')
+    4 format(i7, 2x, i6,2x,i6,2x,i6,2x,i6,2x,i6)
+    5 format(2x,'-------------------------------------------------')
     6 format(2x,'Number parities')
     7 format(2x,'Parity',8x,' -',11x,' +')
     8 format(2x,'Neutron',7x,i2,11x,i2)
@@ -2940,7 +3086,7 @@ subroutine PrintBlocking
     print 2
     print 3
     do i=1,N
-      print 4, QPExcitations(i), 2*QPParities(i)-3,2*QPIsospins(i)-3, QPSignatures(i)
+      print 4, QPExcitations(i), QPFilled(i), QPPartners(i), 2*QPParities(i)-3,2*QPIsospins(i)-3, QPSignatures(i)
     enddo
     print 5
     print *
@@ -2983,44 +3129,259 @@ subroutine PrintBlocking
     !
     ! U^a_{ij} = U_{ij}   V^a_{ij} = V_{ij} if j!=a
     ! U^a_{ia} = V^*_{ia} V^a_{ij} = U^*_{ia}
-    !
     !---------------------------------------------------------------------------
     ! The identification of the quasiparticle state is rather intuitive, we just
     ! (de)excite the column in the HFB matrix which has the largest overlap
     ! with a given HF index.
     !---------------------------------------------------------------------------
-
     integer          :: N, i, index , j, P, it, C, K, loc(1), CT, B, D, DT
+    integer          :: icc, indexc , ii , iii , jj , numnegE , fill
     complex(KIND=dp) :: TempU(HFBSize), TempV(HFBSize)
-    real(KIND=dp)    :: TempU2, Overlap, theta
+    real(KIND=dp)    :: TempU2 , TempV2 , Overlap, theta , maxEq , minEq
+    real(KIND=dp)    :: TempU2c, TempV2c, normU , normV
     real(KIND=dp), intent(in) :: Fermi(2)
 
     N = size(QPExcitations)
-    
-    
+
     if(.not.allocated(QPBlockind)) call QPindices(Fermi)
+  
+    ! call checkUandVColumns(HFBcolumns)
+    ! save non-manipulated U and V matrices before blocking for later diagnostic use
+    if (.not.allocated(NonBlockedHFBColumns)) allocate( NonBlockedHFBColumns(2*HFBSize,2,2) )
+    NonBlockedHFBColumns = HFBColumns
+
+   ! do it=1,Iindex
+   ! do P =1,Pindex
+       ! finds negative Eqp for states with indices autside the range of
+       ! HFBColumns(j,P,it) inside [1 <= j <= blocksizes(P,it)
+       ! minEq = minval(QuasiEnergies(:,P,it))
+       ! loc   = minloc(QuasiEnergies(:,P,it))
+       ! if ( minEq .lt. -0.000001_dp ) then
+       ! do j=1,blocksizes(P,it)
+       !     normU = 0.0_dp 
+       !     normV = 0.0_dp 
+       !     do jj=1,blocksizes(P,it)
+       !       normU = normU + abs(U(jj,HFBColumns(j,P,it),P,it))**2
+       !       normV = normV + abs(V(jj,HFBColumns(j,P,it),P,it))**2
+       !     enddo
+       !     print '(" QP basis read",2i2,3i4,f12.7,2e15.5)',it,P,j,     &
+       !     &   blocksizes(P,it),                       &
+       !     &   HFBColumns(j,P,it),                     &
+       !     &   QuasiEnergies(HFBColumns(j,P,it),P,it), &
+       !     &   normU,normV
+       ! enddo
+       ! endif
+     ! if ( minEq .lt. -0.000001_dp ) then
+     !   print '(/," Warning: negative E_qp on entry for it = ",i2," P = ",i2, & 
+     !     &       " in BlockQuasiParticles",i4,1f12.4,/)',it,P,loc(1),minEq
+     ! endif
+   ! enddo
+   ! enddo
+
+   !  do it=1,Iindex
+   !  do P =1,Pindex
+   !    do i=1,blocksizes(P,it)
+   !      print '(" test indices ",8i4)',it,P,i, &
+   !      &   blocksizes(P,it),                  &
+   !      &   HFBColumns(i,P,it)
+   !    enddo
+   !  enddo
+   !  enddo
+
     do i=1,N
-        index = QPblockind(i)
-        P     = QPParities(i)
-        it    = QPIsospins(i)
+        index  = QPblockind(i)
+        P      = QPParities(i)
+        it     = QPIsospins(i)
+        fill   = QPfilled(i)
+        ! determine index of partner state in HF basis.
+        ! blockindices(index,P,it) is the index of the blocked state in the HF
+        ! basis. In principle, the index should remain the same throughout the
+        ! iterations, but for the moment it is assumed that it is not (which 
+        ! also has been the case for the determination of the partner level 
+        ! based on Delta elsewhere in the code in the past)
+        ii  = Blockindices(index,P,it)
+        iii = mod(ii-1,nwt)+1
+
+        indexc = 0
+        if ( QPPartners(i) .eq. 0 ) then  ! partner level not defined in data
+          icc  = HFBasis(iii)%GetPairPartner()
+          do j=1,blocksizes(P,it)
+            ! print '(" BlockQuasiParticles : ",10i4)', & 
+            !    &         i,index,ii,iii,ic,j,Blockindices(j,P,it)
+            if ( Blockindices(j,P,it) .eq. icc ) indexc = j
+          enddo
+          ! print '(" index indexc = ",8i5)',i,iii,ic,index,indexc
+        else
+          indexc = QPBlockPartnerInd(i)  
+          ! print '(" index indexc = ",8i5)',i,index,indexc
+        endif
+        if (indexc .eq.0) print '(" WARNING: BlockQuasiParticles : indexc = 0")' 
 
         !----------------------------------------------------------------------
         ! Identify the quasiparticle excitation
-        loc = 0
-        TempU2 = 0.0_dp ; Overlap = 0.0_dp
+        !----------------------------------------------------------------------
+        ! Note: During the first call of pairing in a MOCCa run, the 
+        ! E_qp are zero and this routine should not be called as the U and V
+        ! matrices and/or their indeation might not be realistic yet. The
+        ! following test will (hopefully) identify cases where this is done.
+        maxEq = maxval(abs(QuasiEnergies(:,P,it)))
+        ! print '(" maxEq = ",1e12.4)',maxEq
+        if ( maxEq < 0.000001_dp ) then
+          print '(/," Warning: all E_qp are zero for it = ",i2," P = ",i2, & 
+          &       " in BlockQuasiParticles",/)',it,P
+        endif
 
         !----------------------------------------------------------------------
         ! Search among the currently occupied columns for which qp
-        ! has the biggest overlap with the asked-for HF state.
+        ! has the biggest overlap with the asked-for HF state. 
+        !----------------------------------------------------------------------
+        ! Defining :
+        !  b   HF state to be filled in the end with <jz> approx K
+        ! -b   HF state with largest < b | T | -b > when scanning the matrix
+        !      for constant b
+        !  B   HF state to be empty in the end because it has same parity and similar
+        !       <j^2> as b and <jz> approx -K
+        ! -B   HF state with largest < B | T | -B > when scanning the matrix
+        !      for constant b
+        !
+        ! In many cases, one has B = -b and -B = b, but for strong time-reversal
+        ! breaking and/or very different mixing of HF states of opposite
+        ! signature, this is not always the case.
+        ! 
+        ! b and B have to be specified by the user on input, where defining the 
+        ! partner state B is optional (but highly recommended). When B is not 
+        ! read from input, the code uses -b instead for the partner state.
+        ! 
+        ! If the norm of the U component is basically zero, U cannot be scanned
+        ! for b and V has to be scanned instead. 
+        !
+        ! When -b is different from B, scanning V_ij for -b will produce the wrong
+        ! blocked (i.e. occupied HF) state. 
+        !
+        ! Because of these two problems, the code has to distinguish four
+        ! different possibilities to identify the qp state to be blocked.
+        !
+        ! To find the dominant HF state when the qp states are highly mixed,
+        ! the overlap is renormalized with the norm of the component of the 
+        ! qp state that is scanned.
+        ! 
+        ! 1) blocking the qp with the aim of having a filled blocked HF state.
+        !
+        ! If |U_mu^2| = int d^3r U_mu^*(r) U_mu(r) > 0.1, the code scans for 
+        ! the largest absolute value of 
+        !
+        !        int d^3r psi^*_b(r) U_mu(r) / sqrt(|U_mu^2|)
+        !
+        ! by searching for the largest square of this expression. In the
+        ! BCS-limit of HFB, where U_mu(r) = U_mumu psi_mu(r), the necessity for 
+        ! the renormalization is evident. In this limit it is also evident
+        ! why the qp state to be blocked cannot identified anymore in the 
+        ! u_mu -> 0 limit. In this case, one has to scan the V_mu(r) component.
+        ! Defining |V_mu^2| = int d^3r V_mu^*(r) V_mu(r) = 1 - |U_mu^2| (for
+        ! normalized qp states), for |V_mu^2| = 1 - |U_mu^2| > 0.9, the 
+        ! code scans the V_mu(r) for the largest absolute value of
+        !
+        !       int d^3r psi^*_B(r)  V_mu(r) / sqrt(|V_mu^2|)
+        !
+        !  if a partner level is specified on input or
+        ! 
+        !       int d^3r psi^*_-b(r) V_mu(r) / sqrt(|V_mu^2|)
+        !
+        ! if there is not by searching for the largest square of this expression. 
+        ! In the BCS limit of HFB, where V_mu(r) = V_mu-mu psi_-mu(r), it is
+        ! evident that one has to scan for the conjugate HF state -j. To this
+        ! aim, the identification of conjugate partners in the HF basis
+        ! has been updated to a scheme that also works in the no-pairing limit.
+        ! 
+        ! 2) blocking the qp with the aim of having an empty blocked HF state.
+        !
+        ! If |U_mu^2| = int d^3r U_mu^*(r) U_mu(r) > 0.1, the code scans for 
+        ! the largest absolute value of 
+        !
+        !        int d^3r psi^*_B(r) U_mu(r) / sqrt(|U_mu^2|)
+        !
+        !  if a partner level is specified on input or
+        !
+        !        int d^3r psi^*_-b(r) U_mu(r) / sqrt(|U_mu^2|)
+        !
+        ! if there is not by searching for the largest square of this expression. 
+        ! For |V_mu^2| = 1 - |U_mu^2| > 0.9, the code scans the V_mu(r) for 
+        ! the largest absolute value of
+        !
+        !        int d^3r psi^*_b(r) V_mu(r) / sqrt(|V_mu^2|)
+        !
+        ! by searching for the largest square of this expression.
+        !----------------------------------------------------------------------
+        loc     = 0
+        Overlap = 0.0_dp 
+        numnegE = 0 
         do j=1,blocksizes(P,it)
-            TempU2 = DBLE(U(index,HFBColumns(j,P,it),P,it)**2)
-            if( TempU2 .gt. Overlap) then
-                loc = HFBColumns(j,P,it)
-                Overlap = TempU2
+          normU = 0.0_dp 
+          do jj=1,blocksizes(P,it)
+            normU = normU + abs(U(jj,HFBColumns(j,P,it),P,it))**2
+          enddo
+          normV = abs(1.0_dp - normU) ! abs() to save the day in case it's -eps
+          normU = sqrt(normU)
+          normV = sqrt(normV)
+          if ( fill .eq. 1 ) then
+            TempU2 = DBLE(U(index ,HFBColumns(j,P,it),P,it)**2)
+            TempV2 = DBLE(V(indexc,HFBColumns(j,P,it),P,it)**2)
+          else
+            TempU2 = DBLE(U(indexc,HFBColumns(j,P,it),P,it)**2)
+            TempV2 = DBLE(V(index ,HFBColumns(j,P,it),P,it)**2)
+          endif
+          if ( normU*normU .gt. 0.1_dp ) then
+            if( TempU2/normU .gt. Overlap) then
+               loc(1) = HFBColumns(j,P,it)
+               Overlap = TempU2/normU
+               QPBlockLog(i) = 'U'
             endif
+          ! if ( TempU2/normU .gt. 0.02_dp ) then
+          !   print '(" Block U ",10i4,1f7.2,6e12.4)',              &
+          !   & i,it,P,index,indexc,                                &
+          !   & Blockindices(index,P,it),Blockindices(indexc,P,it), &
+          !   & j,HFBColumns(j,P,it),loc(1),                        &
+          !   & QuasiEnergies(HFBColumns(j,P,it),P,it),             &
+          !   & normU*normU,TempU2,TempV2,TempU2/normU,             &
+          !   & Overlap 
+          ! endif
+          else
+            if( TempV2/normV .gt. Overlap) then
+               loc(1) = HFBColumns(j,P,it)
+               Overlap = TempV2/normV
+               QPBlockLog(i) = 'V'
+            endif
+          ! if ( TempV2/normV  .gt. 0.02_dp ) then
+          !   print '(" Block V ",10i4,1f7.2,6e12.4)',              &
+          !   & i,it,P,index,indexc,                                &
+          !   & Blockindices(index,P,it),Blockindices(indexc,P,it), &
+          !   & j,HFBColumns(j,P,it),loc(1),                        &
+          !   & QuasiEnergies(HFBColumns(j,P,it),P,it),             &
+          !   & normU*normU,TempU2,TempV2,TempV2/normV,             &
+          !   & Overlap 
+          ! endif
+          endif 
+          if (Overlap .gt. 0.51_dp ) exit ! other overlaps cannot be larger
         enddo
-        C   = loc(1)
-        
+        ! loc(1) might be in doubled HFB space ?
+        ! MB 19/01/21 - note : the warning is for some calculations printed
+        ! at each iteration, although the code correctly converges.
+        if ( numnegE .gt. 1 ) then
+           print '(/," BlockQuasiParticles : it = ",i2," P = ",i2)',it,P
+           print '(  " there are ",i5," qp states with negative energy")',numnegE
+        endif
+        if ( loc(1).lt.1 .or. loc(1).gt.2*blocksizes(P,it) )  then
+           print '(/," BlockQuasiParticles : it = ",i2," P = ",i2)',it,P 
+           print '(  " loc(1) = ",i8," not in blocksizes(P,it) = ",i5)', &
+           &  loc(1),blocksizes(P,it)
+           print '(/," Warning: BlockQuasiParticles cannot identify blocked qp state",/)'
+        endif
+        ! NOTE: loc(1) might be 0 if the qp state to be blocked has already
+        ! negative qp energy (as in this case U has to be scanned for indexc
+        ! and V for index). This does not cause harm as the check for the
+        ! swap of indices made below does not find a column to exchange for C=0.
+        C = loc(1)
+ 
         !-----------------------------------------------------------------------
         ! If an alirotation is requested, find the time-reversed partner.
         if(aliyangle(i).ne. 0.0_dp) then
@@ -3057,15 +3418,219 @@ subroutine PrintBlocking
         endif
         !-----------------------------------------------------------------------
         ! When found, exchange it with its conjugate partner.
+        !-----------------------------------------------------------------------
+        ! MB: not exactly "exchanged", which would require exchanging the 
+        ! indices both ways.
+        ! print '(" C = ",i4)',C
         do j=1,blocksizes(P,it)
             if(HFBColumns(j,P,it) .eq. C) then
                 HFBColumns(j,P,it) = 2*blocksizes(P,it) - HFBColumns(j,P,it) + 1
             endif
         enddo
     enddo
-!    call checkUandVColumns(HFBcolumns)
-!    stop
+  !  call checkUandVColumns(HFBcolumns)
+  !  stop
   end subroutine BlockQuasiParticles
+
+  subroutine DecomposeBlockedQuasiParticles()
+  !-----------------------------------------------------------------------------
+  ! print decomposition of blocked QP with its dominant HF components
+  ! HFBColumns(i,P,it) translates block indexing to global indexing
+  !-----------------------------------------------------------------------------
+    integer        :: i, P, it, j , jHF , jHFc
+    integer        :: ii , iii , jj , ifound , N , fill , icc
+    integer        :: loc , index , indexc , domU(1), domV(1)
+    integer        :: domUHF,domVHF,domUHFc,domVHFc
+    real(KIND=dp)  :: normU , normV
+    real(KIND=dp)  :: overlapU , overlapV , overlapUn , overlapVn
+    real(KIND=dp)  :: TempU2 , TempV2 , overlap
+
+  2 format(/,"   Index  Filled  Partner  Parity Isospin Signature LastScan")
+  3 format(2x,"-----------------------------------------------------------")
+  4 format(i7, 2x, i6,2x,i6,2x,i6,2x,i6,2x,i6,4x,a6)
+  5 format(2x,"-----------------------------------------------------------")
+  9 format(/,"  HFU : dominant HF state in U component", &
+       &   /,"  HFV : dominant HF state in V component", &
+       &   /,"  HFUc: HF state with largest overlap with time-reversed of HFU", &
+       &   /,"  HFVc: HF state with largest overlap with time-reversed of HFV")
+ 10 format(/,4x,"it  P  iqp    E_qp   |U|^2    |V|^2   HFU  HFV HFUc HFVc", &
+       &     "  |<HFU|>|^2 |<HF|V|>|^2",                                    &
+       &   /,2x,82("-"))
+ 11 format(  " ")
+ 20 format(/,"  Decomposition of QP states with negative QP energy",      &
+       &   //,4x," it  P  iqp    E_qp  jHF jHFc   |<HF|U>|^2 |<HF|V>|^2"  &
+       &    /,2x,56("-"))
+ 30 format(/,"  How the blocked qp states were selected from non-manipulated U and V",  &
+       &  //,4x," comp it  P  HFb HFbc fill  iqp    E_qp    |<V|V>|^2 ! "               &
+       &        "|<HFb|comp>|^2/|<comp|comp>|"                                          &
+       &    /,3x,84("-"))
+
+    N = size(QPExcitations)
+
+    !--------------------------------------------------------------------------------
+    ! repeat read data on blocking
+    if ( N .gt. 0 ) then
+      print 2
+      print 3
+      do i=1,N
+        print 4,QPExcitations(i),QPFilled(i),QPPartners(i),           &
+           &    2*QPParities(i)-3,2*QPIsospins(i)-3, QPSignatures(i), &
+           &    QPBlockLog(i)
+      enddo
+      print 5
+    endif
+    !--------------------------------------------------------------------------------
+    ! print diagnostic table with index information of dominant HF component in
+    ! the U and V matrices before blocking
+    ! This basically repeats the scan for qp states in BlockQuasiParticles()
+    ifound = 0
+    do i=1,N
+        index  = QPblockind(i)
+        P      = QPParities(i)
+        it     = QPIsospins(i)
+        fill   = QPfilled  (i)
+        ii     = Blockindices(index,P,it)
+        iii    = mod(ii-1,nwt)+1
+        indexc = 0
+        if ( QPPartners(i) .eq. 0 ) then  ! partner level not defined in data
+                                          ! guess from < iiiHF | T | jjjHF >
+          icc  = HFBasis(iii)%GetPairPartner()
+          do j=1,blocksizes(P,it)
+            if ( Blockindices(j,P,it) .eq. icc ) indexc = j
+          enddo
+          ! print '(" index indexc = ",8i5)',i,iii,ic,index,indexc
+        else                               ! partner level read from data
+          indexc = QPBlockPartnerInd(i)
+          ! print '(" index indexc = ",8i5)',i,index,indexc
+        endif
+        if (indexc .eq.0) print '(" WARNING: indexc = 0")'
+
+        ! Identify the quasiparticle excitation
+        do j=1,blocksizes(P,it)
+          normU = 0.0_dp
+          do jj=1,blocksizes(P,it)
+            normU = normU + abs(U(jj,NonBlockedHFBColumns(j,P,it),P,it))**2
+          enddo
+          normV = abs(1.0_dp - normU) ! abs() to save the day in case it's -eps
+          normU = sqrt(normU)
+          normV = sqrt(normV)
+          if ( fill .eq. 1 ) then
+            TempU2 = DBLE(U(index ,NonBlockedHFBColumns(j,P,it),P,it)**2)
+            TempV2 = DBLE(V(indexc,NonBlockedHFBColumns(j,P,it),P,it)**2)
+          else
+            TempU2 = DBLE(U(indexc,NonBlockedHFBColumns(j,P,it),P,it)**2)
+            TempV2 = DBLE(V(index ,NonBlockedHFBColumns(j,P,it),P,it)**2)
+          endif
+          if ( normU*normU .gt. 0.1_dp ) then
+            if ( TempU2/normU .gt. 0.02_dp ) then
+              if (ifound .eq. 0 ) print 30
+              print '(2x,i3,"  U ",2i3,4i5,1f8.3,6f14.8)',          &
+              & i,it,P,Blockindices(index,P,it),                    &
+              & Blockindices(indexc,P,it),fill,                     &
+              & NonBlockedHFBColumns(j,P,it),                       &
+              & QuasiEnergies(NonBlockedHFBColumns(j,P,it),P,it),   &
+              & normV*normV,TempU2,TempU2/normU
+              ifound = ifound + 1
+            endif
+          else
+            if ( TempV2/normV .gt. 0.02_dp ) then
+              if (ifound .eq. 0 ) print 30
+              print '(2x,i3,"  V ",2i3,4i5,1f8.3,6f14.8)',          &
+              & i,it,P,Blockindices(index,P,it),                    &
+              & Blockindices(indexc,P,it),fill,                     &
+              & NonBlockedHFBColumns(j,P,it),                       &
+              & QuasiEnergies(NonBlockedHFBColumns(j,P,it),P,it),   &
+              & normV*normV,TempV2/normV
+              ifound = ifound + 1
+            endif
+          endif
+        enddo
+    enddo
+    if (ifound .gt. 0 ) print 11
+
+    !--------------------------------------------------------------------------------
+    ! print diagnostic table with index information of dominant HF component of 
+    ! qp states with negative E_qp
+    ifound = 0
+    print 9
+    do it=1,Pindex
+    do P =1,Pindex
+      do i=1,blocksizes(P,it)
+        ii = HFBColumns(i,P,it)
+        if ( QuasiEnergies(ii,P,it)  < 0.0_dp ) then
+          if (ifound .eq. 0 ) print 10
+          ifound = ifound + 1
+          normU = 0.0_dp 
+          do jj=1,blocksizes(P,it)
+            normU = normU + abs(U(jj,HFBColumns(j,P,it),P,it))**2
+          enddo
+          normV = abs(1.0_dp - normU) ! abs() to save the day in case it's -eps
+          normU = sqrt(normU) 
+          normV = sqrt(normV) 
+          ! Getting the dominant components of both U and V matrices in
+          ! isospin-parity-block indexation
+          domU    = maxloc(abs(U(:,ii,P,it)))
+          domV    = maxloc(abs(V(:,ii,P,it)))
+          ! corresponding indices in HF basis indexation
+          domUHF  = blockindices(domU(1),P,it)
+          domVHF  = blockindices(domV(1),P,it)
+          ! indices of states with largest overlap <domUHF|T|domUHFc> and 
+          ! <domVHF|T|domVHFc> in HF basis
+          domUHFc = HFBasis(domUHF)%GetPairPartner()
+          domVHFc = HFBasis(domVHF)%GetPairPartner()
+          overlapU = abs(U(domU(1),ii,P,it))**2
+          overlapV = abs(U(domV(1),ii,P,it))**2
+          print '(3x,2i3,i5,1f8.3,2f9.6,4i5,2f12.8)',           &
+            &      it,P,ii,QuasiEnergies(ii,P,it),              &
+            &      normU*normU,normV*normV,                     &
+            &      domUHF,domVHF,domUHFc,domVHFc,               &
+            &      overlapU,overlapV
+        endif
+      enddo
+    enddo
+    enddo
+    print '(/,i5," quasiparticles with negative E_qp found",/)',ifound
+
+    !--------------------------------------------------------------------------------
+    ! print diagnostic table with index information of dominant HF component in
+    ! the U and V matrices after blocking
+    ifound = 0
+    do it=1,Pindex
+    do P =1,Pindex
+      do i=1,blocksizes(P,it)
+        ii = HFBColumns(i,P,it)
+        if ( QuasiEnergies(ii,P,it)  < 0.0_dp ) then
+          do j=1,blocksizes(P,it)
+            if ( abs(U(j,ii,P,it))**2 > 0.01_dp ) then
+              if (ifound .eq. 0 ) print 20
+              ifound = ifound + 1
+              ! corresponding indices in HF basis indexation
+              jHF = blockindices(j,P,it)
+              ! indices of states with largest overlap <jHF|T|jHFc> in HF basis
+              jHFc = HFBasis(jHF)%GetPairPartner()
+              print '("  U ",2i3,i5,1f8.3,2i5,2x,2f11.7)',           &
+                &      it,P,ii,QuasiEnergies(ii,P,it),jHF,jHFc,     &
+                &      abs(U(j,ii,P,it))**2,abs(V(j,ii,P,it))**2
+            endif
+            if ( abs(V(j,ii,P,it))**2 > 0.01_dp ) then
+              if (ifound .eq. 0 ) print 20
+              ifound = ifound + 1
+              ! corresponding indices in HF basis indexation
+              jHF = blockindices(j,P,it)
+              ! indices of states with largest overlap <jHF|T|jHFc> in HF basis
+              jHFc = HFBasis(jHF)%GetPairPartner()
+              print '("  V ",2i3,i5,1f8.3,2i5,2x,2f11.7)',           &
+                &      it,P,ii,QuasiEnergies(ii,P,it),jHF,jHFc,     &
+                &      abs(U(j,ii,P,it))**2,abs(V(j,ii,P,it))**2
+            endif
+          enddo
+        endif
+      enddo
+    enddo
+    enddo
+    if (ifound .gt. 0 ) print 11
+
+  end subroutine DecomposeBlockedQuasiParticles
 
   subroutine PrintQP()
   !-----------------------------------------------------------------------------
@@ -3107,7 +3672,13 @@ subroutine PrintBlocking
         enddo
     enddo
 
-    !align = QPalignment()
+    ! un-commented the commented-out call of QPalignment(). I'm highly suspicious
+    ! that the calculation of observables in that routine is either formally wrong 
+    ! or, if formally correct, what is calculated is useless in practice. The most 
+    ! interesting information would be how much a given qp contributes to many-body
+    ! expectation values of one-body operators, which is entirely determined by the 
+    ! V matrix only.
+    align = QPalignment()
     do it=1,Iindex
         do P=1,Pindex
           print 10
@@ -3160,9 +3731,15 @@ subroutine PrintBlocking
         enddo
     enddo
     print 20
+    call DecomposeBlockedQuasiParticles()
   end subroutine PrintQP
 
   function QPAlignment() result(align)
+    !------------------------------------------------------------------------
+    ! MB 19/01/18 This routine does not make sense to me. The j are one-body
+    ! operators proportional to a^+ a, such that they can have only non-zero
+    ! matrix elements with the part of the QP state proportional to a^+ | - >
+    ! which is the V component. 
     !------------------------------------------------------------------------
     ! Function that computes the angular momentum of all quasiparticles.
     ! This should only be called at print-out iterations, since this
@@ -3196,6 +3773,14 @@ subroutine PrintBlocking
         enddo
     enddo
 
+    if (TRC .and. .not.SC) then
+       print '(/, "Calculation of J matrix elements not yet", &
+        &      /," correctly implemented for signature",      &
+        &      /," breaking and Time Reversal conserving",    &
+        &      /," calculations.")'
+      return
+    endif
+
     ! Get the angular momentum of the time-reverse wavefunctions
     if(TRC) then
         do j=1,nwt
@@ -3206,7 +3791,7 @@ subroutine PrintBlocking
                 JMatrix(j+nwt,i+nwt,:,2)   =   JMatrix(i+nwt,j+nwt,:,2)
             enddo
         enddo
-	    if(.not.SC) call stp('Calculation of J matrix elements not yet' &
+        if(.not.SC) call stp('Calculation of J matrix elements not yet' &
         &                  //' correctly implemented for signature'     &
         &                  //' breaking and Time Reversal conserving'   &
         &                  //' calculations.')
@@ -3321,7 +3906,7 @@ subroutine PrintBlocking
     do it=1,Iindex
       do P=1,Pindex
         NP(P,it) = 0
-        do j=1,Blocksizes(P,it)    
+        do j=1,Blocksizes(P,it) 
             !-------------------------------------------------------------------
             ! For completeness' sake, MOCCa also prints the number parities
             ! by counting eigenvalues close to 1
@@ -3379,6 +3964,36 @@ subroutine PrintBlocking
       print 3, NP(2,:)
     else
       print 4, NP(1,:)
+    endif
+
+    ! count number of levels with occuation printed as 1.000
+    ! in the table of canonical basis states
+    NP = 0
+    do it=1,Iindex
+      do P=1,Pindex
+        NP(P,it) = 0
+        do j=1,Blocksizes(P,it)    
+          if(TRC) then
+              if(abs(Occupations(j,P,it) - 2.0_dp).lt.1d-4) then
+                NP(P,it) = NP(P,it) + 1
+              endif
+          else
+              if(Occupations(j,P,it).gt.0.99994999999_dp) then
+                NP(P,it) = NP(P,it) + 1
+              endif
+          endif
+        enddo
+        if(TRC) NP(P,it) = NP(P,it)*2
+      enddo
+    enddo
+    
+    if(PC) then
+      print '(/," number parities at 5.e-5 ",6i4,/)', &
+        & NP(1,1),NP(2,1),NP(1,1)+NP(2,1), &
+        & NP(1,2),NP(2,2),NP(1,2)+NP(2,2)
+    else
+      print '(/," number parities at 5.e-5 ",6i4,/)', &
+        & NP(1,1),NP(1,2)
     endif
 
   !-----------------------------------------------------------------------------

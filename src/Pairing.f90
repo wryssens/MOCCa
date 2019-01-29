@@ -73,6 +73,11 @@ module Pairing
   ! 4) Isospin index in case of HFB, otherwise dimension 1
   complex(KIND=dp), allocatable :: Delta(:,:,:,:)
   !-----------------------------------------------------------------------------
+  !matrix of overlaps < psi | T phi > in the HF basis used to identify
+  ! "partner" states
+  !-----------------------------------------------------------------------------
+  real(KIND=dp), allocatable :: overlapT2(:,:,:,:)
+  !-----------------------------------------------------------------------------
   ! Pairing fields, used to calculate the gaps.
   ! Defined as a position-dependent Delta.
   ! Delta(x,y,z) =
@@ -386,6 +391,9 @@ contains
         allocate(OldRhoHFB(HFBSize,HFBSize,2,2))    ;  OldRhoHFB       = 0.0_dp
         allocate(OldKappaHFB(HFBSize,HFBSize,2,2))  ;  OldKappaHFB     = 0.0_dp
         !-----------------------------------------------------------------------
+        allocate(overlapT2(HFBSize,HFBSize,2,2));
+
+        !-----------------------------------------------------------------------
         ! When Lipkin-Nogami is present, make space for the modified pairing
         ! gaps.
         if(Lipkin) then
@@ -668,6 +676,14 @@ contains
     endif
     
     call CompDensityFactor
+
+    !---------------------------------------------------------------------------
+    ! calculate matrix of overlaps between psi and T psi' in HF the basis
+    if(PairingType.eq.2) then
+      call HFBoverlapT2(overlapT2)
+      call SetDeltas
+    endif
+    
     !---------------------------------------------------------------------------
     ! Outer iterations: iterating gaps and pairingfield.
     do outerIter=1,PairingIter
@@ -730,12 +746,22 @@ contains
             do i=1,blocksizes(P,it)
               ii   = blockindices(i,P,it)
               iii  = mod(ii-1,nwt)+1
-
-              partner = maxloc(abs(DBLE(Delta(:,i,P,it))))
+              ! scan overlap matrix |< psi | T phi >|^2 (if available), 
+              ! which also works when pairing breaks down.
+              ! Note that maxloc returns an array (here of rank 1), hence 
+              ! partner(1) has to be an array too.
+              ! Note that overlapT2 is the absolute square of the (complex) 
+              ! overlap; hence it's positive
+              if (allocated(overlapT2)) then
+                partner = maxloc(overlapT2(:,i,P,it))
+              else
+                partner = maxloc(abs(DBLE(Delta(:,i,P,it))))
+              endif
               jj  = blockindices(Partner(1),P,it)
               jjj = mod(jj-1,nwt)+1
               call HFBasis(iii)%SetDelta(Delta(partner(1),i,P,it))
               call HFBasis(iii)%SetPairPartner(jjj)
+              ! print'(" SetDeltas ",10i4)',it,P,i,ii,iii,partner(1),jj,jjj
             enddo
           enddo
         enddo

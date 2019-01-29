@@ -649,8 +649,8 @@ subroutine PrintSummary_v2(Iteration)
  32 format("Summ.   Q30=" f10.3, "  Q32=",f10.3)
  42 format("Summ.  dQ30=" es10.3, " dQ32=",es10.3)
   
-  5 format('Summ.    Jz=',f10.3, '  OmZ=',f10.3)
- 51 format('Summ.    Jx=',f10.3, '  OmX=',f10.3)
+  5 format('Summ.    Jz=',f10.6, '  OmZ=',f10.6)
+ 51 format('Summ.    Jx=',f10.6, '  OmX=',f10.6)
   6 format('Summ.   dH2=',es10.3)
   ! Printing energy
   print 1, Iteration

@@ -1381,19 +1381,19 @@ subroutine PrintMoment_magnetic(ToPrint)
 
   class(Moment),       intent(in) :: ToPrint
   character(len=2)                :: ReIm
-    1 format (1x, A2, ' Q^m_{', 2i2, '}    X          Y           Z       total')
-    2 format (    ' Spin     n ', 4(1x,f10.4),/, & 
-    &             '          p ', 4(1x,f10.4),/, & 
-    &             '          t ', 4(1x,f10.4))
-    3 format (    ' Orbital  n ', 4(1x,f10.4),/, &
-    &             '          p ', 4(1x,f10.4),/, &
-    &             '          t ', 4(1x,f10.4))
-    4 format (    ' Total    n ', 4(1x,f10.4),/, &
-    &             '          p ', 4(1x,f10.4),/, & 
-    &             '          t ', 4(1x,f10.4))
-    5 format (    ' Phys     n ', 4(1x, f10.4),/,&
-    &             '          p ', 4(1x, f10.4),/,& 
-    &             '          t ', 4(1x, f10.4))
+    1 format (1x, A2, ' Q^m_{', 2i2, '}     X           Y            Z        total')
+    2 format (    ' Spin     n ', 4(1x,es11.3),/, & 
+    &             '          p ', 4(1x,es11.3),/, & 
+    &             '          t ', 4(1x,es11.3))
+    3 format (    ' Orbital  n ', 4(1x,es11.3),/, &
+    &             '          p ', 4(1x,es11.3),/, &
+    &             '          t ', 4(1x,es11.3))
+    4 format (    ' Total    n ', 4(1x,es11.3),/, &
+    &             '          p ', 4(1x,es11.3),/, & 
+    &             '          t ', 4(1x,es11.3))
+    5 format (    ' Phys     n ', 4(1x,es11.3),/,&
+    &             '          p ', 4(1x,es11.3),/,& 
+    &             '          t ', 4(1x,es11.3))
   select case(ToPrint%l)
     !---------------------------------------------------------------------------
     ! No special magnetic multipole moment exist at the moment in the code.

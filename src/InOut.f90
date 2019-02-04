@@ -437,6 +437,7 @@ contains
    132 format ( '    Damping      : ' , f5.2)
    133 format ( '    MixingScheme : ' , i2)
    134 format ( '    Preconparam U: ' , f5.2)
+   135 format ( '    Preconparam W: ' , f5.2)
    
     14 format ( 'Convergence Levels')
     15 format ( '  dE  =', e8.1)
@@ -515,6 +516,7 @@ contains
     elseif(MixingScheme.eq. 2) then
       print 13, 'Preconditioned Upot'
       print 134, preconu
+      if ( preconw .gt. 0.0_dp ) print 135, preconw
     endif
 
     print 14

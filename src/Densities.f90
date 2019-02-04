@@ -32,6 +32,9 @@ module Densities
   !-----------------------------------------------------------------------------
   ! Real parameter to use in the preconditioning of the U-potential
   real(KIND=dp) :: preconu = 1.0
+  !-----------------------------------------------------------------------------
+  ! Optionally precondition W_munu potential
+  real(KIND=dp) :: PreConW = 0.0_dp
 
   type DensityVector
     !---------------------------------------------------------------------------
@@ -374,7 +377,8 @@ contains
     !---------------------------------------------------------------------------
     use Damping
 
-    NameList /densit/ DampingParam, PulayOrder, MixingScheme, Recalc, preconu
+    NameList /densit/ DampingParam, PulayOrder, MixingScheme, Recalc, & 
+                       preconu , PreConW
 
     read(unit=*, NML=densit)
 

@@ -9,7 +9,8 @@ module PotentialMixing
   implicit none
   
   real(KIND=dp),allocatable  :: Upotold(:,:,:,:), Spotold(:,:,:,:,:)
-  real(KIND=dp), allocatable :: du(:,:,:,:), ds(:,:,:,:,:) 
+  real(KIND=dp),allocatable  :: Wpotold(:,:,:,:,:,:)
+  real(KIND=dp), allocatable :: du(:,:,:,:), ds(:,:,:,:,:), dw(:,:,:,:,:,:)
     
 contains  
 
@@ -22,7 +23,7 @@ contains
     !---------------------------------------------------------------------------
   
     real(KIND=dp) :: alpha(nx,ny,nz,2), beta(nx,ny,nz,2) , update(nx,ny,nz,2)
-    real(KIND=dp), save :: olddiff, aeff
+    real(KIND=dp), save :: olddiff, aeff 
   
     integer :: i , P, S, TS
     
@@ -33,11 +34,14 @@ contains
       ! Time-even potentials
       allocate(BPot(nx,ny,nz,2), NablaBPot(nx,ny,nz,3,2), UPot(nx,ny,nz,2))
       allocate(UpotOld(nx,ny,nz,2)); allocate(du(nx,ny,nz,2))
-      
-      
       allocate(Wpot(nx,ny,nz,3,3,2))
-      BPot     =0.0_dp ; NablaBPot=0.0_dp ; Upot = 0.0_dp
-      Wpot     =0.0_dp ; Upotold = 0.0_dp ; du = 0.0_dp
+      BPot = 0.0_dp ; NablaBPot=0.0_dp 
+      Upot = 0.0_dp ; Upotold = 0.0_dp ; du = 0.0_dp
+      Wpot = 0.0_dp 
+      if ( PreConW .gt. 0.0_dp ) then 
+        allocate(WpotOld(nx,ny,nz,3,3,2)) ; allocate(dw(nx,ny,nz,3,3,2)) 
+        Wpotold = 0.0_dp ; dw = 0.0_dp
+      endif
       if(.not. TRC) then
         !-----------------------------------------------------------------------
         ! Time-odd potentials
@@ -108,6 +112,7 @@ contains
     !Construct the mean-field potentials
     UpotOld = Upot
     Upot    = CalcUPot()!This includes the contribution of constraints & Coulomb
+    if (allocated(WpotOld)) WpotOld = Wpot
     call CalcWPot()
     call CalcBPot()  
     
@@ -157,6 +162,37 @@ contains
         update=  PreconditionPotential(ds(:,:,:,3,:),alpha,beta,P, S,TS,1)
         Spot(:,:,:,3,:)  = Spotold(:,:,:,3,:) + update
 
+      endif
+
+      if ( PreConW .gt. 0.0_dp ) then
+        ! Define the preconditioning constant
+      ! alpha = -PreConW
+      ! beta  =  1.0
+
+        dw = Wpot-Wpotold
+
+        ! the following is organized by components having the same symmetry
+        update=  PreconditionPotential(dw(:,:,:,1,1,:),alpha,beta,-P, S,TS,2)
+        Wpot(:,:,:,1,1,:)  =  WpotOld(:,:,:,1,1,:) + update
+        update=  PreconditionPotential(dw(:,:,:,2,2,:),alpha,beta,-P, S,TS,2)
+        Wpot(:,:,:,2,2,:)  =  WpotOld(:,:,:,2,2,:) + update
+        update=  PreconditionPotential(dw(:,:,:,3,3,:),alpha,beta,-P, S,TS,2)
+        Wpot(:,:,:,3,3,:)  =  WpotOld(:,:,:,3,3,:) + update
+
+        update=  PreconditionPotential(dw(:,:,:,1,2,:),alpha,beta,-P, S,TS,1)
+        Wpot(:,:,:,1,2,:)  =  WpotOld(:,:,:,1,2,:) + update
+        update=  PreconditionPotential(dw(:,:,:,2,1,:),alpha,beta,-P, S,TS,1)
+        Wpot(:,:,:,2,1,:)  =  WpotOld(:,:,:,2,1,:) + update
+
+        update=  PreconditionPotential(dw(:,:,:,1,3,:),alpha,beta,-P,-S,TS,2)
+        Wpot(:,:,:,1,3,:)  =  WpotOld(:,:,:,1,3,:) + update
+        update=  PreconditionPotential(dw(:,:,:,3,1,:),alpha,beta,-P,-S,TS,2)
+        Wpot(:,:,:,3,1,:)  =  WpotOld(:,:,:,3,1,:) + update
+
+        update=  PreconditionPotential(dw(:,:,:,2,3,:),alpha,beta,-P,-S,TS,1)
+        Wpot(:,:,:,2,3,:)  =  WpotOld(:,:,:,2,3,:) + update
+        update=  PreconditionPotential(dw(:,:,:,3,2,:),alpha,beta,-P,-S,TS,1)
+        Wpot(:,:,:,3,2,:)  =  WpotOld(:,:,:,3,2,:) + update
       endif
     endif    
     !---------------------------------------------------------------------------

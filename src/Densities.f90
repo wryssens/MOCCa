@@ -484,7 +484,6 @@ contains
       &  .or. (t1n2 .ne. 0.0_dp)) then
         DenIn%Jmunu(:,:,:,:,:,it) = DenIn%Jmunu(:,:,:,:,:,it) +                &
         &                           Occupation * DensityBasis(i)%GetJmunu()
-        !Temporary
         DenIn%NablaJ(:,:,:,it)    = DenIn%NablaJ(:,:,:,it) +                   &
         &                           Occupation * DensityBasis(i)%GetNablaJ()
       else
@@ -996,12 +995,7 @@ contains
         enddo
     endif
 
-    
-    !Computing NablaJ by derivatives in the case of tensor interactions
-    if(B14.ne.0.0_dp.or.B15.ne.0.0_dp.or.B17.ne.0.0_dp.or.B16.ne.0.0_dp) then
-      !Temporary
-      !DenIn%NablaJ = DeriveJMunu(Denin%JMuNu)
-    endif
+
     !Computing the derivatives of vecj & vecs
     if((.not.TRC) .and. (.not.TurnoffTimeOdd)) then
         ! Derive vecj
@@ -1187,156 +1181,6 @@ contains
             enddo
         endif
   end subroutine ComputeDensity
-
-  function DeriveJmuNu(JmuNu) result(NablaJ)
-    !---------------------------------------------------------------------------
-    ! Compute nabla J by deriving JmuNu
-    !---------------------------------------------------------------------------
-    use Derivatives, only : DeriveX,DeriveY,DeriveZ
-
-    integer       :: i, it
-    real(KIND=dp) :: ContractionJ(nx,ny,nz,3,2), DerContraction(nx,ny,nz,3)
-    real(KIND=dp), intent(in) :: Jmunu(nx,ny,nz,3,3,2)
-    real(KIND=dp)             :: NablaJ(nx,ny,nz,2)
-    
-    call stp('This is bugged!')
-
-    ! Summing the vector part
-    ContractionJ(:,:,:,1,:)= JMuNu(:,:,:,2,3,:) - JMuNu(:,:,:,3,2,:)
-    ContractionJ(:,:,:,2,:)= JMuNu(:,:,:,3,1,:) - JMuNu(:,:,:,1,3,:)
-    ContractionJ(:,:,:,3,:)= JMuNu(:,:,:,1,2,:) - JMuNu(:,:,:,2,1,:)
-
-    !Deriving every component of the vector
-    NablaJ = 0.0_dp
-    do it=1,2
-      do i=1,3
-        DerContraction(:,:,:,i) = DeriveX( &!!Maybe the bug is the non-changing X?
-        &   ContractionJ(:,:,:,i,it),-ParityInt,-SignatureInt, TimeSimplexInt,1)
-      enddo
-      NablaJ(:,:,:,it) = sum(DerContraction,4)
-    enddo
-  end function DeriveJmuNu
-
-  function DeriveVecJ(VecJ) result(RotVecJ)
-    !---------------------------------------------------------------------------
-    ! Subroutine that computes the rotation of the \vec{j}
-    !---------------------------------------------------------------------------
-    use Derivatives, only : DeriveX,DeriveY,DeriveZ
-
-    integer       :: it
-    real(KIND=dp) :: DerVecj(nx,ny,nz,3,3), RotVecJ(nx,ny,nz,3,2)
-    real(KIND=dp), intent(in) :: VecJ(nx,ny,nz,3,2)
-
-    do it=1,2
-      !See Table V in V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
-      DerVecJ(:,:,:,2,1)  = &
-      & DeriveY(Vecj(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
-
-      DerVecJ(:,:,:,3,1)  = &
-      & DeriveZ(Vecj(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
-
-      DerVecJ(:,:,:,1,2)  = &
-      & DeriveX(Vecj(:,:,:,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
-
-      DerVecJ(:,:,:,3,2)  = &
-      & DeriveZ(Vecj(:,:,:,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,2)
-
-      DerVecJ(:,:,:,1,3)  = &
-      & DeriveX(Vecj(:,:,:,3,it), -ParityInt,-SignatureInt, TimeSimplexInt,1)
-
-      DerVecJ(:,:,:,2,3)  = &
-      & DeriveY(Vecj(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,2)
-
-      RotVecJ(:,:,:,1,it) =  DerVecJ(:,:,:,2,3) - DerVecJ(:,:,:,3,2)
-      RotVecJ(:,:,:,2,it) =  DerVecJ(:,:,:,3,1) - DerVecJ(:,:,:,1,3)
-      RotVecJ(:,:,:,3,it) =  DerVecJ(:,:,:,1,2) - DerVecJ(:,:,:,2,1)
-    enddo
-  end function DeriveVecJ
-
-  subroutine DeriveVecs(DenIn)
-    !---------------------------------------------------------------------------
-    ! Subroutine that computes the laplacian, the rotator, the divergence and
-    ! the gradient of the divergence of \vec{s}.
-    !---------------------------------------------------------------------------
-    use Derivatives, only : Laplacian, DeriveX,DeriveY,DeriveZ
-    use Force
-    integer :: i,it
-    type(DensityVector), intent(inout) :: DenIn
-    real(KIND=dp)                      :: DivS(nx,ny,nz,2)
-    logical                            :: MoreDers
-
-    MoreDers=.true.
-    if(B18.eq.0.0_dp.and.B19.eq.0.0_dp.and.B20.eq.0.0_dp .and. B21.eq.0.0_dp) then
-      MoreDers = .false.
-    endif
-
-    do it=1,2
-      !-------------------------------------------------------------------------
-      ! See for instance Table V in
-      !                      V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
-      !-------------------------------------------------------------------------
-      ! Double checked on 02/01/2016
-      !--------------------- X Components---------------------------------------
-      if(MoreDers) then
-        DenIn%LapS(:,:,:,1,it) = Laplacian(DenIn%VecS(:,:,:,1,it),             &
-        &                              ParityInt,-SignatureInt,TimeSimplexInt,1)
-      endif
-
-      DenIn%DerS(:,:,:,1,1,it) = &
-      & DeriveX(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)
-      DenIn%DerS(:,:,:,2,1,it) = &
-      & DeriveY(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)
-      DenIn%DerS(:,:,:,3,1,it) = &
-      & DeriveZ(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)
-
-      !--------------------- Y Components--------------------------------------
-      if(MoreDers) then
-        DenIn%LapS(:,:,:,2,it) = Laplacian(DenIn%VecS(:,:,:,2,it),             &
-        &                             ParityInt,-SignatureInt,TimeSimplexInt,2)
-      endif
-      DenIn%DerS(:,:,:,1,2,it) = &
-      &DeriveX(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)
-      DenIn%DerS(:,:,:,2,2,it) = &
-      &DeriveY(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)
-      DenIn%DerS(:,:,:,3,2,it) = &
-      &DeriveZ(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)
-
-      !--------------------- Z Components--------------------------------------
-      if(MoreDers) then
-        DenIn%LapS(:,:,:,3,it) = Laplacian(DenIn%VecS(:,:,:,3,it),             &
-        &                              ParityInt,SignatureInt,TimeSimplexInt,1)
-      endif
-      DenIn%DerS(:,:,:,1,3,it) = &
-      & DeriveX(DenIn%VecS(:,:,:,3,it),ParityInt,Signatureint,TimeSimplexInt,1)
-      DenIn%DerS(:,:,:,2,3,it) = &
-      & DeriveY(DenIn%VecS(:,:,:,3,it),ParityInt,Signatureint,TimeSimplexInt,1)
-      DenIn%DerS(:,:,:,3,3,it) = &
-      & DeriveZ(DenIn%VecS(:,:,:,3,it),ParityInt,Signatureint,TimeSimplexInt,1)
-      !------------------------------------------------------------------------
-
-      DenIn%RotS(:,:,:,1,it) = DenIn%DerS(:,:,:,2,3,it)-DenIn%DerS(:,:,:,3,2,it)
-      DenIn%RotS(:,:,:,2,it) = DenIn%DerS(:,:,:,3,1,it)-DenIn%DerS(:,:,:,1,3,it)
-      DenIn%RotS(:,:,:,3,it) = DenIn%DerS(:,:,:,1,2,it)-DenIn%DerS(:,:,:,2,1,it)
-
-      DivS(:,:,:,it)=0.0_dp
-      do i=1,3
-        DivS(:,:,:,it) = DenIn%DivS(:,:,:,it) + DenIn%DerS(:,:,:,i,i,it)
-      enddo
-    enddo
-
-    if(.not. MoreDers) return
-     !This one is dubious: several numerical derivatives are "stacked".
-    do it=1,2
-      ! See for instance Table V in
-      ! V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
-      DenIn%GradDivS(:,:,:,1,it) = DeriveX( &
-      &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
-      DenIn%GradDivS(:,:,:,2,it) = DeriveY( &
-      &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
-      DenIn%GradDivS(:,:,:,3,it) = DeriveZ( &
-      &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
-    enddo
-  end subroutine DeriveVecs
 
   subroutine WriteDensity(Den, unit)
   !-----------------------------------------------------------------------------
@@ -1607,3 +1451,118 @@ contains
   end subroutine FillOct
 
 end module Densities
+
+! Code ZOO
+!  subroutine DeriveVecs(DenIn)
+!    !---------------------------------------------------------------------------
+!    ! Subroutine that computes the laplacian, the rotator, the divergence and
+!    ! the gradient of the divergence of \vec{s}.
+!    !---------------------------------------------------------------------------
+!    use Derivatives, only : Laplacian, DeriveX,DeriveY,DeriveZ
+!    use Force
+!    integer :: i,it
+!    type(DensityVector), intent(inout) :: DenIn
+!    real(KIND=dp)                      :: DivS(nx,ny,nz,2)
+!    logical                            :: MoreDers
+
+!    MoreDers=.true.
+!    if(B18.eq.0.0_dp.and.B19.eq.0.0_dp.and.B20.eq.0.0_dp .and. B21.eq.0.0_dp) then
+!      MoreDers = .false.
+!    endif
+
+!    do it=1,2
+!      !-------------------------------------------------------------------------
+!      ! See for instance Table V in
+!      !                      V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
+!      !-------------------------------------------------------------------------
+!      ! Double checked on 02/01/2016
+!      !--------------------- X Components---------------------------------------
+!      if(MoreDers) then
+!        DenIn%LapS(:,:,:,1,it) = Laplacian(DenIn%VecS(:,:,:,1,it),             &
+!        &                              ParityInt,-SignatureInt,TimeSimplexInt,1)
+!      endif
+
+!      DenIn%DerS(:,:,:,1,1,it) = &
+!      & DeriveX(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)
+!      DenIn%DerS(:,:,:,2,1,it) = &
+!      & DeriveY(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)
+!      DenIn%DerS(:,:,:,3,1,it) = &
+!      & DeriveZ(DenIn%VecS(:,:,:,1,it),ParityInt,-Signatureint,TimeSimplexInt,1)
+
+!      !--------------------- Y Components--------------------------------------
+!      if(MoreDers) then
+!        DenIn%LapS(:,:,:,2,it) = Laplacian(DenIn%VecS(:,:,:,2,it),             &
+!        &                             ParityInt,-SignatureInt,TimeSimplexInt,2)
+!      endif
+!      DenIn%DerS(:,:,:,1,2,it) = &
+!      &DeriveX(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)
+!      DenIn%DerS(:,:,:,2,2,it) = &
+!      &DeriveY(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)
+!      DenIn%DerS(:,:,:,3,2,it) = &
+!      &DeriveZ(DenIn%VecS(:,:,:,2,it),ParityInt,-Signatureint,TimeSimplexInt,2)
+
+!      !--------------------- Z Components--------------------------------------
+!      if(MoreDers) then
+!        DenIn%LapS(:,:,:,3,it) = Laplacian(DenIn%VecS(:,:,:,3,it),             &
+!        &                              ParityInt,SignatureInt,TimeSimplexInt,1)
+!      endif
+!      DenIn%DerS(:,:,:,1,3,it) = &
+!      & DeriveX(DenIn%VecS(:,:,:,3,it),ParityInt,Signatureint,TimeSimplexInt,1)
+!      DenIn%DerS(:,:,:,2,3,it) = &
+!      & DeriveY(DenIn%VecS(:,:,:,3,it),ParityInt,Signatureint,TimeSimplexInt,1)
+!      DenIn%DerS(:,:,:,3,3,it) = &
+!      & DeriveZ(DenIn%VecS(:,:,:,3,it),ParityInt,Signatureint,TimeSimplexInt,1)
+!      !------------------------------------------------------------------------
+
+!      DenIn%RotS(:,:,:,1,it) = DenIn%DerS(:,:,:,2,3,it)-DenIn%DerS(:,:,:,3,2,it)
+!      DenIn%RotS(:,:,:,2,it) = DenIn%DerS(:,:,:,3,1,it)-DenIn%DerS(:,:,:,1,3,it)
+!      DenIn%RotS(:,:,:,3,it) = DenIn%DerS(:,:,:,1,2,it)-DenIn%DerS(:,:,:,2,1,it)
+
+!      DivS(:,:,:,it)=0.0_dp
+!      do i=1,3
+!        DivS(:,:,:,it) = DenIn%DivS(:,:,:,it) + DenIn%DerS(:,:,:,i,i,it)
+!      enddo
+!    enddo
+
+!    if(.not. MoreDers) return
+!     !This one is dubious: several numerical derivatives are "stacked".
+!    do it=1,2
+!      ! See for instance Table V in
+!      ! V. Hellemans et al., Phys. Rev. C 85 (2012), 014326
+!      DenIn%GradDivS(:,:,:,1,it) = DeriveX( &
+!      &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
+!      DenIn%GradDivS(:,:,:,2,it) = DeriveY( &
+!      &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
+!      DenIn%GradDivS(:,:,:,3,it) = DeriveZ( &
+!      &          DivS(:,:,:,it), -ParityInt, SignatureInt, TimeSimplexInt, 1)
+!    enddo
+!  end subroutine DeriveVecs
+
+!  function DeriveJmuNu(JmuNu) result(NablaJ)
+!    !---------------------------------------------------------------------------
+!    ! Compute nabla J by deriving JmuNu
+!    !---------------------------------------------------------------------------
+!    use Derivatives, only : DeriveX,DeriveY,DeriveZ
+
+!    integer       :: i, it
+!    real(KIND=dp) :: ContractionJ(nx,ny,nz,3,2), DerContraction(nx,ny,nz,3)
+!    real(KIND=dp), intent(in) :: Jmunu(nx,ny,nz,3,3,2)
+!    real(KIND=dp)             :: NablaJ(nx,ny,nz,2)
+!    
+!    call stp('This is bugged!')
+
+!    ! Summing the vector part
+!    ContractionJ(:,:,:,1,:)= JMuNu(:,:,:,2,3,:) - JMuNu(:,:,:,3,2,:)
+!    ContractionJ(:,:,:,2,:)= JMuNu(:,:,:,3,1,:) - JMuNu(:,:,:,1,3,:)
+!    ContractionJ(:,:,:,3,:)= JMuNu(:,:,:,1,2,:) - JMuNu(:,:,:,2,1,:)
+
+!    !Deriving every component of the vector
+!    NablaJ = 0.0_dp
+!    do it=1,2
+!      do i=1,3
+!        DerContraction(:,:,:,i) = DeriveX( &!!Maybe the bug is the non-changing X?
+!        &   ContractionJ(:,:,:,i,it),-ParityInt,-SignatureInt, TimeSimplexInt,1)
+!      enddo
+!      NablaJ(:,:,:,it) = sum(DerContraction,4)
+!    enddo
+!  end function DeriveJmuNu

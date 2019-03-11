@@ -57,10 +57,11 @@ module Pairing
   ! Dispersion of the particle numbers
   ! < N^2 > - < N >^2
   real(KIND=dp) :: PairingDisp(2) = 0.0_dp
-  ! Energy associated with pairing
-  real(KIND=dp) :: PairingEnergy(2)=0.0_dp
+  ! Energy associated with pairing obtained summing up weithed matrix elements
+  ! of Delta_kl
+  real(KIND=dp) :: PairingEnergy(2) = 0.0_dp
   ! Fermi levels and their history
-  real(KIND=dp) :: Fermi(2)=-10.0_dp, FermiHistory(2,7)=0.0_dp
+  real(KIND=dp) :: Fermi(2) = -10.0_dp, FermiHistory(2,7) = 0.0_dp
   ! Freeze the occupation or not.
   logical       :: FreezeOccupation=.false.
   !-----------------------------------------------------------------------------
@@ -144,17 +145,21 @@ contains
      real(KIND=dp) :: PairingNeutron=-100.0_dp, PairingProton=-100.0_dp
      real(KIND=dp) :: CutProton     =-100.0_dp, CutNeutron   =-100.0_dp
      real(KIND=dp) :: AlphaProton   =-100.0_dp, AlphaNeutron =-100.0_dp
+     real(KIND=dp) :: GammaProton   =-100.0_dp, GammaNeutron =-100.0_dp
      real(KIND=dp) :: Protongap     =   0.0_dp, NeutronGap   =   0.0_dp
      real(KIND=dp) :: LNFixN        =   0.0_dp, LNFixP       =   0.0_dp
      real(KIND=dp) :: DN2P          =   0.0_dp, DN2N         =   0.0_dp
-
+     real(KIND=dp) :: PairingGradientNeutron = -100.0_dp
+     real(KIND=dp) :: PairingGradientProton  = -100.0_dp
      integer       :: i
      logical       :: SemiBCS=.false., SemiBCSNeutron=.false.
      logical       :: SemiBCSProton=.false.
      character(len=3) :: UpperType
 
      NameList /Pairing/ PairingNeutron, PairingProton, CutProton , RhoSat,     &
-     &                  alphaProton, AlphaNeutron,                             &
+     &                  AlphaProton, AlphaNeutron,                             &
+     &                  GammaProton, GammaNeutron, PairingContributionUpot,    &
+     &                  PairingGradientNeutron , PairingGradientProton,        &
      &                  Type, CutNeutron, FreezeOccupation, PairingIter,       &
      &                  HFBMix, NeutronGap, ProtonGap, ConstantGap,            &
      &                  Lipkin, LNFraction, GuessKappa, PairingMu, CutType,    &
@@ -167,12 +172,15 @@ contains
      read(unit=*, NML=Pairing)
 
      PairingStrength(1) = PairingNeutron;  PairingStrength(2) = PairingProton
+     PairingGradientStrength(1) = PairingGradientNeutron
+     PairingGradientStrength(2) = PairingGradientProton
      PairingCut(1)      = CutNeutron    ;  PairingCut(2)      = CutProton
      Alpha(1)           = AlphaNeutron  ;  Alpha(2)           = AlphaProton
+     DDExp(1)           = GammaNeutron  ;  DDExp(2)           = GammaProton
      Gaps(1)            = NeutronGap    ;  Gaps(2)            = ProtonGap
      LNFIx(1)           = LNFIXN        ;  LNFIX(2)           = LNFIXP
      DN2(1)             = DN2N          ;  DN2(2)             = DN2P
-
+     
      call to_upper(Type, Type)
      select case (Type)
      case ('HF ')
@@ -212,7 +220,7 @@ contains
         PairingCut(1) = PairingCut(2)
       endif
      endif
-      if(Alpha(2).eq.-100.0_dp) then
+     if(Alpha(2).eq.-100.0_dp) then
       if(Alpha(1).ne.-100.0_dp) then
         Alpha(2) = Alpha(1)
       else
@@ -223,6 +231,37 @@ contains
       if(Alpha(2).ne.-100.0_dp) then
         Alpha(1) = Alpha(2)
       endif
+     endif
+     if(DDExp(2).eq.-100.0_dp) then
+      if(DDExp(1).ne.-100.0_dp) then
+        DDexp(2) = DDExp(1)
+      else
+        DDexp = 1.0_dp
+      endif
+     endif
+     if(DDExp(1).eq.-100.0_dp) then
+      if(DDExp(2).ne.-100.0_dp) then
+        DDExp(1) = DDExp(2)
+      endif
+     endif
+     if(PairingGradientStrength(2).eq.-100.0_dp) then
+      if(PairingGradientStrength(1).ne.-100.0_dp) then
+        PairingGradientStrength(2) = PairingGradientStrength(1)
+      else
+        PairingGradientStrength=0.0_dp
+      endif
+     endif
+     if(PairingGradientStrength(1).eq.-100.0_dp) then
+      if(PairingGradientStrength(2).ne.-100.0_dp) then
+        PairingGradientStrength(1) = PairingGradientStrength(2)
+      endif
+     endif
+     ! set flag when pair EDF is of old-school ULB form
+     if (  PairingGradientStrength(1) .eq. 0.0_dp .and. &
+         & PairingGradientStrength(2) .eq. 0.0_dp .and. &
+         & DDExp(1)                   .eq. 1.0_dp .and. &
+         & DDExp(2)                   .eq. 1.0_dp ) then
+       PairingULB = .true.
      endif
 
      if(PairingType.ne.2 .and. Block .ne. 0) then
@@ -394,17 +433,25 @@ contains
         allocate(overlapT2(HFBSize,HFBSize,2,2));
 
         !-----------------------------------------------------------------------
-        ! When Lipkin-Nogami is present, make space for the modified pairing
-        ! gaps.
+        ! When Lipkin-Nogami is present, make space for the modified pairing ga
+        ! MB: as far as I can see, PairDensity, Chi, ChiStar are never
+        ! calculated or used ...
         if(Lipkin) then
           allocate(DeltaLN(HFBSize,HFBSize,2,2))   ; DeltaLN = 0.0_dp
           allocate(PairingFieldLN(nx,ny,nz,2))     ; PairingFieldLN = 0.0_dp
-          allocate(PairDensity(nx,ny,nz,2), Chi(nx,ny,nz,2), ChiStar(nx,ny,nz,2))
+          if (.not.allocated(PairDensity)) allocate(PairDensity(nx,ny,nz,2))
+          allocate(Chi(nx,ny,nz,2), ChiStar(nx,ny,nz,2))
         endif
         !Note that we will store the complete U & V matrices
         allocate(U(HFBSize,2*HFBSize,2,2)) ; allocate(V(HFBSize,2*HFBSize,2,2))
         U = 0.0_dp ; V = 0.0_dp
         allocate(HFBHamil(2*HFBSize,2*HFBSize,2,2)) ; HFBHamil=0.0_dp
+        !-----------------------------------------------------------------------
+        ! the contribution of the pairing EDF to the single-particle-potential
+        ! is asked for, in which case we need to sum up the pairi densities
+        if ( PairingType .eq. 2) then
+          if (.not.allocated(PairDensity)) allocate(PairDensity(nx,ny,nz,2))
+        endif
         !-----------------------------------------------------------------------
         ! By default, consider even-even nuclei.
         ! The routine readblocking will change the numberparity if necessary.
@@ -433,15 +480,18 @@ contains
     ! Subroutine prints pairing info to STDOUT at the start of the program.
     !---------------------------------------------------------------------------
 
-    1  format (22('-'), 'Pairing Parameters', 21('-'))
+    1  format (22('-'), 'Pairing Parameters', 22('-'))
     2  format (A26)
-    3  format (33x, ' N ',7x, ' P ')
-    4  format ('  Pairing Strength (MeV fm^3)', 2x,f8.3,2x,f8.3)
-    5  format ('  Pairing Cutoff   (Mev)     ', 2x,f8.3,2x,f8.3)
-    6  format ('  Pairing Cut width(MeV)     ', 2x,f8.3,2x,f8.3)
-    7  format ('  Alpha                      ', 2x,f8.3,2x,f8.3)
+    3  format (45x, ' N ',8x, ' P ')
+    4  format ('  Pairing Strength (MeV fm^3)          ', 1x,f10.3,1x,f10.3)
+    5  format ('  Pairing Cutoff   (Mev)               ', 1x,f10.3,1x,f10.3)
+    6  format ('  Pairing Cut width(MeV)               ', 1x,f10.3,1x,f10.3)
+    7  format ('  Alpha                                ', 1x,f10.3,1x,f10.3)
+    77 format ('  Gamma                                ', 1x,f10.3,1x,f10.3)
+    78 format ('  Pairing Gradient Strength (MeV fm^5) ', 1x,f10.3,1x,f10.3)
+    79 format ('  add contribution from pairing EDF to Upot')
     8  format ('  Attention: configuration is frozen.')
-    9  format ('  HFBMixing                  ', 2x, f8.3)
+    9  format ('  HFBMixing                            ', 1x, f10.3)
    10  format ('  BCS-like: only Delta_{i,ibar} not zero.' )
    100 format ('  BCS-like Protons : only Delta_{i,ibar} not zero.' )
    101 format ('  BCS-like Neutrons: only Delta_{i,ibar} not zero.' )
@@ -449,15 +499,15 @@ contains
    &          '   Neutron Gap: ' , f8.3   , /,                                  &
    &          '   Proton  Gap: ' , f8.3   )
    12  format ('  Lipkin-Nogami prescription active.' )
-   121 format ('  Constant \lambda_2         ', 2x,f8.3,2x,f8.3)
-   122 format ('  Dispersion constrained     ', 2x,f8.3,2x,f8.3)
+   121 format ('  Constant \lambda_2                   ', 2x,f9.3,2x,f9.3)
+   122 format ('  Dispersion constrained               ', 2x,f9.3,2x,f9.3)
    13  format ('  Cosine cutoff used. ')
    14  format ('  Symmetric Fermi cutoff used.')
-   15  format ('  Fermisolver iterations (external): ', i5)
-   16  format ('  Fermisolver iterations (internal): ', i5)
-   17  format ('  LNFraction on the HFB hamiltonian: ', f8.3)
-   18  format ('  Gauge of the HFB hamiltonian:      ', f8.3)
-   19  format ('  Fermisolver used: ', a9)
+   15  format ('  Fermisolver iterations (external):   ', i5)
+   16  format ('  Fermisolver iterations (internal):   ', i5)
+   17  format ('  LNFraction on the HFB hamiltonian:   ', f9.3)
+   18  format ('  Gauge of the HFB hamiltonian:        ', f9.3)
+   19  format ('  Fermisolver used:                    ', a9)
    20  format ('  HFBreduce is ON.')
 
     print 1
@@ -487,11 +537,14 @@ contains
       print 13
     end select
 
-    print 3
-    print 4, PairingStrength
-    print 5, PairingCut
-    print 6, PairingMu
-    print 7, Alpha
+    print  3
+    print  4, PairingStrength
+    print  5, PairingCut
+    print  6, PairingMu
+    print  7, Alpha
+    print 77, DDExp
+    print 78, PairingGradientStrength
+    if (PairingContributionUpot) print 79
 
     if(PairingType.eq.2) print 9, HFBMix
     if(Lipkin)           print 12
@@ -520,7 +573,7 @@ contains
 
     use Densities, only : Density
 
-    1 format (26('-'), ' Pairing ', 25('-'))
+    1 format (/, 1x,35('-'), ' Pairing ', 36('-'))
     2 format (25x, ' N ',7x, ' P ')
     3 format (' Fermi Level (MeV) ',2x,f10.5,2x,f10.5)
     4 format (' Particles         ',2x,f10.5,2x,f10.5)
@@ -528,8 +581,7 @@ contains
     5 format (' Dispersion        ',2x,f10.5,2x,f10.5)
     6 format (' Lambda_2          ',2x,f10.5,2x,f10.5)
    61 format (' Lambda_2 (Constr.)',2x,f10.5,2x,f10.5 )
-    7 format (60('-'))
-
+    7 format (1x,75('-'),/)
     print 1
 
     select case(PairingType)
@@ -562,6 +614,17 @@ contains
     if(PairingType.eq.2) call PrintHFBconvergence
     !------------------------------------------------------------------------
     print 7
+    !------------------------------------------------------------------------
+    select case(PairingType)
+      case (2)
+        call CompCutPairDensity
+        call CompPairingEDF      (PairDensity)
+        call CompAverageGaps     (PairDensity)
+      ! call PrintPairingProfiles(PairDensity)
+        call PrintPairingEnergies
+    end select
+    print 7
+
   end subroutine PrintPairing
 
   subroutine PrintHFConfiguration
@@ -720,6 +783,17 @@ contains
       !LNLambda = CalcLambda2()
     endif
 
+    !---------------------------------------------------------------------------
+    ! the pairing interaction asks for the contribution to the single-particle
+    ! Hamiltonian. Requires to calculate pair densities (which is avoided for
+    ! the rest of the treatment of pairing)
+    if ( PairingType .eq. 2) then
+      call CompCutPairDensity
+      if ( PairingContributionUpot ) then
+        call CompUpotPairingContribution(PairDensity)
+      endif
+    endif
+
   end subroutine SolvePairing
 
   subroutine SetDeltas
@@ -768,6 +842,115 @@ contains
   end select
 
   end subroutine SetDeltas
+
+  subroutine CompCutPairDensity
+    !---------------------------------------------------------------------------
+    ! this subroutine is somehow doubling part of what is done in HFB through
+    ! summing matrix elements. At time being, it is only called when the 
+    ! contribution of the pairing EDF to the single-particle potential is needed
+    ! Not entirely sure if the overall sign is correct. As all true observables
+    ! are bilinear in the pair density, this is not a real problem, but the
+    ! average gaps are dependent on its sign. Compared to the HFB module, there
+    ! is an additional factor -1 below such that the trace of rho~ is positive.
+    !---------------------------------------------------------------------------
+    complex(KIND=dp)  :: ActionOfPairing(nx,ny,nz)
+    real(KIND=dp)     :: factor
+    integer           :: i, it, j, ii, sig1, sig2, jj, k, P, iii, jjj, l
+    real(KIND=dp)     :: Cutoff(2)
+    type(Spinor)      :: Temp(2)
+    logical           :: TR
+
+    if ( .not.allocated(PairDensity)) call stp ('CompCutPairDensity !')
+
+    PairDensity = (0.0_dp,0.0_dp)
+
+    ! using the skew-symmetry of the contributions, the sum is just over
+    ! half the combinations
+    do it=1,Iindex
+    do P=1,Pindex
+      do j=1,blocksizes(P,it)
+        jj        = Blockindices(j,P,it)
+        jjj       = mod(jj-1,nwt)+1
+        sig1      = HFBasis(jjj)%GetSignature()
+        Cutoff(1) = PCutoffs(jjj)
+        if(Cutoff(1).lt.HFBNumCut) cycle
+        if(TRC .and. jj .ne. jjj) then
+          sig1 = - sig1
+        endif
+        do i=j+1,blocksizes(P,it)
+          ii   = Blockindices(i,P,it)
+          iii  = mod(ii-1,nwt)+1
+          sig2 = HFBasis(iii)%GetSignature()
+          if( TRC .and. ii .ne. iii) then
+            sig2 = - sig2
+          endif
+          !Selection on signature quantum number; the loop structure already
+          !selects on both parity and isospin.
+          if(sig1 .ne. -sig2 ) cycle
+          Cutoff(2) = PCutoffs(iii)
+
+          ! Save some CPU cycles
+          if(Cutoff(1)*Cutoff(2)*abs(KappaHFB(i,j,P,it)) .lt. HFBNumCut) cycle
+
+          if( TRC .and. ( ii.ne. iii  .or. jj.ne.jjj ) .and. & 
+              &  .not. (ii .ne.  iii .and. jj .ne. jjj )) then
+            TR = .true.
+          else
+            ! Should only happen when Time-reversal is conserved, but signature
+            ! isn't.
+            TR = .false.
+          endif
+
+          ! Note that this does automatically include a Time-reversal operator
+          ! when appropriate
+          ! the factor 2 compensates for summing just over half of the 
+          ! (symmetric) combinations of i and j
+          ! the "-" sign assures that tr rho~ is usually positive.
+          ActionOfPairing = GetPairDensity(HFBasis(jjj)%Value,HFBasis(iii)%Value,TR)
+          factor = -2.0_dp * Cutoff(1)*Cutoff(2)*DBLE(KappaHFB(i,j,P,it))
+          PairDensity(:,:,:,it) = PairDensity(:,:,:,it) + factor*ActionOfPairing(:,:,:)
+        enddo
+      enddo
+    enddo
+    enddo
+  ! print '(" norm pair density ",4f12.6)',dv*sum(PairDensity(:,:,:,1)), &
+  !                                 &      dv*sum(PairDensity(:,:,:,2))
+  end subroutine CompCutPairDensity
+
+  function GetUpotPairingContribution result(UpotPC)
+  !-----------------------------------------------------------------------------
+  ! provide contribution from pairing EDF to single-particle potential Upot
+  !-----------------------------------------------------------------------------
+    real(KIND=dp) :: UpotPC(nx,ny,nz,2)
+ 
+    UpotPC = 0.0_dp
+
+    ! nothing to do - what am I doing here ...?
+    if ( .not.PairingContributionUpot ) return
+
+    ! there is no PairingContribution in a HF calculation ...
+    if ( PairingType .ne. 2 ) return
+
+    if ( .not.allocated(UpotPairingContribution) ) call stp('GetUpotPairingContribution!')
+
+    UpotPC = UpotPairingContribution
+
+  end function GetUpotPairingContribution
+
+  function GetUpotPairingRearrangement result(UpotPR)
+  !-----------------------------------------------------------------------------
+  !
+  !-----------------------------------------------------------------------------
+     real(KIND=dp) :: UpotPR
+
+    ! nothing to do - what am I doing here ...?
+    if ( .not.PairingContributionUpot ) then
+      UpotPR = 0.0_dp
+    else
+      UpotPR = UpotPairingRearrangementEnergy
+    endif
+
+  end function GetUpotPairingRearrangement
 
   pure logical function ConverFermi(Prec) result(Converged)
   !-----------------------------------------------------------------------------

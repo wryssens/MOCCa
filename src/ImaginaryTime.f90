@@ -74,6 +74,7 @@ contains
         actionofh = hpsi(maxspwf)
         con       = maxE
         maxE      = InproductSpinorReal(maxspwf%value, actionofh)
+        ! print '(" IterativeEstimation: ",i5,3es16.8)',iter,maxE,con
         con       = con - maxE
         !-----------------------------------------------------------------------
         ! notice the sign, we are maximising instead of minimising.
@@ -167,7 +168,6 @@ contains
             !-------------------------------------------------------------------
     end select
     !---------------------------------------------------------------------------
-    
     !---------------------------------------------------------------------------
     ! Temporary printing.
     print *, '----------------'
@@ -176,6 +176,15 @@ contains
     print *, ' kappa', kappa
     print *, ' dt   ' , dt
     print *, ' mom  ' , momentum
+    !---------------------------------------------------------------------------
+    ! as this is the first routine called in a new iteration, if something 
+    ! went completely wrong in the previous call of the pairing module that
+    ! jeopardized the densities and/or mean fields it might show up here 
+    ! and produce a NaN for maxE. Better stop the code now, otherwise it will 
+    ! continue to run out MaxIter iterations. 
+    if ( maxE .eq. maxE+1) then
+      call stp(' IterativeEstimation: something went wrong.')
+    endif
     !---------------------------------------------------------------------------
     ! Step three, find the highest eigenvalue. 
     ! The maximum energy eigenvalue of the quadratic we are minimizing is:

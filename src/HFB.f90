@@ -1107,6 +1107,8 @@ subroutine HFBFindFermiEnergyBroyden                                          &
   logical                               :: Converged(2)
   ! Step size
   real(KIND=dp)                         :: step(2) = 0.5_dp
+  ! dispersion of N used to check nearness of HF solution
+  real(KIND=dp)                         :: disper(2) = 0.0_dp
 
   !-----------------------------------------------------------------------------
   ! First time, take some guess for the histories
@@ -1120,10 +1122,10 @@ subroutine HFBFindFermiEnergyBroyden                                          &
   ! Block some quasiparticles
   ! don't block qp first time round, this can cause many problems. 
   ! - During the very first call in a program run the U and V cannot be trusted.
-  ! - I'm suspicious that during the first call in a later mean-field iteration, 
-  !   the HFBColumns indexation is the blocked one from the previous iteration, but I have 
-  !   not checked in detail. In any event, it sometimes happens that the blocked
-  !   HF state cannot be found in neither the U nor V columns.
+  ! - I'm suspicious that during the first call in a later mean-field iteration,
+  !   the HFBColumns indexation is the blocked one from the previous iteration,
+  !   but I have not checked in detail. In any event, it sometimes happens 
+  !   that the blocked HF state cannot be found in neither the U nor V columns.
   !   Commenting the call out makes the blocking more stable.
   ! if(allocated(qpexcitations)) then
   !   call      BlockQuasiParticles(Fermi)
@@ -1207,16 +1209,23 @@ subroutine HFBFindFermiEnergyBroyden                                          &
        ! apparently often needed when HFB pairing breaks down
        ! in broken signature case, but sometimes also in more
        ! elementary cr8-like calculations
-       ! Attention: this does not safeguard against small negative 
-       ! determinants. They seem to be rarer, though
+      
+    !   disper = Dispersion() 
        do it=1,2
-         if ( det(it) .lt. 0.001 ) then
-      !    print '("HFBFindFermiEnergyBroyden: det",i2,es16.8)', &
-      !    & it,det(it)
-           invJ(1,1,it) = 0.99
+         if ( abs(det(it)) .lt. 0.001_dp ) then
+       !   print '("HFBFindFermiEnergyBroyden: det",i2,es16.8)', &
+       !   & it,det(it)
+           invJ(1,1,it) = sign(0.99_dp,det(it))
          else
-           invJ(1,1,it) = 1.0/det(it)
+           invJ(1,1,it) = 1.0_dp/det(it)
          endif
+         ! if pairing is weak, slow down the adjustment of the Fermi energy if
+         ! the particle number is (almost) matched
+     !   if ( disper(it) .lt. 0.000001 ) then
+     !     if ( N(it) .lt. Prec ) then
+     !       invJ(1,1,it) = 0.0_dp ! don't update at all for this isospin
+     !     endif
+     !   endif
        enddo
       endif
 
@@ -1284,12 +1293,25 @@ subroutine HFBFindFermiEnergyBroyden                                          &
         enddo
       endif
 
+      do it=1,2
+        if( N(it).eq.N(it)+1) then
+          print '(" it = ",i5)',it
+          print '(" Particles = ",1es24.16)',Particles(it)
+          print '(" N         = ",1es24.16)',N(it)
+          call stp('Nan in the calculation of Fermi energies')
+        endif
+      enddo
       !Print a warning if not converged
       if(iter.eq.HFBIter) then
           print 1, HFBIter, N + Particles
           print 2, abs(LN)
       endif
   enddo
+     do it=1,2
+       if (abs(N(it)) .gt. 0.9_dp ) then
+         call stp(' HFBFindFermiEnergyBroyden: lost particle number! ')
+       endif 
+     enddo
 
 end subroutine HFBFindFermiEnergyBroyden
 
@@ -2148,12 +2170,37 @@ subroutine InsertionSortQPEnergies
 
               CanTransfo (1:N,1:N,P,it) = Eigenvectors(1:N,1:N)
               Occupations(1:N,P,it)     = Eigenvalues(1:N)
-              !------------------------------------------------------------------
+              !-----------------------------------------------------------------
               ! Since we shifted the eigenvalues of the negative signature states
               ! by -2, we now need to find the actual occupation numbers.
               ! Notice the slight offset to make sure we are not accidentally
               ! adding two to positive signature eigenvalues
               if(SC) where( Occupations.lt.-0.1_dp) Occupations = Occupations + 2
+              !-----------------------------------------------------------------
+              ! Ensure that occupations are positive semi-definite
+              !-----------------------------------------------------------------
+              ! MB 19/02/26 in the weak-pairing limit, occupations might 
+              ! become -eps because of the accumulation of eigenvalues around
+              ! 0, which might have catastrophic consequences when this 
+              ! concerns a continuum state that is peaked at large distances,
+              ! as this might lead to negative densities rho(r) at large 
+              ! distances that are negative with absolute values larger than
+              ! the 1.d-20 shift of rho when calculating rho^alpha(r). For
+              ! such cases the calculation of rho^alpha(r) produces a NaN
+              ! somewhere on the mesh, which then makes the integral a NaN,
+              ! and also potentials a NaN.I had many calculations where this 
+              ! happened in magic nuclei in HFB sans LN.
+          !   do i=1,N
+          !     if ( Occupations(i,P,it) .lt. 1d-11 ) &
+          !     &  print '(" DiagonaliseRhoHFB!_diagoncr8 1 : ",3i5,1es16.8)', &
+          !     &  it,P,i,Occupations(i,P,it)
+          !   enddo
+              where (  Occupations .lt. 0.0_dp ) Occupations = 0.0_dp
+          !   do i=1,N
+          !     if ( Occupations(i,P,it) .lt. 1d-11 ) &
+          !     &  print '(" DiagonaliseRhoHFB!_diagoncr8 2 : ",3i5,1es16.8)', &
+          !     &  it,P,i,Occupations(i,P,it)
+          !   enddo
           enddo
         enddo
         where (abs(CanTransfo) .lt. 1d-11) CanTransfo = 0.0_dp

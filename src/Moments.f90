@@ -5,6 +5,12 @@ module Moments
 ! electric multipole moment of l=-2 and the routines that special constraints 
 ! need to fit in later.
 !
+! The multipole moments calculated are those of rho, j, s, div.J and J0.
+!
+! rho provides the electric moments, div.J a relativistic correction to these.
+! j and s provide magnetic moments
+! J0 mainly serves as a constraint.
+!
 ! The representation of the spherical harmonics used is the one from Messiah,
 ! using real spherical harmonics.
 !
@@ -226,13 +232,14 @@ implicit none
   end type Moment
   !-----------------------------------------------------------------------------
   !Maximum degree of the multipole components that are considered. Default = 10
-  integer, public :: MaxMoment=10, maxmoment_J0=2
+  integer, public :: MaxMoment=10, MaxMoment_divJ=4 , MaxMoment_J0=2
   !-----------------------------------------------------------------------------
   ! Starting point for the linked list of moments.
   !-----------------------------------------------------------------------------
   type(Moment), public, pointer :: Root         ! Electric multipole moments
   type(Moment), public, pointer :: Root_spin    ! Magnetic-spin    multipole moments
   type(Moment), public, pointer :: Root_current ! Magnetic-current multipole moments
+  type(Moment), public, pointer :: Root_DivJ    ! Multipole moments of the div.J
   type(Moment), public, pointer :: Root_J0      ! Multipole moments of the 
                                                 ! pseudo-scalar J0 density
   !-----------------------------------------------------------------------------
@@ -408,6 +415,10 @@ contains
     Root_spin%l=0      ;    Root_spin%m=0
     allocate(Root_spin%SpherHarm(nx,ny,nz))
     
+    nullify(Root_divJ) ;    allocate(Root_divJ)
+    Root_divJ%l=0      ;    Root_divJ%m=0
+    allocate(Root_divJ%SpherHarm(nx,ny,nz))
+
     nullify(Root_J0) ;    allocate(Root_J0)
     Root_J0%l=0      ;    Root_J0%m=0
     allocate(Root_J0%SpherHarm(nx,ny,nz))
@@ -424,9 +435,17 @@ contains
     Root_spin%SpherHarm=1.0_dp/sqrt(4.0_dp*pi) 
     Root_spin%Impart=.false.
     Root_spin%ConstraintType=0
-    Root_spin%Calculate => Calculate_Multipole
+    ! MB 19/02/23: is this a workaround ?
+    Root_spin%Calculate => Calculate_Multipole 
     Root_spin%PrintMoment => PrintMoment_Multipole
     nullify(Root_spin%Prev) ;  nullify(Root_spin%Next)
+    
+    Root_divJ%SpherHarm=1.0_dp/sqrt(4.0_dp*pi) 
+    Root_divJ%Impart=.false.
+    Root_divJ%ConstraintType=0
+    Root_divJ%Calculate   => Calculate_Multipole_divJ
+    Root_divJ%PrintMoment => PrintMoment_Multipole_divJ
+    nullify(Root_divJ%Prev) ; nullify(Root_divJ%Next)
     
     Root_J0%SpherHarm=1.0_dp/sqrt(4.0_dp*pi) 
     Root_J0%Impart=.false.
@@ -502,8 +521,43 @@ contains
           enddo
         enddo
     endif
+
     !---------------------------------------------------------------------------
-    ! c) the J0 moments
+    ! c) the div.J moments (same form factors as for electric moments, which is
+    ! admittedly somewhat wasteful and not particularly abstracted by MB)
+    nullify(Current)   ;  allocate(Current)
+    Current=>Root_divJ
+    nullify(Current%Next) ;  nullify(Current%Prev) ; nullify(NextMoment)
+    do l=1, MaxMoment_divJ
+      do m=0,l
+        do ImPart=0,1
+          NextMoment => NewMoment_divJ(l,m,ImPart)
+          !Placing the moment in the list
+          if(associated(NextMoment)) then
+            if(Impart.eq.1.) then
+              NextMoment%SpherHarm=SpherHarmMesh(:,:,:,l,m,2)
+            else
+              NextMoment%SpherHarm=SpherHarmMesh(:,:,:,l,m,1)
+            endif
+
+            NextMoment%Prev => Current
+            Current%Next => NextMoment
+            Current => NextMoment
+            nullify(NextMoment)
+          endif
+        enddo
+      enddo
+    enddo
+    !---------------------------------------------------------------------------
+    !Appending the radius squared od divJ to the ordinary list
+    NextMoment   => NewMoment_divJ(-2,0,0)
+    NextMoment%SpherHarm = sum(Mesh3D**2,1)
+
+    Current%Next    => NextMoment
+    NextMoment%Prev => Current
+
+    !---------------------------------------------------------------------------
+    ! d) the J0 moments
     if(.not. PC) then
         nullify(Current)   ;  allocate(Current)
         Current=>Root_J0
@@ -835,7 +889,105 @@ contains
 
     return
   end function NewMoment_Electric
-  
+ 
+  function NewMoment_divJ(l,m,ImPart) result(newmoment)
+    !---------------------------------------------------------------------------
+    ! This subroutine basically doubles NewMoment_Electric for a different 
+    ! density (div.J instead of rho), meaning there are just two lines at the 
+    ! end pointing to specific routines that are different. There is probably 
+    ! an addidional level of abstraction that could be introduced here.
+    !---------------------------------------------------------------------------
+    type(Moment),pointer   :: NewMoment
+    integer, intent(in)    :: l,m,ImPart
+
+    nullify(NewMoment)
+
+    if((mod(l,2).ne.0).and.PC) then
+      ! The multipole moments of odd order are constrained by parity.
+      ! This is independent of quantisation axis.
+      return
+    endif
+
+    if((m.eq.0).and.(Impart.eq.1)) then
+      !Do not create a new moment for an imaginary part of moments with m=0
+      return
+    endif
+
+    select case(QuantisationAxis)
+    case(1)
+        ! Conservation of y-timesimplex
+        if((ImPart.eq.1.).and.TSC) then
+          return
+        endif
+        ! Conservations of signature
+        if((mod(m,2).ne.0).and.SC) then
+          return
+        endif
+
+        if((.not.SC) .or. (.not. TSC)) then
+          call stp('Newmoments problem with X.')
+        endif
+    case(2)
+        if((mod(l,2) .ne. 0) .and. (mod(m,2).eq.0) .and. TSC ) then
+         return
+        endif
+        if((mod(l,2) .eq. 0) .and. (mod(m,2).ne.0) .and. TSC ) then
+          return
+        endif
+
+        if((Impart.eq.0) .and. (mod(m,2).ne.0).and.SC) then
+          return
+        endif
+        if((Impart.eq.1) .and. (mod(m,2).eq.0).and.SC) then
+          return
+        endif
+
+        if((.not.SC) .or. (.not. TSC)) then
+          call stp('Newmoments problem with Y.')
+        endif
+
+    case(3)
+        if((ImPart.eq.1.).and.TSC) then
+          return
+        endif
+
+        if((mod(m,2).ne.0).and.SC) then
+          return
+        endif
+    end select
+
+    allocate(NewMoment)
+    NewMoment%l=l
+    NewMoment%m=m
+
+    nullify(NewMoment%Prev, NewMoment%Next)
+    allocate(NewMoment%SpherHarm(nx,ny,nz))
+
+    if(ImPart.eq.1.) then
+        NewMoment%ImPart=.true.
+    else
+        NewMoment%ImPart=.false.
+    endif
+
+    ! The parameters of the new multipole moment are set to zero by default.
+    NewMoment%ConstraintType= 0
+    NewMoment%Value         = 0.0_dp
+    NewMoment%ValueCut      = 0.0_dp
+    NewMoment%SpherHarm     = 0.0_dp
+    NewMoment%OldValue      = 0.0_dp
+    NewMoment%OldValueCut   = 0.0_dp
+    NewMoment%Isoswitch     = 1
+    NewMoment%Squared       = 0.0_dp
+    NewMoment%ThirdPower    = 0.0_dp
+
+    nullify(NewMoment%Calculate)
+
+    NewMoment%Calculate   => Calculate_Multipole_divJ
+    NewMoment%PrintMoment => PrintMoment_Multipole_divJ
+
+    return
+  end function NewMoment_divJ
+ 
   function NewMoment_J0(l,m,ImPart) result(newmoment)
     !---------------------------------------------------------------------------
 
@@ -1253,7 +1405,8 @@ contains
     2 format ('Constrained',  2(1x,f15.4))
     3 format ('Constrained',  33x, f15.4)
     4 format (' Particles ',  3(1x,f15.4))
-    5 format (' RMS radius',  3(1x,f15.4))
+    5 format (' RMS radius',  3(1x,f15.8))
+   55 format (' MS  radius',  3(1x,f15.8))
     6 format ('Pulling to ',  33x, f15.4)
     7 format ('Constrained Difference: ', 3x, 2(1x,f15.4))
     8 format ('Mult_{',i2,i2,'}',   33x,  f15.4)
@@ -1272,6 +1425,10 @@ contains
     print 5, sqrt(ToPrint%Value(1)/Neutrons)                                &
     &      , sqrt(ToPrint%Value(2)/(Protons))                               &
     &      , sqrt(sum(ToPrint%Value)/(Neutrons+Protons))
+    ! Printing MS radii
+    print 55, ToPrint%Value(1)/Neutrons                                     &
+    &       , ToPrint%Value(2)/(Protons)                                    &
+    &       , sum(ToPrint%Value)/(Neutrons+Protons)
 
     if(ToPrint%ConstraintType.ne.0) then
       if(ToPrint%Isoswitch.eq.1) then
@@ -1325,6 +1482,53 @@ contains
 
 end subroutine PrintMoment_Multipole
 
+subroutine PrintMoment_Multipole_divJ(ToPrint)
+  !---------------------------------------------------------------------------
+  ! This subroutine provides the printing of all relevant info of a Moment.
+  !---------------------------------------------------------------------------
+
+  class(Moment),       intent(in) :: ToPrint
+  character(len=2)                :: ReIm
+  real(KIND=dp)                   :: fac
+
+    1 format (1x,A2,' divJ_{', 2i2, '}', 2(1x,f15.4) )
+ !  2 format ('Constrained',  2(1x,f15.4))
+ !  3 format ('Constrained',  33x, f15.4)
+    4 format (' Norm          ',  2(1x,es15.7))
+    5 format (' divJ r2       ',  2(1x,f15.8))
+ !  6 format ('Pulling to ',  33x, f15.4)
+ !  7 format ('Constrained Difference: ', 3x, 2(1x,f15.4))
+ !  8 format ('Mult_{',i2,i2,'}',   33x,  f15.4)
+ !  9 format ('Mult_{',i2,i2,'}',   2(1x,f15.4))
+ ! 10 format ('Devi_{',i2,i2,'}',   33x,  e15.7)
+ ! 11 format ('Devi_{',i2,i2,'}',   33x,  e15.7)
+
+    !---------------------------------------------------------------------------
+
+  select case(ToPrint%l)
+
+  case(0)
+    ! Printing the norm of div.J
+    print 4, sqrt(4*pi)*ToPrint%Value
+
+  case(-2)
+    ! Printing MS radii only as div.J is usually negative
+    print 5, ToPrint%Value(1) , ToPrint%Value(2)
+
+  case DEFAULT
+    !All other "normal" multipole moments
+    if(.not.ToPrint%Impart) then
+        ReIm = 'Re'
+    else
+        ReIm = 'Im'
+    endif
+
+    print 1, ReIm, ToPrint%l, ToPrint%m, ToPrint%Value(1), ToPrint%Value(2)
+
+  end select
+
+end subroutine PrintMoment_Multipole_divJ
+
 subroutine PrintMoment_J0(ToPrint)
   !---------------------------------------------------------------------------
   ! This subroutine provides the printing of all relevant info of a Moment.
@@ -1337,7 +1541,7 @@ subroutine PrintMoment_J0(ToPrint)
     1 format (A2, ' J_{', 2i2, '}', 3(1x,f15.4) )
     2 format ('Constrained',  2(1x,f15.4))
     3 format ('Constrained',  33x, f15.4)
-    4 format (' Particles ',  3(1x,f15.4))
+    4 format (' Norm      ',  3(1x,f15.4))
     5 format (' RMS radius',  3(1x,f15.4))
     6 format ('Pulling to ',  33x, f15.4)
     7 format ('Constrained Difference: ', 3x, 2(1x,f15.4))
@@ -1441,6 +1645,7 @@ subroutine PrintAllMoments()
 
     100 format (15('-'),' Electric Multipole Moments ', 16('-'))
     101 format (15('-'),' Magnetic Multipole Moments ', 16('-'))   
+    199 format (15('-'),' div.J Multipole Moments    ', 16('-'))    
     201 format (15('-'),' J0 Multipole Moments       ', 16('-'))    
     102 format (60('-'))
       1 format (60('_'))
@@ -1601,7 +1806,24 @@ subroutine PrintAllMoments()
           nullify(Current)
           print 102
       endif
-      
+     !-------------------------------------------------------------------------
+      Current => Root_divJ
+      print 199 
+      print 10, Ax
+      print 11, SecAx1, SecAx2
+      print 1
+      ! c) The div.J moments
+      Current => Root_divJ
+      call Current%printMoment(Current)
+      do while(associated(Current%Next))
+        Current => Current%Next
+        currentl = Current%l
+        call Current%PrintMoment(Current)
+      enddo
+      !print 1
+      nullify(Current)
+      print 102
+ 
       !-------------------------------------------------------------------------
       if(.not. PC) then
           Current => Root_J0
@@ -1609,7 +1831,7 @@ subroutine PrintAllMoments()
           print 10, Ax
           print 11, SecAx1, SecAx2
           print 1
-          ! c) The J0 moments
+          ! d) The J0 moments
           Current => Root_J0
           call Current%printMoment(Current)
           do while(associated(Current%Next))
@@ -1621,6 +1843,13 @@ subroutine PrintAllMoments()
           nullify(Current)
           print 102
       endif
+
+      !-------------------------------------------------------------------------
+      ! diagnostic printing of div.j(r) and sum_mu nabla_mu J_munu(r)
+  !   if ( .not.TRC ) call Printdivj
+  !   call PrintDivJnu
+      print 102
+
       return
   end subroutine PrintAllMoments
 
@@ -1789,7 +2018,82 @@ subroutine PrintAllMoments()
 
     return
   end subroutine Calculate_magnetic
-  
+ 
+  subroutine Calculate_Multipole_divJ(ToCalculate,SaveOld)
+    !---------------------------------------------------------------------------
+    ! This subroutine calculates the multipole moments of div.J 
+    ! by integrating over the mesh, using the SpherHarm variable.
+    ! The integration is then
+    !    <Q_{lm}> = int d^3x div.J(x,y,z) * SpherHarm(x,y,z)
+    !---------------------------------------------------------------------------
+    ! The integer saveold controls if previous results are saved or not to the
+    ! Oldvalues array. 1 saves, 0 does not save.
+    !---------------------------------------------------------------------------
+    use Densities, only : Density
+
+    class(Moment),        intent(inout) :: ToCalculate
+    integer                             :: i,it
+    integer                             :: SaveOld, mu
+    real(KIND=dp)                       :: divJ(nx,ny,nz,2)
+
+    if (.not.allocated(Density%NablaJ)) then
+      call stp('Can only calculate moments of div.J with NablaJ allocated.')
+    endif
+
+    if(SaveOld.ne.0) then
+      !
+      ! Currently not used.
+      !
+    endif
+
+    !Initialise
+    ToCalculate%Value      = 0.0_dp
+
+    ! Get div.J
+    divJ = Density%NablaJ(:,:,:,:)
+
+    ! print '(" Calculate_Multipole_divJ Norm ",2f15.8)', &
+    !   &     dv*sum(Density%NablaJ(:,:,:,1)), & 
+    !   &     dv*sum(Density%NablaJ(:,:,:,2)) 
+    !
+    ! print '(" Calculate_Multipole_divJ r2   ",2f15.8)', &
+    !  &     dv*sum(Density%NablaJ(:,:,:,1)*(Mesh3D(1,:,:,:)*Mesh3D(1,:,:,:)    &
+    !  &                                    +Mesh3D(2,:,:,:)*Mesh3D(2,:,:,:)    &
+    !  &                                    +Mesh3D(3,:,:,:)*Mesh3D(3,:,:,:))), &
+    !  &     dv*sum(Density%NablaJ(:,:,:,2)*(Mesh3D(1,:,:,:)*Mesh3D(1,:,:,:)    &
+    !  &                                    +Mesh3D(2,:,:,:)*Mesh3D(2,:,:,:)    &
+    !  &                                    +Mesh3D(3,:,:,:)*Mesh3D(3,:,:,:)))
+    !---------------------------------------------------------------------------
+    ! Calculate the new value for ordinary constraints
+    do it=1,2
+      ToCalculate%Value(it)    = ToCalculate%Value(it) + &
+      &       sum(ToCalculate%SpherHarm(:,:,:)*divJ(:,:,:,it))
+    enddo
+
+ !  if(any(ToCalculate%Value.eq.ToCalculate%Value+1)) then
+ !    call stp('Nan in the calculation of multipole moments.', 'l=',           &
+ !    &         ToCalculate%l, 'm=', ToCalculate%m)
+ !  endif
+
+    ToCalculate%Value     =ToCalculate%Value*dv
+ !  ToCalculate%ValueCut  =ToCalculate%ValueCut*dv
+ !  ToCalculate%Thirdpower=ToCalculate%Thirdpower*dv
+ !  ToCalculate%Squared   =ToCalculate%Squared*dv
+
+ !  ! Set the deviation
+ !  if(ToCalculate%ConstraintType.ne.0) then
+ !      if(.not. ToCalculate%total) then
+ !        ToCalculate%deviation(1) = abs(sum(ToCalculate%Value) -              &
+ !                                                ToCalculate%TrueConstraint(1))
+ !      else
+ !        ToCalculate%deviation(1) = abs(sum(CalculateTotalQl(Tocalculate%l))- &
+ !                                                ToCalculate%TrueConstraint(1))
+ !      endif
+ !  endif
+
+    return
+  end subroutine Calculate_Multipole_divJ
+ 
   subroutine Calculate_J0(ToCalculate,SaveOld)
     !---------------------------------------------------------------------------
     ! This subroutine calculates the multipole moment, both with and without
@@ -1932,7 +2236,15 @@ subroutine PrintAllMoments()
         Current => Current%Next
         call Current%Calculate(Current,SaveOld)
     enddo
-    
+
+    !---------------------------------------------------------------------------
+    ! Calculate the moments of div.J
+    Current => Root_divJ
+    do while(associated(Current%Next))
+        Current => Current%Next
+        call Current%Calculate(Current,SaveOld)
+    enddo
+
     !---------------------------------------------------------------------------
     ! Calculate the J0 multipole
     if(.not.PC .and. allocated(Density%Jmunu)) then
@@ -3455,4 +3767,148 @@ subroutine PrintAllMoments()
      nullify(Current)
      return
   end subroutine ReadMomentData
+
+!
+!======================================== some diagnostic routines by MB
+!
+
+subroutine Printdivj
+      !-------------------------------------------------------------------------
+      ! diagnostic subroutine checking for presence of non-locality from the
+      ! earlier bug that the cutoff of cranking and J0 constraints was not 
+      ! treated in a hermitean way.
+      ! note: can only be called when time-reversal is broken
+      !-------------------------------------------------------------------------
+    use Derivatives
+    use Densities, only : Density
+    use Mesh,      only : Mesh3D
+
+    real(KIND=dp) :: divj  (nx,ny,nz,2)
+    integer       :: it
+    integer       :: i , j , k 
+    integer       :: LocaN(3) ,LocaP(3)
+
+    !-------------------------------------------------------------------------
+    if (TRC)  return
+
+    !-------------------------------------------------------------------------
+    ! construct div.j
+    ! see  WR's mail from 18 February, 2019 15:31 for symmetry settings
+    !-------------------------------------------------------------------------
+    divj = 0.0_dp
+    do it=1,2
+      divj(:,:,:,it) = &
+        &  DeriveX(Density%Vecj(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,2) &
+        & +DeriveY(Density%Vecj(:,:,:,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,1) & 
+        & +DeriveZ(Density%Vecj(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,2)
+    enddo
+
+    print '(" minimum value of div.j    ",2es12.4)',minval(divj(:,:,:,1)),minval(divj(:,:,:,2))
+    print '(" maximum value of div.j    ",2es12.4)',maxval(divj(:,:,:,1)),maxval(divj(:,:,:,2))
+    LocaN = minloc(divj(:,:,:,1))
+    LocaP = minloc(divj(:,:,:,2))
+    print '(" location minimum value    ",6i4)',LocaN,LocaP
+    LocaN = maxloc(divj(:,:,:,1))
+    LocaP = maxloc(divj(:,:,:,2))
+    print '(" location maximum value    ",6i4)',LocaN,LocaP
+
+    i = 1 ; if (.not.SC ) i = nx/2+1
+    j = 1 ; if (.not.TSC) j = ny/2+1
+
+    print '(/," div.j")'
+    print '(  " cut at x = ",f8.3," y = ",f8.3)',Mesh3D(1,i,j,1),Mesh3D(2,i,j,1)
+    print '(  "   k   z        rho_n           rho_p       ")'
+    do k=1,nz
+      print '(i4,f8.3,4es16.8)',                                             &
+       & k,Mesh3D(3,i,j,k),                                                  &
+       & Density%Rho(i,j,k,1),Density%Rho(i,j,k,2),                          &
+       & divj(i,j,k,1), divj(i,j,k,2)
+    enddo
+    print '(" ")'
+
+end subroutine Printdivj
+
+subroutine PrintDivJnu
+      !-------------------------------------------------------------------------
+      ! diagnostic subroutine checking for presence of non-locality from the
+      ! earlier bug that the cutoff of cranking and J0 constraints was not 
+      ! treated in a hermitean way.
+      !-------------------------------------------------------------------------
+    use Derivatives
+    use Densities, only : Density
+    use Mesh,      only : Mesh3D
+
+    real(KIND=dp) :: divJnu(nx,ny,nz,3,2)
+    integer       :: it
+    integer       :: i , j , k 
+    integer       :: LocaN(3),LocaP(3)
+
+    if (.not.allocated(Density%Jmunu)) return
+
+    !-------------------------------------------------------------------------
+    ! construct sum_mu nabla_mu J_munu
+    ! symmetries of derivatives as in "ComputeDensity" of Densities.f90
+    DivJnu = 0.0_dp
+    do it=1,2
+      DivJnu(:,:,:,1,it) = &
+       &  DeriveX(Density%Jmunu(:,:,:,1,1,it),-ParityInt,+SignatureInt, TimeSimplexInt,2) &
+       & +DeriveY(Density%Jmunu(:,:,:,2,1,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1) &
+       & +DeriveZ(Density%Jmunu(:,:,:,3,1,it),-ParityInt,-SignatureInt, TimeSimplexInt,2)
+
+      DivJnu(:,:,:,2,it) = &
+       &  DeriveX(Density%Jmunu(:,:,:,1,2,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1) &
+       & +DeriveY(Density%Jmunu(:,:,:,2,2,it),-ParityInt,+SignatureInt, TimeSimplexInt,2) &
+       & +DeriveZ(Density%Jmunu(:,:,:,3,2,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1)
+
+      DivJnu(:,:,:,3,it) = &
+       &  DeriveX(Density%Jmunu(:,:,:,1,3,it),-ParityInt,-SignatureInt, TimeSimplexInt,2) &
+       & +DeriveY(Density%Jmunu(:,:,:,2,3,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1) &
+       & +DeriveZ(Density%Jmunu(:,:,:,3,3,it),-ParityInt,+SignatureInt, TimeSimplexInt,2)
+    enddo
+    print '(" minimum value of nmu Jmux ",2es12.4)',minval(divjnu(:,:,:,1,1)),minval(divjnu(:,:,:,1,2))
+    print '(" maximum value of nmu Jmux ",2es12.4)',maxval(divjnu(:,:,:,1,1)),maxval(divjnu(:,:,:,1,2))
+    print '(" minimum value of nmu Jmuy ",2es12.4)',minval(divjnu(:,:,:,2,1)),minval(divjnu(:,:,:,2,2))
+    print '(" maximum value of nmu Jmuy ",2es12.4)',maxval(divjnu(:,:,:,2,1)),maxval(divjnu(:,:,:,2,2))
+    print '(" minimum value of nmu Jmuz ",2es12.4)',minval(divjnu(:,:,:,3,1)),minval(divjnu(:,:,:,3,2))
+    print '(" maximum value of nmu Jmuz ",2es12.4)',maxval(divjnu(:,:,:,3,1)),maxval(divjnu(:,:,:,3,2))
+    LocaN = minloc(DivJnu(:,:,:,1,1))
+    LocaP = minloc(DivJnu(:,:,:,1,2))
+    print '(" location minimum value x  ",6i4)',LocaN,LocaP
+    LocaN = minloc(DivJnu(:,:,:,2,1))
+    LocaP = minloc(DivJnu(:,:,:,2,2))
+    print '(" location minimum value y  ",6i4)',LocaN,LocaP
+    LocaN = minloc(DivJnu(:,:,:,3,1))
+    LocaP = minloc(DivJnu(:,:,:,3,2))
+    print '(" location minimum value z  ",6i4)',LocaN,LocaP
+    LocaN = maxloc(DivJnu(:,:,:,1,1))
+    LocaP = maxloc(DivJnu(:,:,:,1,2))
+    print '(" location maximum value x  ",6i4)',LocaN,LocaP
+    LocaN = maxloc(DivJnu(:,:,:,2,1))
+    LocaP = maxloc(DivJnu(:,:,:,2,2))
+    print '(" location maximum value y  ",6i4)',LocaN,LocaP
+    LocaN = maxloc(DivJnu(:,:,:,3,1))
+    LocaP = maxloc(DivJnu(:,:,:,3,2))
+    print '(" location maximum value z  ",6i4)',LocaN,LocaP
+
+    i = 1 ; if (.not.SC ) i = nx/2+1
+    j = 1 ; if (.not.TSC) j = ny/2+1
+ 
+    print '(/," nablamu Jmunu")'
+    print '(  " cut at x = ",f8.3," y = ",f8.3)',Mesh3D(1,i,j,1),Mesh3D(2,i,j,1)
+    print '(  "   k   z        rho_n           rho_p       ")'
+    do k=1,nz
+      print '(i4,f8.3,8es16.8)',                                             &
+       & k,Mesh3D(3,i,j,k),                                                  &
+       & Density%Rho(i,j,k,1),Density%Rho(i,j,k,2),                          &
+       & DivJnu(i,j,k,1,1),DivJnu(i,j,k,2,1),DivJnu(i,j,k,3,1),              &
+       & DivJnu(i,j,k,1,2),DivJnu(i,j,k,2,2),DivJnu(i,j,k,3,2)
+    enddo
+    print '(" ")'
+
+end subroutine PrintDivJnu
+
+
+
+
+
 end module Moments

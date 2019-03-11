@@ -134,28 +134,82 @@ contains
     !---------------------------------------------------------------------------
     ! Function returning the contribution of a cranking constraint to the
     ! mean field potential A.
-    !       APot => APot - hbar* \vec{\omega} x \vec{r}
+    !       APot => APot - hbar * f_cut(r) \vec{\omega} x \vec{r}
     !---------------------------------------------------------------------------
     use Moments, only: Cutoff
     use Mesh, only   : Mesh3D
 
     real(KIND=dp) :: CrankContribution(nx,ny,nz,3,2)
     integer       :: i,j,k,it
+    
+    CrankContribution = 0.0_dp
 
-    CrankContribution=0.0_dp
-
+    ! MB: I added here the trivial if condition for non-zero LeviCivita, which
+    ! reduces the cost of executing this to 6/27 of the original cost, modulo
+    ! gains compiler optimisation might find in this. But as the function 
+    ! LeviCivita() has to be called each time, I doubt this can be efficiently
+    ! done anyway.
     do it=1,2
-     do k=1,3
+      do k=1,3
       do j=1,3
-        do i=1,3
-           CrankContribution(:,:,:,i,it) = CrankContribution(:,:,:,i,it) -     &
-           & LeviCivita(i,j,k) * Omega(j) *  Mesh3D(k,:,:,:)*Cutoff(:,:,:,it)
-        enddo
-      enddo
+      do i=1,3
+  !     if((i.ne.j).and.(j.ne.k).and.(k.ne.i)) &
+            CrankContribution(:,:,:,i,it) = CrankContribution(:,:,:,i,it) -     &
+          &     LeviCivita(i,j,k) * Omega(j) *  Mesh3D(k,:,:,:)*Cutoff(:,:,:,it)
+     enddo
+     enddo
      enddo
    enddo
    return
   end function CrankAPot
+
+  function CrankDivAPot() result(CrankContribution)
+    !---------------------------------------------------------------------------
+    ! Function returning the contribution of a cranking constraint to the
+    ! mean field potential A. Using that div.(fF) = grad(f).F + f div.F, one has
+    !       DivAPot => DivAPot - hbar * Grad(f_cut(r)).\vec{\omega} x \vec{r}
+    !---------------------------------------------------------------------------
+    use Derivatives
+    use Moments, only: Cutoff
+    use Mesh, only   : Mesh3D
+    use Densities
+
+    real(KIND=dp) :: CrankContribution(nx,ny,nz,2)
+    real(KIND=dp) :: GradCutoff(nx,ny,nz,3)
+    integer       :: i,j,k,it
+    
+    CrankContribution = 0.0_dp
+
+    do it=1,2
+      GradCutoff(:,:,:,1) = &
+        & DeriveX(Cutoff(:,:,:,it), ParityInt,SignatureInt,TimeSimplexInt,1)
+      GradCutoff(:,:,:,2) = &
+        & DeriveY(Cutoff(:,:,:,it), ParityInt,SignatureInt,TimeSimplexInt,1)
+      GradCutoff(:,:,:,3) = &
+        & DeriveZ(Cutoff(:,:,:,it), ParityInt,SignatureInt,TimeSimplexInt,1)
+   
+      CrankContribution(:,:,:,it) = CrankContribution(:,:,:,it)     &
+          & - GradCutoff(:,:,:,1) * Omega(2) * Mesh3D(3,:,:,:)      &
+          & + GradCutoff(:,:,:,1) * Omega(3) * Mesh3D(2,:,:,:)      &
+          & - GradCutoff(:,:,:,2) * Omega(3) * Mesh3D(1,:,:,:)      &
+          & + GradCutoff(:,:,:,2) * Omega(1) * Mesh3D(3,:,:,:)      &
+          & - GradCutoff(:,:,:,3) * Omega(1) * Mesh3D(2,:,:,:)      &
+          & + GradCutoff(:,:,:,3) * Omega(2) * Mesh3D(1,:,:,:)
+    enddo
+
+ !  print '(  "   k   z    ")'
+ !  i = 1 ; j = 1
+ !  do k=1,nz
+ !    print '(i4,f7.3,8es16.8)',                                             &
+ !     & k,Mesh3D(3,i,j,k),                                                  &
+ !     & Density%Rho(i,j,k,1),Density%Rho(i,j,k,2),                          &
+ !     & Cutoff(i,j,k,1),                                                    &
+ !     & GradCutoff(i,j,k,1),GradCutoff(i,j,k,2),GradCutoff(i,j,k,3),        &
+ !     & CrankContribution(i,j,k,1),CrankContribution(i,j,k,2) 
+ !  enddo
+ !  print '(" ")'
+
+  end function CrankDivAPot
 
   function CrankSPot() result(CrankContribution)
    !----------------------------------------------------------------------------

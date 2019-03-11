@@ -79,8 +79,10 @@ module MeanFields
   !Mean Field Potentials (and some of their relevant derivatives)
   real(KIND=dp),allocatable :: BPot(:,:,:,:)          , NablaBPot(:,:,:,:,:)
   real(KIND=dp),allocatable :: UPot(:,:,:,:)          , APot(:,:,:,:,:)
+  real(KIND=dp),allocatable :: DivAPot(:,:,:,:)       
   real(KIND=dp),allocatable :: SPot(:,:,:,:,:)
   real(KIND=dp),allocatable :: Cpot(:,:,:,:,:)        , WPot(:,:,:,:,:,:)
+  real(KIND=dp),allocatable :: DivWPot(:,:,:,:,:)       
   real(KIND=dp),allocatable :: DPot(:,:,:,:,:)
   real(KIND=dp),allocatable :: DerCPot(:,:,:,:,:,:)   , DerDPot(:,:,:,:,:,:)
   real(KIND=dp),allocatable :: DivDpot(:,:,:,:)
@@ -289,11 +291,16 @@ contains
       !        -------------
       ! U   =  2 C^(4Dr) Delta Delta rho + C^(4 Mrho) Q 
       !      - 2 C^(4 Mrho) D_m D_n tau_mn
+      !
+      !        Pairing part
+      !        --------------
+      ! contribution from pairing EDF
       !-------------------------------------------------------------------------
     use Moments, only : ConstraintEnergy
     use Coulomb, only : CoulombPotential, CoulExchange
     use Densities
     use Force 
+    use Pairing, only : GetUpotPairingContribution, PairingContributionUpot
     
     integer        :: it, at
     !Temporary storage for total densities.
@@ -311,7 +318,6 @@ contains
     ! of rho. Thus we calculate it as Rho**byt3a/(Rho + eps)
     eps = 1.d-20
   
-   
     !B1 & B2
     U(:,:,:,1)= (2.0_dp*B1 + 2.0_dp*B2)*Density%Rho(:,:,:,1)                   &
     &            + 2.0_dp*B1*Density%Rho(:,:,:,2)
@@ -379,6 +385,11 @@ contains
        endif
     endif
 
+    ! contribution from pairing EDF
+    if ( PairingContributionUpot ) then
+      U(:,:,:,:) = U(:,:,:,:) + GetUpotPairingContribution()
+    endif
+
     ! Note that CoulExchange from the Coulomb module already carries a minus.
     U(:,:,:,2)= U(:,:,:,2) + CoulombPotential(:,:,:) 
     
@@ -408,12 +419,16 @@ contains
   !
   ! Also added is the contribution from the cranking constraints.
   !-----------------------------------------------------------------------------
-    use Cranking, only : CrankApot
+  ! This subroutine also calculates div.A
+  !-----------------------------------------------------------------------------
+    use Derivatives
+    use Cranking, only : Omega , CrankApot , CrankDivApot
 
     integer :: it,at,i,j,k
+    !real(KIND=dp)             :: DivAtest(nx,ny,nz,2) ! test only
+    !integer :: Loca(4) ! test only
 
-    APot=0.0_dp
-
+    Apot    = 0.0_dp
     do it=1,2
       at = 3 - it
       !-------------------------------------------------------------------------
@@ -436,9 +451,39 @@ contains
             &                -4* N2jpi(1)            *Density%PiN2LO(:,:,:,:,at) 
         enddo
     endif
-    
-    !Add a cranking contribution
+
+    !-------------------------------------------------------------------------
+    ! Add the contribution from the cranking constraint
     APot = APot + CrankAPot()
+
+    !-------------------------------------------------------------------------
+    ! construct div.A
+    ! see  WR's mail from 18 February, 2019 15:31 for symmetry settings
+    !-------------------------------------------------------------------------
+    ! there is also a dedicated routine in Cranking.f90 that constructs directly
+    ! the contribution from the cranking constraint to div.A, which a priori 
+    ! comes from the gradient of the cutoff function. However, div.A
+    ! calculated from just the Skyrme contributions is also non-zero. Not sure
+    ! where this contribution comes from. Looking at the isolated contribution
+    ! from the cranking constraint, calculating the divergence numerically as 
+    ! below or using the analytical expression used in CrankDivAPot() agrees
+    ! on the level of numerical noise.
+    !-------------------------------------------------------------------------
+    DivApot= 0.0_dp
+    do it=1,2
+      DivApot(:,:,:,it) = &
+        &  DeriveX(APot(:,:,:,1,it), -ParityInt,-SignatureInt, TimeSimplexInt,2) &
+        & +DeriveY(APot(:,:,:,2,it), -ParityInt,-SignatureInt, TimeSimplexInt,1) & 
+        & +DeriveZ(APot(:,:,:,3,it), -ParityInt, SignatureInt, TimeSimplexInt,2)
+    enddo
+
+    !DivAtest = DivApot  - CrankDivAPot()
+    !print '(" max DivAtest 2 ",es16.8)',maxval(abs(DivAtest))
+    !Loca = maxloc(abs(DivAtest))
+    !print '(" Loca ",4i5)',Loca
+
+    ! DivApot= 0.0_dp ! test only
+
     return
   end subroutine CalcAPot
 
@@ -451,6 +496,7 @@ contains
   !             + B16*2*(J_{nu mu} + \sum_{k=x}^z J_kk \delta_{mu,nu})
   !             + B17*2*(J_{q;nu mu} + \sum_{k=x}^z J_{q;kk} \delta_{mu,nu})
   !-----------------------------------------------------------------------------
+    use Derivatives
     use Moments, only : ConstraintEnergy_J0
     
     integer :: m,n,k,it
@@ -462,6 +508,7 @@ contains
          do n=1,3
            !B9 Contribution
            do k=1,3
+             ! if ((m.ne.n).and.(m.ne.k).and.(n.ne.k))
              WPot(:,:,:,m,n,it) = WPot(:,:,:,m,n,it) - LeviCivita(k,m,n)*      &
              &        ((B9 + B9q)*Density%DerRho(:,:,:,k,it)                   &
              &        + B9       *Density%DerRho(:,:,:,k,3-it))
@@ -519,6 +566,28 @@ contains
         ! implemented, since it should be zero for local interactions anyway.
         !-----------------------------------------------------------------------
     endif
+
+    !-------------------------------------------------------------------------
+    ! construct sum_mu nabla_mu W_munu
+    ! symmetries of derivatives as in "ComputeDensity" of Densities.f90
+    DivWpot = 0.0_dp
+    do it=1,2
+      DivWpot(:,:,:,1,it) = &
+       &  DeriveX(Wpot(:,:,:,1,1,it),-ParityInt,+SignatureInt, TimeSimplexInt,2) &
+       & +DeriveY(Wpot(:,:,:,2,1,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1) &
+       & +DeriveZ(Wpot(:,:,:,3,1,it),-ParityInt,-SignatureInt, TimeSimplexInt,2)
+
+      DivWpot(:,:,:,2,it) = &
+       &  DeriveX(Wpot(:,:,:,1,2,it),-ParityInt,+SignatureInt,+TimeSimplexInt,1) &
+       & +DeriveY(Wpot(:,:,:,2,2,it),-ParityInt,+SignatureInt, TimeSimplexInt,2) &
+       & +DeriveZ(Wpot(:,:,:,3,2,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1)
+
+      DivWpot(:,:,:,3,it) = &
+       &  DeriveX(Wpot(:,:,:,1,3,it),-ParityInt,-SignatureInt, TimeSimplexInt,2) &
+       & +DeriveY(Wpot(:,:,:,2,3,it),-ParityInt,-SignatureInt,+TimeSimplexInt,1) &
+       & +DeriveZ(Wpot(:,:,:,3,3,it),-ParityInt,+SignatureInt, TimeSimplexInt,2)
+    enddo
+    ! DivWpot = 0.0_dp ! test only
 
     return
   end subroutine CalcWPot
@@ -956,13 +1025,16 @@ contains
   function ActionOfW(Psi)
     !---------------------------------------------------------------------------
     ! Function that computes the action of the W Potential on a wavefunction Psi
-    !     ActionOfW = - i W_{mu,nu} \nabla_{mu} \sigma_{nu} (implied summation)
+    !     ActionOfW = -(i/2) [  \nabla_{mu} W_{mu,nu} \sigma_{nu} 
+    !                         + W_{mu,nu} \nabla_{mu} \sigma_{nu} ] Psi
+    !               =  -(i/2) [ \nabla_{mu} W_{mu,nu} ] \sigma_{nu} Psi
+    !                  -  i      W_{mu,nu}  \nabla_{mu} \sigma_{nu} Psi
+    !               = - i W_{mu,nu} \nabla_{mu} \sigma_{nu} Psi
     !---------------------------------------------------------------------------
-    !
-    ! Note that the terms related to \nabla W are taken to be zero. This is
-    ! clearly justified when no tensor terms are present (i.e. b14,15,16,17 = 0)
-    ! but unclear when those terms are present.
-    !
+    ! Note that the interaction terms related to \nabla W are taken to be zero. 
+    ! This is clearly justified when no tensor terms are present (i.e. when 
+    ! b14,15,16,17 = 0) but unclear when those terms are present.
+    ! By contrast, the cutoff of constraints on J^(0) gives a contribution.
     !---------------------------------------------------------------------------
     type(Spwf), intent(in) :: Psi
     type(Spinor)           :: ActionOfW, Der(3), P
@@ -972,11 +1044,16 @@ contains
     ActionOfW=NewSpinor()
     it = (Psi%GetIsospin() + 3)/2
     do mu = 1,3
-            Der(mu) = Psi%GetDer(mu)
-            do nu=1,3
-                    P = WPot(:,:,:,mu,nu,it)*Pauli(Der(mu),nu)
-                    ActionOfW = ActionOfW + P
-            enddo
+      Der(mu) = Psi%GetDer(mu)
+      do nu=1,3
+        P = WPot(:,:,:,mu,nu,it)*Pauli(Der(mu),nu)
+        ActionOfW = ActionOfW + P
+      enddo
+    enddo
+    ! now the div W sigma_nu term
+    P = Psi%GetValue()
+    do nu=1,3
+      ActionOfW = ActionOfW + 0.5_dp * DivWPot(:,:,:,nu,it)*Pauli(P,nu)
     enddo
     ActionOfW = MultiplyI(ActionOfW)
     ActionOfW = (-1.0_dp)*ActionOfW
@@ -1026,8 +1103,8 @@ contains
   function ActionOfA(Psi)
     !---------------------------------------------------------------------------
     ! Function that computes the action of the A Potential
-    !       - i \vec{A}_{q}(\vec{r}) \cdot \nabla \Psi
-    !
+    ! - (i/2) [nabla.A_q(r) + A_q(r).nabla ] \Psi (r)
+    !  = - (i/2) [ nabla.A_q(r)] Psi(r) - i A_q(r).nabla Psi(r)
     !---------------------------------------------------------------------------
 
     type(Spwf), intent(in) :: Psi
@@ -1035,13 +1112,16 @@ contains
     type(Spinor)           :: ActionOfA, Der
 
     it = (Psi%getIsoSpin() + 3)/2
-		ActionOfA=NewSpinor()
+
+    ActionOfA = NewSpinor()
     do m=1,3
       Der = Psi%GetDer(m)
       ActionOfA = ActionOfA + APot(:,:,:,m,it)*Der
     enddo
-    ActionOfA = -MultiplyI(ActionOfA)
+    ActionOfA = ActionOfA + 0.5_dp * DivAPot(:,:,:,it) * Psi%GetValue()
 
+    ActionOfA = -MultiplyI(ActionOfA)
+    
   end function ActionOfA
 
   function ActionOfS(Psi)
@@ -1054,7 +1134,7 @@ contains
     type(Spinor)           :: ActionOfS, Value
 
     it = (Psi%GetIsoSpin() + 3)/2
-		ActionOfS = NewSpinor()
+    ActionOfS = NewSpinor()
     do m=1,3
       Value = Psi%GetValue()
       ActionOfS = ActionOfS + SPot(:,:,:,m,it)*Pauli(Value, m)

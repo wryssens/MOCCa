@@ -35,9 +35,10 @@ contains
       allocate(BPot(nx,ny,nz,2), NablaBPot(nx,ny,nz,3,2), UPot(nx,ny,nz,2))
       allocate(UpotOld(nx,ny,nz,2)); allocate(du(nx,ny,nz,2))
       allocate(Wpot(nx,ny,nz,3,3,2))
+      allocate(DivWpot(nx,ny,nz,3,2))
       BPot = 0.0_dp ; NablaBPot=0.0_dp 
       Upot = 0.0_dp ; Upotold = 0.0_dp ; du = 0.0_dp
-      Wpot = 0.0_dp 
+      Wpot = 0.0_dp ; DivWpot = 0.0_dp 
       if ( PreConW .gt. 0.0_dp ) then 
         allocate(WpotOld(nx,ny,nz,3,3,2)) ; allocate(dw(nx,ny,nz,3,3,2)) 
         Wpotold = 0.0_dp ; dw = 0.0_dp
@@ -46,7 +47,8 @@ contains
         !-----------------------------------------------------------------------
         ! Time-odd potentials
         allocate(SPot(nx,ny,nz,3,2),APot(nx,ny,nz,3,2))
-        SPot     =0.0_dp ; Apot = 0.0_dp
+        allocate(DivAPot(nx,ny,nz,2))
+        SPot = 0.0_dp ; Apot = 0.0_dp ; DivAPot = 0.0_dp
         allocate(ds(nx,ny,nz,3,2)) ; ds = 0
         allocate(SpotOld(nx,ny,nz,3,2)) ; SpotOld = 0.0
       endif

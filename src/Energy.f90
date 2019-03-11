@@ -155,6 +155,13 @@ contains
     &                      +    sum(ConstraintEnergy*Density%Rho)*dv           &
     !                         Contribution of the cranking constraints (Omega*J)
     &                      +    sum(CrankEnergy)
+    ! Contribution of the constraints on J0
+    if (allocated(Density%Jmunu)) then
+     do i=1,3
+       Routhian = Routhian &
+            & + sum(ConstraintEnergy_J0*Density%Jmunu(:,:,:,i,i,:))*dv
+      enddo
+    endif
 
     !Energy due to the single particle states.
     SpEnergy = SpwfEnergy()
@@ -1404,7 +1411,6 @@ contains
     do i=1,nwt
         dispersion = dispersion + HFBasis(i)%Occupation*HFBasis(i)%Dispersion
     enddo
-    dispersion = dispersion/(protons+neutrons)
     print 115, Dispersion
     
     print 3
@@ -1486,6 +1492,7 @@ contains
     use Moments, only : ConstraintEnergy,  ConstraintEnergy_J0
     use Cranking,only : Omega, CrankEnergy
     use Spwfstorage, only: TotalAngMom
+    use Pairing, only : GetUpotPairingRearrangement, PairingContributionUpot
     integer           :: i, mu
 
     !Summing the energies of the single particle states.
@@ -1520,11 +1527,15 @@ contains
     ! Always add the 1-body COMcorrection. In case it is used iteratively, it
     ! is double counted along with the kinetic energy!
     if(COM1body.gt.0) then
-    	SpwfEnergy = SpwfEnergy  + sum(COMCorrection(1,:))/2.0_dp
+      SpwfEnergy = SpwfEnergy  + sum(COMCorrection(1,:))/2.0_dp
     endif
     !Add the 2-COMcorrection energy when they are not used iteratively.
     if(COM2body.eq.1) then
-    	SpwfEnergy = SpwfEnergy  + sum(COMCorrection(2,:))
+      SpwfEnergy = SpwfEnergy  + sum(COMCorrection(2,:))
+    endif
+    ! subtract contribution from pairing to single-particle energies
+    if(PairingContributionUpot) then
+      SpwfEnergy = SpwfEnergy  - GetUpotPairingRearrangement()
     endif
     return
   end function SpwfEnergy

@@ -917,7 +917,7 @@ contains
   !                                 &      dv*sum(PairDensity(:,:,:,2))
   end subroutine CompCutPairDensity
 
-  function GetUpotPairingContribution result(UpotPC)
+  function GetUpotPairingContribution() result(UpotPC)
   !-----------------------------------------------------------------------------
   ! provide contribution from pairing EDF to single-particle potential Upot
   !-----------------------------------------------------------------------------
@@ -937,7 +937,7 @@ contains
 
   end function GetUpotPairingContribution
 
-  function GetUpotPairingRearrangement result(UpotPR)
+  function GetUpotPairingRearrangement() result(UpotPR)
   !-----------------------------------------------------------------------------
   !
   !-----------------------------------------------------------------------------

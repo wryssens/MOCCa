@@ -180,6 +180,8 @@ module HFB
   ! (slow and guaranteed) method to solve for the Fermi energy
   character(len=12) :: FermiSolver='Broyden'
   !-----------------------------------------------------------------------------
+  logical :: FermiNonConvergenceHistory(7) = .false.
+  !-----------------------------------------------------------------------------
   ! Whether or not to enable momentum in the gradient solver.
   ! HIGHLY EXPERIMENTAL
   logical :: Fermimomentum = .false.
@@ -873,7 +875,223 @@ contains
 
   subroutine HFBFindFermiEnergyBisection(Fermi,L2,Delta,DeltaLN,Lipkin,DN2,    &
     &                                                  ConstrainDispersion,Prec)
-  !-------------------------------------------------------------------------------
+  !-----------------------------------------------------------------------------
+  ! New bisection routine targeting pure HFB case. The previous solver that can 
+  ! also handle LN is now HFBLNFindFermiEnergyBisection) and is still called
+  ! for HFB+LN. 
+  !-----------------------------------------------------------------------------
+  ! The search for Fermi energies is now done in two steps.
+  ! 
+  ! The first step consists in bracketing the Fermi energy, i.e. finding an
+  ! interval [A,B] with A < eps_F < B with N(A) - N_0 < 0 and N(B) - N_0 > 0
+  !
+  ! The algorithm is as follows:
+  !
+  ! 1) calculate <N> for Fermi energy eps_o found in storage
+  !
+  ! 2) if N(eps_o) = N_0 : don't look further, set A = B with N(A) = N(B) = N_0
+  !    if N(eps_o) < N_0 : A = eps_o, look for B = eps_o + teststep
+  !    if N(eps_o) > N_0 : B = eps_o, look for A = eps_o - teststep
+  !
+  ! with teststep = 0.01 MeV (see below)
+  !
+  ! 3) if N(A)*N(B) < 0 : fermi energy is bracketed by [A,B], don't look further
+  !    if N(A)*N(B) < 0 : fermi energy is not bracketed yet by [A,B]
+  ! 
+  ! The stepsize of further updates grows with the number of failed updates. 
+  ! A reasonable choice seems to be 
+  !
+  !            step(iter) = teststep * iter = 0.01 MeV * iter , 
+  !
+  ! leading to step(1) = 0.01, step(2) = 0.03, step(3) = 0.06, step(4) = 0.1, 
+  ! step(5) = 0.21, ...  step(76) = 30.03 MeV (then the routine stops the code).
+  ! Except during the initial phase, the Fermi energy typically changes on the
+  ! few keV scale, such that the first step usually brackets the zero.
+  !      if B is moving boundary : A = B , B = eps_o + teststep * iter
+  !      if A is moving boundary : B = A , A = eps_o - teststep * iter
+  ! repeat step 3 until convergence. 
+  !-----------------------------------------------------------------------------
+  ! Note: Reducing the first step to 0.05 very often requires two bracketing 
+  ! steps, which is why I have put 0.01 as starting point for time being.
+  ! Note: starting with eps_o +/- 0.005, one reaches only eps_o +/- 15.02 
+  ! in 76 iterations
+  !-----------------------------------------------------------------------------
+  ! The second step uses Brent's method that switches between the secant method
+  ! and inverse quadratic interpolation. This is done by call of 
+  !-----------------------------------------------------------------------------
+  ! MB: I will need a use case in order to write an improved HFB+LN bisection as
+  ! well ....
+  !-----------------------------------------------------------------------------
+  ! In the present context of MOCCa this routine is unnecessarily complicated by
+  ! having to calculate proton and neutron number simultaneously with 
+  ! HFBNumberofParticles(), as it anticipated proton-neutron mixing.
+  !-----------------------------------------------------------------------------
+  real(KIND=dp), intent(inout)              :: Fermi(2), L2(2)
+  complex(KIND=dp), allocatable, intent(in) :: Delta(:,:,:,:)
+  complex(KIND=dp), allocatable, intent(in) :: DeltaLN(:,:,:,:)
+  logical, intent(in)                       :: Lipkin,COnstrainDispersion
+  real(KIND=dp), intent(in)                 :: Prec, DN2(2)
+
+  real(KIND=dp) :: N(2) , Num(2)
+  real(KIND=dp) :: InitialBracket(2,2), FA(2), FB(2)
+  logical       :: NotFound(2)
+  logical       :: Success
+  integer       :: iter, FailCount, flag(2), it , i
+  integer       :: idir(2) = 0 , idirsig(2) = 1
+
+  !-----------------------------------------------------------------------------
+  ! Cannot handle Lipkin-Nogami (yet).
+  !-----------------------------------------------------------------------------
+  if (Lipkin) then
+    call stp('HFBFindFermiEnergyBisection should not be called for active LN!')
+  endif
+
+  !-----------------------------------------------------------------------------
+  ! The targeted particle numners
+  !-----------------------------------------------------------------------------
+  Particles(1) = Neutrons
+  Particles(2) = Protons
+
+  !-----------------------------------------------------------------------------
+  ! Check if initial guess is already good enough. If so, this will be the 
+  ! only call of the HFB solver.
+  !-----------------------------------------------------------------------------
+  N = HFBNumberofParticles(Fermi, Delta, L2 ) - Particles
+  if (all(abs(N) .lt. Prec)) return
+
+  ! here would start the loop over iterations of lambda_2 in the LN case
+
+    !---------------------------------------------------------------------------
+    ! Use present Fermi energy as starting point and check the direction 
+    ! where the zero of <N>-N0 can be expected.
+    ! If <N>-N0 <  0, search at higher values.
+    ! If <N>-N0 >= 0, search at lower  values.
+    ! Initialize InitialBracket(it,1) = A, InitialBracket(it,2) = B with present
+    ! Fermi energy.
+    ! "dir" is the label of the InitialBracket(it,idir) that has to be moved,
+    ! "idirsig" is the sign of steps needed to go into that direction.
+    !---------------------------------------------------------------------------
+    do it=1,2
+      InitialBracket(it,:) = Fermi(it)
+      if ( N(it) .lt. 0.0_dp ) then 
+        idir   (it) =  2
+        idirsig(it) =  1
+      else 
+        idir   (it) =  1
+        idirsig(it) = -1
+      endif
+    enddo
+
+    !---------------------------------------------------------------------------
+    ! Try to find a boundary that brackets the Fermi energy in the direction 
+    ! into which the Fermi energy has to be changed.
+    !---------------------------------------------------------------------------
+    FailCount = -1
+    NotFound(:) = .true. 
+
+    do while(.not. Success)
+      Success  = .true.
+      !-------------------------------------------------------------------------
+      ! check if particle number for one species takes already the targeted 
+      ! value. If so, do not look further. If the particle numbers were correct
+      ! for both isospins, the routine would already have been left above.
+      !-------------------------------------------------------------------------
+      do it=1,2
+        if ( abs(N(it)) .lt. Prec ) NotFound(it) = .false. 
+      enddo
+      FailCount = FailCount + 1
+      !-------------------------------------------------------------------------
+      ! update moving boundary and recalculate particle numbers at both.
+      !-------------------------------------------------------------------------
+      ! If the particle number is already correct for the starting point (as 
+      ! might happen in the HF case or for near-converged states), NotFound(it) 
+      ! is already .false. such that the moving boundary will not be updated, 
+      ! leading to A = B with N(A) = N(B) approx N_0 for this isospin.
+      !-------------------------------------------------------------------------
+      do it=1,2
+        if ( NotFound(it) ) InitialBracket(it,idir(it)) &
+          & = InitialBracket(it,idir(it)) + idirsig(it) * 0.01_dp*(FailCount+1)
+      enddo
+      FA(:) = HFBNumberofParticles(InitialBracket(:,1),Delta,L2) - Particles(:)
+      FB(:) = HFBNumberofParticles(InitialBracket(:,2),Delta,L2) - Particles(:)
+      Num(:) = FB(:) + Particles(:)
+      do it=1,2
+        !-----------------------------------------------------------------------
+        ! check if N(epsilon_F) is a monotoniccally growing function.
+        ! It should be, but who knows, pigs may fly ...
+        !-----------------------------------------------------------------------
+        if ( FB(it) .lt. FA(it) ) then 
+          print '(" HFBFindFermiEnergyBisection: Warning N(eps_F) decreases for it = ",i2)',it
+          print '(" A = ",f13.8," FA = ",f14.8," B = ",f13.8," FB = ",f14.8)', &
+               & InitialBracket(it,1),FA(it)+Particles(it), &
+               & InitialBracket(it,2),FB(it)+Particles(it)
+        endif
+        !-----------------------------------------------------------------------
+        ! check if root is bracketed for isospin it after the update
+        !-----------------------------------------------------------------------
+        if( NotFound(it) ) then 
+          if( FA(it)*FB(it) .lt. 0.0_dp ) then 
+            NotFound(it) = .false.
+          endif
+        endif
+      enddo
+      !-------------------------------------------------------------------------
+      ! Check if root is bracketed for both isospins. If so, loop will be left.
+      !-------------------------------------------------------------------------
+      if ( any(NotFound) )  Success = .false.
+
+      !-------------------------------------------------------------------------
+      ! diagnostic printing for convergence analysis (usually commented out)
+      !-------------------------------------------------------------------------
+      ! For a convergence analysis, uncomment this and the similar statement in
+      ! the subroutine FermiBrent().
+      !-------------------------------------------------------------------------
+      ! print '(" Bracketing ",i4,1l2,2(1l2,2(f13.8,es16.7),f14.8))', &
+      !      & FailCount,Success,                                     &
+      !      & NotFound(1),InitialBracket(1,1),FA(1),                 &
+      !      &             InitialBracket(1,2),FB(1),Num(1),          &
+      !      & NotFound(2),InitialBracket(2,1),FA(2),                 &
+      !      &             InitialBracket(2,2),FB(2),Num(2)
+      !-------------------------------------------------------------------------
+      ! code failure (Fermi energy has changed by 30 MeV)
+      !-------------------------------------------------------------------------
+      if (Failcount .gt. 76) then
+        print '(/," A(n) = ", f13.8, "FA(n) = ",1es12.4,              &
+             &    " B(n) = ", f13.8, "FB(n) = ",1es12.4,              &
+             &    " A(p) = ", f13.8, "FA(p) = ",1es12.4,              &
+             &    " B(p) = ", f13.8, "FB(p) = ",1es12.4)',            &
+             &  InitialBracket(1,1),FA(1),InitialBracket(1,2),FB(1),  &
+             &  InitialBracket(2,1),FA(2),InitialBracket(2,2),FB(2) 
+        call stp('HFBFindFermiEnergyBisection: Search for InitialBracket failed.')
+      endif
+      !-------------------------------------------------------------------------
+      ! when zero is not bracketed, let the kept boundary follow the moving one 
+      ! before doing the next step
+      !-------------------------------------------------------------------------
+      do it=1,2
+        if( NotFound(it) ) then 
+          InitialBracket(it,3-idir(it)) = InitialBracket(it,idir(it))
+        endif
+      enddo
+    enddo
+
+    !---------------------------------------------------------------------------
+    ! call solver for Brent's method fo find the Fermi energy.
+    !---------------------------------------------------------------------------
+    ! that there is nothing to be iterated further for one isospin is 
+    ! communicated to FermiBrent() as A(it) = B(it).
+    ! This is particularly relevant for the breakdown of HFB to HF, where 
+    ! N(Lambda) - N_0 is zero over a large interval, a case that cannot be 
+    ! handled by FermiBrent().
+    !---------------------------------------------------------------------------
+    call FermiBrent(InitialBracket(:,1),InitialBracket(:,2),FA,FB,HFBIter, &
+                 & Delta,L2,Prec,Fermi,N)
+
+  end subroutine HFBFindFermiEnergyBisection
+
+  subroutine HFBLNFindFermiEnergyBisection(Fermi,L2,Delta,DeltaLN,Lipkin,DN2,    &
+    &                                                  ConstrainDispersion,Prec)
+  !-----------------------------------------------------------------------------
   ! The idea is simple. Note:
   !
   ! F  =  Fermi Level
@@ -1018,7 +1236,7 @@ contains
     endif
   enddo
 
-  end subroutine HFBFindFermiEnergyBisection
+  end subroutine HFBLNFindFermiEnergyBisection
 
 subroutine HFBFindFermiEnergyBroyden                                          &
     &         (Fermi,LnLambda,Delta,DeltaLN,Lipkin,DN2,ConstrainDispersion,Prec)
@@ -1088,7 +1306,7 @@ subroutine HFBFindFermiEnergyBroyden                                          &
   logical, intent(in)                       :: Lipkin, ConstrainDispersion
   real(KIND=dp), intent(in)                 :: Prec, DN2(2)
 
-  integer                                   :: it, iter, flag(2)
+  integer                                   :: it, iter, i, flag(2)
 
   ! Previous values of the Fermi energy and LNLambda parameter
   real(KIND=dp), save                   :: FermiHistory(2)=100.0_dp
@@ -1127,6 +1345,7 @@ subroutine HFBFindFermiEnergyBroyden                                          &
   !   but I have not checked in detail. In any event, it sometimes happens 
   !   that the blocked HF state cannot be found in neither the U nor V columns.
   !   Commenting the call out makes the blocking more stable.
+  !-----------------------------------------------------------------------------
   ! if(allocated(qpexcitations)) then
   !   call      BlockQuasiParticles(Fermi)
   ! endif
@@ -1140,7 +1359,7 @@ subroutine HFBFindFermiEnergyBroyden                                          &
   !-----------------------------------------------------------------------------
   !Check were we find ourselves in the phasespace
   N     = HFBNumberofParticles(Fermi, Delta, LnLambda ) - Particles
-  
+ 
   ! Get the sign that the Pfaffian of HFB hamiltonian should h
   if(all(oldpf .eq. 0)) then
     oldpf = Pfaffian_HFBHamil()   
@@ -1156,6 +1375,14 @@ subroutine HFBFindFermiEnergyBroyden                                          &
     ! is not wrongly judged.
     LN   = 0.0_dp
   endif
+
+  ! check if particle number is correct already here (as it can happen
+  ! in HFB when pairing broke down). This avoids any update of the 
+  ! Fermi energy in that case (which otherwise will change its value)
+  ! disper = Dispersion() 
+  do it=1,2
+    if( abs(N(it)).lt.Prec  .and. abs(LN(it)).lt. Prec) Converged(it) = .true.
+  enddo 
 
   ! Evaluating f and g for finite differences.
   NX = HFBNumberOfParticles(FermiHistory, Delta,LNLambda )-Particles
@@ -1196,36 +1423,15 @@ subroutine HFBFindFermiEnergyBroyden                                          &
         invJ(1,2,:) = - Jacobian(1,2,:)/det
         invJ(2,1,:) = - Jacobian(2,1,:)/det
         invJ(2,2,:) =   Jacobian(1,1,:)/det
-       !do it=1,2
-       !  if ( det(it) .lt. 0.001 ) then
-       !    print '(" WARNING det = ",i2,6es16.8)',it,det(it), &
-       !    &     Jacobian(1,1,it),Jacobian(1,2,it), &
-       !    &     Jacobian(2,1,it),Jacobian(2,2,it)
-       !  endif
-       !enddo
       else
-       ! invJ(1,1,:) = 1.0/det
-       ! experimental: set a ceiling to inverse Jacobian
+       ! set a ceiling to inverse Jacobian. This is 
        ! apparently often needed when HFB pairing breaks down
-       ! in broken signature case, but sometimes also in more
-       ! elementary cr8-like calculations
-      
-    !   disper = Dispersion() 
        do it=1,2
          if ( abs(det(it)) .lt. 0.001_dp ) then
-       !   print '("HFBFindFermiEnergyBroyden: det",i2,es16.8)', &
-       !   & it,det(it)
            invJ(1,1,it) = sign(0.99_dp,det(it))
          else
            invJ(1,1,it) = 1.0_dp/det(it)
          endif
-         ! if pairing is weak, slow down the adjustment of the Fermi energy if
-         ! the particle number is (almost) matched
-     !   if ( disper(it) .lt. 0.000001 ) then
-     !     if ( N(it) .lt. Prec ) then
-     !       invJ(1,1,it) = 0.0_dp ! don't update at all for this isospin
-     !     endif
-     !   endif
        enddo
       endif
 
@@ -1255,6 +1461,11 @@ subroutine HFBFindFermiEnergyBroyden                                          &
 
       !Replace the history and update
       do it=1,2
+        ! bugfix: this was not done here before, only elsewhere
+        ! such that the Fermi energy continued to change even after
+        ! convergence.
+        ! Don't update anymore if converged
+        if(Converged(it)) cycle
         ! Replace the history
         FermiHistory(it) = Fermi(it)
         Fermi(it)        = Fermi(it)    + FermiUpdate(it)
@@ -1275,8 +1486,11 @@ subroutine HFBFindFermiEnergyBroyden                                          &
 
       !Convergence check
       do it=1,2
-        if( abs(N(it)).lt.Prec  .and. abs(LN(it)).lt. Prec) Converged(it)=.true.
+        if( abs(N(it)).lt.Prec ) Converged(it) = .true.
       enddo
+  !   print '(" iter = ",i5," Converged = ",2l," numbers = ",2f16.8,6f12.6)', &
+  !     & iter,Converged,(N + Particles),Fermi,invJ(1,1,1),invJ(1,1,2), &
+  !     & invJ(1,1,1)*N(1),invJ(1,1,2)*N(2)
       if(all(converged)) then
         exit
       endif
@@ -1307,11 +1521,32 @@ subroutine HFBFindFermiEnergyBroyden                                          &
           print 2, abs(LN)
       endif
   enddo
-     do it=1,2
-       if (abs(N(it)) .gt. 0.9_dp ) then
-         call stp(' HFBFindFermiEnergyBroyden: lost particle number! ')
-       endif 
-     enddo
+  ! check history of convergence
+  ! because of the logic of the "all" command, we have to check for 
+  ! failure, not success
+  do i=1,6
+    FermiNonConvergenceHistory(i) = FermiNonConvergenceHistory(i+1)
+  enddo
+  if ( any(abs(N) .gt. 0.9_dp) ) then
+    FermiNonConvergenceHistory(7) = .true.
+    ! go back to Bogoliubov matrix from the previous SCF iteration and hope
+    ! for the best next time round when the s.p.e.s and gaps have changed.
+   !do it=1,2
+   !  if ( abs(N(it)) .gt. 0.9_dp ) then
+   !    U(:,:,:,it)        = OldU(:,:,:,it)
+   !    V(:,:,:,it)        = OldV(:,:,:,it)
+   !    HFBColumns(:,:,it) = OldColumns(:,:,it)
+   !  endif
+   !enddo
+  else
+    FermiNonConvergenceHistory(7) = .false.
+  endif
+  ! print '(" FermiNonConvergenceHistory",7l)',FermiNonConvergenceHistory
+  ! print *,all(FermiNonConvergenceHistory)
+  if ( all(FermiNonConvergenceHistory) ) then
+  ! print '(/," WARNING: would stop now!",/)'
+    call stp(' HFBFindFermiEnergyBroyden: lost particle number for 7 iterations!')
+  endif 
 
 end subroutine HFBFindFermiEnergyBroyden
 
@@ -1424,6 +1659,214 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
     call ConstructRHOHFB(HFBColumns)
     call ConstructKappaHFB(HFBColumns)
   end subroutine InitializeUandV
+
+  subroutine FermiBrent(X1,X2,FX1,FX2,Depth,Delta,L2,PrecIn,ZB,ZFB) 
+  !-----------------------------------------------------------------------------
+  ! For a given L2, this routine searches for the Fermi energy
+  ! by Brent's methods https://en.wikipedia.org/wiki/Brent%27s_method
+  ! which combines bisection, secant method and inverse quadratic interpolation.
+  ! original source is probably
+  ! R. P. Brent (1973), "Chapter 4: An Algorithm with Guaranteed Convergence
+  ! for Finding a Zero of a Function", Algorithms for Minimization without
+  ! Derivatives, Englewood Cliffs, NJ: Prentice-Hall, 
+  !-----------------------------------------------------------------------------
+  ! This routine is written such that it can replace the call of the recursive
+  ! function FermiBisection.
+  !-----------------------------------------------------------------------------
+  ! see pages 1188 - 1189 of http://apps.nrbook.com/fortran/index.html
+  ! [William H. Press, Saul A. Teukolsky, William T. Vetterling and Brian P.
+  ! Flannery, Numerical Recipes in Fortran in Fortran 90, Second Edition (1996)]
+  !-----------------------------------------------------------------------------
+  integer, intent(in)          :: Depth
+  real(KIND=dp), intent(in)    :: PrecIn, L2(2)
+  real(KIND=dp), intent(in)    :: X1(2) , X2(2) , FX1(2) , FX2(2) 
+  real(KIND=dp), intent(inout) :: ZB(2) , ZFB(2)
+  real(KIND=dp)                :: A(2) , B(2), C(2) , FA(2), FB(2) , FC(2)
+  real(KIND=dp)                :: D(2) , E(2), S(2) , P(2)  , Q(2) , R(2) 
+  real(KIND=dp)                :: Num(2) , Prec , Tol(2) , XM(2) 
+  real(KIND=dp)                :: eps = 1.d-8
+  integer                      :: it , FailCount , i
+  logical                      :: Success , Found(2)
+  complex(KIND=dp),intent(in), allocatable :: Delta(:,:,:,:)
+
+  ! Prec = PrecIn  ! usually 1.d-6
+  Prec = 1.d-7 
+  A (:) = X1 (:)
+  B (:) = X2 (:)
+  FA(:) = FX1(:)
+  FB(:) = FX2(:)
+  
+  Found(:) = .false.
+
+  do it=1,Iindex
+    if ( A(it) .eq. B(it) ) then 
+      !-----------------------------------------------------------------------
+      ! This signals that FA(it) = FB(it) is zero within the tolerance.
+      ! Either near-converged HFB or HF case of completely broken-down pairing
+      ! which also satisfies FA(it) = FB(it) = 0 within an interval. The 
+      ! latter case cnnot be handled by the algorithm below.
+      !-----------------------------------------------------------------------
+      Found(it) = .true. 
+    else
+      !-----------------------------------------------------------------------
+      ! Sanity check: is there a zero of F in [A,B]?
+      !-----------------------------------------------------------------------
+      if ( FA(it)*FB(it) .gt. 0.0_dp ) then 
+        print '(" it = ",i2," A = ",f13.8," FA = ",f14.8,   & 
+                       &    " B = ",f13.8," FB = ",f14.8)', &
+                       & it,A(it),FA(it),B(it),FB(it)
+        call stp(' FermiBrent : function not bracketed!')
+      endif
+    endif
+  enddo
+  C (:) = B(:)
+  FC(:) = FB(:)
+
+  FailCount = -1  
+  Success  = .false.
+  do while(.not. Success)
+    FailCount = FailCount + 1
+    do it=1,Iindex
+      !------------------------------------------------------------------------
+      ! this isospin is converged already - don't update anything
+      !------------------------------------------------------------------------
+      if ( Found(it) ) cycle   
+
+      if ( ( FB(it) .gt. 0.0_dp .and. FC(it) .gt. 0.0_dp ) .or. & 
+         & ( FB(it) .lt. 0.0_dp .and. FC(it) .lt. 0.0_dp ) )  then
+        C (it) = A (it)
+        FC(it) = FA(it)
+        D(it)  = B(it) - A(it)
+        E(it)  = D(it)
+      endif
+      if ( abs(FC(it)) .lt. abs(FB(it)) ) then
+        A (it) = B (it)
+        FA(it) = FB(it)
+        B (it) = C (it)
+        FB(it) = FC(it)
+        C (it) = A (it)
+        FC(it) = FA(it)
+      endif
+      !----------------------------------------------------------------
+      ! Convergence check
+      !----------------------------------------------------------------
+      Tol(it)  = 2.0_dp * eps * abs(B(it)) + 0.5_dp * Prec
+      XM (it)  = 0.5_dp * (C(it)-B(it))
+
+      !----------------------------------------------------------------
+      ! Note: the tolerance is on the precision of the Fermi energy,
+      ! NOT the nearness of the particle number to the targeted value.
+      !----------------------------------------------------------------
+      if ( abs(XM(it)) .le. Tol(it) .or. FB(it) .eq. 0.0_dp ) then
+        ZB(it) =  B(it)
+        Found(it) = .true. 
+        cycle
+      endif
+      if ( abs(E(it)) .ge. Tol(it) .and. abs(FA(it)) .gt. abs(FB(it)) ) then
+        S = FB(it)/FA(it)
+        if ( A(it) .eq. C(it) ) then
+          P(it) = 2.0_dp * XM(it) * S(it)
+          Q(it) = 1.0_dp - S(it)
+        else
+          Q(it) = FA(it)/FC(it)
+          R(it) = FB(it)/FC(it)
+          P(it) = S(it) * (2.0_dp * XM(it) * Q(it) * (Q(it)-R(it)) & 
+                  &    - (B(it)-A(it))*(R(it)-1.0_dp))
+          Q(it) = (Q(it)-1.0_dp)*(R(it)-1.0_dp)*(S(it)-1.0_dp)
+        endif
+        if ( P(it) .gt. 0.0_dp ) Q(it) = -Q(it)
+        P(it) = abs(P(it))
+        if (2.0_dp * P(it) .lt. min(3.0_dp*XM(it)*Q(it) - abs(Tol(it)*Q(it)),abs(E(it)*Q(it)))) then
+          E(it) = D(it)
+          D(it) = P(it) / Q(it)
+        else
+          D(it) = XM(it)
+          E(it) = D (it)
+        endif
+      else
+        D(it) = XM(it)
+        E(it) = D (it)
+      endif
+      A (it) = B (it)
+      FA(it) = FB(it)
+      B (it) = B(it) + merge(D(it),sign(Tol(it),XM(it)),abs(D(it)) .gt. Tol(it))
+    enddo
+    !--------------------------------------------------------------------------
+    ! B(:) is present best guess for epsilon_F, FB(:) the corresponding 
+    ! particle numbers.
+    !--------------------------------------------------------------------------
+    Num(:) = HFBNumberofParticles(B, Delta, L2)
+    FB (:) = Num(:) - Particles
+
+    !--------------------------------------------------------------------------
+    ! check if both isospins are converged, if so, iteration will be left.
+    !--------------------------------------------------------------------------
+    if ( Found(1) .and. Found(2) ) Success = .true.
+
+    !--------------------------------------------------------------------------
+    ! diagnostic printing for convergence analysis (usually commented out)
+    !--------------------------------------------------------------------------
+    ! For a convergence analysis, uncomment this and the similar statement in
+    ! the subroutine HFBFindFermiEnergyBisection() that calls this subroutine.
+    !--------------------------------------------------------------------------
+    ! NOTE: B is the the best guess for the zero of F. A has been the previous
+    ! "closest" interval boundary that is not updated after Found(:)
+    ! is set to .true. The actual zero might therefore be outside the 
+    ! interval [A,B]. If so, the true zero is typically closer to B than 
+    ! A is to B.
+    !--------------------------------------------------------------------------
+    ! Note further: as A and B are swapped from time to time, B might be 
+    ! smaller than A when printed here
+    !--------------------------------------------------------------------------
+    ! print '(" FermiBrent ",i4,1l2,2(1l2,2(f13.8,es16.7),f14.8))',    &
+    !     & FailCount,Success, &
+    !     & Found(1),A(1),FA(1),B(1),FB(1),Num(1), & 
+    !     & Found(2),A(2),FA(2),B(2),FB(2),Num(2)
+    !--------------------------------------------------------------------------
+    ! Iteration did not converge for at least one isospin - print warning
+    !--------------------------------------------------------------------------
+    if ( FailCount .gt. Depth ) then
+      print '(/," Warning: FermiBrent not converged after ",i4," iterations")',FailCount
+      do it=1,2
+        if ( .not. Found(it) ) then
+          print '("it = "i2,2(f13.8,es16.7),f14.8)',it,A(it),FA(it),B(it),FB(it),Num(it)
+        endif
+      enddo
+      print '(" ")'
+    endif
+
+    !--------------------------------------------------------------------------
+    ! The algorithm converges to the eps where N(eps)-N_0 changes sign within 
+    ! some tolerance. This does not always mean that also the particle number 
+    ! has approached the targeted value N(eps) = N_0, so better check for it.
+    ! If it has not, there is possibly the problem that N(eps) - N_0 has a 
+    ! discontinuity around the value N_0.
+    ! Print warning, print some diagnostics of N(eps)-N_0 around its zero
+    ! and cross fingers that the future update of h and Delta makes the 
+    ! problem disappear.
+    !--------------------------------------------------------------------------
+    do it=1,2
+      if ( Found(it) .and. abs(FB(it)) .gt. 1.d-3 ) then
+        print '(/," WARNING: unusual behaviour of N(lambda) for it =",i2)',it
+        print '("it = "i2,2(f13.8,es16.7),f14.8)',it,A(it),FA(it),B(it),FB(it),Num(it)
+        do i=1,21
+          if ( A(it) .lt. B(it) ) then
+            C(:) = A(:) + (B(:)-A(:)) * (i-5.0_dp) / 10.0_dp 
+          else
+            C(:) = B(:) + (A(:)-B(:)) * (i-5.0_dp) / 10.0_dp 
+          endif
+          Num(:) = HFBNumberofParticles(C, Delta, L2) 
+          print '(f13.8,f14.8,es16.7)',C(it),Num(it),Num(it)-Particles(it)
+        enddo
+      endif
+    enddo
+  enddo
+  !----------------------------------------------------------------------------
+  ! communicate best guess for Fermi energy and corresponding N.
+  !----------------------------------------------------------------------------
+  ZB(:)  = B (:)
+  ZFB(:) = FB(:) 
+  end subroutine FermiBrent
 
   recursive function FermiBisection(A,B,FA,FB,Depth,Delta,L2,Prec) result(C)
   !-----------------------------------------------------------------------------
@@ -3129,6 +3572,8 @@ subroutine PrintBlocking
    13 format(i7,5x,f12.5 )
     print 1
 
+    if(.not. allocated(QPExcitations)) return
+
     N = size(QPExcitations)
     print 2
     print 3
@@ -3511,6 +3956,8 @@ subroutine PrintBlocking
        &  //,4x," comp it  P  HFb HFbc fill  iqp    E_qp    |<V|V>|^2 ! "               &
        &        "|<HFb|comp>|^2/|<comp|comp>|"                                          &
        &    /,3x,84("-"))
+
+    if(.not. allocated(QPExcitations)) return
 
     N = size(QPExcitations)
 

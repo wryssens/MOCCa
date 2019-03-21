@@ -414,7 +414,11 @@ contains
           FindFermiEnergy   => HFBFermiGradient
           if(HFBIter.eq.-1) HFBIter=500
         elseif(trim(FermiSolver).eq.'BISECTION') then
-          FindFermiEnergy   => HFBFindFermiEnergyBisection
+          if (Lipkin) then 
+            FindFermiEnergy   => HFBLNFindFermiEnergyBisection
+          else
+            FindFermiEnergy   => HFBFindFermiEnergyBisection
+          endif
           if(HFBIter.eq.-1) HFBIter=50
         else
           call stp('Unknown Fermi solver requested.')
@@ -620,7 +624,7 @@ contains
         call CompCutPairDensity
         call CompPairingEDF      (PairDensity)
         call CompAverageGaps     (PairDensity)
-      ! call PrintPairingProfiles(PairDensity)
+        call PrintPairingProfiles(PairDensity)
         call PrintPairingEnergies
     end select
     print 7

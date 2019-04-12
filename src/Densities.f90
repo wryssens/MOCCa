@@ -464,6 +464,10 @@ contains
     do i=1,nwt
       Occupation = DensityBasis(i)%GetOcc()
 
+      ! MB 19/04/04 useful when trapping particles and other situations where
+      ! many states are unoccupied.
+      if ( Occupation .eq. 0.0_dp ) cycle  
+
       ! For the Lipkin-Nogami response densities, the expressions are the
       ! same, only the weights are different.
       ! Now the weights are 2*u^2 v^2 = 2*(1 - v^2 ) v^2

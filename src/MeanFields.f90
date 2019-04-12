@@ -296,11 +296,12 @@ contains
       !        --------------
       ! contribution from pairing EDF
       !-------------------------------------------------------------------------
-    use Moments, only : ConstraintEnergy
+    use Moments, only : ConstraintEnergy 
     use Coulomb, only : CoulombPotential, CoulExchange
     use Densities
     use Force 
-    use Pairing, only : GetUpotPairingContribution, PairingContributionUpot
+    use TrapPotential,only : GetTrapUPot
+    use Pairing, only      : GetUpotPairingContribution, PairingContributionUpot
     
     integer        :: it, at
     !Temporary storage for total densities.
@@ -400,6 +401,9 @@ contains
         
     !Add the contribution from Constraints on the Multipole Moment
     U = U + ConstraintEnergy
+
+    ! add potential from harmonic trap
+    if ( IsTrapped ) U = U + GetTrapUPot()
 
     return
   end function CalcUPot

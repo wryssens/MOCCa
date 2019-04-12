@@ -319,9 +319,10 @@ contains
   ! 10)NML = Coulomb     (module Coulomb)
   ! 11)NML = Cranking    (module Cranking)
   !-----------------------------------------------------------------------------
-    use Force, only         : ReadForceInfo
+    use Force, only         : ReadForceInfo, IsTrapped
     use Densities, only     : ReadDensitInfo, Iniden
     use Moments, only       : ReadMomentData, SpecialInput
+    use TrapPotential, only : ReadTrapParameters
     use Cranking, only      : ReadCrankingInfo
     use Coulomb, only       : ReadCoulombInfo
     use SpwfStorage, only   : ReadSpwfStorageInfo
@@ -377,6 +378,9 @@ contains
     
     ! Force namelist
     call ReadForceInfo()
+
+    ! If signalled, read info on Trap Parameters
+    if ( IsTrapped ) call ReadTrapParameters
 
     !Coulomb namelist
     call ReadCoulombInfo()

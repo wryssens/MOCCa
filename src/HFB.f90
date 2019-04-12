@@ -953,6 +953,13 @@ contains
   Particles(2) = Protons
 
   !-----------------------------------------------------------------------------
+  !
+  !-----------------------------------------------------------------------------
+  do it=1,2
+    if ( Particles(it) .lt. 0.1_dp ) Fermi(it) = -100.0_dp
+  enddo
+
+  !-----------------------------------------------------------------------------
   ! Check if initial guess is already good enough. If so, this will be the 
   ! only call of the HFB solver.
   !-----------------------------------------------------------------------------
@@ -995,6 +1002,7 @@ contains
       ! check if particle number for one species takes already the targeted 
       ! value. If so, do not look further. If the particle numbers were correct
       ! for both isospins, the routine would already have been left above.
+      ! Note: this test is only relevant for the first iteration.
       !-------------------------------------------------------------------------
       do it=1,2
         if ( abs(N(it)) .lt. Prec ) NotFound(it) = .false. 
@@ -1028,9 +1036,10 @@ contains
         endif
         !-----------------------------------------------------------------------
         ! check if root is bracketed for isospin it after the update
+        ! As the function might be constant, this has to be .le., not .lt.
         !-----------------------------------------------------------------------
         if( NotFound(it) ) then 
-          if( FA(it)*FB(it) .lt. 0.0_dp ) then 
+          if( FA(it)*FB(it) .le. 0.0_dp ) then 
             NotFound(it) = .false.
           endif
         endif
@@ -1055,11 +1064,12 @@ contains
       !-------------------------------------------------------------------------
       ! code failure (Fermi energy has changed by 30 MeV)
       !-------------------------------------------------------------------------
-      if (Failcount .gt. 76) then
-        print '(/," A(n) = ", f13.8, "FA(n) = ",1es12.4,              &
-             &    " B(n) = ", f13.8, "FB(n) = ",1es12.4,              &
-             &    " A(p) = ", f13.8, "FA(p) = ",1es12.4,              &
-             &    " B(p) = ", f13.8, "FB(p) = ",1es12.4)',            &
+    ! if (Failcount .gt. 76) then
+      if (Failcount .gt. 130) then
+        print '(/," A(n) = ", f13.8, " FA(n) = ",1es12.4,             &
+             &    " B(n) = ", f13.8, " FB(n) = ",1es12.4,             &
+             &    " A(p) = ", f13.8, " FA(p) = ",1es12.4,             &
+             &    " B(p) = ", f13.8, " FB(p) = ",1es12.4)',           &
              &  InitialBracket(1,1),FA(1),InitialBracket(1,2),FB(1),  &
              &  InitialBracket(2,1),FA(2),InitialBracket(2,2),FB(2) 
         call stp('HFBFindFermiEnergyBisection: Search for InitialBracket failed.')
@@ -2565,6 +2575,7 @@ subroutine InsertionSortQPEnergies
         endif
         
         do it=1,Iindex
+
           do P=1,Pindex
 !              !---------------------------------------------------------------
 !              ! Identify the pairing subspace 
@@ -2579,6 +2590,21 @@ subroutine InsertionSortQPEnergies
               Temp          = 0.0_dp
               N             = blocksizes(P,it)
               Temp(1:N,1:N) = DBLE(RhoHFB(1:N,1:N,P,it))
+
+              !---------------------------------------------------------------
+              ! when the particle number of species "it" is zero, the canonical
+              ! basis cannot be isafely obtained by diagonalizing rho, as this
+              ! matrix is formally zero and numerically numerical noise.
+              !
+              if ( Particles(it) .lt. 0.000000001_dp ) then
+                ! print '(" Particles ",i5,f16.8)',it,Particles(it)
+                CanTransfo (1:N,1:N,P,it) = 0.0_dp
+                do i=1,N
+                  CanTransfo (i,i,P,it) = 1.0_dp
+                enddo
+                Occupations(1:N,P,it)     = 0.0_dp
+                cycle
+              endif
 
               !-----------------------------------------------------------------
               ! Since our matrices are not split into signature blocks, and in
@@ -2607,7 +2633,6 @@ subroutine InsertionSortQPEnergies
                   endif
                 enddo
               endif
-
               call diagoncr8(temp,Nmax,N,Eigenvectors,Eigenvalues, Work,       &
               &                                              'DiagRho   ',ifail)
 
@@ -3100,6 +3125,8 @@ subroutine InsertionSortQPEnergies
         Occ = 0.1_dp
         do it=1,Iindex
           KappaHFB(:,:,:,it)=0.0_dp
+          ! in case of 0 particle number (trapped neutrons) don't do anything
+          ! if (Particles(it) .lt. 0.00001_dp ) cycle
           do P=1,Pindex
             do i=1,blocksizes(P,it)
               ii = Blockindices(i,P,it)
@@ -3118,7 +3145,7 @@ subroutine InsertionSortQPEnergies
             enddo
           enddo
         enddo
-
+        
     case DEFAULT
         call stp('Unknow PairingType in WriteOutKappa.')
     end select

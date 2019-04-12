@@ -140,6 +140,11 @@ module Force
     !---------------------------------------------------------------------------
     ! TurnOffTimeOdd: if .true., turn off all of the time-odd terms.
     logical :: TurnOffTimeOdd = .false.
+
+    !---------------------------------------------------------------------------
+    ! Add external harmonic trap to the interaction
+    logical :: IsTrapped = .false.
+
     
 contains
 
@@ -148,7 +153,7 @@ contains
         ! Subroutine governing the user input of parameters.
         !-----------------------------------------------------------------------
         NameList /Force/ afor, SkyrmeTreatment, RhoQFactor, rhodrhofactor,     &
-        &                TurnOffTimeOdd
+        &                TurnOffTimeOdd, IsTrapped
 
         !Read the correct name from input
         read(unit=*, NML=Force)
@@ -237,6 +242,15 @@ contains
     if(Averagemass) nucleonmass = (nucleonmass(1) + nucleonmass(2))/2
 !     !Multiply hbm by two
      hbm = hbm*2.0
+
+    !----------------------------------------------------------------
+    ! If IsTrapped, switch off cm correction as the trap fixes the
+    ! centre-of-mass
+    !----------------------------------------------------------------
+    if ( IsTrapped ) then
+      COM1body=0
+      COM2body=0
+    endif
 
   end subroutine ReadForce
 

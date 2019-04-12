@@ -30,7 +30,6 @@ program MOCCa
     use Testing
     use Transform
     
-    
     implicit none
 
     real*8 :: time(2)
@@ -459,6 +458,7 @@ logical function ConvergenceCheck() result(Converged)
   use Pairing, only : ConverFermi
   use Cranking, only: ConverCranking
   use InOutput, only: Pictures, PlotDensity
+  use Force, only   : IsTrapped    
   implicit none
 
   Converged = .true.
@@ -471,7 +471,7 @@ logical function ConvergenceCheck() result(Converged)
   !Checking convergence of the angular momentum for cranked calculations
   Converged = Converged .and. ConverCranking(CrankPrec)
 
-  if(TotalEnergy.ge.0.0_dp) then
+  if( TotalEnergy.ge.0.0_dp .and. ( .not. IsTrapped) ) then
     call PrintIterationInfo(-1, .true.)
     !Write densities to files.
     if(Pictures) then

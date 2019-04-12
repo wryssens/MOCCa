@@ -44,17 +44,22 @@ contains
    
     integer, intent(in) :: iteration
     
-    integer             :: iter, estiter, i,ii,it,N,P,j,jj
+    integer             :: iter, estiter, i,ii,it,N,P,j,jj, iwfstart
     real(KIND=dp)       :: maxE, minE, E, con, kappa, minh, relE, compare
     type(Spinor)        :: actionofh, update
     
     !---------------------------------------------------------------------------
     ! Step 1: evolve the maxspwf in order to estimate the largest eigenvalue 
     !         on the mesh.
+
     if(Iteration .eq.1) then
         !-----------------------------------------------------------------------
         ! Initialize randomly at the start
-        maxspwf = copywavefunction(HFBasis(nwt))
+        ! in case of zero proton number, start with the highest neutron state
+        iwfstart = nwt
+        if ( Protons .lt. 0.000000001_dp ) iwfstart = nwn
+
+        maxspwf = copywavefunction(HFBasis(iwfstart))
         call random_number(maxspwf%value%grid)
         call maxspwf%compnorm()
         maxspwf%value = 1.0/sqrt(maxspwf%norm) * maxspwf%value
@@ -223,6 +228,7 @@ contains
     type(Spwf)  , intent(in) :: Psi
     type(Spinor)             :: hPsi, U, B, S, A, W, C, D, Crank, DN2LO, X, T, P
     integer                  :: i
+    integer                  :: ix,iy,iz,is,it
 
     hPsi = NewSpinor()
     
@@ -234,6 +240,7 @@ contains
    
     hPsi = B + U + W
 
+ 
     if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) then
         !--------------------------------------
         ! N2LO time-even fields 
@@ -273,6 +280,25 @@ contains
               D = ActionOfD(Psi)
               hPsi = hPsi + D
           endif
+ !  it = (Psi%GetIsoSpin() + 3)/2
+ !  if (it.eq.2) then
+ !  do iz=1,nz
+ !  do iy=1,ny
+ !  do ix=1,nx
+ !    print '(" hpsi ",3i4,20es10.1)',ix,iy,iz,hpsi%Grid(ix,iy,iz,1,1),hpsi%Grid(ix,iy,iz,2,1), &
+ !       &            hpsi%Grid(ix,iy,iz,3,1),hpsi%Grid(ix,iy,iz,4,1), &
+ !       &            S%Grid(ix,iy,iz,1,1),S%Grid(ix,iy,iz,2,1),S%Grid(ix,iy,iz,3,1),S%Grid(ix,iy,iz,4,1),  &
+ !       &            A%Grid(ix,iy,iz,1,1),A%Grid(ix,iy,iz,2,1),A%Grid(ix,iy,iz,3,1),A%Grid(ix,iy,iz,4,1),  &
+ !       &            C%Grid(ix,iy,iz,1,1),C%Grid(ix,iy,iz,2,1),C%Grid(ix,iy,iz,3,1),C%Grid(ix,iy,iz,4,1)
+ !  do is=1,4
+ !    if ( hpsi%Grid(ix,iy,iz,is,1) .eq. hpsi%Grid(ix,iy,iz,is,1) + 1 ) then
+ !       print '(" NaN found")'
+ !    endif
+ !  enddo
+ !  enddo
+ !  enddo
+ !  enddo
+ !  endif
       endif        
     endif
   end function hPsi
@@ -421,7 +447,6 @@ contains
     else
         if(Current%ConstraintType.eq.0) cycle
     endif
-    
    
     select case(Current%Isoswitch)
     case(1)
@@ -532,7 +557,7 @@ contains
     ! Try to find an appropriate set of parameters (dt, mu), possibly for every
     ! wavefunction. 
     if(ParameterEstimation.eq.1) call IterativeEstimation(iteration)
-    
+   
     do i=1,nwt
       Current      = HFBasis(i)%GetValue()
       ActionofH    = hPsi(HFbasis(i))
@@ -591,7 +616,6 @@ contains
       Alpha = 0 ; Oldalpha=0
       allocate(NesterovVectors(nwt)) ; NesterovVectors = HFBasis
     endif
-
 
     do i=1,nwt
       x(i)= HFBasis(i)%GetValue()

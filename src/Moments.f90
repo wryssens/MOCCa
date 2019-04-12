@@ -324,6 +324,7 @@ implicit none
   ! Signal the input/output routine to look for special multipole moments
   ! after reading the info on normal multipole moments.
   logical :: SpecialInput=.false.
+  !-----------------------------------------------------------------------------
 
 contains
 
@@ -1401,6 +1402,8 @@ contains
 
   class(Moment),       intent(in) :: ToPrint
   character(len=2)                :: ReIm
+  real(KIND=dp)                   :: msrnorm(2),msrnormt
+
     1 format (A2, ' Q_{', 2i2, '}', 3(1x,f15.4) )
     2 format ('Constrained',  2(1x,f15.4))
     3 format ('Constrained',  33x, f15.4)
@@ -1422,13 +1425,18 @@ contains
 
   case(-2)
     ! Printing RMS radii
-    print 5, sqrt(ToPrint%Value(1)/Neutrons)                                &
-    &      , sqrt(ToPrint%Value(2)/(Protons))                               &
-    &      , sqrt(sum(ToPrint%Value)/(Neutrons+Protons))
+    msrnorm(1) = Neutrons
+    msrnorm(2) = Protons
+    msrnormt   = sum(msrnorm)
+    if (Neutrons .lt. 0.00001_dp) msrnorm(1) = 1.0_dp ! nominator will be zero, so divide by 1 instead
+    if (Protons  .lt. 0.00001_dp) msrnorm(2) = 1.0_dp 
+    print 5, sqrt(ToPrint%Value(1)/msrnorm(1))                              &
+    &      , sqrt(ToPrint%Value(2)/msrnorm(2))                              &
+    &      , sqrt(sum(ToPrint%Value)/msrnormt)
     ! Printing MS radii
-    print 55, ToPrint%Value(1)/Neutrons                                     &
-    &       , ToPrint%Value(2)/(Protons)                                    &
-    &       , sum(ToPrint%Value)/(Neutrons+Protons)
+    print 55, ToPrint%Value(1)/msrnorm(1)                                   &
+    &       , ToPrint%Value(2)/msrnorm(2)                                   &
+    &       , sum(ToPrint%Value)/msrnormt
 
     if(ToPrint%ConstraintType.ne.0) then
       if(ToPrint%Isoswitch.eq.1) then
@@ -1767,10 +1775,19 @@ subroutine PrintAllMoments()
       nullify(Current)
       do currentl=1, MaxMoment
         R = 1.2_dp  * (neutrons + protons)**(1.0_dp/3.0_dp)
-        factorN = 4.0_dp * pi /(3.0_dp *  neutrons           * R**(Currentl))
-        factorZ = 4.0_dp * pi /(3.0_dp *            protons  * R**(Currentl))
-        factorA = 4.0_dp * pi /(3.0_dp * (neutrons+ protons) * R**(Currentl))
-
+        factorN = 0.0_dp
+        factorZ = 0.0_dp
+        if ( neutrons .gt. 0.00000001_dp ) &
+          & factorN = 4.0_dp * pi /(3.0_dp *  neutrons           * R**(Currentl))
+        if ( protons  .gt. 0.00000001_dp ) &
+          & factorZ = 4.0_dp * pi /(3.0_dp *            protons  * R**(Currentl))
+        factorA = 4.0_dp * pi /(3.0_dp * (neutrons+protons) * R**(Currentl))
+        ! MB 19/04/09 additional factor to convert cartesian to spherical
+        ! moments (seems to give correct results only for L=2). I start to
+        ! doubt that the Q_{ 4} are correctly defined.
+        factorN = factorN * sqrt((2.0_dp*Currentl + 1.0_dp)/(16.0_dp*pi))
+        factorZ = factorZ * sqrt((2.0_dp*Currentl + 1.0_dp)/(16.0_dp*pi))
+        factorA = factorA * sqrt((2.0_dp*Currentl + 1.0_dp)/(16.0_dp*pi))
         ql = CalculateTotalQl(currentl)
         if(all(ql.eq.0.0_dp)) cycle
         print 71, currentl,factorN*ql(1),factorZ*ql(2),factorA*sum(ql)
@@ -2697,11 +2714,21 @@ subroutine PrintAllMoments()
 
     real(KIND=dp)  :: Treshold(2), DeltaR(nx,ny,nz), Surface(3,7*nx*ny*nz),X,Y,Z
     real(KIND=dp)  :: InterX,InterY,InterZ, Distance
+    real(KIND=dp)  :: checkN
     integer        :: it,i,j,k,l, T, Sig(nx,ny,nz)
 
     if(.not.allocated(Cutoff)) allocate(Cutoff(nx,ny,nz,2))
-
+    
     do it=1,2
+      ! in case of zero prticle number, the density is zero and has no 
+      ! surface. Set Cutoff to zero and run.
+      checkN = dv*sum(Density%Rho(:,:,:,it))
+      if ( checkN .lt. 0.0000000001_dp ) then
+        ! print '(" RutzCutOff: set Cutoff to zero for it = ",i2)',it
+        Cutoff(:,:,:,it) = 0.0_dp
+        cycle
+      endif
+
       Surface = 0.0_dp
 
       !Finding the treshold value. At the moment it is fixed to one tenth
@@ -3454,9 +3481,14 @@ subroutine PrintAllMoments()
 
     ! MB 16/12/2018: correct isospin dependence of scaling factors
     R = 1.2_dp  * (neutrons + protons)**(1.0_dp/3.0_dp)
-    factorN = 4.0_dp * pi /(3.0_dp *  neutrons           * R**(Mom%l))
-    factorZ = 4.0_dp * pi /(3.0_dp *            protons  * R**(Mom%l))
-    factorA = 4.0_dp * pi /(3.0_dp * (neutrons+ protons) * R**(Mom%l))
+    
+    factorN = 0.0_dp
+    factorZ = 0.0_dp
+    if ( neutrons .gt. 0.00000001_dp ) &
+       & factorN = 4.0_dp * pi /(3.0_dp *  neutrons           * R**(Mom%l))
+    if ( protons  .gt. 0.00000001_dp ) &
+       & factorZ = 4.0_dp * pi /(3.0_dp *            protons  * R**(Mom%l))
+    factorA = 4.0_dp * pi /(3.0_dp * (neutrons+protons) * R**(Mom%l))
 
     Mom%Beta(1) = factorN * Mom%Value(1)
     Mom%Beta(2) = factorZ * Mom%Value(2)
@@ -3541,8 +3573,8 @@ subroutine PrintAllMoments()
     real(KIND=dp), allocatable:: LegacyCon(:)
 
     NameList /MomentParam/ MaxMoment, radd, acut, MoreConstraints,Damping,     &
-    &                      ReadjustSlowDown, CutoffType, ContinueMoment        &
-    &                     ,c0,d0, epsilon,QuantisationAxis,SpecialInput,       &
+    &                      ReadjustSlowDown, CutoffType, ContinueMoment,       &
+    &                      c0,d0, epsilon,QuantisationAxis,SpecialInput,       &
     &                      SecondaryAxis, ProjectionPrecision,                 &
     &                      ConstraintsProject, ProjectionIter
 

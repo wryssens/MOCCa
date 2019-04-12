@@ -71,7 +71,8 @@ contains
     use Pairing
     use Cranking
     use Moments
-    
+    use TrapPotential, only : GetTrapEnergy
+ 
     integer :: i
     
     ! Making sure the PrintEnergy routine is associated
@@ -144,6 +145,8 @@ contains
     TotalEnergy = TotalEnergy        + sum(Kinetic)  + CoulombEnergy  +        &
     &             sum(CoMCorrection) + CoulombExchange + sum(PairingEnergy) +  &
     &             sum(LNEnergy) + sum(N2LOterms)
+
+    if ( IsTrapped ) TotalEnergy = TotalEnergy + GetTrapEnergy()
 
     !Calculate the Routhian too
     do i=0,5
@@ -1138,7 +1141,8 @@ contains
     ! been calculated with the lagrange derivatives at the end.
     !---------------------------------------------------------------------------
 
-    use Pairing, only : PairingType, Lipkin
+    use Pairing, only       : PairingType, Lipkin
+    use TrapPotential, only : PrintTrapEnergy
 
     logical, intent(in), optional :: Lagrange
     real*8                        :: SKTodd, N2LOODD, dispersion
@@ -1413,6 +1417,8 @@ contains
     enddo
     print 115, Dispersion
     
+    if ( IsTrapped ) call PrintTrapEnergy(TotalEnergy)
+ 
     print 3
 
   end subroutine PrintEnergy_termbyterm
@@ -1493,6 +1499,7 @@ contains
     use Cranking,only : Omega, CrankEnergy
     use Spwfstorage, only: TotalAngMom
     use Pairing, only : GetUpotPairingRearrangement, PairingContributionUpot
+    use TrapPotential, only : GetTrapEnergy
     integer           :: i, mu
 
     !Summing the energies of the single particle states.
@@ -1537,6 +1544,12 @@ contains
     if(PairingContributionUpot) then
       SpwfEnergy = SpwfEnergy  - GetUpotPairingRearrangement()
     endif
+    ! as a one-body potential, the trap potential is not double counted.
+    ! However, in the above calculation Etot = 1/2 sum_i eps_i, such that
+    ! only half of the energy from the trap is contained in E_tot so far.
+    ! This is corrected for by adding 1/2 E_trap again
+    if ( IsTrapped ) SpwfEnergy = SpwfEnergy + 0.5_dp * GetTrapEnergy()
+
     return
   end function SpwfEnergy
   

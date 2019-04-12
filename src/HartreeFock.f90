@@ -29,8 +29,6 @@ contains
     subroutine PickHFConfig(Configuration)
     !--------------------------
     ! Picks a HF config using the definition employed by HFODD.
-    !
-    !
     !---------------------------
 
         integer, intent(in) :: Configuration(2,2,2)
@@ -47,21 +45,47 @@ contains
         !Start counting down
         order = OrderSpwfs(.false.)
 
-        !Loop over the Spwfs in ascending energy order and decrement ConfCopy
-        do i=1,nwt
-            P = (HFBasis(order(i))%GetParity()    + 3)/2
-            it= (HFBasis(order(i))%GetIsospin()   + 3)/2
-            S = (HFBasis(order(i))%GetSignature() + 3)/2
+        if (.not. SC ) call stp(' PickHFConfig: cannot handle case of broken signature (yet)!')
 
-            if(ConfCopy(P,S,it) .gt. 0 ) then
-                call HFBasis(order(i))%SetOcc(1.0_dp)
-                ConfCopy(P,S,it) = ConfCopy(P,S,it) - 1
-            endif
-        enddo
-        !Sanity check
-        if(.not. all(ConfCopy .eq. 0)) then
-          call stp('PickHFConfig did not find enough orbitals.')
+        if ( .not. PC ) then
+          !---------------------------------------------------------------------
+          ! broken parity, but conserved signature and time simplex
+          ! for time being this is a quick-and-dirty fix, where the Xpp and Xpm
+          ! are read as configuration only
+          !---------------------------------------------------------------------
+          ! Loop over the Spwfs in ascending energy order and decrement ConfCopy
+          do i=1,nwt
+              it= (HFBasis(order(i))%GetIsospin()   + 3)/2
+              S = (HFBasis(order(i))%GetSignature() + 3)/2
+              if(ConfCopy(2,S,it) .gt. 0 ) then
+                  call HFBasis(order(i))%SetOcc(1.0_dp)
+                  ConfCopy(2,S,it) = ConfCopy(2,S,it) - 1
+              endif
+          enddo
+          !Sanity check
+          if(.not. all(ConfCopy .eq. 0)) then
+            call stp('PickHFConfig did not find enough orbitals.')
+          endif
+        else
+          !---------------------------------------------------------------------
+          ! conserved parity, signature and time simplex
+          !Loop over the Spwfs in ascending energy order and decrement ConfCopy
+          do i=1,nwt
+              P = (HFBasis(order(i))%GetParity()    + 3)/2
+              it= (HFBasis(order(i))%GetIsospin()   + 3)/2
+              S = (HFBasis(order(i))%GetSignature() + 3)/2
+  
+              if(ConfCopy(P,S,it) .gt. 0 ) then
+                  call HFBasis(order(i))%SetOcc(1.0_dp)
+                  ConfCopy(P,S,it) = ConfCopy(P,S,it) - 1
+              endif
+          enddo
+          !Sanity check
+          if(.not. all(ConfCopy .eq. 0)) then
+            call stp('PickHFConfig did not find enough orbitals.')
+          endif
         endif
+
 
         !---------------------------------------------------------------------------
         !Double all occupation Numbers in the case of Time Reversal Symmetry

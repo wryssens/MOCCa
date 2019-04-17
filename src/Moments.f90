@@ -244,8 +244,12 @@ implicit none
                                                 ! pseudo-scalar J0 density
   !-----------------------------------------------------------------------------
   ! Couplings of the angular momentum to the magnetic moments
-  real(KIND=dp) :: g_spin(2) =(/5.586d0, -3.826d0/) ! Spin-coupling 
-  real(KIND=dp) :: g_orbit(2)=(/    0d0,  2d0    /)     ! Orbital-coupling
+  ! MB 19/04/14 :  g_s factors of protons and neutrons are exchanged ...
+  ! MB 19/04/14 :  g_l factor of proton is 1, not 2 (which is a question of 
+  ! convention as this requires a factor 2 in the geometrical 2/(L+1) factor 
+  ! of the orbital contribution to the physical moment).
+  real(KIND=dp) :: g_spin (2) = (/-3.826d0, 5.586d0/)     ! Spin-coupling 
+  real(KIND=dp) :: g_orbit(2) = (/    0.d0, 1.d0   /)     ! Orbital-coupling
   !-----------------------------------------------------------------------------
   ! CutoffType
   ! 0 : Density-dependent cutoff
@@ -1586,13 +1590,26 @@ subroutine PrintMoment_J0(ToPrint)
 end subroutine PrintMoment_J0
 
 subroutine PrintMoment_magnetic(ToPrint)
-  !---------------------------------------------------------------------------
+  !----------------------------------------------------------------------------
   ! This subroutine provides the printing of all relevant info of a magnetic
   ! multipole moment.
-  !---------------------------------------------------------------------------
-
+  !----------------------------------------------------------------------------
+  ! MB 19/04/14: note that the X/Y/Z components have no physical meaning, they
+  ! just represent the contribution from the x/y/z component of either s(r) 
+  ! or r x j(r) to the moments.
+  !----------------------------------------------------------------------------
+  ! For the physical dipole moment, also the cartesian expression that is used
+  ! in most tabulations of experimental data is printed.
+  !----------------------------------------------------------------------------
+  ! The dipole moments are related to expectation values of angular momenta.
+  ! sqrt(4pi/3) * Q^m(1,0) for spin should give the contribution of this 
+  ! nucleon species to <S_z>, whereas for the orbital moment this should 
+  ! be the contribution of this nucleon species to <L_z>.
+  !----------------------------------------------------------------------------
   class(Moment),       intent(in) :: ToPrint
   character(len=2)                :: ReIm
+  real(KIND=dp)                   :: fac
+
     1 format (1x, A2, ' Q^m_{', 2i2, '}     X           Y            Z        total')
     2 format (    ' Spin     n ', 4(1x,es11.3),/, & 
     &             '          p ', 4(1x,es11.3),/, & 
@@ -1606,6 +1623,13 @@ subroutine PrintMoment_magnetic(ToPrint)
     5 format (    ' Phys     n ', 4(1x,es11.3),/,&
     &             '          p ', 4(1x,es11.3),/,& 
     &             '          t ', 4(1x,es11.3))
+    6 format (    60('_'),/, & 
+    &             ' mu_z  n    ', 36x,1x,f11.6,/,&
+    &             ' mu_z  p(S) ', 36x,1x,f11.6,/,&
+    &             ' mu_z  p(L) ', 36x,1x,f11.6,/,&
+    &             ' mu_z  p    ', 36x,1x,f11.6,/,&
+    &             ' mu_z  t    ', 36x,1x,f11.6)
+
   select case(ToPrint%l)
     !---------------------------------------------------------------------------
     ! No special magnetic multipole moment exist at the moment in the code.
@@ -1633,10 +1657,27 @@ subroutine PrintMoment_magnetic(ToPrint)
     &        sum(ToPrint%VectorValue(1:3,:,2)),           &
     &        sum(sum(ToPrint%VectorValue(1:3,:,:),2),2),  &
     &        sum(ToPrint%VectorValue)
-    
     print 5, ToPrint%physVectorValue(1:3,1), sum(ToPrint%physVectorValue(1:3,1)),&
     &        ToPrint%physVectorValue(1:3,2), sum(ToPrint%physVectorValue(1:3,2)),&
     &    sum(ToPrint%physVectorValue(1:3,:),2), sum(ToPrint%physVectorValue)
+    !------------------------------------------------------------------------
+    ! in case of dipole moment, print also the cartesian magnetic dipole 
+    ! moment defined as ( j j | mu_z | j j ).
+    ! Y10 = sqrt(3/(4*pi)) mu_z
+    !------------------------------------------------------------------------
+    ! Note that this value only has a sense when the nucleus is axial and
+    ! near-symmetric around the z axis.
+    !------------------------------------------------------------------------
+    if ( ToPrint%l .eq. 1 .and. ToPrint%m .eq. 0 ) then
+      fac = sqrt((4.0_dp*pi)/3.0_dp)
+      print 6,fac *              sum(ToPrint%physVectorValue(1:3,1)),  &
+    &         fac * g_spin (2) * sum(ToPrint%VectorValue(1:3,1,2)),    &
+    &         fac * g_orbit(2) * sum(ToPrint%VectorValue(1:3,2,2)),    &
+    &         fac *              sum(ToPrint%physVectorValue(1:3,2)),  &
+    &         fac * (            sum(ToPrint%physVectorValue(1:3,1))   &
+    &                           +sum(ToPrint%physVectorValue(1:3,2)))
+    endif  
+ 
   end select
 
 end subroutine PrintMoment_magnetic
@@ -1994,6 +2035,11 @@ subroutine PrintAllMoments()
     
     !---------------------------------------------------------------------------
     ! Orbital function to integrate over
+    ! - div.(r x j) 
+    !   = - sum_ijk epsilon_ijk nabla_i (r_j j_k)
+    !   = - sum_ijk epsilon_ijk [ (nabla_i r_j) j_k + r_j (nabla_i j_k) ]
+    !   = - sum_ijk epsilon_ijk r_j (nabla_i j_k)
+    !   =   r.(nabla x j)
     do it=1,2
         do i=1,nx
             rj(i,:,:,1,it) = MeshX(i) * Density%Rotvecj(i,:,:,1,it)
@@ -2009,25 +2055,27 @@ subroutine PrintAllMoments()
     ! Calculate the new value for ordinary constraints
     do it=1,2
         !-----------------------------------------------------------------------
-        ! spin part
+        ! spin part -1/2 Y_lm div.s(r)
         do mu=1,3
-            ToCalculate%VectorValue(mu,1,it)    = - 0.5_dp*                    &
-            & sum(ToCalculate%SpherHarm(:,:,:)*Density%Ders(:,:,:,mu,mu,it))
+          ToCalculate%VectorValue(mu,1,it)    = - 0.5_dp*                    &
+           & sum(ToCalculate%SpherHarm(:,:,:)*Density%Ders(:,:,:,mu,mu,it))
         enddo
         !-----------------------------------------------------------------------
-        ! Orbital part  
+        ! Orbital part -2/(l+1) Y_lm div(r x j) = 2/(l+1) Y_lm r.(rot j)
+        ! MB 19/04/14: the 2/(l+1) factor is part of this, not the "physical value"
         do mu=1,3
-            ToCalculate%VectorValue(mu,2,it) = &
-            & sum(ToCalculate%SpherHarm(:,:,:)*rj(:,:,:,mu,it))
+          ToCalculate%VectorValue(mu,2,it) = &
+           & 2.0_dp/(ToCalculate%l+1) * sum(ToCalculate%SpherHarm(:,:,:)*rj(:,:,:,mu,it))
         enddo  
     enddo
     !---------------------------------------------------------------------------
     ! Calculate the contribution to the physical magnetic multipole moment
+    ! MB 19/04/14: there is no e^2 factor in the orbital contribution ...
     do it=1,2
         do mu=1,3
-            toCalculate%Physvectorvalue(mu,it) =                               &
-            &        g_spin(it)                   *tocalculate%vectorvalue(mu,1,it)&
-            &  + e2* g_orbit(it)/(ToCalculate%l+1)*tocalculate%vectorvalue(mu,2,it)
+            toCalculate%Physvectorvalue(mu,it) =                &
+            &    g_spin (it) * tocalculate%vectorvalue(mu,1,it) &
+            &  + g_orbit(it) * tocalculate%vectorvalue(mu,2,it)
         enddo
     enddo
     ToCalculate%vectorValue       = ToCalculate%vectorValue*dv

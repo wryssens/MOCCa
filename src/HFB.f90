@@ -964,6 +964,12 @@ contains
   ! only call of the HFB solver.
   !-----------------------------------------------------------------------------
   N = HFBNumberofParticles(Fermi, Delta, L2 ) - Particles
+
+  ! Get the sign that the Pfaffian of HFB hamiltonian should h
+  if(all(oldpf .eq. 0)) then
+    oldpf = Pfaffian_HFBHamil()   
+  endif
+
   if (all(abs(N) .lt. Prec)) return
 
   ! here would start the loop over iterations of lambda_2 in the LN case

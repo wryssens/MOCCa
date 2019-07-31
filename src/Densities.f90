@@ -1246,10 +1246,13 @@ contains
   !
   ! Flag signals if problems have been encountered.
   !
+  ! Note that all densities are read as vectors, instead of matrices. For 
+  ! reasons unknown, if things are read as matrices, the iostat error reporting
+  ! fails for an unknown reason. 
   !-----------------------------------------------------------------------------
     type(DensityVector), intent(inout) :: Den
     integer, intent(in)                :: unit
-    integer                            :: io, i, SizeOfDen
+    integer                            :: io, i, SizeOfDen, c
     integer, intent(in)                :: filenx, fileny, filenz
     integer, intent(inout)             :: flag
 
@@ -1264,8 +1267,6 @@ contains
     if(allocated(Den%Jmunu)) then
       io = 0
       SizeOfDen = size(Den%JMuNu)
-      ! Read the density as a vector. My clever scheme of trying to read
-      ! the densities fails if this is read as a matrix.
       read(unit,iostat=io) Den%JMuNu(1:SizeOfDen,1,1,1,1,1)
       if(io.ne.0) then
         Den%JMuNu = 0.0_dp
@@ -1274,13 +1275,16 @@ contains
       read(unit)
     endif
 
-    !Only attempt to read these densities when Time-reversal is not conserved.
+    !---------------------------------------------------------------------------
+    ! Only attempt to read these densities when Time-reversal is not conserved.
     ! The densities however are not guaranteed to be on file, which is why we
     ! utilize some iostat tricks.
     ! Note that the IOSTAT end-of-record code on FORTRAN is -2.
-    if( TRC) then
+    if( .not. TRC) then
       io = 0
-      read(unit, iostat=io) Den%vecj,Den%RotVecj
+
+      read(unit, iostat=io) Den%vecj(1:size(Den%vecj),1,1,1,1),                &
+      &                     Den%RotVecj(1:size(Den%Rotvecj),1,1,1,1)          !1
       if(io.ne.0) then
         !End-of-record problem, no densities on file
         Den%Vecj    = 0.0_dp
@@ -1288,7 +1292,9 @@ contains
       endif
 
       io = 0
-      read(unit, iostat=io) Den%vecS,Den%RotS, Den%DerS
+      read(unit, iostat=io) Den%vecS(1:size(Den%vecs),1,1,1,1),                & 
+      &                     Den%RotS(1:size(Den%rots),1,1,1,1),                &
+      &                     Den%DerS(1:size(Den%ders),1,1,1,1,1)              !2
       if(io.ne.0) then
         !End-of-record problem, no densities on file
         Den%Vecs    = 0.0_dp
@@ -1298,7 +1304,9 @@ contains
 
       if(allocated(Den%LapS)) then
         io = 0
-        read(unit, iostat=io) Den%LapS,Den%DivS, Den%GradDivS
+        read(unit, iostat=io) Den%LapS(1:size(Den%laps),1,1,1,1),              &
+        &                     Den%DivS(1:size(Den%DivS),1,1,1),                & 
+        &                     Den%GradDivS(1:size(Den%GradDivS),1,1,1,1)      !3
         if(io.ne.0) then
           !End-of-record problem, no densities on file
           Den%Laps    = 0.0_dp
@@ -1306,34 +1314,36 @@ contains
           Den%GradDivS= 0.0_dp
         endif
       else
-        read(unit)
+        read(unit, iostat=io)                                                 !3
       endif
 
       if(allocated(Den%VecT)) then
         io = 0
-        read(unit, iostat=io) Den%VecT
+        read(unit, iostat=io) Den%VecT(1:size(Den%vecT),1,1,1,1)              !4
         if(io.ne.0) then
           !End-of-record problem, no densities on file
           Den%VecT    = 0.0_dp
         endif
       else
-        read(unit)
+        read(unit, iostat=io)                                                 !4
       endif
 
       if(allocated(Den%VecF)) then
         io = 0
-        read(unit, iostat=io) Den%VecF
+        read(unit, iostat=io) Den%VecF(1:size(Den%vecF),1,1,1,1)              !5
         if(io.ne.0) then
           !End-of-record problem, no densities on file
           Den%VecF    = 0.0_dp
         endif
       else
-        read(unit)
+        read(unit, iostat=io)                                                 !5
       endif
+    !---------------------------------------------------------------------------
     else
       do i=1,5
         read(unit)
       enddo
+    !---------------------------------------------------------------------------
     endif
   end subroutine ReadDensity
 

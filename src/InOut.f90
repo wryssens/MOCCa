@@ -1292,6 +1292,10 @@ subroutine ReadMOCCa_v1(Ichan)
     ! 6 ) Specifics of the finite difference scheme
     !     Currently there is nothing of interest there.
     read(IChan, iostat=ioerror)
+    if(ioerror.ne.0) then
+        call stp('Did not read information on the FD scheme correctly' , &
+             &   'Iostat', ioerror)
+    endif
     !---------------------------------------------------------------------------
     ! 7 )  Force  :
     !      a) t0,x0,t1,x1,t2,x2,t3a,x3a,yt3a,t3b,x3b,yt3b,wso,wsoq
@@ -1300,6 +1304,10 @@ subroutine ReadMOCCa_v1(Ichan)
     !ReadMOCCa
     ! Force name
     read(Ichan,iostat=ioerror)  fileforce
+    if(ioerror.ne.0) then
+        call stp('Did not read force on file correctly' , &
+             &   'Iostat', ioerror)
+    endif
     !Straight force parameters
     read(IChan,iostat=ioerror)
     !Extra parameters

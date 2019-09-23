@@ -719,6 +719,7 @@ BEGIN{
                 rms[iq,2] = $4
                 rms[iq,3] = $5
                 
+                getline; # MS radius
                 getline; #separator
                 getline; #header
                 getline; #separator

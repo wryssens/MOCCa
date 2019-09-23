@@ -698,7 +698,7 @@ BEGIN{
                 
                 # Q_{lm} values
                 while($1 != "RMS") {
-                        if(NF != 0) {
+                        if(NF == 6) {
                                 ReIm = $1
                                 l    = $3
                                 m    = substr($4, 1, length($4)-1)
@@ -725,7 +725,7 @@ BEGIN{
                 getline; #empty line
                 # Beta_{lm} values
                 while(NF != 1) {
-                        if(NF != 0) {
+                        if(NF >0) {
                                 #Note that MOCCa does not correctly print the
                                 #beta deformation of imaginary parts of
                                 #multipole moments yet
@@ -749,7 +749,7 @@ BEGIN{
 
                 # Ql values
                 while(NF != 1) {
-                        if(NF != 0) {
+                        if(NF > 0) {
                                 l  = substr($2, 1, length($2)-1)
                                 QN =$3
                                 QP =$4

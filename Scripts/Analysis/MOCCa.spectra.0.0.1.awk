@@ -698,7 +698,7 @@ BEGIN{
                 
                 # Q_{lm} values
                 while($1 != "RMS") {
-                        if(NF == 6) {
+                        if(NF >= 4) {
                                 ReIm = $1
                                 l    = $3
                                 m    = substr($4, 1, length($4)-1)

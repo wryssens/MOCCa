@@ -141,10 +141,10 @@ subroutine Evolve(MaxIterations, iprint)
   4 format (60("-"))
   5 format (22('-'),"Congratulations!",22('-'),/,                            &
   &                " Your calculation converged, to the following accuracy: ")
-  6 format ("Multipole moments changed for less than : ", e9.2)
-  7 format ("Energy            changed for less than : ", e9.2)
-  8 format ("Total dispersion of the occupied Spwfs  : ", e9.2)
-  9 format ("Average dispersion of the occupied Spwfs: ", e9.2)
+  6 format ("Multipole moments changed for less than : ", es9.2)
+  7 format ("Energy            changed for less than : ", es9.2)
+  8 format ("Total dispersion of the occupied Spwfs  : ", es9.2)
+  9 format ("Average dispersion of the occupied Spwfs: ", es9.2)
 100 format (/,60('='),/, 18x,' START OF THE ITERATIVE PROCESS ' ,/, 60('='))
 101 format (/,60('='),/, 18x,' **FINAL** Iteration ')
 102 format (/,60('='),/, 18x,' PROJECTION ON FEASIBLE SUBSPACE ' ,/, 55('='))
@@ -470,7 +470,6 @@ logical function ConvergenceCheck() result(Converged)
   Converged = Converged .and. ConverFermi(PairingPrec)
   !Checking convergence of the angular momentum for cranked calculations
   Converged = Converged .and. ConverCranking(CrankPrec)
-
   if( TotalEnergy.ge.0.0_dp .and. ( .not. IsTrapped) ) then
     call PrintIterationInfo(-1, .true.)
     !Write densities to files.
@@ -698,6 +697,8 @@ subroutine PrintSummary_v2(Iteration)
   enddo
 
   print 6, abs(Dispersion)
+  ! Saving
+  TotalDispersion = Dispersion
 
 end subroutine PrintSummary_v2
 

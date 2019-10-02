@@ -967,6 +967,8 @@ contains
   integer                   :: iter, it
   real(KIND=dp), intent(in) :: Prec
   Converged = .true.
+
+  if(pairingtype.eq.0) return !Don't do this check for HF calculations
   do iter=1,7
     do it=1,2
       if(abs(Fermi(it) - FermiHistory(it,iter)).gt.Prec) then

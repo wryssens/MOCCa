@@ -149,8 +149,13 @@ contains
      real(KIND=dp) :: Protongap     =   0.0_dp, NeutronGap   =   0.0_dp
      real(KIND=dp) :: LNFixN        =   0.0_dp, LNFixP       =   0.0_dp
      real(KIND=dp) :: DN2P          =   0.0_dp, DN2N         =   0.0_dp
-     real(KIND=dp) :: PairingGradientNeutron = -100.0_dp
-     real(KIND=dp) :: PairingGradientProton  = -100.0_dp
+     real(KIND=dp) :: PairingGradientNeutron       = -100.0_dp
+     real(KIND=dp) :: PairingGradientProton        = -100.0_dp
+     real(KIND=dp) :: PairingStabCutNeutron        = -100.0_dp
+     real(KIND=dp) :: PairingStabCutProton         = -100.0_dp
+     real(KIND=dp) :: PairingStabFacNeutron        = -100.0_dp
+     real(KIND=dp) :: PairingStabFacProton         = -100.0_dp
+     real(KIND=dp) :: HFBGaugeNeutron = 0.0_dp, HFBGaugeProton = 0.0_dp
      integer       :: i
      logical       :: SemiBCS=.false., SemiBCSNeutron=.false.
      logical       :: SemiBCSProton=.false.
@@ -159,28 +164,37 @@ contains
      NameList /Pairing/ PairingNeutron, PairingProton, CutProton , RhoSat,     &
      &                  AlphaProton, AlphaNeutron,                             &
      &                  GammaProton, GammaNeutron, PairingContributionUpot,    &
-     &                  PairingGradientNeutron , PairingGradientProton,        &
+     &                  PairingGradientNeutron, PairingGradientProton,         &
+     &                  PairingStabCutNeutron, PairingStabCutProton ,          &
+     &                  PairingStabFacNeutron, PairingStabFacProton ,          &
      &                  Type, CutNeutron, FreezeOccupation, PairingIter,       &
      &                  HFBMix, NeutronGap, ProtonGap, ConstantGap,            &
      &                  Lipkin, LNFraction, GuessKappa, PairingMu, CutType,    &
      &                  SemiBCS, SemiBCSNeutron, SemiBCSProton,                &
      &                  QPinHFBasis, SolvePairingStart,QPPrintWindow, Block,   &
-     &                  FermiSolver, HFBIter,HFBgauge,HFConfig, LNFixN, LNFixP,&
+     &                  FermiSolver, HFBIter,                                  &
+     &                  HFBGaugeNeutron, HFBGaugeProton,                       &
+     &                  HFConfig, LNFixN, LNFixP,                              &
      &                  DN2P, DN2N, ConstrainDispersion, HFBlock, HFBreduce,   &
-     &                  Blockconsistent, aliyangle, fermimomentum, PfSolver
+     &                  Blockconsistent, aliyangle, fermimomentum, PfSolver,   &
+     &                  AllowFuzzyNumber
 
      read(unit=*, NML=Pairing)
 
      PairingStrength(1) = PairingNeutron;  PairingStrength(2) = PairingProton
      PairingGradientStrength(1) = PairingGradientNeutron
      PairingGradientStrength(2) = PairingGradientProton
+     PairingStabCut(1)  = PairingStabCutNeutron
+     PairingStabCut(2)  = PairingStabCutProton
+     StabilisingGapFactor(1) = PairingStabFacNeutron
+     StabilisingGapFactor(2) = PairingStabFacProton
      PairingCut(1)      = CutNeutron    ;  PairingCut(2)      = CutProton
      Alpha(1)           = AlphaNeutron  ;  Alpha(2)           = AlphaProton
      DDExp(1)           = GammaNeutron  ;  DDExp(2)           = GammaProton
      Gaps(1)            = NeutronGap    ;  Gaps(2)            = ProtonGap
      LNFIx(1)           = LNFIXN        ;  LNFIX(2)           = LNFIXP
      DN2(1)             = DN2N          ;  DN2(2)             = DN2P
-     
+     HFBGauge(1)      = HFBGaugeNeutron ;  HFBGauge(2)      = HFBGaugeProton
      call to_upper(Type, Type)
      select case (Type)
      case ('HF ')
@@ -196,6 +210,7 @@ contains
 
      !-----------------------------------------------------------------------------
      !Checking input
+
      if(PairingStrength(2).eq.-100.0_dp) then
       if(PairingStrength(1).ne.-100.0_dp) then
         PairingStrength(2) = PairingStrength(1)
@@ -244,11 +259,14 @@ contains
         DDExp(1) = DDExp(2)
       endif
      endif
+     !-----------------------------------------------------------------------
+     ! use a pairing gradient term a la Fayans?
+     !-----------------------------------------------------------------------
      if(PairingGradientStrength(2).eq.-100.0_dp) then
       if(PairingGradientStrength(1).ne.-100.0_dp) then
         PairingGradientStrength(2) = PairingGradientStrength(1)
       else
-        PairingGradientStrength=0.0_dp
+        PairingGradientStrength = 0.0_dp
       endif
      endif
      if(PairingGradientStrength(1).eq.-100.0_dp) then
@@ -256,9 +274,59 @@ contains
         PairingGradientStrength(1) = PairingGradientStrength(2)
       endif
      endif
-     ! set flag when pair EDF is of old-school ULB form
+     !-----------------------------------------------------------------------
+     ! Use Erler's stabilised functional?
+     !-----------------------------------------------------------------------
+     if(PairingStabCut(2).eq.-100.0_dp) then
+      if(PairingStabCut(1).ne.-100.0_dp) then
+        PairingStabCut(2) = PairingStabCut(1)
+      else
+        PairingStabCut = 0.0_dp
+      endif
+     endif
+     if(PairingStabCut(1).eq.-100.0_dp) then
+      if(PairingStabCut(2).ne.-100.0_dp) then
+        PairingStabCut(1) = PairingStabCut(2)
+      endif
+     endif
+     !-----------------------------------------------------------------------
+     ! Use initial factor for Erler's stabilised functional?
+     ! Setting this to specific values sometimes helps to stabilise the 
+     ! initial phase of a code run.
+     !-----------------------------------------------------------------------
+     if(StabilisingGapFactor(2).eq.-100.0_dp) then
+      if(StabilisingGapFactor(1).ne.-100.0_dp) then
+        StabilisingGapFactor(2) = StabilisingGapFactor(1)
+      else
+        StabilisingGapFactor = 0.0_dp
+      endif
+     endif
+     if(StabilisingGapFactor(1).eq.-100.0_dp) then
+      if(StabilisingGapFactor(2).ne.-100.0_dp) then
+        StabilisingGapFactor(1) = StabilisingGapFactor(2)
+      endif
+     endif
+
+     !-----------------------------------------------------------------------
+     ! Sanity checks
+     !-----------------------------------------------------------------------
+     if ( PairingType .ne. 2 .and. any( abs(PairingStabCut) .ne. 0.0 ) ) then
+       print '(/," Stabilised EDF only implemented for HFB. Stopping.",/)'
+       stop
+     endif
+     if ( Lipkin .and. any( abs(PairingStabCut) .ne. 0.0 ) ) then
+       print '(/," LN and stabilised EDF are incompatible. Stopping.",/)'
+       stop
+     endif
+
+     !-----------------------------------------------------------------------
+     ! set flag when pair EDF is of old-school ULB form. The code then 
+     ! bypasses some parts designed for the more complete form.
+     !-----------------------------------------------------------------------
      if (  PairingGradientStrength(1) .eq. 0.0_dp .and. &
          & PairingGradientStrength(2) .eq. 0.0_dp .and. &
+         & PairingStabCut(1)          .eq. 0.0_dp .and. &
+         & PairingStabCut(2)          .eq. 0.0_dp .and. &
          & DDExp(1)                   .eq. 1.0_dp .and. &
          & DDExp(2)                   .eq. 1.0_dp ) then
        PairingULB = .true.
@@ -493,7 +561,9 @@ contains
     7  format ('  Alpha                                ', 1x,f10.3,1x,f10.3)
     77 format ('  Gamma                                ', 1x,f10.3,1x,f10.3)
     78 format ('  Pairing Gradient Strength (MeV fm^5) ', 1x,f10.3,1x,f10.3)
-    79 format ('  add contribution from pairing EDF to Upot')
+    79 format ('  Pairing Stabilising Cut (MeV)        ', 1x,f10.3,1x,f10.3)
+    80 format ('  Initial Stabilising Factor set to    ', 1x,f10.3,1x,f10.3)
+    81 format ('  add contribution from pairing EDF to Upot')
     8  format ('  Attention: configuration is frozen.')
     9  format ('  HFBMixing                            ', 1x, f10.3)
    10  format ('  BCS-like: only Delta_{i,ibar} not zero.' )
@@ -510,7 +580,7 @@ contains
    15  format ('  Fermisolver iterations (external):   ', i5)
    16  format ('  Fermisolver iterations (internal):   ', i5)
    17  format ('  LNFraction on the HFB hamiltonian:   ', f9.3)
-   18  format ('  Gauge of the HFB hamiltonian:        ', f9.3)
+   18  format ('  Gauge of the HFB hamiltonian:        ', 2x,f9.3,2x,f9.3)
    19  format ('  Fermisolver used:                    ', a9)
    20  format ('  HFBreduce is ON.')
 
@@ -548,7 +618,8 @@ contains
     print  7, Alpha
     print 77, DDExp
     print 78, PairingGradientStrength
-    if (PairingContributionUpot) print 79
+    if ( any(PairingStabCut .ne. 0.0 ) ) print 79, PairingStabCut
+    if (PairingContributionUpot) print 81
 
     if(PairingType.eq.2) print 9, HFBMix
     if(Lipkin)           print 12
@@ -715,11 +786,19 @@ contains
     !Initialise the HFB indices properly
     if(.not.allocated(blockindices) .and. PairingType.eq.2) then
       call PrepareHFBModule
+      !--------------------------------------------------------------------------
+      ! Initialize Stabilising factor for Erler's stabilised pairing EDF when
+      ! needed. During the first call in a program run, the pairing energy is not
+      ! yet known, such that the StabilisingFactor will be set to a small value
+      ! in the subroutine.
+      if ( any(PairingStabCut .ne. 0.0 ) ) then
+        call CompStabilisingFactor
+      endif
     endif
     !---------------------------------------------------------------------------
     ! Reinitialise Kappa when asked for
     if(GuessKappa .and. PairingType.eq.2) then
-      call GuessHFBMatrices(PairingType)
+      call GuessHFBMatrices(PairingType,Fermi)
       GuessKappa = .false.
     endif
     !---------------------------------------------------------------------------
@@ -741,7 +820,7 @@ contains
         LNLambda= 0.0_dp
       endif
     endif
-    
+
     call CompDensityFactor
 
     !---------------------------------------------------------------------------
@@ -796,6 +875,16 @@ contains
       if ( PairingContributionUpot ) then
         call CompUpotPairingContribution(PairDensity)
       endif
+    endif
+
+    !---------------------------------------------------------------------------
+    ! calculate Stabilising factor for Erler's stabilised pairing EDF to be
+    ! used in the next iteration.
+    ! NOTE: if there has not been pairing already, the stabilisation will not
+    ! restart it on its own.
+    if ( PairingType.eq.2 .and. any(PairingStabCut .ne. 0.0 ) ) then
+       call CompPairingEDF(PairDensity)
+       call CompStabilisingFactor
     endif
 
   end subroutine SolvePairing
@@ -968,7 +1057,7 @@ contains
   real(KIND=dp), intent(in) :: Prec
   Converged = .true.
 
-  if(pairingtype.eq.0) return !Don't do this check for HF calculations
+  if (pairingtype.eq.0) return !Don't do this check for HF calculations
   do iter=1,7
     do it=1,2
       if(abs(Fermi(it) - FermiHistory(it,iter)).gt.Prec) then

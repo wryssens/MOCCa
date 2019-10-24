@@ -38,8 +38,26 @@ module PairingInteraction
   real(KIND=dp) :: PairingEDF(2) = 0.0_dp
   ! invidual contribution to pairing EDF
   real(KIND=dp) :: PairingEDFDecomposition(3,2) = 0.0_dp
-  ! averaged pairing gaps. The boolean flag signals if average pairing gaps
-  ! can be defined (and therefore printed) or not.
+
+  ! Note: when this is activated, summing the single-particle gaps times
+  ! kappa does not give the pairing EDF anymore.
+  ! Note further:when this is activated, there are two different pairing
+  ! energies: the non-stabilized one and the stabilized one.
+  real(KIND=dp) :: PairingStabCut(2) = 0.0_dp
+  
+  ! (part of) the stabilizing factor of Erler et al, EPJA 37 (2008) 81
+  ! More precisely, this factor stores E_cut^2/E_pair^2. This term
+  ! enters as (1 - StabilisingGapFactor) into the pair energy, but
+  ! as (1 - StabilisingGapFactor) into the gaps.
+  real(KIND=dp) :: StabilisingGapFactor(2)
+  ! Energy associated with pairing obtained from direct integration of the
+  ! stabilised EDF
+  real(KIND=dp) :: PairingEDFStabilised(2) = 0.0_dp
+  ! invidual contribution to pairing EDF
+  real(KIND=dp) :: PairingEDFStabilisedDecomposition(3,2) = 0.0_dp
+
+  ! averaged pairing gaps and related quantities. The boolean flag signals 
+  ! if average pairing gaps can be defined (and therefore printed) or not.
   real(KIND=dp) :: AvGapuv  (2) = 0.0_dp
   real(KIND=dp) :: AvGapv2  (2) = 0.0_dp
   real(KIND=dp) :: ReSum_uv (2) = 0.0_dp
@@ -54,6 +72,7 @@ module PairingInteraction
 
   ! Density-dependent factor for density-dependent pairing
   real(KIND=dp), allocatable :: DensityFactor(:,:,:,:)
+
   ! Contribution from pair EDF  to single-particle potential Upot
   real(KIND=dp), allocatable :: UpotPairingContribution(:,:,:,:)
   real(KIND=dp)              :: UpotPairingRearrangementEnergy = 0.0_dp
@@ -449,6 +468,14 @@ contains
     endif
 
     !--------------------------------------------------------------------------
+    ! for a stabilised pairing EDF of Erler et al, EPJA 37 (2008) 81, we still
+    ! have to multiply with the stabilising factors
+    do it=1,2
+      UpotPairingContribution(:,:,:,it) = UpotPairingContribution(:,:,:,it) &
+                                          & * ( 1 - StabilisingGapFactor(it) )
+    enddo
+
+    !--------------------------------------------------------------------------
     ! calculate the corresponding rearrangement energy as
     !     1/2 int d^3 rho_0(r) sum_q U_{pair,q}(r)
     ! which has to be _s u b t r a c t e d_ from 1/2 sum_k epsilon_k
@@ -461,6 +488,52 @@ contains
       &  +fac * sum(UpotPairingContribution(:,:,:,2)*Density%Rho(:,:,:,2))
 
   end subroutine CompUpotPairingContribution
+
+  subroutine CompStabilisingFactor
+    !---------------------------------------------------------------------------
+    ! Calculate StabilisingGapFactor =  E_cut^2/E_pair^2 when needed, i.e.
+    ! when PairingStabCut != 0. Otherwise set StabilisingGapFactor to zero.
+    !---------------------------------------------------------------------------
+    integer       :: it
+    real(KIND=dp) :: Ec , Ep
+
+    do it=1,2
+      !-------------------------------------------------------------------------
+      ! no stabilisation for this isospin. Set factor to zero.
+      !-------------------------------------------------------------------------
+      if ( abs(PairingStabCut(it)) .lt. 1.d-10 ) then
+        StabilisingGapFactor(it) = 0.0_dp
+        cycle
+      endif
+
+      !-------------------------------------------------------------------------
+      ! stabilisation for this isospin.
+      !-------------------------------------------------------------------------
+      Ep = PairingEDF(it)
+      Ec = PairingStabCut(it)
+
+      !-------------------------------------------------------------------------
+      ! if pairing energy is non-zero, so just calculate the factor.
+      ! if pairing energy is zero (meaning this is either the initial call or 
+      ! a failure), fall back on predefined value.
+      !-------------------------------------------------------------------------
+      if ( abs(Ep) .gt. 1.d-8 ) then
+        StabilisingGapFactor(it) = Ec * Ec / ( Ep * Ep )
+      else
+        if ( StabilisingGapFactor(it) .eq. 0.0_dp ) then
+          StabilisingGapFactor(it) = 0.1_dp
+        endif 
+        print '(" CompStabilisingFactor initialised to ",f12.6,  &
+            & " for it = ",i1)', StabilisingGapFactor(it),it
+      endif
+      if ( StabilisingGapFactor(it) .gt. 10.0 ) then
+        print '(" WARNING: CompStabilisingFactor: for it = ",i1, & 
+              & " StabilisingGapFactor = ",1d16.8," for an energy of ",1d16.8)', &
+              & it,StabilisingGapFactor(it),Ep
+      endif
+    enddo
+
+  end subroutine CompStabilisingFactor
 
   subroutine CompPairingEDF(PairDensity)
     !---------------------------------------------------------------------------
@@ -535,6 +608,14 @@ contains
         fac = - 0.25_dp * PairingGradientStrength(it) / (rhosat*rhosat)
         PairingEDFDecomposition(3,it) = fac * dv * sum(PairRho2(:,:,:) * NablaRho02(:,:,:))
       endif
+    enddo
+
+    ! multiply with stabilising factor a la Erler.
+    do it=1,2 
+      fac = 1.0_dp - StabilisingGapFactor(it)
+    ! print '(" CompPairingEDF: ",i2,5e16.8)',it,StabilisingGapFactor(it),fac,PairingEDFStabilised(it),PairingEDF(it)
+      PairingEDFStabilised(it)                = fac * PairingEDF(it)
+      PairingEDFStabilisedDecomposition(:,it) = fac * PairingEDFDecomposition(:,it)
     enddo
   end subroutine CompPairingEDF
 
@@ -613,11 +694,13 @@ contains
     7 format (  ' rho~* rho* [nabla rho_0].[nabla rho_0] ',2x,f10.5,2x,f10.5,2x,f10.5)
     8 format (  ' sums                                   ',2x,f10.5,2x,f10.5,2x,f10.5)
    10 format (/,' Pairing EDF                            ',2x,f10.5,2x,f10.5,2x,f10.5)
-   11 format (/,' Re tr rho~                             ',2x,f10.5,2x,f10.5)
-   12 format (  ' Im tr rho~                             ',2x,f10.5,2x,f10.5)
-   13 format (  ' <Delta uv>                             ',2x,f10.5,2x,f10.5)
-   14 format (  ' <Delta v2>                             ',2x,f10.5,2x,f10.5)
-   15 format (  ' Pairing Rearrangement Energy           ',2x,f10.5)
+   11 format (/,' Pairing EDF Stabilised                 ',2x,f10.5,2x,f10.5,2x,f10.5)
+   12 format (/,' Pairing stabilising factor             ',2x,f10.5,2x,f10.5)
+   16 format (/,' Re tr rho~                             ',2x,f10.5,2x,f10.5)
+   17 format (  ' Im tr rho~                             ',2x,f10.5,2x,f10.5)
+   18 format (  ' <Delta uv>                             ',2x,f10.5,2x,f10.5)
+   19 format (  ' <Delta v2>                             ',2x,f10.5,2x,f10.5)
+   20 format (  ' Pairing Rearrangement Energy           ',2x,f10.5)
     !---------------------------------------------------------------------------
     print  1
     print  2
@@ -634,13 +717,18 @@ contains
  !       &   +PairingEDFDecomposition(3,2)
     print 10, PairingEDF,sum(PairingEDF(1:2))
 
-    print 11, ReSum_uv (1:2)
-    if (.not.TRC) print 12, ImSum_uv (1:2)
-    if ( PrintAvGaps ) then
-      print 13, AvGapuv(1:2)
-      print 14, AvGapv2(1:2)
+    if ( any( abs(PairingStabCut) .ne. 0.0 ) ) then
+      print 11, PairingEDFStabilised,sum(PairingEDFStabilised(1:2))
+      print 12, StabilisingGapFactor
     endif
-    if ( PairingContributionUpot ) print 15, UpotPairingRearrangementEnergy
+
+    print 16, ReSum_uv (1:2)
+    if (.not.TRC) print 17, ImSum_uv (1:2)
+    if ( PrintAvGaps ) then
+      print 18, AvGapuv(1:2)
+      print 19, AvGapv2(1:2)
+    endif
+    if ( PairingContributionUpot ) print 20, UpotPairingRearrangementEnergy
 
   end subroutine PrintPairingEnergies
 

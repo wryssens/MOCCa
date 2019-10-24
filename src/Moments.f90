@@ -230,6 +230,7 @@ implicit none
       procedure, pass, public :: WriteMoment
       generic                 :: Write=> WriteMoment
   end type Moment
+
   !-----------------------------------------------------------------------------
   !Maximum degree of the multipole components that are considered. Default = 10
   integer, public :: MaxMoment=10, MaxMoment_divJ=4 , MaxMoment_J0=2
@@ -244,7 +245,7 @@ implicit none
                                                 ! pseudo-scalar J0 density
   !-----------------------------------------------------------------------------
   ! Couplings of the angular momentum to the magnetic moments
-  ! MB 19/04/14 :  g_s factors of protons and neutrons are exchanged ...
+  ! MB 19/04/14 :  g_s factors of protons and neutrons were exchanged ...
   ! MB 19/04/14 :  g_l factor of proton is 1, not 2 (which is a question of 
   ! convention as this requires a factor 2 in the geometrical 2/(L+1) factor 
   ! of the orbital contribution to the physical moment).
@@ -1629,6 +1630,12 @@ subroutine PrintMoment_magnetic(ToPrint)
     &             ' mu_z  p(L) ', 36x,1x,f11.6,/,&
     &             ' mu_z  p    ', 36x,1x,f11.6,/,&
     &             ' mu_z  t    ', 36x,1x,f11.6)
+    7 format (    60('_'),/, & 
+    &             ' mu_x  n    ', 36x,1x,f11.6,/,&
+    &             ' mu_x  p(S) ', 36x,1x,f11.6,/,&
+    &             ' mu_x  p(L) ', 36x,1x,f11.6,/,&
+    &             ' mu_x  p    ', 36x,1x,f11.6,/,&
+    &             ' mu_x  t    ', 36x,1x,f11.6)
 
   select case(ToPrint%l)
     !---------------------------------------------------------------------------
@@ -1661,9 +1668,9 @@ subroutine PrintMoment_magnetic(ToPrint)
     &        ToPrint%physVectorValue(1:3,2), sum(ToPrint%physVectorValue(1:3,2)),&
     &    sum(ToPrint%physVectorValue(1:3,:),2), sum(ToPrint%physVectorValue)
     !------------------------------------------------------------------------
-    ! in case of dipole moment, print also the cartesian magnetic dipole 
-    ! moment defined as ( j j | mu_z | j j ).
-    ! Y10 = sqrt(3/(4*pi)) mu_z
+    ! in case of dipole moment, print also the z component of the cartesian 
+    ! magnetic dipole moment defined as ( j j | mu_z | j j ).
+    ! mu_z = sqrt((4*pi)/3) Y_10
     !------------------------------------------------------------------------
     ! Note that this value only has a sense when the nucleus is axial and
     ! near-symmetric around the z axis.
@@ -1671,6 +1678,19 @@ subroutine PrintMoment_magnetic(ToPrint)
     if ( ToPrint%l .eq. 1 .and. ToPrint%m .eq. 0 ) then
       fac = sqrt((4.0_dp*pi)/3.0_dp)
       print 6,fac *              sum(ToPrint%physVectorValue(1:3,1)),  &
+    &         fac * g_spin (2) * sum(ToPrint%VectorValue(1:3,1,2)),    &
+    &         fac * g_orbit(2) * sum(ToPrint%VectorValue(1:3,2,2)),    &
+    &         fac *              sum(ToPrint%physVectorValue(1:3,2)),  &
+    &         fac * (            sum(ToPrint%physVectorValue(1:3,1))   &
+    &                           +sum(ToPrint%physVectorValue(1:3,2)))
+    endif  
+    !------------------------------------------------------------------------
+    ! in case of dipole moment, print also the x component of the cartesian 
+    ! magnetic dipole moment defined as mu_x = sqrt((8*pi)/3) Re{Y_11}.
+    !------------------------------------------------------------------------
+    if ( ToPrint%l .eq. 1 .and. ToPrint%m .eq. 1 ) then
+      fac = -sqrt((8.0_dp*pi)/3.0_dp)
+      print 7,fac *              sum(ToPrint%physVectorValue(1:3,1)),  &
     &         fac * g_spin (2) * sum(ToPrint%VectorValue(1:3,1,2)),    &
     &         fac * g_orbit(2) * sum(ToPrint%VectorValue(1:3,2,2)),    &
     &         fac *              sum(ToPrint%physVectorValue(1:3,2)),  &

@@ -86,7 +86,7 @@ contains
     integer                    :: npar(2,2), ifail
     integer, allocatable       :: nsi(:,:),ns(:), nx(:), ny(:), nz(:), irep(:)
     integer, allocatable       :: nor(:), npa(:), ntrs(:)
-    
+ 
     dimension xk(4),xmu(4),cf(2), hbm(2), psi(mx,my,mz,4)
     
     data ca,cb /0.986d0,0.14d0/
@@ -339,14 +339,14 @@ contains
     ho0 = ho0*cf(it)
     nw  = nwn
     if (it.eq.2) nw = nwp
-    np  = npn
-    if (it.eq.2) np = npp
+    npart  = npn
+    if (it.eq.2) npart = npp
 
     !c................................................................ nucleus
     x = xk(it)
     y = xmu(it)
-    if (np.gt.50) x = xk(it+2)
-    if (np.gt.50) y = xmu(it+2)
+    if (npart.gt.50) x = xk(it+2)
+    if (npart.gt.50) y = xmu(it+2)
     !c..................................................... loop on the blocks
     ia = 0
     do 16 ni=1,nblc

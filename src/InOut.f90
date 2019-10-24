@@ -866,7 +866,7 @@ contains
     write(OChan,iostat=io) Omega, CrankValues
     ! HFB anomalous density matrix
     ! Make a guess only when not doing HFB
-    if(PairingType.ne.2) call GuessHFBMatrices(PairingType)
+    if(PairingType.ne.2) call GuessHFBMatrices(PairingType,Fermi)
     write(OChan,iostat=io) KappaHFB
     ! Write the dimensions of this matrix to file, and note that it has been
     ! allocated in WriteOutKappa
@@ -992,7 +992,7 @@ contains
     if(PairingType.ne.2) then
         ! Take a guess for Kappa, allocate the fileblocksizes and put
         ! other relevant matrices to zero.
-        call GuessHFBMatrices(PairingType)
+        call GuessHFBMatrices(PairingType,Fermi)
     endif
 
     write(OChan,iostat=io) blocksizes

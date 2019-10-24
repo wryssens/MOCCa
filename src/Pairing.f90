@@ -177,7 +177,7 @@ contains
      &                  HFConfig, LNFixN, LNFixP,                              &
      &                  DN2P, DN2N, ConstrainDispersion, HFBlock, HFBreduce,   &
      &                  Blockconsistent, aliyangle, fermimomentum, PfSolver,   &
-     &                  AllowFuzzyNumber
+     &                  AllowFuzzyNumber, HandleBisectionEmergencies
 
      read(unit=*, NML=Pairing)
 

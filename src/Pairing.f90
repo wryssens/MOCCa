@@ -483,7 +483,8 @@ contains
           if(HFBIter.eq.-1) HFBIter=500
         elseif(trim(FermiSolver).eq.'BISECTION') then
           if (Lipkin) then 
-            FindFermiEnergy   => HFBLNFindFermiEnergyBisection
+          ! FindFermiEnergy   => HFBLNFindFermiEnergyBisection ! old solver
+            FindFermiEnergy   => HFBFindFermiEnergyBisection
           else
             FindFermiEnergy   => HFBFindFermiEnergyBisection
           endif

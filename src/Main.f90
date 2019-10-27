@@ -624,7 +624,7 @@ subroutine PrintSummary_v2(Iteration)
   use Energy, only: TotalEnergy, OldEnergy, Routhian, OldRouthian
   use Spwfstorage, only : TotalAngMom
   use Densities,   only : DensityChange
-  use Pairing, only : Fermi
+  use Pairing, only : Fermi, LNLambda, Lipkin
   use Cranking
   use Moments
   use GenInfo
@@ -639,7 +639,8 @@ subroutine PrintSummary_v2(Iteration)
   1 format('----------- Iteration ', i6,'--------------')
   2 format("Summ.     E=" f10.3, "   dE=",es10.3)
  21 format("Summ.     R=" f10.3, "   dR=",es10.3)
- 22 format("Summ. Fermi=" f10.3, "      ",f10.3) 
+ 22 format("Summ. Fermi=" f10.5, "      ",f10.5) 
+ 23 format("Summ.    L2=" f10.5, "      ",f10.5) 
   
   3 format("Summ.   Q20=" f10.3, "  Q22=",f10.3)
   4 format("Summ.  dQ20=" es10.3, " dQ22=",es10.3)
@@ -650,12 +651,14 @@ subroutine PrintSummary_v2(Iteration)
   
   5 format('Summ.    Jz=',f10.6, '  OmZ=',f10.6)
  51 format('Summ.    Jx=',f10.6, '  OmX=',f10.6)
+ 52 format('Summ. ReJxT=',f10.6)
   6 format('Summ.   dH2=',es10.3)
   ! Printing energy
   print 1, Iteration
   print 2, TotalEnergy,abs((TotalEnergy - OldEnergy(1))/TotalEnergy)
   print 21, Routhian, abs((Routhian - OldRouthian(1))/Routhian)
   print 22, Fermi
+  if ( Lipkin ) print 23, LNLambda
   !------------------------------------------------------------------
   ! Note that we can best look back two values due when there is a
   ! Rutz constraint active.
@@ -681,12 +684,13 @@ subroutine PrintSummary_v2(Iteration)
         print 42, dQ30, dQ32
   endif
 
-
   if(.not.TRC) then
     if((.not. TRC) .and. (.not.SC)) then
         print 51, TotalAngMom(1), Omega(1)
+    else
+        print 52,JTR(1)
     endif
-    print 5, TotalAngMom(3), Omega(3)        
+    print 5, TotalAngMom(3), Omega(3)
   endif
 
   !------------------------------------------------------------------------------

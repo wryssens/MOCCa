@@ -837,6 +837,23 @@ contains
       !-------------------------------------------------------------------------
       ! This requires further future investigation of what actually goes on.
       !-------------------------------------------------------------------------
+      ! MB: the use of the Pfaffian to follwo number parity is presently 
+      ! (October 2019) a mess, which needs future cleanup after some testing 
+      ! why the actual calculation of the pfaffian sometimes fails. 
+      ! At present, PfSolver = .true. means that the code follows the number 
+      ! parity by actually calculating it in the canonical basis from counting
+      ! eigenvalues of 1 and then overriding signs of the pfaffians pf, refpf,
+      ! and oldpf in a way that works but became untractable. This needs
+      ! some cleaning as what is presently done has nothing to do with Pfaffians
+      ! anymore.
+      ! MB's working hypothesis is that the pfaffian of the HFB Hamiltonian 
+      ! looses its meaning when pairing breaks down.
+      !-------------------------------------------------------------------------
+      ! From a practical point of view it is worth noting that after thousands
+      ! of signature-breaking blocked & cranked calculations I could not
+      ! identify a single instance where what is presently done failed. It
+      ! works, but should be coded in a more transparent manner.
+      !-------------------------------------------------------------------------
       do it=1,Iindex
         do P=1,Pindex
           ! First find all of the positive energy ones
@@ -1095,8 +1112,12 @@ contains
   ! and inverse quadratic interpolation. This is done by call of the subroutine 
   ! FermiBrent()
   !-----------------------------------------------------------------------------
-  ! MB: I will need a use case in order to write an improved HFB+LN bisection as
-  ! well ....
+  ! The routine can also be called for active LN. In that case, it calculates
+  ! the lambda2 once at the call of the routine from the present pairing fields
+  ! without further updates during the iterations of the Fermi energy. With 
+  ! this, the lambda2 will slowly converge with the HF iterations. As the 
+  ! lambda2 usually will change only by small amounts anyway, this even might 
+  ! stabilise the iterations.
   !-----------------------------------------------------------------------------
   ! In the present context of MOCCa this routine is unnecessarily complicated by
   ! having to calculate proton and neutron number simultaneously with 
@@ -1117,14 +1138,16 @@ contains
   integer       :: idir(2) = 0 , idirsig(2) = 1
 
   !-----------------------------------------------------------------------------
-  ! Cannot handle Lipkin-Nogami (yet).
+  ! calculate the lambda2(it) from present occupations and pairing fields in 
+  ! case of Lipkin-Nogami.
   !-----------------------------------------------------------------------------
   if (Lipkin) then
-    call stp('HFBFindFermiEnergyBisection should not be called for active LN!')
+    flag = 0
+    L2 = LNCR8(Delta, DeltaLN, flag)
   endif
 
   !-----------------------------------------------------------------------------
-  ! The targeted particle numners
+  ! The targeted particle numbers
   !-----------------------------------------------------------------------------
   Particles(1) = Neutrons
   Particles(2) = Protons
@@ -1151,7 +1174,8 @@ contains
 
   if (all(abs(N) .lt. Prec)) return
 
-  ! here would start the loop over iterations of lambda_2 in the LN case
+  ! here would start the loop over iterations of lambda_2 in the LN case if
+  ! an actual iteration is needed to improve convergence.
 
     !---------------------------------------------------------------------------
     ! Use present Fermi energy as starting point and check the direction 
@@ -1310,13 +1334,20 @@ contains
 
   end subroutine HFBFindFermiEnergyBisection
 
-
   subroutine HFBFindFermiEnergyBisectionEmergency(Fermi,L2,Delta,DeltaLN, &
                                          &  Lipkin,DN2,          &
                                          &  ConstrainDispersion,Prec, & 
                                          &  A,B,FA,FB,it,NotFound)
   !----------------------------------------------------------------------------
-  ! 
+  ! Various optional measures taken when there is a problem with finding roots
+  ! of N(e_fermi) - N0 in the subroutine HFBFindFermiEnergyBisection because 
+  ! the function is decreasing over some short interval with the possible
+  ! consequence of the function having several zeros. The call of this routine 
+  ! is activated by the flag HandleBisectionEmergencies. It makes a guess
+  ! about the most plausible root that leads to the targeted configuration.
+  !----------------------------------------------------------------------------
+  ! At time being, this subroutine always prints some diagnostics of what is
+  ! happening and what it is doing about it.
   !----------------------------------------------------------------------------
   real(KIND=dp), intent(inout)              :: Fermi(2), L2(2)
   complex(KIND=dp), allocatable, intent(in) :: Delta(:,:,:,:)
@@ -1658,6 +1689,10 @@ contains
   subroutine HFBLNFindFermiEnergyBisection(Fermi,L2,Delta,DeltaLN,Lipkin,DN2,  &
     &                                                  ConstrainDispersion,Prec)
   !-----------------------------------------------------------------------------
+  ! MB 19/20/26: with the adaptation of HFBFindFermiEnergyBisection to handle
+  ! the LN case, this subroutine is now obsolete and subject to future 
+  ! suppression from the code.
+  !-----------------------------------------------------------------------------
   ! The idea is simple. Note:
   !
   ! F  =  Fermi Level
@@ -1776,7 +1811,7 @@ contains
     N = HFBNumberofParticles(Fermi, Delta, L2 ) - Particles
 
     !Evaluate G
-    print *, 'L2 at start', L2
+    ! print *, 'L2 at start', L2
     flag=0
     G  = LNCr8(Delta, DeltaLN,flag) - L2
 

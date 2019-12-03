@@ -26,8 +26,8 @@ module Cranking
   !   Size of J if the constraint is only on the total size
   ! Crankdamp:
   !   Damping of the cranking potential.
-  ! Crankdamp:
-  !   Damping of the cranking potential.
+  ! CrankIntensityScale
+  !   Scaling factor for automatically determined CrankIntensity (CrankType = 3)
   ! CrankEnergy
   !   Energy associated with every cranking constraint.
   ! CrankType
@@ -36,8 +36,9 @@ module Cranking
   real(KIND=dp), public :: Omega(3)      = 0.0_dp, CrankValues(3)= 0.0_dp
   real(KIND=dp), public :: CrankReadj    = 1.0_dp, CrankDamp     = 0.95_dp
   real(KIND=dp), public :: CrankEnergy(3)= 0.0_dp, OmegaSize     = 0.0_dp
-  real(KIND=dp), public :: CrankIntensity(3) = 0.0_dp
-  real(KIND=dp), public :: Jtotal        = 0.0_dp
+  real(KIND=dp), public :: CrankIntensity(3)      = 0.0_dp
+  real(KIND=dp), public :: CrankIntensityScale(3) = 1.0_dp
+  real(KIND=dp), public :: Jtotal                 = 0.0_dp
   integer      , public :: CrankType(3)  = 0
   !-----------------------------------------------------------------------------
   ! Whether or not to use the cranking info from file
@@ -58,13 +59,16 @@ contains
     real(KIND=dp) :: OmegaX=0.0_dp, OmegaY=0.0_dp, OmegaZ=0.0_dp
     real(KIND=dp) :: CrankX=0.0_dp, CrankY=0.0_dp, CrankZ=0.0_dp
     real(KIND=dp) :: IntensityX=0.0_dp,IntensityY=0.0_dp,IntensityZ=0.0_dp
+    real(KIND=dp) :: ScaleIntensityX=1.0_dp,ScaleIntensityY=1.0_dp
+    real(KIND=dp) :: ScaleIntensityZ=1.0_dp
     integer       :: CrankTypeX=0, CrankTypeY=0, CrankTypeZ=0
 
     NameList /Cranking/ OmegaX,OmegaY,OmegaZ,CrankX,CrankY,CrankZ,             &
     &                   CrankDamp,CrankReadj, ContinueCrank,                   &
     &                   CrankTypeX,CrankTypeY, CrankTypeZ, CrankC0,            &
     &                   OmegaSize, RealignOmega, Jtotal, IntensityX,           &
-    &                   IntensityY, IntensityZ
+    &                   IntensityY, IntensityZ,                                &
+    &                   ScaleIntensityX,ScaleIntensityY,ScaleIntensityZ
 
     read(unit=*, NML=Cranking)
 
@@ -105,6 +109,7 @@ contains
     Omega          = (/ OmegaX,OmegaY,OmegaZ/)
     CrankType      = (/ CrankTypeX, CrankTypeY, CrankTypeZ/)
     CrankIntensity = (/ IntensityX, IntensityY, IntensityZ/)
+    CrankIntensityScale = (/ ScaleIntensityX, ScaleIntensityY, ScaleIntensityZ/)
 
     if(.not. ContinueCrank) then
         OmegaSize = sqrt((OmegaX**2 + OmegaY**2 + OmegaZ**2))
@@ -260,16 +265,21 @@ contains
           Omega(i) = Omega(i) -                                                &                                     
           &     2*CrankIntensity(i)*Crankreadj*(TotalAngMom(i) - CrankValues(i))
         case(3)
+     !    print '(" ReadjustCranking ",i2,7f12.5,l3)',   &
+     !      & i,Omega(i),Jtotal,J2Total(i),CrankIntensity(i),TotalAngMom(i),CrankValues(i), &
+     !      & CrankIntensity(i)*(TotalAngMom(i) - CrankValues(i)),Rutz
+
           if(.not. Rutz) cycle
           !---------------------------------------------------------------------
-          ! Judge the intensity of the cranking constraints.           
+          ! Judge the intensity of the cranking constraints.
+          ! CrankIntensityScale (default value = 1) rescales the estimate
           if(CrankIntensity(i) .eq. 0.0_dp) then
-            CrankIntensity(i) = 2/J2Total(i)
+            CrankIntensity(i) = 2 * CrankIntensityScale(i) / J2Total(i)
           endif
           if(Jtotal.eq.0.0_dp) then
             Omega(i) = Omega(i) - CrankIntensity(i)*(TotalAngMom(i) - CrankValues(i))
           endif
-
+     !    print '(" ReadjustCranking ",i2,1f12.5)',i,Omega(i)
         end select
     enddo
     

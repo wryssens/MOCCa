@@ -495,7 +495,7 @@ contains
                 if(CrankType(i).eq.0) cycle
              endif
              
-             CrankFactor(i)= 0.5*(TotalAngMom(i)-CrankValues(i))/(J2Total(i)+d0)
+             CrankFactor(i)= 0.5*(TotalAngMom(i)-CrankValues(i))/(J2Total(i)+d0) * crankscale
          enddo
      else
         ! Constraints on total J

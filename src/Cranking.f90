@@ -44,7 +44,7 @@ module Cranking
   ! Whether or not to use the cranking info from file
   logical               :: ContinueCrank= .false.
   !-----------------------------------------------------------------------------
-  real(KIND=dp)         :: CrankC0=0.8_dp
+  real(KIND=dp)         :: CrankC0=0.8_dp, crankscale=1.0
   !-----------------------------------------------------------------------------
   ! Logical signalling other modules whether or not to do Rutz correction steps
   logical               :: RutzCrank              , AlternateCrank
@@ -68,7 +68,8 @@ contains
     &                   CrankTypeX,CrankTypeY, CrankTypeZ, CrankC0,            &
     &                   OmegaSize, RealignOmega, Jtotal, IntensityX,           &
     &                   IntensityY, IntensityZ,                                &
-    &                   ScaleIntensityX,ScaleIntensityY,ScaleIntensityZ
+    &                   ScaleIntensityX,ScaleIntensityY,ScaleIntensityZ,       &
+    &                   Crankscale
 
     read(unit=*, NML=Cranking)
 

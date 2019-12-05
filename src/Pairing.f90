@@ -760,7 +760,6 @@ contains
   ! |     (HFBasis for BCS, Canonical for HFB)
   ! |---------
   !-----------------------------------------------------------------------------
-    
         
     use HFB, only: blocksizes
     

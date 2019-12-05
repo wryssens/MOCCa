@@ -3518,7 +3518,7 @@ subroutine InsertionSortQPEnergies
   enddo
   !-----------------------------------------------------------------------------
   !Mix the densities, if there is a saved density
-  if(.not. externalcall) then
+  if(externalcall) then
     if( .not. all(OldRhoHFB.eq.0.0_dp) ) then
       RhoHFB   = HFBMix * RhoHFB   + (1.0_dp - HFBMix) * OldRhoHFB
     endif

@@ -8,7 +8,8 @@ module nil8
  !=======================================================================
  
  use compilationinfo
- use HFB ! For the diagoncr8 routine
+ use HFB              ! For the diagoncr8 routine
+ use cranking         ! For the calculation of the angular momenta
   
 contains
  

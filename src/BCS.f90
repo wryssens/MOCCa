@@ -187,7 +187,7 @@ contains
     enddo
    end subroutine BCSQPEnergies
 
-   subroutine BCSOccupations(Fermi, Delta,LNLambda, PairingDisp)
+   subroutine BCSOccupations(Fermi, Delta,LNLambda, PairingDisp, externalcall)
    !----------------------------------------------------------------------------
    ! Find the occupation numbers of the HFBasis from the quasiparticle energies
    ! and the Fermi energies.
@@ -205,6 +205,7 @@ contains
     integer                     :: i,it
     real(KIND=dp)               :: Occupation, eqp
     complex(KIND=dp), intent(in), allocatable :: Delta(:,:,:,:)
+    logical, intent(in) :: externalcall
 
     call BCSQPEnergies(Fermi,Delta,LNLambda)
 

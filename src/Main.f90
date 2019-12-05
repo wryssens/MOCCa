@@ -110,9 +110,9 @@ subroutine Evolve(MaxIterations, iprint)
   &                       ConstraintsProject, projectioniter, projectionprecision
   use Pairing, only     : SolvePairing, PairingType, SolvePairingStart
   use Cranking, only    : ReadjustCranking, CrankC0
+  use Cranking, only    : RutzCrank, CrankType, AlternateCrank, UpdateAm
   use DensityMixing,only: MixDensities
   use Energy 
-  use Cranking, only    : RutzCrank, CrankType, AlternateCrank
   use HFB
   use Testing
 
@@ -338,7 +338,8 @@ subroutine Evolve(MaxIterations, iprint)
     !Checking for the presence of alternating constraints
     if(AlternateCheck .or. AlternateCrank) then
         call AlternateStep(.false.)
-        call SolvePairing
+        !call SolvePairing
+        call HFBoccupations(Fermi, Delta,LNLambda,PairingDisp, .false.)
     endif
 
     !---------------------------------------------------------------------------
@@ -490,9 +491,9 @@ subroutine PrintStartInfo()
     use Coulomb, only  : PrintCoulombInfo
     use Force,   only  : PrintForce
     use Moments, only  : PrintConstraints, PrintMomentInfo
-    use Cranking,only  : PrintCranking
+    use Cranking,only  : PrintCranking, UpdateAM
     use Pairing, only  : PrintPairingInfo
-    use Spwfstorage, only: UpdateAM, DeriveAll
+    use Spwfstorage, only:  DeriveAll
     use geninfo
 
     implicit none

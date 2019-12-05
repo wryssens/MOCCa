@@ -992,7 +992,7 @@ contains
     if(PairingType.ne.2) then
         ! Take a guess for Kappa, allocate the fileblocksizes and put
         ! other relevant matrices to zero.
-        call GuessHFBMatrices(PairingType)
+        call GuessHFBMatrices(PairingType, Fermi)
     endif
 
     write(OChan,iostat=io) blocksizes

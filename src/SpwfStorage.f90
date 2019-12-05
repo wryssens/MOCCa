@@ -48,6 +48,10 @@ module SpwfStorage
   real(KIND=dp), public :: J2(3)         = 0.0_dp, AMIsoBlock(2,2,2,3)  = 0.0_dp
   real(KIND=dp), public :: JTR(3)        = 0.0_dp, JTI(3)               = 0.0_dp
   !-----------------------------------------------------------------------------
+  ! TotalAngMom_Dens is another way to calculate the angular momentum, by
+  ! integrating the current and spin densities.
+  real(KIND=dp), public :: TotalAngMom_Dens(3) = 0.0_dp
+  !-----------------------------------------------------------------------------
   !Memory for the total dispersion of the occupied(!) spwfs
   !-----------------------------------------------------------------------------
   real(KIND=dp), public :: TotalDispersion
@@ -474,6 +478,111 @@ contains
         enddo
     enddo
   end subroutine GramSchmidt!_Energy
+
+  subroutine GramSchmidtCAN
+    use GenInfo
+    use CompilationInfo
+
+    implicit none
+
+    integer              :: nw,mw, Signature, Parity, Isospin, i, it,k,l
+    integer, allocatable :: indices(:)
+    real(KIND=dp):: Norm
+    type(Spinor) :: ValueOne,ValueTwo,Temp, Temp2
+    real(KIND=dp):: MatrixElement(2)
+
+
+    if(.not.allocated(Temp%Grid)) allocate(Temp%Grid(nx,ny,nz,4,1))
+
+    do it=1,2
+        ! Order spwfs of this isospin by their energy
+        indices = OrderSpwfsISO(it*2 - 3, .false.) 
+        
+        do k=1,size(indices)
+            nw = indices(k)
+            
+            ! First normalise \Psi_{nw}
+            call Canbasis(nw)%CompNorm()
+            Norm=Canbasis(nw)%GetNorm()
+            do i=1,4*nx*ny*nz
+                Canbasis(nw)%Value%Grid(i,1,1,1,1) = (1.0d0/sqrt(Norm)) * Canbasis(nw)%Value%Grid(i,1,1,1,1)
+            enddo
+            
+            Isospin   = Canbasis(nw)%GetIsospin()
+            Parity    = Canbasis(nw)%GetParity()
+            Signature = Canbasis(nw)%GetSignature()
+            
+            !-------------------------------------------------------------------------
+            ! Then subtract the projection on \Psi_{nw} from all the following Spwf.
+            ! Re(\Psi(\sigma)_{mw}) =
+            ! Re(\Psi(\sigma)_{nw})-Re(< \Psi_{nw}|\Psi_{mw} >) Re(\Psi(\sigma)_{nw})
+            !                      + Im(< \Psi_{nw}|\Psi_{mw} >)Im(\Psi(\sigma)_{nw})
+            ! Im(\Psi(\sigma)_{mw}) =
+            ! Im(\Psi(\sigma)_{mw})-Re(< \Psi_{nw}|\Psi_{mw} >) Im(\Psi(\sigma)_{nw})
+            !                      -Im(< \Psi_{nw}|\Psi_{mw} >) Re(\Psi(\sigma)_{nw})
+            !-------------------------------------------------------------------------
+            ! Note that the imaginary part of the inproduct only needs to be taken
+            ! into account when Time Simplex is not conserved.
+            !-------------------------------------------------------------------------
+            do l=k+1,size(indices)
+                mw = indices(l)
+                
+                !-----------------------------------------------------------------------
+                ! Do not waste time in manipulating the grids if the matrixelement
+                ! is zero. This is fulfilled, for example, when the two SPWF do not
+                ! share all quantum numbers.
+                !-----------------------------------------------------------------------
+                if(Canbasis(mw)%GetIsospin().ne.Isospin)     cycle
+                if(Canbasis(mw)%GetParity().ne.Parity)       cycle
+                if(Canbasis(mw)%GetSignature().ne.Signature) cycle
+
+                MatrixElement=InProduct(Canbasis(mw),Canbasis(nw))
+
+                do i=1,4*nx*ny*nz
+                    Canbasis(mw)%Value%Grid(i,1,1,1,1) = Canbasis(mw)%Value%Grid(i,1,1,1,1) - &
+                    &                 MatrixElement(1) * Canbasis(nw)%Value%Grid(i,1,1,1,1)
+                enddo
+
+                if(.not.TSC) then
+                    !Imaginary Part of MatrixElement (Zero when timesimplex is conserved).
+                    Temp2 = MultiplyI(Canbasis(nw)%Value)
+                    do i=1,4*nx*ny*nz
+                        Canbasis(mw)%Value%Grid(i,1,1,1,1) = Canbasis(mw)%Value%Grid(i,1,1,1,1) + &
+                        &                           MatrixElement(2) * Temp2%Grid(i,1,1,1,1)
+                    enddo
+                endif
+
+                ! If signature is broken, but time reversal is conserved, also
+                ! orthogonalise against the time-reversed functions
+                if(.not.SC .and. TRC) then
+                    Temp2 = TimeReverse(Canbasis(nw)%Value)
+                    MatrixElement(1)  = InproductSpinorReal(Temp2, Canbasis(mw)%Value)
+
+                    if(.not.TSC) then
+                        MatrixElement(2)  = InproductSpinorImaginary(Temp2, Canbasis(mw)%Value)
+                    endif   
+                  
+                    do i=1,4*nx*ny*nz
+                        Canbasis(mw)%Value%Grid(i,1,1,1,1) =                    &
+                        &                  Canbasis(mw)%Value%Grid(i,1,1,1,1) - &
+                        &               MatrixElement(1) * Temp2%Grid(i,1,1,1,1)
+                    enddo
+                    if(.not. TSC)then
+                        ! Also orthonormalize against the time-reversed partner, 
+                        ! for the imaginary part of 
+                        temp2 = multiplyI(temp2)
+                        do i=1,4*nx*ny*nz
+                            Canbasis(mw)%Value%Grid(i,1,1,1,1) =                &
+                            &              Canbasis(mw)%Value%Grid(i,1,1,1,1) - &
+                            &           MatrixElement(2) * Temp2%Grid(i,1,1,1,1)
+                        enddo
+                    endif
+                endif
+            enddo
+        enddo
+    enddo
+  end subroutine GramSchmidtCAN
+
   subroutine DeriveAll()
     !---------------------------------------------------------------------------
     ! This subroutine derives all of the Spwf, using the subroutine CompDer.
@@ -641,67 +750,6 @@ contains
     print 20
 
   end subroutine PrintSpwf
-
-  subroutine UpdateAM(SaveOlderValues)
-    !---------------------------------------------------------------------------
-    ! This subroutine calculates the angular momentum in each direction for
-    ! every Spwf, and sums it.
-    !---------------------------------------------------------------------------
-    integer :: wave, i,P,S,it
-    logical, intent(in) :: SaveOlderValues
-    !Save the values of the previous iteration
-
-    if(SaveOlderValues) then
-        AngMomOld   = TotalAngMom
-        OldJ2Total  = J2Total
-    endif
-
-    TotalAngMom = 0.0_dp ; J2Total = 0.0_dp ; AMIsoblock = 0.0_dp
-    JTR = 0.0_dp  ; JTI = 0.0_dp     !;  AMTIsoblock = 0.0_dp 
-    
-    do wave=1,nwt
-      call HFBasis(wave)%DiagSpin()
-      call HFBasis(wave)%DiagAng()
-      ! When canonical basis is allocated we need to recalculate the angular
-      ! momentum for that basis too.
-      if(allocated(CanBasis)) then
-        call  CanBasis(wave)%DiagAng()
-      endif
-    enddo
-
-    !---------------------------------------------------------------------------
-    !Only compute angular momentum when TimeReversal is not conserved
-    if(.not. TRC) then
-      do wave=1,nwt
-        do i=1,3
-          TotalAngMom(i) = TotalAngMom(i) + &
-          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%J(i)
-          JTR(i)          = JTR(i)    +     & 
-          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%JTR(i)
-          JTI(i)          = JTI(i)    +     & 
-          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%JTI(i)
-          J2Total(i)     = J2Total(i) +     &
-          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%J2(i)
-
-          S = (DensityBasis(wave)%GetSignature() + 3)/2
-          P = (DensityBasis(wave)%GetParity()    + 3)/2
-          it= (DensityBasis(wave)%GetIsospin()   + 3)/2
-
-          AMIsoblock(S,P,it,i) = AMIsoblock(S,P,it,i) +                  &
-          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%J(i)
-!          AMTIsoblock(S,P,it,i)= AMTIsoblock(S,P,it,i) +                 &
-!          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%JTR(i)
-        enddo
-      enddo
-      !-------------------------------------------------------------------------
-      ! Artificially set total J_x and J_y to zero when dictated by symmetries.
-      ! In that case the above summation is not \sum v^2_i <Psi_i|J_x|\Psi_i>
-      ! but rather \sum v^2_i <Psi_i|J_x T |\Psi_i>
-      if(SC)          TotalAngMom(1) = 0.0
-      if(SC .or. TSC) TotalAngMom(2) = 0.0
-    endif
-    !---------------------------------------------------------------------------
-  end subroutine UpdateAM
 
   function OrderSpwfs(Canonical) result(Indices)
     !---------------------------------------------------------------------------

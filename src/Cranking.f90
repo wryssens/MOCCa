@@ -17,7 +17,7 @@ module Cranking
 
   !-----------------------------------------------------------------------------
   ! Omega:
-  !   Value called omega in the constraints. It is the lagrange multiplicator.
+  !   Value called omega in the constraints. It is the lagrange multiplier.
   !
   !   (1) => Omega_x ; (2) => Omega_y ;  (3) => Omega_z
   ! CrankValues:
@@ -135,6 +135,95 @@ contains
     
     return
   end subroutine ReadCrankingInfo
+
+  subroutine UpdateAM(SaveOlderValues)
+    !---------------------------------------------------------------------------
+    ! This subroutine calculates the angular momentum in each direction for
+    ! every Spwf, and sums it. It is also calculated by integration of the 
+    ! current and spin density. 
+    !---------------------------------------------------------------------------
+    use Densities
+  
+    integer :: wave, i,P,S,it
+    logical, intent(in) :: SaveOlderValues
+    !Save the values of the previous iteration
+
+    if(SaveOlderValues) then
+        AngMomOld   = TotalAngMom
+        OldJ2Total  = J2Total
+    endif
+
+    TotalAngMom = 0.0_dp ; J2Total = 0.0_dp ; AMIsoblock = 0.0_dp
+    JTR = 0.0_dp         ; JTI = 0.0_dp    
+    TotalAngMom_dens = 0.0_dp    
+
+    do wave=1,nwt
+      call HFBasis(wave)%DiagSpin()
+      call HFBasis(wave)%DiagAng()
+      ! When canonical basis is allocated we need to recalculate the angular
+      ! momentum for that basis too.
+      if(allocated(CanBasis)) then
+        call  CanBasis(wave)%DiagAng()
+      endif
+    enddo
+
+    !---------------------------------------------------------------------------
+    !Only compute angular momentum when TimeReversal is not conserved
+    if(.not. TRC) then
+      do wave=1,nwt
+        do i=1,3
+          TotalAngMom(i) = TotalAngMom(i) + &
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%J(i)
+          JTR(i)          = JTR(i)    +     & 
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%JTR(i)
+          JTI(i)          = JTI(i)    +     & 
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%JTI(i)
+          J2Total(i)     = J2Total(i) +     &
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%J2(i)
+
+          S = (DensityBasis(wave)%GetSignature() + 3)/2
+          P = (DensityBasis(wave)%GetParity()    + 3)/2
+          it= (DensityBasis(wave)%GetIsospin()   + 3)/2
+
+          AMIsoblock(S,P,it,i) = AMIsoblock(S,P,it,i) +                  &
+          & DensityBasis(wave)%GetOcc()*DensityBasis(wave)%J(i)
+        enddo
+      enddo
+      !-------------------------------------------------------------------------
+      ! Artificially set total J_x and J_y to zero when dictated by symmetries.
+      ! In that case the above summation is not \sum v^2_i <Psi_i|J_x|\Psi_i>
+      ! but rather \sum v^2_i <Psi_i|J_x T |\Psi_i>
+      if(SC)          TotalAngMom(1) = 0.0
+      if(SC .or. TSC) TotalAngMom(2) = 0.0
+
+      !-------------------------------------------------------------------------
+      ! And now we integrate the current density and spin density.
+      do it=1,2
+        ! Spin part
+        TotalAngMom_dens(1) = TotalAngMom_dens(1) + &
+        &                                    0.5 * sum(Density%vecs(:,:,:,1,it)) 
+        TotalAngMom_dens(2) = TotalAngMom_dens(2) + & 
+        &                                    0.5 * sum(Density%vecs(:,:,:,2,it)) 
+        TotalAngMom_dens(3) = TotalAngMom_dens(3) + &
+        &                                    0.5 * sum(Density%vecs(:,:,:,3,it)) 
+
+        do i=1, nx*ny*nz
+          TotalAngMom_dens(1)=TotalAngMom_dens(1) &
+          & + Mesh3D(3,i,1,1) * Density%vecj(i,1,1,2,it) &
+          & - Mesh3D(2,i,1,1) * Density%vecj(i,1,1,3,it)
+
+          TotalAngMom_dens(2)=TotalAngMom_dens(2) &
+          & + Mesh3D(1,i,1,1) * Density%vecj(i,1,1,3,it) &
+          & - Mesh3D(3,i,1,1) * Density%vecj(i,1,1,1,it)
+
+          TotalAngMom_dens(3)=TotalAngMom_dens(3) &
+          & - Mesh3D(2,i,1,1) * Density%vecj(i,1,1,1,it) &
+          & + Mesh3D(1,i,1,1) * Density%vecj(i,1,1,2,it)
+        enddo
+      enddo
+      TotalAngMom_dens = TotalAngMom_dens * dv
+    endif
+  end subroutine UpdateAM
 
   function CrankAPot() result(CrankContribution)
     !---------------------------------------------------------------------------
@@ -266,9 +355,10 @@ contains
           Omega(i) = Omega(i) -                                                &                                     
           &     2*CrankIntensity(i)*Crankreadj*(TotalAngMom(i) - CrankValues(i))
         case(3)
-     !    print '(" ReadjustCranking ",i2,7f12.5,l3)',   &
-     !      & i,Omega(i),Jtotal,J2Total(i),CrankIntensity(i),TotalAngMom(i),CrankValues(i), &
-     !      & CrankIntensity(i)*(TotalAngMom(i) - CrankValues(i)),Rutz
+          print '(" ReadjustCranking ",i2,7f12.5,l3)',            &
+           & i, Omega(i), Jtotal, J2Total(i), CrankIntensity(i),  &
+           & TotalAngMom(i),CrankValues(i),                       &
+           & CrankIntensity(i)*(TotalAngMom(i) - CrankValues(i)),Rutz
 
           if(.not. Rutz) cycle
           !---------------------------------------------------------------------
@@ -280,7 +370,6 @@ contains
           if(Jtotal.eq.0.0_dp) then
             Omega(i) = Omega(i) - CrankIntensity(i)*(TotalAngMom(i) - CrankValues(i))
           endif
-     !    print '(" ReadjustCranking ",i2,1f12.5)',i,Omega(i)
         end select
     enddo
     
@@ -343,7 +432,9 @@ contains
     if(.not.TSC) then
       print 3, 'y',TotalAngMom(2), CrankValues(2), Omega(2), CrankEnergy(2)
     endif
-    print 3, 'z',TotalAngMom(3), CrankValues(3), Omega(3), CrankEnergy(3)
+    print 3, 'z',TotalAngMom(3)     , CrankValues(3), Omega(3), CrankEnergy(3)
+    print 3, 'z',TotalAngMom_dens(3), CrankValues(3), Omega(3), CrankEnergy(3)
+
     print 6
     print 31, sqrt(sum(totalangmom(1:3)**2)) , sqrt(sum(crankvalues(1:3)**2)), &
     &         sqrt(sum(omega(1:3)**2))

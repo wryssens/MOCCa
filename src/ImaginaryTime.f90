@@ -175,12 +175,12 @@ contains
     !---------------------------------------------------------------------------
     !---------------------------------------------------------------------------
     ! Temporary printing.
-    print *, '----------------'
-    print *, ' MAXE:' , maxE
-    print *, ' relE ' , relE 
-    print *, ' kappa', kappa
-    print *, ' dt   ' , dt
-    print *, ' mom  ' , momentum
+!    print *, '----------------'
+!    print *, ' MAXE:' , maxE
+!    print *, ' relE ' , relE 
+!    print *, ' kappa', kappa
+!    print *, ' dt   ' , dt
+!    print *, ' mom  ' , momentum
     !---------------------------------------------------------------------------
     ! as this is the first routine called in a new iteration, if something 
     ! went completely wrong in the previous call of the pairing module that
@@ -522,7 +522,7 @@ contains
       enddo
       
       !Substituting the correction
-      QPsi = QPsi - multipole(:,:,:,it)*QPsi - TempSpinor
+      QPsi = QPsi - multipole(:,:,:,it)*QPsi - Cutoff(:,:,:,it)*TempSpinor
       call HFBasis(i)%SetGrid(QPsi)
     enddo
    !---------------------------------------------------------------------------

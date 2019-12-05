@@ -3350,7 +3350,7 @@ subroutine InsertionSortQPEnergies
     enddo
   end subroutine ConstructKappaHFB
 
-  subroutine HFBOccupations(Fermi, Delta,LNLambda,PairingDisp, externalcall)
+  subroutine HFBOccupations(Fermi, Delta,LNLambda,PairingDisp)
   !-----------------------------------------------------------------------------
   ! This routine diagonalises the HFB density matrix, thereby (hopefully) also
   ! breing Kappa into canonical form.
@@ -3367,8 +3367,7 @@ subroutine InsertionSortQPEnergies
   integer                                   :: it,P,i,j,S,ii,iii,loc(1),TS,jj,jjj,k
   integer                                   :: Columns(nwt,Pindex,Iindex)
   integer                                   :: P2, C, index, N
-  logical, intent(in) :: externalcall
- 
+
   PairingDisp = 0.0_dp
   !-----------------------------------------------------------------------------
   ! Actual diagonalisation
@@ -3518,13 +3517,11 @@ subroutine InsertionSortQPEnergies
   enddo
   !-----------------------------------------------------------------------------
   !Mix the densities, if there is a saved density
-  if(externalcall) then
-    if( .not. all(OldRhoHFB.eq.0.0_dp) ) then
-      RhoHFB   = HFBMix * RhoHFB   + (1.0_dp - HFBMix) * OldRhoHFB
-    endif
-    if( .not. all(KappaHFB.eq.0.0_dp) ) then
-      KappaHFB = HFBMix * KappaHFB + (1.0_dp - HFBMix) * OldKappaHFB
-    endif
+  if( .not. all(OldRhoHFB.eq.0.0_dp) ) then
+    RhoHFB   = HFBMix * RhoHFB   + (1.0_dp - HFBMix) * OldRhoHFB
+  endif
+  if( .not. all(KappaHFB.eq.0.0_dp) ) then
+    KappaHFB = HFBMix * KappaHFB + (1.0_dp - HFBMix) * OldKappaHFB
   endif
   !-----------------------------------------------------------------------------
   ! Measure convergence
@@ -3541,15 +3538,14 @@ subroutine InsertionSortQPEnergies
 
   !-----------------------------------------------------------------------------
   ! Save old density and anomalous density matrix.
-  if(.not. externalcall) then
-    do it=1,Iindex
-      do P=1,Pindex
-        N = blocksizes(P,it)
-        OldRhoHFB(1:N,1:N,P,it) = RhoHFB(1:N,1:N,P,it)
-        OldKappaHFB(1:N,1:N,P,it) = KappaHFB(1:N,1:N,P,it)
-      enddo
+  do it=1,Iindex
+    do P=1,Pindex
+      N = blocksizes(P,it)
+      OldRhoHFB(1:N,1:N,P,it) = RhoHFB(1:N,1:N,P,it)
+      OldKappaHFB(1:N,1:N,P,it) = KappaHFB(1:N,1:N,P,it)
     enddo
-  endif
+  enddo
+
   end subroutine HFBOccupations
 
   function FindCorrectColumns() result(Columns)

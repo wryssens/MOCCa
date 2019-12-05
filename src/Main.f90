@@ -292,6 +292,11 @@ subroutine Evolve(MaxIterations, iprint)
   do while((Iteration.lt.MaxIterations))
     !Incrementing the iteration number
     Iteration = Iteration + 1
+
+    if(AlternateCheck .or. AlternateCrank) then
+      call AlternateStep(.false.)
+    endif
+
     !---------------------------------------------------------------------------
     ! Calculate all the different potentials to construct the single particle
     ! hamiltonian h and then substitute every spwf |\Psi> by 1 - dt/hbar*h|\Psi>
@@ -329,26 +334,36 @@ subroutine Evolve(MaxIterations, iprint)
         call ReadjustCranking(.true.)
     endif
     
-    if(RutzCheck .or. RutzCrank) then
-        !Apply Corrections and resolve pairing
-        call RutzCorrectionStep
-        call SolvePairing
-    endif
+!    if(RutzCheck .or. RutzCrank) then
+!        !Apply Corrections and resolve pairing
+!        call RutzCorrectionStep
+!        call SolvePairing
+!    endif
     !---------------------------------------------------------------------------
     !Checking for the presence of alternating constraints
-    if(AlternateCheck .or. AlternateCrank) then
-        call AlternateStep(.false.)
-        !call SolvePairing
-        call HFBoccupations(Fermi, Delta,LNLambda,PairingDisp, .false.)
-    endif
+!    if(AlternateCheck .or. AlternateCrank) then
+!!        call AlternateStep(.false.)
+!!        if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
+!!          call N2LODerive()
+!!        else
+!!          call DeriveAll()
+!!        endif
+
+!!        do i=1,nwt
+!!          CanEnergy = InproductSpinorReal(HFBasis(i)%GetValue(), hPsi(HFbasis(i)))
+!!          call HFbasis(i)%SetEnergy(CanEnergy)
+!!        enddo
+!!        call SolvePairing
+!!        call HFBoccupations(Fermi, Delta,LNLambda,PairingDisp, .false.)
+!    endif
 
     !---------------------------------------------------------------------------
     !Deriving all Spwf
-    if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
-      call N2LODerive()
-    else
-      call DeriveAll()
-    endif
+!    if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
+!      call N2LODerive()
+!    else
+!      call DeriveAll()
+!    endif
     !---------------------------------------------------------------------------
     !Calculate the expectation values of the symmetry operators and the spwf
     !energies of the canonical basis
@@ -393,7 +408,7 @@ subroutine Evolve(MaxIterations, iprint)
     !Readjust the constraints
     call ReadjustAllMoments(1)
     
-    call ReadjustCranking(.false.)
+!    call ReadjustCranking(.false.)
 
     !Construct the mean-field potentials
     call ConstructPotentials

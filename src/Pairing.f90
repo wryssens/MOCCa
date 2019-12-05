@@ -850,7 +850,7 @@ contains
         !-----------------------------------------------------------------------
         ! Get the occupations in the appropriate basis and as a side effect
         ! calculate the dispersion in the particle number.
-        call GetOccupations(Fermi,Delta,LNLambda,PairingDisp, .true.)
+        call GetOccupations(Fermi,Delta,LNLambda,PairingDisp)
 
         if(all(abs(Fermi - OldFermi).lt.FermiPrec)) then
             exit

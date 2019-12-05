@@ -360,6 +360,10 @@ contains
            & TotalAngMom(i),CrankValues(i),                       &
            & CrankIntensity(i)*(TotalAngMom(i) - CrankValues(i)),Rutz
 
+!          if(abs(TotalAngMom(i) - CrankValues(i)).lt.1d-3) then
+!            CrankType(i) = 2
+!            print *, 'CHANGING'
+!          endif
           if(.not. Rutz) cycle
           !---------------------------------------------------------------------
           ! Judge the intensity of the cranking constraints.

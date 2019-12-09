@@ -93,7 +93,7 @@ module Pairing
   complex(KIND=dp), allocatable  :: PairingFieldLN(:,:,:,:), DeltaLN(:,:,:,:)
   !-----------------------------------------------------------------------------
   ! Precision on the Fermi energy
-  real(KIND=dp), parameter    :: FermiPrec=1d-6
+  real(KIND=dp):: FermiPrec=1d-12
   !-----------------------------------------------------------------------------
   ! Maximum iterations for the pairing solver inside one mean-field iteration.
   integer                     :: PairingIter=1
@@ -177,7 +177,7 @@ contains
      &                  HFConfig, LNFixN, LNFixP,                              &
      &                  DN2P, DN2N, ConstrainDispersion, HFBlock, HFBreduce,   &
      &                  Blockconsistent, aliyangle, fermimomentum, PfSolver,   &
-     &                  AllowFuzzyNumber, HandleBisectionEmergencies
+     &                  AllowFuzzyNumber, HandleBisectionEmergencies, Fermiprec
 
      read(unit=*, NML=Pairing)
 

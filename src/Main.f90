@@ -92,6 +92,264 @@ end program MOCCa
 
 subroutine Evolve(MaxIterations, iprint)
   !-----------------------------------------------------------------------------
+  ! This subroutine commands the evolution of the system.
+  !
+  ! The integer iprint is a flag: iprint=1 gives extra diagnostic printouts.
+  !-----------------------------------------------------------------------------
+  use CompilationInfo
+  use GenInfo
+  use WaveFunctions
+  use Derivatives,     only : MaxFDOrder
+  use PotentialMixing, only : ConstructPotentials
+  use ImaginaryTime
+  use SpwfStorage
+  use Densities, only   : UpdateDensities, DampingParam, Density, Recalc
+  use Moments, only     : CalculateAllMoments, ReadjustAllMoments,             &
+  &                       CheckForRutzMoments, TurnOffConstraints,             &
+  &                       CheckForAlternateConstraints, totaldeviation,        &
+  &                       ConstraintsProject, projectioniter, projectionprecision
+  use Pairing, only     : SolvePairing, PairingType, SolvePairingStart
+  use Cranking, only    : ReadjustCranking, CrankC0
+  use Cranking, only    : RutzCrank, CrankType, AlternateCrank, UpdateAm
+  use DensityMixing,only: MixDensities
+  use Energy 
+  use HFB
+  use Testing
+
+  !---------------------------------------------------------------------------
+  ! Interface for the Summaryprinting routines, since FORTRAN is rather
+  ! peculiar about routines in the same program...
+  interface
+    subroutine PrintSummary_v1(Iteration)
+      integer, intent(in) :: iteration
+    end subroutine PrintSummary_v1
+    subroutine PrintSummary_v2(Iteration)
+      integer, intent(in) :: iteration
+    end subroutine PrintSummary_v2
+  end interface
+
+  procedure(PrintSummary_v1), pointer :: PrintSummary
+
+  1 format ( 20x, "Iteration ", i4, 20x,/)
+  2 format ( "Total Time Elapsed:", f8.3 )
+  3 format (A11 , f8.3 , " or ", f8.3 , " %")
+  4 format (60("-"))
+  5 format (22('-'),"Congratulations!",22('-'),/,                            &
+  &                " Your calculation converged, to the following accuracy: ")
+  6 format ("Multipole moments changed for less than : ", es9.2)
+  7 format ("Energy            changed for less than : ", es9.2)
+  8 format ("Total dispersion of the occupied Spwfs  : ", es9.2)
+  9 format ("Average dispersion of the occupied Spwfs: ", es9.2)
+100 format (/,60('='),/, 18x,' START OF THE ITERATIVE PROCESS ' ,/, 60('='))
+101 format (/,60('='),/, 18x,' **FINAL** Iteration ')
+102 format (/,60('='),/, 18x,' PROJECTION ON FEASIBLE SUBSPACE ' ,/, 55('='))
+
+  integer             :: dummyHF(2,2,2,2) = 0
+  logical, intent(in) :: iprint
+  integer, intent(in) :: MaxIterations
+  integer             :: Iteration
+  logical             :: Convergence, AlternateCheck
+  logical, external   :: ConvergenceCheck
+  integer             :: i,wave
+  real(KIND=dp)       :: Canenergy
+
+  !--------------------------------------------------------------------------
+  ! Decide which summary to print
+  PrintSummary => PrintSummary_v2
+  
+  ! Assign correct evolution operator for the iterations
+  select case(IterType)
+  case('IMTS')
+    EvolveSpwf => GradDesc
+  case('NEST')
+    EvolveSpwf => Nesterov
+  case DEFAULT
+    call stp('Itertype is not recognised.')
+  end select
+
+  !--------------------------------------------------------------------------
+  !Updating certain parameters of the wavefunctions that were not read from file
+  do i=1,nwt
+    call HFBasis(i)%SymmetryOperators()
+  enddo
+
+  !-----------------------------------------------------------------------------
+  if(SolvePairingStart) then
+    if(FreezeOccupation .and. PairingType.eq.0) then
+        call HFFill(DummyHF) ! Fill in the HF way anyway for the first iteration
+    else
+        call SolvePairing
+    endif
+  else
+     ! Temporary, until MOCCa saves canonical basis to file.
+    if(PairingType.eq.2) then
+      call stp('Need to calculate Canonical basis at the start')
+    endif
+  endif
+  !-----------------------------------------------------------------------------
+  ! Derive all the spwfs to start the calculation
+  if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp)   then
+    if(MAXFDORDER .ne. -1 .or. MAXFDLAPORDER .NE. -1) then
+      call stp('It is irresponsible to calculate N2LO without lag derivatives.')
+    endif
+    call N2LODerive()
+  else
+    call DeriveAll()  
+  endif
+
+  !-----------------------------------------------------------------------------
+  !Update the Angular momentum variables
+  call UpdateAm(.true.)
+  !Make sure that there is no improper readjusting of cranking constraints
+  AngMomOld = TotalAngMom
+  !-----------------------------------------------------------------------------
+  ! Recalculate densities if needed
+  ! This includes several scenarios:
+  ! 1) If the user asked for it
+  ! 2) if the input file was a CR8 file, the time-odd densities could then
+  !    not be read from file.
+  ! 3) if the input file was an EV8 file, some derivatives of densities could 
+  !    not be read.
+  if(Recalc) then
+    call UpdateDensities(0)
+  endif
+  ! We calculate all of the multipole moments three times. This is strictly 
+  ! wasteful, but only done at the zeroth iteration. This is to make sure
+  ! the correct values are used in all readjustment formulas.
+  call CalculateAllMoments(1)
+  call CalculateAllMoments(1)
+  call CalculateAllMoments(1)
+  !Construct the mean-field potentials
+  call ConstructPotentials
+  !Calculating  The Energy
+  call CompEnergy()
+  ! Explicitly calculate <h> for the canonical basis
+  if(Pairingtype.eq.2) then
+    do i=1,nwt
+      CanEnergy = InproductSpinorReal(CanBasis(i)%GetValue(),hPsi(Canbasis(i)))
+      call Canbasis(i)%SetEnergy(CanEnergy)
+    enddo
+  endif
+
+  !-----------------------------------------------------------------------------
+  ! Printing the parameters of this run.
+  call PrintStartInfo
+
+  !Loop over the iterations
+  Iteration   = 0
+  Convergence = .false.
+
+  !Printing observables
+  if(maxiterations .eq.0) print 101
+  call PrintIterationInfo(0, .true.)
+
+  !Checking for the presence of constraints with extra steps
+  AlternateCheck = CheckForAlternateConstraints() 
+
+  if(MaxIterations.ne.0) then
+        print 100
+  endif
+  !-----------------------------------------------------------------------------
+  !Start of the Mean-field iterations
+  iteration = 0
+  do while((Iteration.lt.MaxIterations))
+    !Incrementing the iteration number
+    Iteration = Iteration + 1
+
+    !---------------------------------------------------------------------------
+    ! Take a preliminary step to improve the constraints
+    if(AlternateCheck .or. AlternateCrank) then
+      call AlternateStep(.false.)
+    endif
+    !---------------------------------------------------------------------------
+    ! Evolve the spwfs with the chosen strategy.
+    ! Note that this includes orthonormalization.
+    call EvolveSpwf(Iteration)    
+    !---------------------------------------------------------------------------
+    ! Solve the pairing subproblem in the new HFbasis.
+    call SolvePairing
+    !---------------------------------------------------------------------------
+    ! Checking for the presence of alternate constraints, they may have been 
+    ! switched off!
+    AlternateCheck = CheckForAlternateConstraints()
+    !----------------------------------------------------------------------------
+    !Deriving all Spwfs
+    if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
+        call N2LODerive()
+    else
+        call DeriveAll()    
+    endif
+    do i=1,nwt
+      call HFBasis(i)%SymmetryOperators()
+      if(Pairingtype.eq.2) then
+        CanEnergy = InproductSpinorReal(CanBasis(i)%GetValue(), hPsi(Canbasis(i)))
+        call Canbasis(i)%SetEnergy(CanEnergy)
+        call CanBasis(i)%SymmetryOperators()
+      endif
+    enddo
+
+    !----------------------------------------------------------------------------
+    ! Update all calculated quantities
+    call UpdateDensities(0)
+    ! Multipole moments 
+    call CalculateAllMoments(1) 
+    call ReadjustAllMoments(1)
+    call ReadjustAllMoments(2)
+    call ReadjustAllMoments(3)
+    ! Angular momentum
+    call updateAm(.true.)
+    call ReadjustCranking(.true.)
+    ! Smooth the densities using the difference between this and the previous
+    ! iteration, if the user asked for it
+    call MixDensities(Iteration)
+    !See if some constraints were temporary
+    call TurnOffConstraints(iteration)
+    !Construct the mean-field potentials
+    call ConstructPotentials
+    !Calculating the Energy
+    call CompEnergy
+    !Checking for convergence
+    Convergence = ConvergenceCheck()
+  	if(Convergence) exit
+    if(mod(Iteration, PrintIter).eq.0 .or. Iteration.eq.MaxIterations) then
+      if((Iteration.eq.MaxIterations) .and. (.not. Maxiterations.eq.0)) print 101
+      !Print info after selected amount of iterations.
+      call PrintIterationInfo(Iteration, .true.)
+    endif
+    !Print a summary
+    if(mod(Iteration, PrintIter).ne.0) call PrintSummary(Iteration)
+  enddo
+  !End of the mean-field iterations
+  !-----------------------------------------------------------------------------
+  if (Convergence .and. mod(Iteration, PrintIter).ne.0) then
+    ! If convergence happens during iterations, it is possible
+    ! that a printout has been skipped
+    call printIterationInfo(Iteration, .true.)
+  endif
+
+  !Reanalysis of the result with Lagrange derivatives.
+  call FinalIteration()
+
+  if(Convergence) then
+     print 5
+     print 6, MomentPrec
+     print 7, EnergyPrec
+     print 8, TotalDispersion
+     print 9, TotalDispersion/(protons+neutrons)
+     print 4
+  endif
+  
+!  if(t1n2.ne.0.0_dp .or. t2n2.ne.0.0_dp) call testN2LOsph
+  
+  !Write densities to files.
+  if(Pictures) then
+    call PlotDensity()
+  endif
+
+end subroutine Evolve
+
+subroutine Evolve_OLD(MaxIterations, iprint)
+  !-----------------------------------------------------------------------------
   ! This subroutine commands the time evolution of the system.
   !
   ! The integer iprint is a flag: iprint=1 gives extra diagnostic printouts.
@@ -292,11 +550,6 @@ subroutine Evolve(MaxIterations, iprint)
   do while((Iteration.lt.MaxIterations))
     !Incrementing the iteration number
     Iteration = Iteration + 1
-
-    if(AlternateCheck .or. AlternateCrank) then
-      call AlternateStep(.false.)
-    endif
-
     !---------------------------------------------------------------------------
     ! Calculate all the different potentials to construct the single particle
     ! hamiltonian h and then substitute every spwf |\Psi> by 1 - dt/hbar*h|\Psi>
@@ -334,36 +587,30 @@ subroutine Evolve(MaxIterations, iprint)
         call ReadjustCranking(.true.)
     endif
     
-!    if(RutzCheck .or. RutzCrank) then
-!        !Apply Corrections and resolve pairing
-!        call RutzCorrectionStep
-!        call SolvePairing
-!    endif
+    if(RutzCheck .or. RutzCrank) then
+        !Apply Corrections and resolve pairing
+        call RutzCorrectionStep
+        call SolvePairing
+    endif
     !---------------------------------------------------------------------------
-    !Checking for the presence of alternating constraints
-!    if(AlternateCheck .or. AlternateCrank) then
-!!        call AlternateStep(.false.)
-!!        if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
-!!          call N2LODerive()
-!!        else
-!!          call DeriveAll()
-!!        endif
-
-!!        do i=1,nwt
-!!          CanEnergy = InproductSpinorReal(HFBasis(i)%GetValue(), hPsi(HFbasis(i)))
-!!          call HFbasis(i)%SetEnergy(CanEnergy)
-!!        enddo
-!!        call SolvePairing
-!!        call HFBoccupations(Fermi, Delta,LNLambda,PairingDisp, .false.)
-!    endif
+!    Checking for the presence of alternating constraints
+    if(AlternateCheck .or. AlternateCrank) then
+        call AlternateStep(.false.)
+        if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
+          call N2LODerive()
+        else
+          call DeriveAll()
+        endif
+        call SolvePairing
+    endif
 
     !---------------------------------------------------------------------------
-    !Deriving all Spwf
-!    if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
-!      call N2LODerive()
-!    else
-!      call DeriveAll()
-!    endif
+!    Deriving all Spwf
+    if(t1n2.ne. 0.0_dp .or. t2n2.ne.0.0_dp) then
+      call N2LODerive()
+    else
+      call DeriveAll()
+    endif
     !---------------------------------------------------------------------------
     !Calculate the expectation values of the symmetry operators and the spwf
     !energies of the canonical basis
@@ -408,7 +655,7 @@ subroutine Evolve(MaxIterations, iprint)
     !Readjust the constraints
     call ReadjustAllMoments(1)
     
-!    call ReadjustCranking(.false.)
+    call ReadjustCranking(.false.)
 
     !Construct the mean-field potentials
     call ConstructPotentials
@@ -454,7 +701,7 @@ subroutine Evolve(MaxIterations, iprint)
     call PlotDensity()
 !    call PlotCurrents(15,1)
   endif
-end subroutine Evolve
+end subroutine Evolve_OLD
 
 logical function ConvergenceCheck() result(Converged)
   !-----------------------------------------------------------------------------
@@ -637,7 +884,7 @@ subroutine PrintSummary_v2(Iteration)
   !-----------------------------------------------------------------------------
 
   use CompilationInfo
-  use Energy, only: TotalEnergy, OldEnergy, Routhian, OldRouthian
+  use Energy, only: TotalEnergy, OldEnergy, Routhian, OldRouthian, LNEnergy
   use Spwfstorage, only : TotalAngMom
   use Densities,   only : DensityChange
   use Pairing, only : Fermi, LNLambda, Lipkin
@@ -649,15 +896,18 @@ subroutine PrintSummary_v2(Iteration)
 
   integer, intent(in)  :: Iteration
   type(Moment),pointer :: Current
-  real(KIND=dp):: Q20, Q22, dQ20, dQ22, Dispersion, Q30, Q32, dQ30, dQ32, Q10, dQ10
-  integer      :: i
+  real(KIND=dp) :: Q20, Q22, dQ20, dQ22, Dispersion, Q30, Q32, dQ30, dQ32, Q10, dQ10
+  real(KIND=dp), save :: oldln2(2), diff(2), oldlne(2)
+  integer       :: i
 
   1 format('----------- Iteration ', i6,'--------------')
   2 format("Summ.     E=" f10.3, "   dE=",es10.3)
  21 format("Summ.     R=" f10.3, "   dR=",es10.3)
  22 format("Summ. Fermi=" f10.5, "      ",f10.5) 
  23 format("Summ.    L2=" f10.5, "      ",f10.5) 
-  
+231 format("Summ.   dL2=" es10.3, "      ",es10.3) 
+232 format("Summ.  dEL2=" es10.3, "      ", es10.3)  
+
   3 format("Summ.   Q20=" f10.3, "  Q22=",f10.3)
   4 format("Summ.  dQ20=" es10.3, " dQ22=",es10.3)
  31 format("Summ.   Q10=" f10.3)
@@ -674,7 +924,14 @@ subroutine PrintSummary_v2(Iteration)
   print 2, TotalEnergy,abs((TotalEnergy - OldEnergy(1))/TotalEnergy)
   print 21, Routhian, abs((Routhian - OldRouthian(1))/Routhian)
   print 22, Fermi
-  if ( Lipkin ) print 23, LNLambda
+  if ( Lipkin ) then
+     print 23, LNLambda
+     diff = LNLambda - oldln2
+     print 231,diff
+     print 232, abs(LNEnergy-oldlne)/abs(TotalEnergy)
+     oldln2 = lnlambda
+     oldlne = lnenergy
+  endif
   !------------------------------------------------------------------
   ! Note that we can best look back two values due when there is a
   ! Rutz constraint active.

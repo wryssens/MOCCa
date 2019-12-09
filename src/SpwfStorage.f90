@@ -1064,7 +1064,7 @@ contains
                !    This of course corresponds to i< j | S_x | k > being fully 
                !    real
                inprod(1) = InproductSpinorImaginary(left, right)
-               A(j,k,it) = CMPLX(inprod(1), 0) 
+               A(j,k,it) = DCMPLX(inprod(1), 0) 
            enddo
         enddo
     enddo 

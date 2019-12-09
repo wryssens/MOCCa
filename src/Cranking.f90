@@ -44,7 +44,7 @@ module Cranking
   ! Whether or not to use the cranking info from file
   logical               :: ContinueCrank= .false.
   !-----------------------------------------------------------------------------
-  real(KIND=dp)         :: CrankC0=0.8_dp, crankscale=1.0
+  real(KIND=dp)         :: CrankC0=0.8_dp
   !-----------------------------------------------------------------------------
   ! Logical signalling other modules whether or not to do Rutz correction steps
   logical               :: RutzCrank              , AlternateCrank
@@ -68,8 +68,7 @@ contains
     &                   CrankTypeX,CrankTypeY, CrankTypeZ, CrankC0,            &
     &                   OmegaSize, RealignOmega, Jtotal, IntensityX,           &
     &                   IntensityY, IntensityZ,                                &
-    &                   ScaleIntensityX,ScaleIntensityY,ScaleIntensityZ,       &
-    &                   Crankscale
+    &                   ScaleIntensityX,ScaleIntensityY,ScaleIntensityZ
 
     read(unit=*, NML=Cranking)
 
@@ -190,13 +189,6 @@ contains
         enddo
       enddo
       !-------------------------------------------------------------------------
-      ! Artificially set total J_x and J_y to zero when dictated by symmetries.
-      ! In that case the above summation is not \sum v^2_i <Psi_i|J_x|\Psi_i>
-      ! but rather \sum v^2_i <Psi_i|J_x T |\Psi_i>
-      if(SC)          TotalAngMom(1) = 0.0
-      if(SC .or. TSC) TotalAngMom(2) = 0.0
-
-      !-------------------------------------------------------------------------
       ! And now we integrate the current density and spin density.
       do it=1,2
         ! Spin part
@@ -222,7 +214,23 @@ contains
         enddo
       enddo
       TotalAngMom_dens = TotalAngMom_dens * dv
+
+      !-------------------------------------------------------------------------
+      ! Artificially set total J_x and J_y to zero when dictated by symmetries.
+      ! In that case the above summation is not \sum v^2_i <Psi_i|J_x|\Psi_i>
+      ! but rather \sum v^2_i <Psi_i|J_x T |\Psi_i>
+      if(SC)          TotalAngMom(1) = 0.0
+      if(SC .or. TSC) TotalAngMom(2) = 0.0
+      ! And the integrations of the spin and current densities are wrong because
+      ! of the symmetries
+      if(SC)          TotalAngMom_dens(1) = 0.0
+      if(SC .or. TSC) TotalAngMom_dens(2) = 0.0
     endif
+
+    do i=1,3
+      CrankEnergy(i) =  - Omega(i) * TotalAngMom(i)
+    enddo
+
   end subroutine UpdateAM
 
   function CrankAPot() result(CrankContribution)
@@ -332,10 +340,10 @@ contains
     ! Readjust the Lagrange multipliers based on  Rutz' prescription.
     ! Rutz determines whether the Rutz or other constraints should be readjusted
     !---------------------------------------------------------------------------
-    integer       :: i,j
+    integer                 :: i,j
     real(KIND=dp),parameter :: d0 = 1.0_dp
-    logical, intent(in) :: Rutz
-    real(KIND=dp) :: SizeJ
+    logical, intent(in)     :: Rutz
+    real(KIND=dp)           :: SizeJ
 
     OmegaSize = sqrt(sum(Omega**2))
 
@@ -394,9 +402,9 @@ contains
     use Densities
 
     1 format (18('-'), ' Angular Momentum (hbar) ',17('-') )
-    2 format (15x, 'Total', 7x, 'Desired', 5x, 'Omega', 7x, 'Energy')
+    2 format (16x, 'Spwfs ', 6x, 'Densit.', 5x, 'Desired', 5x, 'Omega')
     3 format (3x,'J_',a1,'   ','|', 4f12.5 )
-   31 format (3x,'Size  |', 3f12.5)
+   31 format (3x,'Size  |', 4f12.5)
    32 format (1x,'ReJT',a1,'   ','|', 4f12.5 )
    33 format (1x,'ImJT',a1,'   ','|', 4f12.5 )
    34 format (2x,'|J|',a1,'   ','|', 4f12.5 )
@@ -418,9 +426,6 @@ contains
     integer :: i
     real(KIND=dp) :: theta(4), phi(4), J
 
-    do i=1,3
-      CrankEnergy(i) =  - Omega(i) * TotalAngMom(i)
-    enddo
     !---------------------------------------------------------------------------
     ! Print all info on the angular momentum
     print 1
@@ -431,17 +436,16 @@ contains
     print 2
     print 6
     if(.not.SC) then
-      print 3, 'x',TotalAngMom(1), CrankValues(1), Omega(1), CrankEnergy(1)
+      print 3, 'x',TotalAngMom(1), TotalAngMom_dens(1), CrankValues(1), Omega(1)
     endif
     if(.not.TSC) then
-      print 3, 'y',TotalAngMom(2), CrankValues(2), Omega(2), CrankEnergy(2)
+      print 3, 'y',TotalAngMom(2), TotalAngMom_dens(2), CrankValues(2), Omega(2)
     endif
-    print 3, 'z',TotalAngMom(3)     , CrankValues(3), Omega(3), CrankEnergy(3)
-    print 3, 'z',TotalAngMom_dens(3), CrankValues(3), Omega(3), CrankEnergy(3)
-
+    print 3, 'z',TotalAngMom(3), TotalAngMom_dens(3), CrankValues(3), Omega(3)
+ 
     print 6
-    print 31, sqrt(sum(totalangmom(1:3)**2)) , sqrt(sum(crankvalues(1:3)**2)), &
-    &         sqrt(sum(omega(1:3)**2))
+    print 31, sqrt(sum(totalangmom(1:3)**2)),sqrt(sum(totalangmom_dens(1:3)**2))&
+    &       , sqrt(sum(crankvalues(1:3)**2)), sqrt(sum(omega(1:3)**2))
     print *
     print 6
     if(.not. SC) then
@@ -463,6 +467,7 @@ contains
         &         atan2(Omega(2), Omega(1)) * 180.0/pi
     endif
 
+    print 5
     print 6
     print 32, 'x',JTR(1), 0.0, 0.0, 0.0
     print 32, 'y',JTR(2), 0.0, 0.0, 0.0

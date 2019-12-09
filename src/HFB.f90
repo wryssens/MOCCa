@@ -46,7 +46,7 @@ module HFB
   !-----------------------------------------------------------------------------
   ! Numerical cutoff to determine what components in the canonical
   ! transformation to ignore.
-  real(KIND=dp),parameter :: HFBNumCut=1d-10
+  real(KIND=dp),parameter :: HFBNumCut=1d-12
   !-----------------------------------------------------------------------------
   ! HFB density and anomalous density matrix note that these are complex
   ! in general. The old matrices are the matrices at previous iterations
@@ -366,7 +366,7 @@ contains
     complex(KIND=dp), allocatable, intent(inout) :: FieldLN(:,:,:,:)
     complex(KIND=dp), allocatable, intent(inout) :: Delta(:,:,:,:)
     complex(KIND=dp)                             :: ActionOfPairing(nx,ny,nz)
-    complex(KIND=dp),allocatable,save            :: Gamma(:,:,:,:)
+    complex(KIND=dp),allocatable                 :: Gamma(:,:,:,:)
     real(KIND=dp):: factor, factorLN, StabFac
     integer      :: i, it, j, ii, sig1, sig2, jj,k,P, iii, jjj,l
     real(KIND=dp):: Cutoff(2)
@@ -557,7 +557,11 @@ contains
 
     if(ConstantGap) call stp('Trying to do constant gap pairing in HFB!')
 
-    Delta = 0.0_dp ; if(allocated(DeltaLN)) DeltaLN = 0.0_dp
+    Delta     = 0.0_dp  
+
+    if(allocated(DeltaLN)) then
+      DeltaLN    = 0.0_dp
+    endif
 
     do it=1,Iindex
       do P=1,Pindex
@@ -1134,7 +1138,7 @@ contains
   real(KIND=dp) :: A(2), B(2)
   logical       :: NotFound(2)
   logical       :: Success
-  integer       :: iter, FailCount, flag(2), it, i 
+  integer       :: iter, FailCount, flag(2), it, i , lniter, lnit
   integer       :: idir(2) = 0 , idirsig(2) = 1
 
   !-----------------------------------------------------------------------------
@@ -1143,7 +1147,7 @@ contains
   !-----------------------------------------------------------------------------
   if (Lipkin) then
     flag = 0
-    L2 = LNCR8(Delta, DeltaLN, flag)
+     L2 = LNCR8(Delta, DeltaLN, flag)
   endif
 
   !-----------------------------------------------------------------------------
@@ -1176,7 +1180,9 @@ contains
 
   ! here would start the loop over iterations of lambda_2 in the LN case if
   ! an actual iteration is needed to improve convergence.
-
+  lniter=2
+  do lnit=1, 2
+    Success  = .false.
     !---------------------------------------------------------------------------
     ! Use present Fermi energy as starting point and check the direction 
     ! where the zero of <N>-N0 can be expected.
@@ -1188,7 +1194,7 @@ contains
     ! "idirsig" is the sign of steps needed to go into that direction.
     !---------------------------------------------------------------------------
     do it=1,2
-      InitialBracket(it,:) = Fermi(it)
+      InitialBracket(it,:) = Fermi(it) 
       if ( N(it) .lt. 0.0_dp ) then 
         idir   (it) =  2
         idirsig(it) =  1
@@ -1290,12 +1296,12 @@ contains
       ! For a convergence analysis, uncomment this and the similar statement in
       ! the subroutine FermiBrent().
       !-------------------------------------------------------------------------
-      ! print '(" Bracketing ",i4,1l2,2(1l2,2(f13.8,es16.7),f14.8))', &
-      !      & FailCount,Success,                                     &
-      !      & NotFound(1),InitialBracket(1,1),FA(1),                 &
-      !      &             InitialBracket(1,2),FB(1),Num(1),          &
-      !      & NotFound(2),InitialBracket(2,1),FA(2),                 &
-      !      &             InitialBracket(2,2),FB(2),Num(2)
+!       print '(" Bracketing ",i4,1l2,2(1l2,2(f13.8,es16.7),f14.8))', &
+!            & FailCount,Success,                                     &
+!            & NotFound(1),InitialBracket(1,1),FA(1),                 &
+!            &             InitialBracket(1,2),FB(1),Num(1),          &
+!            & NotFound(2),InitialBracket(2,1),FA(2),                 &
+!            &             InitialBracket(2,2),FB(2),Num(2)
       !-------------------------------------------------------------------------
       ! code failure (Fermi energy has changed by 30 MeV)
       !-------------------------------------------------------------------------
@@ -1331,7 +1337,8 @@ contains
     !---------------------------------------------------------------------------
     call FermiBrent(InitialBracket(:,1),InitialBracket(:,2),FA,FB,HFBIter, &
                  & Delta,L2,Prec,Fermi,N)
-
+    
+  enddo
   end subroutine HFBFindFermiEnergyBisection
 
   subroutine HFBFindFermiEnergyBisectionEmergency(Fermi,L2,Delta,DeltaLN, &
@@ -2287,13 +2294,13 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
   real(KIND=dp)                :: A(2) , B(2), C(2) , FA(2), FB(2) , FC(2)
   real(KIND=dp)                :: D(2) , E(2), S(2) , P(2)  , Q(2) , R(2) 
   real(KIND=dp)                :: Num(2) , Prec , Tol(2) , XM(2) 
-  real(KIND=dp)                :: eps = 1.d-8
+  real(KIND=dp)                :: eps = 1.d-12
   integer                      :: it , FailCount , i
   logical                      :: Success , Found(2)
   complex(KIND=dp),intent(in), allocatable :: Delta(:,:,:,:)
 
-  ! Prec = PrecIn  ! usually 1.d-6
-  Prec = 1.d-7 
+   Prec = PrecIn  ! usually 1.d-6
+  !Prec = 1.d-7 
   A (:) = X1 (:)
   B (:) = X2 (:)
   FA(:) = FX1(:)
@@ -2353,7 +2360,8 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
       !----------------------------------------------------------------
       ! Convergence check
       !----------------------------------------------------------------
-      Tol(it)  = 2.0_dp * eps * abs(B(it)) + 0.5_dp * Prec
+!      Tol(it)  = 2.0_dp * eps * abs(B(it)) + 0.5_dp * Prec
+      Tol(it) = Prec ! * abs(B(it))
       XM (it)  = 0.5_dp * (C(it)-B(it))
 
       !----------------------------------------------------------------
@@ -2430,6 +2438,7 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
     !--------------------------------------------------------------------------
     if ( FailCount .gt. Depth ) then
       print '(/," Warning: FermiBrent not converged after ",i4," iterations")',FailCount
+      print *, Tol, Prec
       do it=1,2
         if ( .not. Found(it) ) then
           print '("it = "i2,2(f13.8,es16.7),f14.8)',it,A(it),FA(it),B(it),FB(it),Num(it)
@@ -2573,7 +2582,7 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
         ! Offdiagonal
         do j=1,N
           HFBHamil(i,j,P,it) = HFBHamil(i,j,P,it)                              &
-          &       +  (1.0_dp-LNFraction)*4*LNLambda(it)*   OldRhoHFB(i,j,P,it)
+          &       +  (1.0_dp-LNFraction)*4*LNLambda(it)* oldrhohfb(i,j,P,it)
         enddo
         do j=1,N
           !---------------------------------------------------------------------
@@ -2584,7 +2593,7 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
         do j=1,N
           ! Delta - 2 * Lambda_2 * Kappa
           HFBHamil(i,j + N,P,it) = Delta(i,j,P,it)                             &
-          &                    - LNFraction*4*LNLambda(it)*OldKappaHFB(i,j,P,it)
+          &                    - LNFraction*4*LNLambda(it)*oldkappahfb(i,j,P,it)
         enddo
       enddo
       !-------------------------------------------------------------------------
@@ -2593,20 +2602,20 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
       ! ( Rho       Kappa   )
       ! ( -Kappa^*  1-Rho^* )
       !-------------------------------------------------------------------------
-      do i=1,N
-        ! The 1 of the 1-Rho^*
-        k = blockindices(i,P,it)
-        HFBHamil(i+N,i+N,P,it) = HFBHamil(i+N,i+N,P,it) + Gauge(it)
-        do j=1,N
-            ! Rho
-            HFBHamil(i,j,P,it)     = HFBHamil(i,j,P,it)     + Gauge(it)*OldRhoHFB(i,j,P,it)
-            ! Kappa
-            HFBHamil(i,j+N,P,it)   = HFBHamil(i,j+N,P,it)   + Gauge(it)*OldKappaHFB(i,j,P,it)
-            HFBHamil(i+N,j,P,it)   = HFBHamil(i+N,j,P,it)   - Gauge(it)*OldKappaHFB(i,j,P,it)
-            ! - Rho
-            HFBHamil(i+N,j+N,P,it) = HFBHamil(i+N,j+N,P,it) - Gauge(it)*Conjg(OldRhoHFB(i,j,P,it))
-        enddo
-      enddo
+!      do i=1,N
+!        ! The 1 of the 1-Rho^*
+!        k = blockindices(i,P,it)
+!        HFBHamil(i+N,i+N,P,it) = HFBHamil(i+N,i+N,P,it) + Gauge(it)
+!        do j=1,N
+!            ! Rho
+!            HFBHamil(i,j,P,it)     = HFBHamil(i,j,P,it)     + Gauge(it)*OldRhoHFB(i,j,P,it)
+!            ! Kappa
+!            HFBHamil(i,j+N,P,it)   = HFBHamil(i,j+N,P,it)   + Gauge(it)*OldKappaHFB(i,j,P,it)
+!            HFBHamil(i+N,j,P,it)   = HFBHamil(i+N,j,P,it)   - Gauge(it)*OldKappaHFB(i,j,P,it)
+!            ! - Rho
+!            HFBHamil(i+N,j+N,P,it) = HFBHamil(i+N,j+N,P,it) - Gauge(it)*Conjg(OldRhoHFB(i,j,P,it))
+!        enddo
+!      enddo
       !--------------------------------------------------------------------------
       ! Make sure everything is symmetric.
       ! This might strictly be a waste of CPU cycles, but anyone carelessly using
@@ -3272,7 +3281,7 @@ subroutine InsertionSortQPEnergies
           !   enddo
           enddo
         enddo
-        where (abs(CanTransfo) .lt. 1d-11) CanTransfo = 0.0_dp
+        where (abs(CanTransfo) .lt. 1d-6) CanTransfo = 0.0_dp
   end subroutine DiagonaliseRhoHFB!_diagoncr8
 
   subroutine CheckRho(Rho)
@@ -3369,6 +3378,7 @@ subroutine InsertionSortQPEnergies
   integer                                   :: P2, C, index, N
 
   PairingDisp = 0.0_dp
+
   !-----------------------------------------------------------------------------
   ! Actual diagonalisation
   call DiagonaliseRHOHFB
@@ -3377,15 +3387,16 @@ subroutine InsertionSortQPEnergies
   if(all(Occupations.eq.0.0_dp)) then
     call stp('No occupations in the canonical basis!')
   endif
-!  if(any(Occupations - 1.0_dp.gt.1d-5)) then
-!    call stp('Some occupations are bigger than one in the canonical basis.')
-!  endif
+
+  if(any(Occupations - 1.0_dp.gt.1d-5)) then
+    call stp('Some occupations are bigger than one in the canonical basis.')
+  endif
   where(Occupations.gt.1.0_dp) Occupations=1.0_dp
   if(any(Occupations .lt. -HFBNumCut)) then
-    ! Notice that we allow some very small negative occupation numbers.
-    ! They are entirely due to numerical error, and such errors are present
-    ! too in CR8. However, they are masked by setting all negative elements of
-    ! RhoHFB density matrix to zero. But in MOCCa, RHOHFB can be complex...
+!     Notice that we allow some very small negative occupation numbers.
+!     They are entirely due to numerical error, and such errors are present
+!     too in CR8. However, they are masked by setting all negative elements of
+!     RhoHFB density matrix to zero. But in MOCCa, RHOHFB can be complex...
     where(Occupations.lt.0.0_dp) Occupations = 0.0_dp
     print *, 'Some occupations are smaller than zero in the canonical basis.'
   endif
@@ -3516,14 +3527,6 @@ subroutine InsertionSortQPEnergies
     enddo
   enddo
   !-----------------------------------------------------------------------------
-  !Mix the densities, if there is a saved density
-  if( .not. all(OldRhoHFB.eq.0.0_dp) ) then
-    RhoHFB   = HFBMix * RhoHFB   + (1.0_dp - HFBMix) * OldRhoHFB
-  endif
-  if( .not. all(KappaHFB.eq.0.0_dp) ) then
-    KappaHFB = HFBMix * KappaHFB + (1.0_dp - HFBMix) * OldKappaHFB
-  endif
-  !-----------------------------------------------------------------------------
   ! Measure convergence
 !  do it=1,2
 !     do P=1,2   
@@ -3532,6 +3535,15 @@ subroutine InsertionSortQPEnergies
 !        dkappa(P,it) = sum( (KappaHFB(1:N,1:N,P,it) - OldKappaHFB(1:N, 1:N, P,it))**2)
 !     enddo
 !  enddo
+
+  !-----------------------------------------------------------------------------
+  !Mix the densities, if there is a saved density
+  if( .not. all(OldRhoHFB.eq.0.0_dp) ) then
+    RhoHFB   = HFBMix * RhoHFB   + (1.0_dp - HFBMix) * OldRhoHFB
+  endif
+  if( .not. all(KappaHFB.eq.0.0_dp) ) then
+    KappaHFB = HFBMix * KappaHFB + (1.0_dp - HFBMix) * OldKappaHFB
+  endif
   !-----------------------------------------------------------------------------
   ! save number parities of fully manipulated qp vacuum for later use
   call CalcNumberParities()
@@ -3541,7 +3553,7 @@ subroutine InsertionSortQPEnergies
   do it=1,Iindex
     do P=1,Pindex
       N = blocksizes(P,it)
-      OldRhoHFB(1:N,1:N,P,it) = RhoHFB(1:N,1:N,P,it)
+      OldRhoHFB(1:N,1:N,P,it)   = RhoHFB(1:N,1:N,P,it)
       OldKappaHFB(1:N,1:N,P,it) = KappaHFB(1:N,1:N,P,it)
     enddo
   enddo
@@ -4000,7 +4012,7 @@ subroutine InsertionSortQPEnergies
       &        matmul(RhoHFB(N/2+1:N,N/2+1:N,P,it),RhoHFB(N/2+1:N,N/2+1:N,P,it))
 
       do i=1,N
-        c2(it) = c2(it) + 2*Chi(i,i,P,it)
+        c2(it) = c2(it) + DBLE(2*Chi(i,i,P,it))
       enddo
     enddo
   enddo

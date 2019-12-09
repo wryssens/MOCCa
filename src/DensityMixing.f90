@@ -24,14 +24,10 @@ contains
     ! Mixes the densities according to different schemes.
     ! MixingScheme=
     ! 0) => Linear Mixing with DampingParam as parameter.
-    ! 1) => Linear mixing of ONLY rho.
-    ! 2) => Linear mixing of ONLY laplacian of rho and laplacian of S.
-    ! 3) => Preconditioning of density rho and further linear mixing
-    ! 4) => Linear mixing of potentials U and B
-    ! 5) => Preconditioning of potentials U and B
+    ! 1) => Experimental preconditioning of rho only
+    ! 2) => Preconditioning of potentials: do nothing here
     !---------------------------------------------------------------------------
     use Damping
-    
     
     integer, intent(in)         :: Iteration
     real(KIND=dp)               :: preconrho(nx,ny,nz,2), drho(nx,ny,nz,2)
@@ -73,7 +69,6 @@ contains
         !-----------------------------------------------------------------------
         ! Precondition the proposed update
         preconrho = Preconditionrho(drho,alpha, beta)
-        print *,'Preconditioned', alpha
         !-----------------------------------------------------------------------
         Density%rho = DensityHistory(1)%rho + preconrho 
         !-----------------------------------------------------------------------
@@ -103,7 +98,6 @@ contains
     !---------------------------------------------------------------------------
     ! Small Subroutine to recalculate the derivatives of the density rho, 
     ! for use after this density has been mixed.
-    !
     !---------------------------------------------------------------------------
     use Force
     

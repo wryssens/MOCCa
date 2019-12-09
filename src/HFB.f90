@@ -2299,8 +2299,7 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
   logical                      :: Success , Found(2)
   complex(KIND=dp),intent(in), allocatable :: Delta(:,:,:,:)
 
-   Prec = PrecIn  ! usually 1.d-6
-  !Prec = 1.d-7 
+  Prec = PrecIn  
   A (:) = X1 (:)
   B (:) = X2 (:)
   FA(:) = FX1(:)
@@ -2368,7 +2367,7 @@ subroutine InitializeUandV(Delta,DeltaLN,Fermi,L2)
       ! Note: the tolerance is on the precision of the Fermi energy,
       ! NOT the nearness of the particle number to the targeted value.
       !----------------------------------------------------------------
-      if ( abs(XM(it)) .le. Tol(it) .or. FB(it) .eq. 0.0_dp ) then
+      if ( abs(XM(it)) .le. Tol(it) ) then
         ZB(it) =  B(it)
         Found(it) = .true. 
         cycle

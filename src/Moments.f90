@@ -145,8 +145,7 @@ implicit none
       ! Integer controlling the type of constraint on the multipole moment.
       ! 0 - unconstrained
       ! 1 - Augmented Lagrangian
-      ! 2 - Predictor-Corrector
-      ! 3 - Alternating
+      ! 2 - Alternating
       !-------------------------------------------------------------------------
       integer        :: ConstraintType
       !-------------------------------------------------------------------------
@@ -262,7 +261,7 @@ implicit none
   ! 1 + exp[(\DeltaR - radd)/acut]
   ! Default values are the ones from K. Rutz et al, Nucl. Phys. A590 (1995) 690
   !-----------------------------------------------------------------------------
-  real(KIND=dp), public :: radd = 4._dp,acut=0.4_dp
+  real(KIND=dp), public :: radd = 4._dp,acut=0.4_dp, d0 = 0.1
   !-----------------------------------------------------------------------------
   !Cutoff function
   ! For 1) Neutrons, 2) Protons
@@ -293,12 +292,6 @@ implicit none
   ! Total deviation of all the multipole moments
   real(KIND=dp) :: TotalDeviation = 0.0_dp
   !-----------------------------------------------------------------------------
-  ! Whether or not to iteratively project on correct constraints at the start 
-  ! of the iterations, up to an accuracy of ProjectionPrecision.
-  logical       :: ConstraintsProject = .false.
-  real(KIND=dp) :: ProjectionPrecision = 1d-2
-  integer       :: ProjectionIter = 100
-  !-----------------------------------------------------------------------------
   !Pointer to the cutoff procedure chosen.
   !-----------------------------------------------------------------------------
   abstract interface
@@ -319,9 +312,9 @@ implicit none
   ! Logical determining whether or not to take momentconstraints from
   ! the wavefunction file.
   logical, public      :: ContinueMoment=.false.
-  !-----------------------------------------------------------------------------
-  ! Numerical parameters for the Rutz-constraint update scheme
-  real(KIND=dp) :: c0=0.2_dp, d0=0.01_dp, epsilon=7.0_dp
+!  !-----------------------------------------------------------------------------
+!  ! Numerical parameters for the Rutz-constraint update scheme
+!  real(KIND=dp) :: c0=0.2_dp, d0=0.01_dp, epsilon=7.0_dp
   !-----------------------------------------------------------------------------
   ! Quantisation axis of the moments.
   integer :: QuantisationAxis=3, SecondaryAxis=1
@@ -1108,9 +1101,9 @@ contains
    91 format ('  Damping of constraint calculation  = ', f6.3)
    92 format ('  Damping of constraint readjustment = ', f6.3)
 
-   10 format ('Predictor-Corrector parameters')
-  101 format ('  Epsilon                            = ', f6.3)
-  102 format ('  C0                                 = ', f6.3)
+!   10 format ('Predictor-Corrector parameters')
+!  101 format ('  Epsilon                            = ', f6.3)
+!  102 format ('  C0                                 = ', f6.3)
 
    11 format (/, 'Constraints obtained from file (not from data).')
    12 format (/, 'Constraints obtained from data (not from file).')
@@ -1170,9 +1163,9 @@ contains
     print 91, Damping
     print 92, ReadjustSlowdown
 
-    print 10
-    print 101, epsilon
-    print 102, c0
+!    print 10
+!    print 101, epsilon
+!    print 102, c0
 
     if(ContinueMoment) then
       print 11
@@ -2348,33 +2341,30 @@ subroutine PrintAllMoments()
     return
   end subroutine CalculateAllMoments
 
-  subroutine ReadjustAllMoments(constrainttype)
+  subroutine ReadjustAllMoments()
     !---------------------------------------------------------------------------
     ! Readjust all the multipole constraints.
     !---------------------------------------------------------------------------
     use Densities
     
     type(Moment), pointer :: Current
-    integer               :: Constrainttype
 
     nullify(Current)
     Current => Root
 
     do while(associated(Current%Next))
         Current => Current%Next
-        if(Current%ConstraintType.ne.constrainttype) cycle
+        if(Current%ConstraintType.eq.0) cycle
         call Readjust(Current)
     enddo
     nullify(Current)
     
     Current => Root_J0
     do while(associated(Current)) 
-        if(Current%ConstraintType.eq.constrainttype) then
-           if(.not.allocated(Density%Jmunu)) then
-            call stp('Can not constrain J0 if Jmunu is not calculated.')
-           endif    
-          call Readjust(Current,.true.)
-        endif
+        if(.not.allocated(Density%Jmunu) .and. Current%constrainttype.ne.0) then
+          call stp('Can not constrain J0 if Jmunu is not calculated.')
+        endif    
+        if(current%constrainttype .ne. 0)   call Readjust(Current,.true.)
         if(associated(Current%next)) then
             Current => Current%Next
         else
@@ -2463,27 +2453,7 @@ subroutine PrintAllMoments()
         Desired   = Current%Constraint(1)
         Value     = Current%Value(1) - Current%Value(2)
       end select
-    case(2)
-      !-------------------------------------------------------------------------
-      ! Rutz self-correcting constraints
-      Value   = 1.0_dp
-      Desired = 0.0_dp
-
-      select case(Current%Isoswitch)
-      case(1)
-        Factor = Current%Intensity(1)
-      case(2)
-        Factor = Current%Intensity
-      case(3)
-        Factor(1) =   Current%Intensity(1)
-        Factor(2) = - Current%Intensity(1)
-      end select
-
-      if(Current%Total) then
-        Factor = Factor/(sum(CalculateTotalQl(Current%l) + 0.000001))
-      endif
-      
-     case(3)
+     case(2)
        !------------------------------------------------------------------------
        ! Alternating constraints
        select case(Current%Isoswitch)
@@ -2500,15 +2470,6 @@ subroutine PrintAllMoments()
             endif
        end select
        
-     case(4)
-       !------------------------------------------------------------------------
-       ! Preconditioning
-!       Factor = - Current%multiplier
-!       Value  =  1
-!       Desired = 0
-        Factor = 2*Current%Intensity(1)
-        Value = sum(Current%Value)
-        Desired =Current%Constraint(1)
     case DEFAULT
           call stp('Not implemented constrainttype.')
     end select
@@ -2539,7 +2500,7 @@ subroutine PrintAllMoments()
     case(0)
       !-------------------------------------------------------------------------
       ! Go to the next moment if this moment is not constrained
-    case(3)
+    case(2)
        !------------------------------------------------------------------------
        ! Alternating constraints
        ! sum(proton+neutron) value constrained
@@ -3031,58 +2992,7 @@ subroutine PrintAllMoments()
         & -ReadjustSlowDown * ( ToReadjust%Value(1) - ToReadjust%Value(2)      &
         &                   - ToReadjust%TrueConstraint(1))
       end select
-
     case (2)
-     !--------------------------------------------------------------------------
-     ! Predictor-corrector constraints
-     select case(ToReadjust%Isoswitch)
-
-     case(1)
-      ! Proton + neutron value
-      if(.not. ToReadjust%total) then
-        O2 = sum(ToReadjust%Squared)
-        
-        write (*, 1), ToReadjust%l, ToReadjust%m
-        write (*, 2), sum(ToReadjust%Value)
-        write (*,21), sum(ToReadjust%OldValue(:,1))
-        write (*, 3), sum(ToReadjust%OldValue(:,2))
-        write (*,31), sum(O2)
-        write (*, 4), ToReadjust%Intensity
-        
-        ToReadjust%Intensity = ToReadjust%Intensity +                          &
-        & epsilon *  (sum(ToReadjust%Value) - sum(ToReadjust%OldValue(:,1)))/  &
-        & (O2(1) + d0)
-        write (*, 5), ToReadjust%Intensity
-        print *
-      
-      else
-        O2 = sum(ToReadjust%Squared) * sum(ToReadjust%Value)/sum(CalculateTotalQl(Toreadjust%l))
-        Old = CalculateTotalQl(Toreadjust%l,1)
-
-        ToReadjust%Intensity = ToReadjust%Intensity + epsilon*                 &
-        & (sum(CalculateTotalQl(Toreadjust%l))-sum(Old))/(O2(1) + d0)
-      endif
-
-     case(2)
-      ! Proton and neutron separately
-      do it=1,2
-        O2(it) = ToReadjust%Squared(it)
-        ToReadjust%Intensity(it) = ToReadjust%Intensity(it)+                   &
-        & epsilon *  ( ToReadjust%Value(it) - ToReadjust%OldValue(it,1))/      &
-        & (O2(it) + d0)
-      enddo
-
-     case(3)
-      ! Difference of proton and neutron
-      O2 = sum(ToReadjust%Squared)
-
-      ToReadjust%Intensity = ToReadjust%Intensity +                            &
-      & epsilon *  (ToReadjust%Value(1) - ToReadjust%Value(2)                  &
-      &             - ToReadjust%OldValue(1,1) + ToReadjust%OldValue(2,1))   / &
-      & (O2(1) + d0)
-    
-     end select
-    case (3)
      !--------------------------------------------------------------------------
      ! Alternating direction constraints
      select case(ToReadjust%Isoswitch)
@@ -3150,7 +3060,7 @@ subroutine PrintAllMoments()
       !Find the center of mass coordinates
       Current => FindMoment(1,0,.false.)
       if(associated(Current)) then
-          Current%ConstraintType=3
+          Current%ConstraintType=2
           allocate(Current%Constraint(1), Current%TrueConstraint(1))
           allocate(Current%Intensity(1)); Current%Intensity=0.0_dp
           Current%Constraint=0.0_dp     ; Current%TrueConstraint=0.0_dp
@@ -3162,7 +3072,7 @@ subroutine PrintAllMoments()
 
       Current => FindMoment(1,1,.false.)
       if(associated(Current)) then
-          Current%ConstraintType=3
+          Current%ConstraintType=2
           allocate(Current%Constraint(1), Current%TrueConstraint(1))
           allocate(Current%Intensity(1)); Current%Intensity=0.0_dp
           Current%Constraint=0.0_dp ; Current%TrueConstraint=0.0_dp
@@ -3174,7 +3084,7 @@ subroutine PrintAllMoments()
 
       Current => FindMoment(1,1,.true.)
       if(associated(Current)) then
-          Current%ConstraintType=3
+          Current%ConstraintType=2
           allocate(Current%Constraint(1), Current%TrueConstraint(1))
           allocate(Current%Intensity(1)); Current%Intensity=0.0_dp
           Current%Constraint=0.0_dp  ; Current%TrueConstraint=0.0_dp
@@ -3186,7 +3096,7 @@ subroutine PrintAllMoments()
       !Find the rotational degrees of freedom
       Current => FindMoment(2,1,.false.)
       if(associated(Current)) then
-         Current%ConstraintType=3
+         Current%ConstraintType=2
          allocate(Current%Constraint(1), Current%TrueConstraint(1))
          allocate(Current%Intensity(1)); Current%Intensity=0.0_dp
          Current%Constraint=0.0_dp ;  Current%TrueConstraint=0.0_dp
@@ -3198,7 +3108,7 @@ subroutine PrintAllMoments()
 
       Current => FindMoment(2,1,.true.)
       if(associated(Current)) then
-          Current%ConstraintType=3
+          Current%ConstraintType=2
           allocate(Current%Constraint(1), Current%TrueConstraint(1))
           allocate(Current%Intensity(1)); Current%Intensity=0.0_dp
           Current%Constraint=0.0_dp ; Current%TrueConstraint=0.0_dp
@@ -3210,7 +3120,7 @@ subroutine PrintAllMoments()
 
       Current => FindMoment(2,2,.true.)
       if(associated(Current)) then
-          Current%ConstraintType=3
+          Current%ConstraintType=2
           allocate(Current%Constraint(1), Current%TrueConstraint(1))
           allocate(Current%Intensity(1)); Current%Intensity=0.0_dp
           Current%Constraint=0.0_dp ; Current%TrueConstraint=0.0_dp
@@ -3642,10 +3552,8 @@ subroutine PrintAllMoments()
 
     NameList /MomentParam/ MaxMoment, radd, acut, MoreConstraints,Damping,     &
     &                      ReadjustSlowDown, CutoffType, ContinueMoment,       &
-    &                      c0,d0, epsilon,QuantisationAxis,SpecialInput,       &
-    &                      SecondaryAxis, ProjectionPrecision,                 &
-    &                      ConstraintsProject, ProjectionIter
-
+    &                      QuantisationAxis,SpecialInput,       &
+    &                      SecondaryAxis
     NameList /MomentConstraint/ l,m,Impart, Isoswitch, Intensity,              &
     &                           ConstraintNeutrons,ConstraintProtons,          &
     &                           Constraint, MoreConstraints, ConstraintType,   &
@@ -3699,7 +3607,7 @@ subroutine PrintAllMoments()
         !Initialisation
         l=0; m=0; Impart=.false.  ; Isoswitch = 1            ; Intensity =0.0_dp
         ConstraintNeutrons=0.0_dp ; ConstraintProtons=0.0_dp ; Constraint=0.0_dp
-        MoreConstraints=.false.   ; ConstraintType=3         ; J0 = .false.
+        MoreConstraints=.false.   ; ConstraintType=2         ; J0 = .false.
         iq1=0.0_dp       ; iq2=0.0_dp            ; mult = 0.0_dp
         iq1neutron=0.0_dp; iq2neutron=0.0_dp; iq1proton=0.0_dp;iq2proton=0.0_dp
         Total = .false.  ; iteration = -1 ; ConstrainStart= .false.

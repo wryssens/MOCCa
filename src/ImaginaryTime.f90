@@ -302,109 +302,8 @@ contains
       endif        
     endif
   end function hPsi
-
-  subroutine RutzCorrectionStep
-    !---------------------------------------------------------------------------
-    ! Subroutine that takes an extra corrective step to accelerate the
-    ! convergence of constrained calculations.
-    !---------------------------------------------------------------------------
-    use Wavefunctions
-    use Moments
-    use Spwfstorage
-    use Cranking
-
-    real(KIND=dp) :: Correction(nx,ny,nz,2), O2(2), Update(nx,ny,nz,2)
-    real(KIND=dp) :: CrankFactor(3), Value(2), Desired(2)
-    integer       :: it, i,j, power
-    type(Moment),pointer  :: Current, Extra
-    type(Spinor)  :: QPsi, TempSpinor
-
-    Current    => Root
-    Correction = 0.0_dp
-    !---------------------------------------------------------------------------
-    ! We first construct the correction from all the moments that are Rutz-type
-    ! constrained.
-    do while(associated(Current%Next))
-      Current => Current%Next
-      if(Current%ConstraintType.ne.2) cycle
-
-      !Ordinary constraints
-      select case(Current%Isoswitch)
-      case(1)
-        !---------------------------------------------------------------------
-        ! Constrain the sum of the proton & neutron parts
-        Desired = Current%Constraint(1)
-
-        power = 1
-        O2    = sum(Current%Squared)
-        Value = sum(Current%Value)
-
-        if(Current%Total) then
-          Value   = sum(CalculateTotalQl(Current%l))
-          O2      = sum(Current%Squared)
-        endif
-        !endif
-      case(2)
-        !---------------------------------------------------------------------
-        !Constrain proton & neutron contributions to different values
-        Desired = Current%Constraint
-        power = 1
-        O2    = Current%Squared
-        Value = Current%Value
-      case(3)
-        !---------------------------------------------------------------------
-        ! Constrain the difference between proton and neutron
-        ! Note the extra minus signs!
-        Desired(1) =  Current%Constraint(1)
-        Desired(2) = -Current%Constraint(2)
-
-        power = 1
-        O2    = sum(Current%Squared)
-        Value(1) =   Current%Value(1) - Current%Value(2)
-        Value(2) = - Value(1)
-      end select
-
-      !-------------------------------------------------------------------------
-      !Calculate the update
-      do it=1,2
-        Update(:,:,:,it) = c0/2*(Value(it)  - Desired(it))/(O2(it) + d0)*      &
-        &                  Current%SpherHarm
-      enddo
-      Correction = Correction + Update
-    enddo
-    call CompCutoff
-    !---------------------------------------------------------------------------
-    ! Then construct the correction for the cranking constraints.
-    CrankFactor=0.0_dp
-    if(RutzCrank) then
-      do i=1,3
-          if(CrankType(i).ne.1) cycle
-          CrankFactor(i)=CrankC0*                                                &
-          &              (TotalAngMom(i)-CrankValues(i))/(J2Total(i)+d0)
-      enddo
-    endif
-    !---------------------------------------------------------------------------
-    ! Then we update the spwf-functions
-    do i=1,nwt
-      QPsi = HFBasis(i)%GetValue()
-      it   = (HFBasis(i)%GetIsospin() + 3)/2
-
-      TempSpinor = NewSpinor()
-      !Calculating the actions of the cranking correction
-      do j=1,3
-        if(CrankFactor(j).eq.0.0_dp) cycle
-        TempSpinor = TempSpinor + CrankFactor(j)*AngMomOperator(HFBasis(i), j)
-      enddo
-
-      !Substituting the correction
-      QPsi = QPsi - Correction(:,:,:,it)*Cutoff(:,:,:,it)*QPsi - TempSpinor
-      call HFBasis(i)%SetGrid(QPsi)
-    enddo
-    ! Finally, orthonormalisation
-    call Gramschmidt
-  end subroutine RutzCorrectionStep
   
-  subroutine AlternateStep(AllConstraints)
+  subroutine AlternateStep()
   !-----------------------------------------------------------------------------
   ! Subroutine performing one (or more) alternate step for the alternating
   ! constraints. The idea is a a simple gradient step in the direction of a
@@ -433,7 +332,6 @@ contains
    integer       :: it, i,j, power
    type(Moment),pointer  :: Current
    type(Spinor)  :: QPsi, tempspinor
-   logical, intent(in):: AllConstraints
 
    Current    => Root
    multipole = 0.0_dp
@@ -442,11 +340,7 @@ contains
    do while(associated(Current%Next))
     Current => Current%next
    
-    if(.not. AllConstraints) then
-        if(Current%ConstraintType.lt.3) cycle
-    else
-        if(Current%ConstraintType.eq.0) cycle
-    endif
+    if(Current%ConstraintType.ne.2) cycle
    
     select case(Current%Isoswitch)
     case(1)
@@ -488,15 +382,11 @@ contains
    CrankFactor=0.0_dp
    if(AlternateCrank) then
      if(Jtotal.eq.0.0_dp) then        
-         do i=1,3
-             if(.not. AllConstraints) then
-                if(CrankType(i).ne.3) cycle
-             else
-                if(CrankType(i).eq.0) cycle
-             endif
+       do i=1,3
+           if(CrankType(i).ne.1) cycle
              
-             CrankFactor(i)= 0.5*(TotalAngMom(i)-CrankValues(i))/(J2Total(i)+d0)
-         enddo
+           CrankFactor(i)= 0.5*(TotalAngMom(i)-CrankValues(i))/(J2Total(i)+d0)
+       enddo
      else
         ! Constraints on total J
         ! Currently only working for J_x + J_z

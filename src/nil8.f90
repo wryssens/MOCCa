@@ -561,7 +561,7 @@ contains
 
     ! Make sure all derivatives are calculated
     call DeriveAll()
-    call UpdateAm(.false.)
+    call UpdateAm()
 
     diagonalized = 0
     do i=1,nwt
@@ -579,13 +579,13 @@ contains
 		if(it.ne.at) cycle
 	    	!-------------------------------------------------
 	    	! Detect degenerate sets of spwfs with the same J.
-    	    	!-------------------------------------------------
-		if(abs(HFBasis(j)%Energy - Ecomp).lt.1d-6&
-                &  .and. abs(HFBasis(i)%AngQuantum - HFBasis(j)%AngQuantum).lt.1d-1) then
-			todiag(s) = j
-			s = s +1
-			diagonalized(j) = 1
-		endif
+	    	!-------------------------------------------------
+	  if(abs(HFBasis(j)%Energy - Ecomp).lt.1d-6&
+       &  .and. abs(HFBasis(i)%AngQuantum - HFBasis(j)%AngQuantum).lt.1d-1) then
+		  todiag(s) = j
+		  s = s +1
+		  diagonalized(j) = 1
+	  endif
 	enddo
 	
 	! Compute the matrix elements
@@ -593,7 +593,7 @@ contains
 	do j=1,s-1
 	   do k=j,s-1
             jj = todiag(j)
-	    kk = todiag(k)
+	          kk = todiag(k)
             temp = Angularmomentum(HFBasis(jj),HFBasis(kk), .false.,.false.,.false.,.true.)
             Jmatrix(j,k) = temp(3,1)
             Jmatrix(k,j) = temp(3,1)
@@ -602,7 +602,7 @@ contains
 
 	vectors = 0.0_dp
 	values  = 0.0_dp
-        !print *, '----------------------------'
+  !print *, '----------------------------'
 	!print *, 'Diagonalisation'
 	!print *, 'states' , todiag(1:s-1)
 	!print *, 'J=' , HFBasis(todiag(1))%AngQuantum

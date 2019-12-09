@@ -20,21 +20,24 @@ module Cranking
   !   Value called omega in the constraints. It is the lagrange multiplier.
   !
   !   (1) => Omega_x ; (2) => Omega_y ;  (3) => Omega_z
+  !
   ! CrankValues:
   !   Values of J to use in the constraint.
-  ! Jtotal
-  !   Size of J if the constraint is only on the total size
-  ! Crankdamp:
-  !   Damping of the cranking potential.
+  !
   ! CrankIntensityScale
-  !   Scaling factor for automatically determined CrankIntensity (CrankType = 3)
+  !   Scaling factor for automatically determined CrankIntensity (CrankType = 1)
+  !
   ! CrankEnergy
   !   Energy associated with every cranking constraint.
+  ! 
   ! CrankType
-  !   Determines the type of constraint
+  !   Determines the type of constraint (for every direction separately)
+  !   (0) => Linear constraint for fixed omega, read from data. (No cranking 
+  !          when omega is 0).
+  !   (1) => Cranking with a corrective step and updating of omega. 
+  !
   !-----------------------------------------------------------------------------
   real(KIND=dp), public :: Omega(3)      = 0.0_dp, CrankValues(3)= 0.0_dp
-  real(KIND=dp), public :: CrankReadj    = 1.0_dp, CrankDamp     = 0.95_dp
   real(KIND=dp), public :: CrankEnergy(3)= 0.0_dp, OmegaSize     = 0.0_dp
   real(KIND=dp), public :: CrankIntensity(3)      = 0.0_dp
   real(KIND=dp), public :: CrankIntensityScale(3) = 1.0_dp
@@ -44,11 +47,11 @@ module Cranking
   ! Whether or not to use the cranking info from file
   logical               :: ContinueCrank= .false.
   !-----------------------------------------------------------------------------
-  real(KIND=dp)         :: CrankC0=0.8_dp
+  ! Logical signalling other modules if there is a direction where we do other 
+  ! steps.
+  logical               :: AlternateCrank, RealignOmega = .false.
   !-----------------------------------------------------------------------------
-  ! Logical signalling other modules whether or not to do Rutz correction steps
-  logical               :: RutzCrank              , AlternateCrank
-  logical               :: RealignOmega = .false.
+
 contains
 
   subroutine ReadCrankingInfo()
@@ -64,8 +67,7 @@ contains
     integer       :: CrankTypeX=0, CrankTypeY=0, CrankTypeZ=0
 
     NameList /Cranking/ OmegaX,OmegaY,OmegaZ,CrankX,CrankY,CrankZ,             &
-    &                   CrankDamp,CrankReadj, ContinueCrank,                   &
-    &                   CrankTypeX,CrankTypeY, CrankTypeZ, CrankC0,            &
+    &                   ContinueCrank, CrankTypeX,CrankTypeY, CrankTypeZ,      &
     &                   OmegaSize, RealignOmega, Jtotal, IntensityX,           &
     &                   IntensityY, IntensityZ,                                &
     &                   ScaleIntensityX,ScaleIntensityY,ScaleIntensityZ
@@ -81,25 +83,18 @@ contains
     if(TSC .and. (CrankY.ne.0.0_dp)) then
       call stp('MOCCa cannot crank Jy when time simplex is conserved.')
     endif
-    if(CrankDamp.gt.1.0_dp .or. CrankDamp .lt.0.0_dp) then
-      call stp('Crankdamp should be between 0 and 1.')
-    endif
-    if(CrankReadj.lt.0.0_dp) then
-      call stp('CrankReadj should not be negative!')
-    endif
-    if(CrankTypeX.lt.0 .or. CrankTypeX .gt. 3) then
+    if(CrankTypeX.lt.0 .or. CrankTypeX .gt. 1) then
         call stp('Unrecognised cranktype in the X direction.')
     endif
-    if(CrankTypeY.lt.0 .or. CrankTypeY .gt. 3) then
+    if(CrankTypeY.lt.0 .or. CrankTypeY .gt. 1) then
         call stp('Unrecognised cranktype in the Y direction.')
     endif
-    if(CrankTypeZ.lt.0 .or. CrankTypeZ .gt. 3) then
+    if(CrankTypeZ.lt.0 .or. CrankTypeZ .gt. 1) then
         call stp('Unrecognised cranktype in the Z direction.')
     endif
     if(Jtotal .lt. 0.0_dp) then
         call stp('Jtotal constraint should be positive.')
     endif
-
     if(Jtotal .ne. 0.0_dp .and. SC) then
         call stp('Jtotal only usable when signature is broken at the moment.')
     endif
@@ -114,13 +109,8 @@ contains
     if(.not. ContinueCrank) then
         OmegaSize = sqrt((OmegaX**2 + OmegaY**2 + OmegaZ**2))
     endif
-    if(any(CrankType.eq.1) .and. CrankC0.ne.0.0_dp) then
-      RutzCrank = .true.
-    else
-      RutzCrank = .false.
-    endif
     
-    if(any(CrankType.eq.3) .or. (Jtotal .ne. 0.0)) then
+    if(any(CrankType.eq.1)) then
       AlternateCrank = .true.
     else
       AlternateCrank = .false.
@@ -135,22 +125,19 @@ contains
     return
   end subroutine ReadCrankingInfo
 
-  subroutine UpdateAM(SaveOlderValues)
+  subroutine UpdateAM()
     !---------------------------------------------------------------------------
     ! This subroutine calculates the angular momentum in each direction for
     ! every Spwf, and sums it. It is also calculated by integration of the 
     ! current and spin density. 
     !---------------------------------------------------------------------------
-    use Densities
-  
-    integer :: wave, i,P,S,it
-    logical, intent(in) :: SaveOlderValues
-    !Save the values of the previous iteration
 
-    if(SaveOlderValues) then
-        AngMomOld   = TotalAngMom
-        OldJ2Total  = J2Total
-    endif
+    use Densities
+    integer :: wave, i,P,S,it
+
+    !Save the values of the previous iteration
+    AngMomOld   = TotalAngMom
+    OldJ2Total  = J2Total
 
     TotalAngMom = 0.0_dp ; J2Total = 0.0_dp ; AMIsoblock = 0.0_dp
     JTR = 0.0_dp         ; JTI = 0.0_dp    
@@ -335,14 +322,12 @@ contains
    return
   end function CrankSPot
 
-  subroutine ReadjustCranking(Rutz)
+  subroutine ReadjustCranking()
     !---------------------------------------------------------------------------
-    ! Readjust the Lagrange multipliers based on  Rutz' prescription.
-    ! Rutz determines whether the Rutz or other constraints should be readjusted
+    ! Readjust the cranking constraints
     !---------------------------------------------------------------------------
     integer                 :: i,j
     real(KIND=dp),parameter :: d0 = 1.0_dp
-    logical, intent(in)     :: Rutz
     real(KIND=dp)           :: SizeJ
 
     OmegaSize = sqrt(sum(Omega**2))
@@ -350,47 +335,30 @@ contains
     do i=1,3
         select case(CrankType(i))
         case(0)
+          !---------------------------------------------------------------------
+          ! Even for constant omega we readjust its direction if realignomega
+          ! is active.
           if(realignomega) then
             Omega(i) = TotalAngMom(i) * OmegaSize  &
             & /sqrt(TotalAngMom(1)**2 + TotalAngMom(2)**2 + TotalAngMom(3)**2)
           endif
         case(1)
-          if(.not.Rutz) cycle
-          Omega(i) = Omega(i) -                                                &
-          & CrankReadj*(TotalAngMom(i) - AngMomOld(i))/(J2Total(i) + d0)
-        case(2)
-          if(Rutz) cycle
-          Omega(i) = Omega(i) -                                                &                                     
-          &     2*CrankIntensity(i)*Crankreadj*(TotalAngMom(i) - CrankValues(i))
-        case(3)
-          print '(" ReadjustCranking ",i2,7f12.5,l3)',            &
-           & i, Omega(i), Jtotal, J2Total(i), CrankIntensity(i),  &
-           & TotalAngMom(i),CrankValues(i),                       &
-           & CrankIntensity(i)*(TotalAngMom(i) - CrankValues(i)),Rutz
-
-!          if(abs(TotalAngMom(i) - CrankValues(i)).lt.1d-3) then
-!            CrankType(i) = 2
-!            print *, 'CHANGING'
-!          endif
-          if(.not. Rutz) cycle
           !---------------------------------------------------------------------
-          ! Judge the intensity of the cranking constraints.
-          ! CrankIntensityScale (default value = 1) rescales the estimate
+          ! Judge the intensity of the cranking constraints if not specified by
+          ! the user. CrankIntensityScale (default value = 1) rescales this 
+          ! estimate if specified by the user.
           if(CrankIntensity(i) .eq. 0.0_dp) then
-            CrankIntensity(i) = 2 * CrankIntensityScale(i) / J2Total(i)
+            CrankIntensity(i) =  CrankIntensityScale(i) / J2Total(i)
           endif
-          if(Jtotal.eq.0.0_dp) then
-            Omega(i) = Omega(i) - CrankIntensity(i)*(TotalAngMom(i) - CrankValues(i))
-          endif
+          ! Actual readjustment of the constraint            
+          Omega(i) = Omega(i)- CrankIntensity(i)*(TotalAngMom(i)-CrankValues(i))
+          ! Debugging printout
+!          print '(" ReadjustCranking ",i2,7f12.5,l3)',            &
+!           & i, Omega(i), Jtotal, J2Total(i), CrankIntensity(i),  &
+!           & TotalAngMom(i),CrankValues(i),                       &
+!           & CrankIntensity(i)*(TotalAngMom(i) - CrankValues(i))
         end select
     enddo
-    
-    if(Jtotal .ne. 0.0_dp .and. (.not. SC)) then
-        SizeJ = sqrt(sum(TotalAngMom(1:3)**2))
-        Omega(1) = Omega(1) - 2/(J2Total(1))*(1 - Jtotal/SizeJ)*(TotalAngMom(1))
-        Omega(3) = Omega(3) - 2/(J2Total(3))*(1 - Jtotal/SizeJ)*(TotalAngMom(3))
-    endif
-
   end subroutine ReadjustCranking
 
   subroutine PrintCranking
@@ -511,33 +479,33 @@ contains
     print 7, 'P','z', AMIsoblock(:,:,2,3)
     
     if(.not. SC) then
-        if(TSC) then
-            print *
-            theta(1) = atan2(AMIsoblock(1,1,1,1), AMIsoblock(1,1,1,3))
-            theta(2) = atan2(AMIsoblock(2,1,1,1), AMIsoblock(2,1,1,3))
-            theta(3) = atan2(AMIsoblock(1,2,1,1), AMIsoblock(1,2,1,3))
-            theta(4) = atan2(AMIsoblock(2,2,1,1), AMIsoblock(2,2,1,3))
-            
-            print 71, 'N', theta * 180.0/pi
-            
-            theta(1) = atan2(AMIsoblock(1,1,2,1), AMIsoblock(1,1,2,3))
-            theta(2) = atan2(AMIsoblock(2,1,2,1), AMIsoblock(2,1,2,3))
-            theta(3) = atan2(AMIsoblock(1,2,2,1), AMIsoblock(1,2,2,3))
-            theta(4) = atan2(AMIsoblock(2,2,2,1), AMIsoblock(2,2,2,3))
-            print 71, 'P', theta * 180.0/pi
-        else
-            print *
-            theta(1) = acos(AMIsoblock(1,1,1,3)/sqrt(sum(AMIsoblock(1,1,1,:)**2)))
-            theta(2) = acos(AMIsoblock(2,1,1,3)/sqrt(sum(AMIsoblock(2,1,1,:)**2)))
-            theta(3) = acos(AMIsoblock(1,2,1,3)/sqrt(sum(AMIsoblock(1,2,1,:)**2)))
-            theta(4) = acos(AMIsoblock(2,2,1,3)/sqrt(sum(AMIsoblock(2,2,1,:)**2)))
-            print 71, 'N', theta * 180.0/pi
-            theta(1) = acos(AMIsoblock(1,1,2,3)/sqrt(sum(AMIsoblock(1,1,2,:)**2)))
-            theta(2) = acos(AMIsoblock(2,1,2,3)/sqrt(sum(AMIsoblock(2,1,2,:)**2)))
-            theta(3) = acos(AMIsoblock(1,2,2,3)/sqrt(sum(AMIsoblock(1,2,2,:)**2)))
-            theta(4) = acos(AMIsoblock(2,2,2,3)/sqrt(sum(AMIsoblock(2,2,2,:)**2)))
-            print 71, 'P', theta * 180.0/pi
-        endif
+      if(TSC) then
+          print *
+          theta(1) = atan2(AMIsoblock(1,1,1,1), AMIsoblock(1,1,1,3))
+          theta(2) = atan2(AMIsoblock(2,1,1,1), AMIsoblock(2,1,1,3))
+          theta(3) = atan2(AMIsoblock(1,2,1,1), AMIsoblock(1,2,1,3))
+          theta(4) = atan2(AMIsoblock(2,2,1,1), AMIsoblock(2,2,1,3))
+          
+          print 71, 'N', theta * 180.0/pi
+          
+          theta(1) = atan2(AMIsoblock(1,1,2,1), AMIsoblock(1,1,2,3))
+          theta(2) = atan2(AMIsoblock(2,1,2,1), AMIsoblock(2,1,2,3))
+          theta(3) = atan2(AMIsoblock(1,2,2,1), AMIsoblock(1,2,2,3))
+          theta(4) = atan2(AMIsoblock(2,2,2,1), AMIsoblock(2,2,2,3))
+          print 71, 'P', theta * 180.0/pi
+      else
+          print *
+          theta(1) = acos(AMIsoblock(1,1,1,3)/sqrt(sum(AMIsoblock(1,1,1,:)**2)))
+          theta(2) = acos(AMIsoblock(2,1,1,3)/sqrt(sum(AMIsoblock(2,1,1,:)**2)))
+          theta(3) = acos(AMIsoblock(1,2,1,3)/sqrt(sum(AMIsoblock(1,2,1,:)**2)))
+          theta(4) = acos(AMIsoblock(2,2,1,3)/sqrt(sum(AMIsoblock(2,2,1,:)**2)))
+          print 71, 'N', theta * 180.0/pi
+          theta(1) = acos(AMIsoblock(1,1,2,3)/sqrt(sum(AMIsoblock(1,1,2,:)**2)))
+          theta(2) = acos(AMIsoblock(2,1,2,3)/sqrt(sum(AMIsoblock(2,1,2,:)**2)))
+          theta(3) = acos(AMIsoblock(1,2,2,3)/sqrt(sum(AMIsoblock(1,2,2,:)**2)))
+          theta(4) = acos(AMIsoblock(2,2,2,3)/sqrt(sum(AMIsoblock(2,2,2,:)**2)))
+          print 71, 'P', theta * 180.0/pi
+      endif
     endif
     if( .not. TSC .and. .not. SC) then
         print *
@@ -557,103 +525,18 @@ contains
     print 8
     print 6
     if(.not. SC) then
-        print 10, 'X', 0.5*sum(Density%vecs(:,:,:,1,1))*dv, 0.5*sum(Density%vecs(:,:,:,1,2))*dv
+        print 10, 'X', 0.5*sum(Density%vecs(:,:,:,1,1))*dv, &
+        &              0.5*sum(Density%vecs(:,:,:,1,2))*dv
     endif
     if(.not. SC .and. .not. TSC) then
-        print 10, 'Y', 0.5*sum(Density%vecs(:,:,:,2,1))*dv, 0.5*sum(Density%vecs(:,:,:,2,1))*dv
+        print 10, 'Y', 0.5*sum(Density%vecs(:,:,:,2,1))*dv, &
+        &              0.5*sum(Density%vecs(:,:,:,2,1))*dv
     endif
-    print 10    , 'Z', 0.5*sum(Density%vecs(:,:,:,3,1))*dv, 0.5*sum(Density%vecs(:,:,:,3,2))*dv
+    print 10    , 'Z', 0.5*sum(Density%vecs(:,:,:,3,1))*dv, &
+        &              0.5*sum(Density%vecs(:,:,:,3,2))*dv
     print 6
     !---------------------------------------------------------------------------
   end subroutine PrintCranking
-
-!   subroutine PrintCranking
-!     !---------------------------------------------------------------------------
-!     ! A subroutine that prints info on the cranking constraints.
-!     ! Included in the output:
-!     !   - Values for angular momentum
-!     !   - Values for constraints (both readjusted & true)
-!     !   - Energy of the constraints
-!     !
-!     !Also includes some more info on the constraints if this routine is called
-!     !for the first time.
-!     !---------------------------------------------------------------------------
-
-!     1 format (18('-'), ' Angular Momentum (hbar) ',17('-') )
-!     2 format (11x, 3x,'Jx',6x, 'Jy', 6x,'Jz')
-!     3 format (3x,A8,3f8.3)
-!     4 format ('Constraints :')
-!     5 format ('Energy (MeV):')
-!     6 format ('Cons. Type  :')
-!     7 format ('  L. or Q.? :', 3(3x, A2, 3x))
-
-!     9 format ('  Readjus.  :', 3x, f8.3)
-!    10 format ('KermanOnishi:')
-!    11 format ('  Omega x J :', 3x, f8.3)
-!    12 format ('  (Di-Dj)*Lk:', 3x, f8.3)
-!    13 format ('Angle mu/J  :', 3x, f8.3)
-!    14 format (' Rutz C0    :', 3x, f8.3)
-!   100 format (60("-"))
-
-!     integer          :: i
-!     logical          :: FirstTime=.true.
-!     real(KIND=dp)    :: Angle
-
-!     !No Cranking with time-reversal Symmetry
-!     if(TRC) return
-
-!     print 1
-!     print 2
-!     print 3,'        ', TotalAngMom
-
-!     !First check for the presence of constraints. If none are present,
-!     ! don't print them.
-!     if(all(CrankType.eq.0)) return
-
-!     print 4
-!     if(CrankReadj.ne.0.0_dp) then
-!       print 3,' Des.:', CrankValues
-!     endif
-
-!     print 3,' Omega :', Omega
-!     print 5
-
-!     do i=1,3
-!       CrankEnergy(i) =  - Omega(i) * TotalAngMom(i)
-!     enddo
-
-!     print 3,'        ', CrankEnergy
-
-!     !Printing some extra parameters if this is the first time.
-!     if(FirstTime) then
-!         print 9, CrankReadj
-!         print 14, CrankC0
-!         FirstTime=.false.
-!     endif
-!     !Checking the symmetries, if it is useful to calculate and print
-!     ! the Kerman-Onishi conditions
-!     !if(.not.SC .or. .not. TSC) then
-!     !  call CalcKermanOnishi
-!     !
-!     !  print 10
-!     !  print 11, KermanOnishiRHS
-!     !  print 12, KermanOnishilHS
-!     !endif
-
-!     !Calculating the angle between desired and actual moment
-!     !Angle = 0.0_dp
-!     !do i=1,3
-!     !  Angle = Angle + TrueCrank(i) * TotalAngMom(i)
-!     !enddo
-!     !Angle = Angle/(sqrt(sum(TrueCrank(1:3)**2) * sum(TotalAngMom(1:3)**2)))
-!     !Angle = acos(Angle)
-!     !
-!     !print 13 , Angle/(2*pi) * 360.0_dp
-!     !
-!     !print 100
-
-!     return
-!   end subroutine PrintCranking
 
   pure logical function ConverCranking(Prec) result(Converged)
   !-----------------------------------------------------------------------------

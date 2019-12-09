@@ -6,14 +6,15 @@ SRCDIR :=   src
 MODDIR :=   mod
 
 TARGET :=   MOCCa.exe
-SRC    :=   CompilationInfo.f90 GenInfo.f90 Force.f90 OptimizedDerivatives.f90 Derivatives.f90 
-SRC    +=   CoulombDerivatives.f90 Mesh.f90 Spinor.f90 pfaff.f90
-SRC    +=   Spwf.f90 SpwfStorage.f90 Damping.f90 Densities.f90 
-SRC    +=   TrapPotential.f90
-SRC    +=   Moments.f90 SpecialMoments.f90 MultiGrid.f90 Coulomb.f90 PairingInteraction.f90 
-SRC    +=   LipkinNogami.f90 HartreeFock.f90 HFB.f90 GradientHFB.f90 BCS.f90 Pairing.f90 Cranking.f90 
-SRC    +=   MeanFields.f90 Energy.f90 PotentialMixing.f90 ImaginaryTime.f90 DensityMixing.f90 
-SRC    +=   Transform.f90 nil8.f90 SpwfFactory.f90 Interfaces.f90 InOut.f90 Test.f90
+SRC    :=   CompilationInfo.f90 GenInfo.f90 Force.f90 OptimizedDerivatives.f90 
+SRC    +=   Derivatives.f90 CoulombDerivatives.f90 Mesh.f90 Spinor.f90 pfaff.f90
+SRC    +=   Spwf.f90 SpwfStorage.f90 Damping.f90 Densities.f90 TrapPotential.f90
+SRC    +=   Moments.f90 SpecialMoments.f90 MultiGrid.f90 Coulomb.f90 
+SRC    +=   PairingInteraction.f90 LipkinNogami.f90 HartreeFock.f90 HFB.f90 
+SRC    +=   GradientHFB.f90 BCS.f90 Pairing.f90 Cranking.f90 MeanFields.f90 
+SRC    +=   Energy.f90 PotentialMixing.f90 ImaginaryTime.f90 DensityMixing.f90 
+SRC    +=   Transform.f90 nil8.f90 SpwfFactory.f90 Interfaces.f90 InOut.f90 
+SRC    +=   Test.f90 Legacy.f90
 
 SRC    += Main.version.f90
 
@@ -32,13 +33,10 @@ ifeq ($(CXX),gfortran)
 
   ifeq ($(DEBUG),no)
     #Optimal flag
-    CXXFLAGS := -O3 #-Og -g -pg -fbacktrace 
+    CXXFLAGS := -O3  
   else
     # Debugging flag
-      CXXFLAGS= -Og -fbacktrace -fcheck=al
-    # CXXFLAGS= -g -fbacktrace -ffpe-trap=zero,overflow,underflow
-    # Alternative
-    #CXXFLAGS= -Wno-tabs -fbacktrace -fcheck=all -ggdb -Wall
+      CXXFLAGS= -Og -fbacktrace -fcheck=all
   endif
   #Move the .mod files to their own directory
   CXXFLAGS += -J$(MODDIR)

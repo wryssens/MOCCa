@@ -526,7 +526,7 @@ subroutine PrintSummary_v2(Iteration)
   use CompilationInfo
   use Energy, only: TotalEnergy, OldEnergy, Routhian, OldRouthian, LNEnergy
   use Spwfstorage, only : TotalAngMom
-  use Densities,   only : DensityChange
+  use Densities,   only : DensityChange, Density
   use Pairing, only : Fermi, LNLambda, Lipkin
   use Cranking
   use Moments
@@ -537,7 +537,7 @@ subroutine PrintSummary_v2(Iteration)
   integer, intent(in)  :: Iteration
   type(Moment),pointer :: Current
   real(KIND=dp) :: Q20, Q22, dQ20, dQ22, Dispersion, Q30, Q32, dQ30, dQ32, Q10, dQ10
-  real(KIND=dp), save :: oldln2(2), diff(2), oldlne(2), oldlambda(2)
+  real(KIND=dp), save :: oldln2(2), diff(2), oldlne(2), oldlambda(2), oldce
   integer       :: i
 
   1 format('----------- Iteration ', i6,'--------------')
@@ -556,6 +556,8 @@ subroutine PrintSummary_v2(Iteration)
  32 format("Summ.   Q30=" f10.3, "  Q32=",f10.3)
  42 format("Summ.  dQ30=" es10.3, " dQ32=",es10.3)
   
+ 43 format("Summ.   dCE=" es10.3 )
+
   5 format('Summ.    Jz=',f10.6, '  OmZ=',f10.6)
  51 format('Summ.    Jx=',f10.6, '  OmX=',f10.6)
  52 format('Summ. ReJxT=',f10.6)
@@ -598,6 +600,9 @@ subroutine PrintSummary_v2(Iteration)
 	print 32,  Q30, Q32
         print 42, dQ30, dQ32
   endif
+
+  print 43, abs(oldce - sum(ConstraintEnergy*Density%Rho)*dv )/abs(TotalEnergy)
+  oldce = sum(ConstraintEnergy*Density%Rho)*dv 
 
   if(.not.TRC) then
     if((.not. TRC) .and. (.not.SC)) then

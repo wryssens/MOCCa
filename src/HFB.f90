@@ -46,7 +46,7 @@ module HFB
   !-----------------------------------------------------------------------------
   ! Numerical cutoff to determine what components in the canonical
   ! transformation to ignore.
-  real(KIND=dp),parameter :: HFBNumCut=1d-12
+  real(KIND=dp),parameter :: HFBNumCut=1d-6
   !-----------------------------------------------------------------------------
   ! HFB density and anomalous density matrix note that these are complex
   ! in general. The old matrices are the matrices at previous iterations
@@ -540,6 +540,7 @@ contains
     use Spinors
 
     complex(KIND=dp), allocatable,intent(inout) :: Delta(:,:,:,:)
+    complex(KIND=dp), allocatable               :: Deltain(:,:,:,:)
     complex(KIND=dp), allocatable,intent(inout) :: DeltaLN(:,:,:,:)
     complex(KIND=dp), allocatable,intent(in)    :: Pairingfield(:,:,:,:)
     complex(KIND=dp), allocatable,intent(in)    :: PairingfieldLN(:,:,:,:)
@@ -557,6 +558,7 @@ contains
 
     if(ConstantGap) call stp('Trying to do constant gap pairing in HFB!')
 
+    DeltaIn = Delta
     Delta     = 0.0_dp  
 
     if(allocated(DeltaLN)) then
@@ -601,7 +603,9 @@ contains
 
             if(Cutoff(1)*Cutoff(2) .lt. HFBNumCut) cycle
 
-            if(TRC .and. ( ii.ne. iii  .or. jj.ne.jjj ) .and. .not. (ii .ne. iii .and. jj .ne. jjj )) then
+            if(TRC .and. ( ii.ne. iii  .or. jj.ne.jjj )  &
+            &  .and. &
+            &   .not. (ii .ne. iii .and. jj .ne. jjj )) then
               TR = .true.
             else
               ! Should only happen when Time-reversal is conserved, but signature
@@ -626,6 +630,8 @@ contains
         enddo
       enddo
     enddo
+
+    Delta = 0.5 * Delta + 0.5 * DeltaIn
     !---------------------------------------------------------------------------
   end subroutine HFBGaps
 
@@ -1135,7 +1141,7 @@ contains
 
   real(KIND=dp) :: N(2), Num(2)
   real(KIND=dp) :: InitialBracket(2,2), FA(2), FB(2)
-  real(KIND=dp) :: A(2), B(2)
+  real(KIND=dp) :: A(2), B(2), FermiIn(2)
   logical       :: NotFound(2)
   logical       :: Success
   integer       :: iter, FailCount, flag(2), it, i , lniter, lnit
@@ -1162,6 +1168,8 @@ contains
   do it=1,2
     if ( Particles(it) .lt. 0.1_dp ) Fermi(it) = -100.0_dp
   enddo
+
+  FermiIn = Fermi
 
   !-----------------------------------------------------------------------------
   ! Check if initial guess is already good enough. If so, this will be the 
@@ -1339,6 +1347,7 @@ contains
                  & Delta,L2,Prec,Fermi,N)
     
   enddo
+
   end subroutine HFBFindFermiEnergyBisection
 
   subroutine HFBFindFermiEnergyBisectionEmergency(Fermi,L2,Delta,DeltaLN, &

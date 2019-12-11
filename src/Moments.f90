@@ -59,23 +59,17 @@ module Moments
 !   W.Ryssens, PhD Thesis (2016)
 !
 !-------------------------------------------------------------------------------
-!  Several different constraints are possible:
+!  Two different types of constraints are possible:
 !  - Augmented Lagrangian
-!  - Predictor -Corrector
-!     Constraints as described in K. Rutz' PhD Thesis and in
-!    R.Y. Cusson et al., J.Phys.A 320, 475-482
+!  - Alternating step constraints
 !
 !  Note that quadratic constraints can be obtained by setting the readjustment
 !  speed of the Augmented Lagrangian constraints to zero.
-!  Linear constraints can be obtained by setting epsilon to zero for the Rutz
-!  constraints.
 !
 !  This is encoded for every multipole moment separately into Constrainttype
 !   (0) No constraint
 !   (1) Augmented Lagrangian
-!   (2) Predictor-Corrector
-!   (3) Alternating 
-!   (4) Preconditioning
+!   (2) Alternating 
 !
 ! Every constraint can be on different quantities based on its isoswitch
 !   (1) proton + neutron value
@@ -1250,11 +1244,7 @@ contains
         case(1)
             ConType='Augmented Lagrangian'
         case(2)
-            ConType='Predictor-Corrector'
-        case(3)
             ConType='Alternating'
-        case(4)
-            ConType='Preconditioning'
         end select
 
         select case(Current%l)
@@ -1292,11 +1282,7 @@ contains
         case(1)
             ConType='Augmented Lagrangian'
         case(2)
-            ConType='Predictor-Corrector'
-        case(3)
             ConType='Alternating'
-        case(4)
-            ConType='Preconditioning'
         end select
 
         select case(Current%l)
@@ -1332,11 +1318,7 @@ contains
         case(1)
             ConType='Augmented Lagrangian'
         case(2)
-            ConType='Predictor-Corrector'
-        case(3)
             ConType='Alternating'
-        case(4)
-            ConType='Preconditioning'
         end select
 
         select case(Current%l)
@@ -1372,11 +1354,7 @@ contains
         case(1)
             ConType='Augmented Lagrangian'
         case(2)
-            ConType='Predictor-Corrector'
-        case(3)
             ConType='Alternating'
-        case(4)
-            ConType='Preconditioning'
         end select
 
         if(.not.Current%Impart) ReIm = 'Re'
@@ -1469,7 +1447,7 @@ contains
             print 6, ToPrint%Constraint
             print 8, ToPrint%l, Toprint%m, 2*ToPrint%Intensity(1)* & 
             &        sum(ToPrint%Value - ToPrint%Constraint)
-          elseif(ToPrint%ConstraintType.eq.3) then
+          elseif(ToPrint%ConstraintType.eq.2) then
             print 6, ToPrint%Constraint
             print 8, ToPrint%l, Toprint%m, ToPrint%Multiplier(1)
           else
@@ -2286,22 +2264,21 @@ subroutine PrintAllMoments()
         call Current%Calculate(Current,SaveOld)
 
         if(firstcall .eq. 1 .and. (.not. ContinueMoment)) then
-        ! If this is the first time we call this subroutine, set all of the constraints
-        ! to the calculated value of the multipole moments if we are not continuing a
-        ! constrained calculation (via ContinueMoment=.true.). This makes sure the 
-        ! constraintEnergy contribution to the single-particle Hamiltonian is not too
-        ! large. 
-            if(Current%ConstraintType .eq. 3) then
-                select case(Current%Isoswitch)
-                    case(1)
-                        if(Current%total) then
-                            Current%Constraint(1) = sum(calculatetotalql(Current%l))
-                            print *, 'done'
-                        else
-                            Current%Constraint(1) = sum(Current%Value)
-                        endif
-                    case DEFAULT
-                        call stp('Not implemented yet!')
+          ! If this is the first time we call this subroutine, set all of the 
+          ! constraints to the calculated value of the multipole moments if we 
+          ! are not continuing a constrained calculation 
+          ! (via ContinueMoment=.true.). This makes sure the constraintEnergy 
+          ! contribution to the single-particle Hamiltonian is not too large. 
+            if(Current%ConstraintType .ne. 0) then
+              select case(Current%Isoswitch)
+                case(1)
+                  if(Current%total) then
+                      Current%Constraint(1) = sum(calculatetotalql(Current%l))
+                  else
+                      Current%Constraint(1) = sum(Current%Value)
+                  endif
+                case DEFAULT
+                    call stp('Not implemented yet!')
                 end select
             endif
         endif
@@ -2380,14 +2357,11 @@ subroutine PrintAllMoments()
   ! (and J0 if requested). 
   !
   ! For ordinary multipole constraints
-  !____________________________________________________________________
-  ! Augmented Lagrangian   U = 2*C*(<Q_{lm}> - A)* Q_{lm}
-  ! Predictor-Corrector    U = C*Q_{lm}
+  !    U = 2*C*(<Q_{lm}> - A)* Q_{lm}
+  ! where C = is the intensity of the constraint.
   !
   ! For total multipole moments
-  !____________________________________________________________________
   ! Augmented Lagrangian  U = 2*C *( 1 - A/<Q_l>) sum_{m} <Q_lm> Q_{lm}
-  ! Predictor-Corrector   U = C/<Q_l> sum_{m} <Q_{lm}> Q_{lm}
   !
   ! Note that MOCCa practically calculates these constraints on the total
   ! moments term by term: meaning the moment Q_{20} is responsible for
@@ -2406,6 +2380,9 @@ subroutine PrintAllMoments()
   ! Note that there is damping of this energy in this routine with
   ! the parameter damping:
   !       E_new = Damping* E_old + (1-Damping)*ConstraintContribution
+  !
+  ! By default however, 
+  ! 
   !-----------------------------------------------------------------------------
 
   integer               :: it
@@ -2453,9 +2430,10 @@ subroutine PrintAllMoments()
         Desired   = Current%Constraint(1)
         Value     = Current%Value(1) - Current%Value(2)
       end select
+
+     !--------------------------------------------------------------------------
+     ! Alternating constraints
      case(2)
-       !------------------------------------------------------------------------
-       ! Alternating constraints
        select case(Current%Isoswitch)
         case(1)
             ! sum(proton+neutron) value constrained
@@ -3442,7 +3420,7 @@ subroutine PrintAllMoments()
 
     do while(associated(Current%Next))
       Current => Current%Next
-      if(Current%ConstraintType.ge.3) then
+      if(Current%ConstraintType.eq.2) then
         Check = .true.
         exit
       endif

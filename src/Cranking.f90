@@ -72,7 +72,8 @@ contains
     &                   ContinueCrank, CrankTypeX,CrankTypeY, CrankTypeZ,      &
     &                   OmegaSize, RealignOmega, Jtotal, IntensityX,           &
     &                   IntensityY, IntensityZ,                                &
-    &                   ScaleIntensityX,ScaleIntensityY,ScaleIntensityZ
+    &                   ScaleIntensityX,ScaleIntensityY,ScaleIntensityZ,       &
+    &                   crank_smooth
 
     read(unit=*, NML=Cranking)
 

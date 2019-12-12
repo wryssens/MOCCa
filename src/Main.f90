@@ -288,15 +288,15 @@ subroutine Evolve(MaxIterations, iprint)
     !----------------------------------------------------------------------------
     ! Update all calculated quantities
     call UpdateDensities(0)
+    ! Smooth the densities using the difference between this and the previous
+    ! iteration, if the user asked for it
+    call MixDensities(Iteration)
     ! Multipole moments 
     call CalculateAllMoments(1) 
     call ReadjustAllMoments()
     ! Angular momentum
     call updateAm()
     call ReadjustCranking()
-    ! Smooth the densities using the difference between this and the previous
-    ! iteration, if the user asked for it
-    call MixDensities(Iteration)
     !See if some constraints were temporary
     call TurnOffConstraints(iteration)
     !Construct the mean-field potentials

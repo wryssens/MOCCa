@@ -43,6 +43,8 @@ module Cranking
   real(KIND=dp), public :: CrankIntensityScale(3) = 1.0_dp
   real(KIND=dp), public :: Jtotal                 = 0.0_dp
   integer      , public :: CrankType(3)  = 0
+
+  logical :: crank_smooth = .false.
   !-----------------------------------------------------------------------------
   ! Whether or not to use the cranking info from file
   logical               :: ContinueCrank= .false.
@@ -117,9 +119,9 @@ contains
     endif
     
     if(Jtotal.ne.0.0) then
-        CrankType(1) = 3
+        CrankType(1) = 1
         CrankType(2) = 0
-        CrankType(3) = 3
+        CrankType(3) = 1
     endif
     
     return
@@ -328,7 +330,7 @@ contains
     !---------------------------------------------------------------------------
     integer                 :: i,j
     real(KIND=dp),parameter :: d0 = 1.0_dp
-    real(KIND=dp)           :: SizeJ
+    real(KIND=dp)           :: SizeJ, value
 
     OmegaSize = sqrt(sum(Omega**2))
 
@@ -350,8 +352,14 @@ contains
           if(CrankIntensity(i) .eq. 0.0_dp) then
             CrankIntensity(i) =  CrankIntensityScale(i) / J2Total(i)
           endif
-          ! Actual readjustment of the constraint            
-          Omega(i) = Omega(i)- CrankIntensity(i)*(TotalAngMom(i)-CrankValues(i))
+          ! Actual readjustment of the constraint           
+          if(crank_smooth) then
+            value = TotalAngMom_dens(i)
+          else
+            value = TotalAngMom(i)
+          endif
+          Omega(i) = Omega(i)- CrankIntensity(i)*(value-CrankValues(i))
+
           ! Debugging printout
 !          print '(" ReadjustCranking ",i2,7f12.5,l3)',            &
 !           & i, Omega(i), Jtotal, J2Total(i), CrankIntensity(i),  &

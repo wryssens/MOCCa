@@ -44,6 +44,10 @@ module Cranking
   real(KIND=dp), public :: Jtotal                 = 0.0_dp
   integer      , public :: CrankType(3)  = 0
 
+  !-----------------------------------------------------------------------------
+  ! Whether the cranking update is done with reference to 
+  ! .false. => TotalAngMom     , calculated from the spwfs directly
+  ! .true.  => TotalAngMom_dens, calculated by integrating the densities 
   logical :: crank_smooth = .false.
   !-----------------------------------------------------------------------------
   ! Whether or not to use the cranking info from file
@@ -379,7 +383,9 @@ contains
     use Densities
 
     1 format (18('-'), ' Angular Momentum (hbar) ',17('-') )
-    2 format (16x, 'Spwfs ', 6x, 'Densit.', 5x, 'Desired', 5x, 'Omega')
+    2 format (15x, 'Spwfs(*)', 4x, 'Densit.   ', 2x, 'Desired', 5x, 'Omega')
+   21 format (15x, 'Spwfs   ', 4x, 'Densit.(*)', 2x, 'Desired', 5x, 'Omega')
+  211 format (15x, '(*) = used for the cranking constraints')
     3 format (3x,'J_',a1,'   ','|', 4f12.5 )
    31 format (3x,'Size  |', 4f12.5)
    32 format (1x,'ReJT',a1,'   ','|', 4f12.5 )
@@ -410,7 +416,11 @@ contains
     if(RealignOmega) then
         print 11 
     endif
-    print 2
+    if(crank_smooth) then
+      print 21
+    else
+      print 2
+    endif
     print 6
     if(.not.SC) then
       print 3, 'x',TotalAngMom(1), TotalAngMom_dens(1), CrankValues(1), Omega(1)
@@ -424,6 +434,7 @@ contains
     print 31, sqrt(sum(totalangmom(1:3)**2)),sqrt(sum(totalangmom_dens(1:3)**2))&
     &       , sqrt(sum(crankvalues(1:3)**2)), sqrt(sum(omega(1:3)**2))
     print *
+    print 211
     print 6
     if(.not. SC) then
         if(TSC) then

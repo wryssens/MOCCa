@@ -195,12 +195,16 @@ contains
 
         do i=1, nx*ny*nz
           TotalAngMom_dens(1)=TotalAngMom_dens(1) &
-          & + Mesh3D(3,i,1,1) * Density%vecj(i,1,1,2,it) &
-          & - Mesh3D(2,i,1,1) * Density%vecj(i,1,1,3,it)
+          & - Mesh3D(3,i,1,1) * Density%vecj(i,1,1,2,it) &
+          & + Mesh3D(2,i,1,1) * Density%vecj(i,1,1,3,it)
+     !    & + Mesh3D(3,i,1,1) * Density%vecj(i,1,1,2,it) &  ! bugfix MB 19/12/15
+     !    & - Mesh3D(2,i,1,1) * Density%vecj(i,1,1,3,it)
 
           TotalAngMom_dens(2)=TotalAngMom_dens(2) &
-          & + Mesh3D(1,i,1,1) * Density%vecj(i,1,1,3,it) &
-          & - Mesh3D(3,i,1,1) * Density%vecj(i,1,1,1,it)
+          & - Mesh3D(1,i,1,1) * Density%vecj(i,1,1,3,it) &
+          & + Mesh3D(3,i,1,1) * Density%vecj(i,1,1,1,it)
+     !    & + Mesh3D(1,i,1,1) * Density%vecj(i,1,1,3,it) &  ! bugfix MB 19/12/15
+     !    & - Mesh3D(3,i,1,1) * Density%vecj(i,1,1,1,it)
 
           TotalAngMom_dens(3)=TotalAngMom_dens(3) &
           & - Mesh3D(2,i,1,1) * Density%vecj(i,1,1,1,it) &
@@ -382,21 +386,33 @@ contains
     !---------------------------------------------------------------------------
     use Densities
 
-    1 format (18('-'), ' Angular Momentum (hbar) ',17('-') )
-    2 format (15x, 'Spwfs(*)', 4x, 'Densit.   ', 2x, 'Desired', 5x, 'Omega')
-   21 format (15x, 'Spwfs   ', 4x, 'Densit.(*)', 2x, 'Desired', 5x, 'Omega')
+ !  ! format restoration MB 19/12/15
+ !  1 format (18('-'), ' Angular Momentum (hbar) ',17('-') )
+ !  2 format (15x, 'Spwfs(*)', 4x, 'Densit.   ', 2x, 'Desired', 5x, 'Omega')
+ ! 21 format (15x, 'Spwfs   ', 4x, 'Densit.(*)', 2x, 'Desired', 5x, 'Omega')
+ !  6 format (2x,' _______________________________________________________' )
+ !  3 format (3x,'J_',a1,'   ','|', 4f12.5 )
+ ! 31 format (3x,'Size  |', 4f12.5)
+ ! 32 format (1x,'ReJT',a1,'   ','|', 4f12.5 )
+ ! 33 format (1x,'ImJT',a1,'   ','|', 4f12.5 )
+ ! 34 format (2x,'|J|',a1,'   ','|', 4f12.5 )
+
+    1 format (22('-'), ' Angular Momentum (hbar) ',23('-') )
+    2 format (15x, 'Spwfs(*)  ',2x, 'Desired', 5x, 'Omega', 7x, 'Energy' 6x,'Densit. ')
+   21 format (15x, 'Densit.(*)',2x, 'Desired', 5x, 'Omega', 7x, 'Energy' 6x,'Spwfs   ')
   211 format (15x, '(*) = used for the cranking constraints')
-    3 format (3x,'J_',a1,'   ','|', 4f12.5 )
-   31 format (3x,'Size  |', 4f12.5)
-   32 format (1x,'ReJT',a1,'   ','|', 4f12.5 )
-   33 format (1x,'ImJT',a1,'   ','|', 4f12.5 )
-   34 format (2x,'|J|',a1,'   ','|', 4f12.5 )
+    3 format (3x,'J_',a1,'   ','|', 5f12.5 )
+   31 format (3x,'Size  |', 3f12.5,12x,1f12.5)
+   32 format (1x,'ReJT',a1,'   ','|', 5f12.5 )
+   33 format (1x,'ImJT',a1,'   ','|', 5f12.5 )
+   34 format (2x,'|J|' ,a1,'   ','|', 5f12.5 )
    
     4 format (3x,'Theta |', 3f12.5)
    41 format (3x,'Phi   |', 3f12.5)
     
     5 format (3x,'P R_z ','|',6x,'++',10x,'-+',10x,'+-',10x,'--')
     6 format (2x,' _______________________________________________________' )
+   66 format (2x,' ___________________________________________________________________' )
     7 format (3x,a1,'_',a1,3x,'|',4f12.5)
    71 format (3x,'The_', a1' |'      , 4f12.5)
    72 format (3x,'Phi_', a1' |'      , 4f12.5)
@@ -421,18 +437,43 @@ contains
     else
       print 2
     endif
-    print 6
+    print 66
     if(.not.SC) then
-      print 3, 'x',TotalAngMom(1), TotalAngMom_dens(1), CrankValues(1), Omega(1)
+      ! format restoration MB 19/12/15
+ !    print 3, 'x',TotalAngMom(1), TotalAngMom_dens(1), CrankValues(1), Omega(1) 
+      if(crank_smooth) then
+        print 3, 'x',TotalAngMom_dens(1), CrankValues(1), Omega(1), CrankEnergy(1), TotalAngMom     (1)
+      else
+        print 3, 'x',TotalAngMom     (1), CrankValues(1), Omega(1), CrankEnergy(1), TotalAngMom_dens(1)
+      endif
     endif
     if(.not.TSC) then
-      print 3, 'y',TotalAngMom(2), TotalAngMom_dens(2), CrankValues(2), Omega(2)
+      ! format restoration MB 19/12/15
+ !    print 3, 'y',TotalAngMom(2), TotalAngMom_dens(2), CrankValues(2), Omega(2)
+      if(crank_smooth) then
+        print 3, 'y',TotalAngMom_dens(2), CrankValues(2), Omega(2), CrankEnergy(2), TotalAngMom     (2)
+      else
+        print 3, 'y',TotalAngMom     (2), CrankValues(2), Omega(2), CrankEnergy(2), TotalAngMom_dens(2)
+      endif
     endif
-    print 3, 'z',TotalAngMom(3), TotalAngMom_dens(3), CrankValues(3), Omega(3)
- 
-    print 6
-    print 31, sqrt(sum(totalangmom(1:3)**2)),sqrt(sum(totalangmom_dens(1:3)**2))&
-    &       , sqrt(sum(crankvalues(1:3)**2)), sqrt(sum(omega(1:3)**2))
+    ! format restoration MB 19/12/15
+ !  print 3, 'z',TotalAngMom(3), TotalAngMom_dens(3), CrankValues(3), Omega(3)
+    if(crank_smooth) then
+      print 3, 'z',TotalAngMom_dens(3), CrankValues(3), Omega(3), CrankEnergy(3), TotalAngMom     (3)
+    else
+      print 3, 'z',TotalAngMom     (3), CrankValues(3), Omega(3), CrankEnergy(3), TotalAngMom_dens(3)
+    endif
+    print 66
+    ! format restoration MB 19/12/15
+ !  print 31, sqrt(sum(totalangmom(1:3)**2)),sqrt(sum(totalangmom_dens(1:3)**2))&
+ !  &       , sqrt(sum(crankvalues(1:3)**2)), sqrt(sum(omega(1:3)**2))
+    if(crank_smooth) then
+      print 31, sqrt(sum(totalangmom_dens(1:3)**2)) , sqrt(sum(crankvalues(1:3)**2)), &
+    &           sqrt(sum(omega(1:3)**2))            , sqrt(sum(totalangmom(1:3)**2))
+    else
+      print 31, sqrt(sum(totalangmom(1:3)**2))      , sqrt(sum(crankvalues(1:3)**2)), &
+    &           sqrt(sum(omega(1:3)**2))            , sqrt(sum(totalangmom_dens(1:3)**2))
+    endif
     print *
     print 211
     print 6

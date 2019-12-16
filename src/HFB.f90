@@ -1140,7 +1140,7 @@ contains
   real(KIND=dp) :: A(2), B(2)
   logical       :: NotFound(2)
   logical       :: Success
-  integer       :: iter, FailCount, flag(2), it, i , lniter, lnit
+  integer       :: iter, FailCount, flag(2), it, i
   integer       :: idir(2) = 0 , idirsig(2) = 1
 
   !-----------------------------------------------------------------------------
@@ -1149,7 +1149,7 @@ contains
   !-----------------------------------------------------------------------------
   if (Lipkin) then
     flag = 0
-     L2 = LNCR8(Delta, DeltaLN, flag)
+    L2 = LNCR8(Delta, DeltaLN, flag)
   endif
 
   !-----------------------------------------------------------------------------
@@ -3280,7 +3280,7 @@ subroutine InsertionSortQPEnergies
           !   enddo
           enddo
         enddo
-        where (abs(CanTransfo) .lt. 1d-6) CanTransfo = 0.0_dp
+        where (abs(CanTransfo) .lt. 1d-11) CanTransfo = 0.0_dp
   end subroutine DiagonaliseRhoHFB!_diagoncr8
 
   subroutine CheckRho(Rho)

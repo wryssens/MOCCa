@@ -46,7 +46,7 @@ module HFB
   !-----------------------------------------------------------------------------
   ! Numerical cutoff to determine what components in the canonical
   ! transformation to ignore.
-  real(KIND=dp),parameter :: HFBNumCut=1d-6
+  real(KIND=dp),parameter :: HFBNumCut=1d-12
   !-----------------------------------------------------------------------------
   ! HFB density and anomalous density matrix note that these are complex
   ! in general. The old matrices are the matrices at previous iterations
@@ -540,7 +540,6 @@ contains
     use Spinors
 
     complex(KIND=dp), allocatable,intent(inout) :: Delta(:,:,:,:)
-    complex(KIND=dp), allocatable               :: Deltain(:,:,:,:)
     complex(KIND=dp), allocatable,intent(inout) :: DeltaLN(:,:,:,:)
     complex(KIND=dp), allocatable,intent(in)    :: Pairingfield(:,:,:,:)
     complex(KIND=dp), allocatable,intent(in)    :: PairingfieldLN(:,:,:,:)
@@ -558,9 +557,7 @@ contains
 
     if(ConstantGap) call stp('Trying to do constant gap pairing in HFB!')
 
-    DeltaIn = Delta
     Delta     = 0.0_dp  
-
     if(allocated(DeltaLN)) then
       DeltaLN    = 0.0_dp
     endif
@@ -631,7 +628,6 @@ contains
       enddo
     enddo
 
-    Delta = 0.5 * Delta + 0.5 * DeltaIn
     !---------------------------------------------------------------------------
   end subroutine HFBGaps
 
@@ -1141,7 +1137,7 @@ contains
 
   real(KIND=dp) :: N(2), Num(2)
   real(KIND=dp) :: InitialBracket(2,2), FA(2), FB(2)
-  real(KIND=dp) :: A(2), B(2), FermiIn(2)
+  real(KIND=dp) :: A(2), B(2)
   logical       :: NotFound(2)
   logical       :: Success
   integer       :: iter, FailCount, flag(2), it, i , lniter, lnit
@@ -1169,8 +1165,6 @@ contains
     if ( Particles(it) .lt. 0.1_dp ) Fermi(it) = -100.0_dp
   enddo
 
-  FermiIn = Fermi
-
   !-----------------------------------------------------------------------------
   ! Check if initial guess is already good enough. If so, this will be the 
   ! only call of the HFB solver.
@@ -1188,8 +1182,7 @@ contains
 
   ! here would start the loop over iterations of lambda_2 in the LN case if
   ! an actual iteration is needed to improve convergence.
-  lniter=2
-  do lnit=1, 2
+
     Success  = .false.
     !---------------------------------------------------------------------------
     ! Use present Fermi energy as starting point and check the direction 
@@ -1345,8 +1338,6 @@ contains
     !---------------------------------------------------------------------------
     call FermiBrent(InitialBracket(:,1),InitialBracket(:,2),FA,FB,HFBIter, &
                  & Delta,L2,Prec,Fermi,N)
-    
-  enddo
 
   end subroutine HFBFindFermiEnergyBisection
 

@@ -3352,6 +3352,10 @@ subroutine PrintAllMoments()
     &                             //  " isn't there.")
     !---------------------------------------------------------------------------
     ! Assigning correct values
+  
+    ! Legacy option to continue old calculations
+    if(ConstraintType.eq.3) ConstraintType = 2
+
     Mom%ConstraintType = ConstraintType
     Mom%Isoswitch      = Isoswitch
 

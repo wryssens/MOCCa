@@ -3689,7 +3689,8 @@ subroutine InsertionSortQPEnergies
       ! not allow us to start HFB calculations from converged HF calculations.
       ! So we try something more clever.
       !------------------------------------------------------------------------
-      allocate(KappaHFB(HFBSize,HFBSize,2,2)) ; KappaHFB=0.0_dp
+      if(.not.allocated(kappahfb)) allocate(KappaHFB(HFBSize,HFBSize,2,2))
+      KappaHFB=0.0_dp
       call PrepareHFBModule()
       do it=1,Iindex
         do P=1,Pindex
@@ -3717,7 +3718,8 @@ subroutine InsertionSortQPEnergies
 
     case(1)
       !BCS Calculation
-      allocate(KappaHFB(HFBSize,HFBSize,2,2)); KappaHFB=0.0_dp
+      if(.not.allocated(kappahfb)) allocate(KappaHFB(HFBSize,HFBSize,2,2))
+      KappaHFB=0.0_dp
       call PrepareHFBModule()
       !--------------------------------------------------------------------------
       ! We now make an initial guess as in EVCR8
@@ -3816,8 +3818,8 @@ subroutine InsertionSortQPEnergies
               iii = mod(ii-1,nwt)+1
               jj = Blockindices(IndCon(i),P,it)
               jjj = mod(jj-1,nwt)+1
-              KappaHFB(i,IndCon(i),P,it) =  Occ * PCutoffs(iii) * PCutoffs(jjj)
-              KappaHFB(IndCon(i),i,P,it) = -Occ * PCutoffs(iii) * PCutoffs(jjj)
+              KappaHFB(i,IndCon(i),P,it) =  Occ !* PCutoffs(iii) * PCutoffs(jjj)
+              KappaHFB(IndCon(i),i,P,it) = -Occ !* PCutoffs(iii) * PCutoffs(jjj)
               ! print '(" GuessHFBMatrices ",2i3,2i5,8f7.3)',it,P,i,IndCon(i), &
               !                 & overlapT(i,IndCon(i),P,it),PCutoffs(iii),PCutoffs(jjj), &
               !                 & KappaHFB(i,IndCon(i),P,it),KappaHFB(IndCon(i),i,P,it)

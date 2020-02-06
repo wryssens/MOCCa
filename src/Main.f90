@@ -112,6 +112,7 @@ subroutine Evolve(MaxIterations, iprint)
   use Energy 
   use HFB
   use Testing
+  use InOutput
 
   !---------------------------------------------------------------------------
   ! Interface for the Summaryprinting routines, since FORTRAN is rather
@@ -137,6 +138,8 @@ subroutine Evolve(MaxIterations, iprint)
   7 format ("Energy            changed for less than : ", es9.2)
   8 format ("Total dispersion of the occupied Spwfs  : ", es9.2)
   9 format ("Average dispersion of the occupied Spwfs: ", es9.2)
+ 10 format ("Saving wavefunction file after ", i4, ' iterations.')
+
 100 format (/,60('='),/, 18x,' START OF THE ITERATIVE PROCESS ' ,/, 60('='))
 101 format (/,60('='),/, 18x,' **FINAL** Iteration ')
 102 format (/,60('='),/, 18x,' PROJECTION ON FEASIBLE SUBSPACE ' ,/, 55('='))
@@ -147,7 +150,7 @@ subroutine Evolve(MaxIterations, iprint)
   integer             :: Iteration
   logical             :: Convergence, AlternateCheck
   logical, external   :: ConvergenceCheck
-  integer             :: i,wave
+  integer             :: i,wave, oc
   real(KIND=dp)       :: Canenergy
 
   !--------------------------------------------------------------------------
@@ -313,6 +316,15 @@ subroutine Evolve(MaxIterations, iprint)
     endif
     !Print a summary
     if(mod(Iteration, PrintIter).ne.0) call PrintSummary(Iteration)
+
+    ! Write a wavefunction file every "checkpointiter" iterations
+    if(checkpointiter.gt.0  .and. mod(Iteration, checkpointiter) .eq. 0) then
+      print 10, Iteration
+      !Getting an open channel for output
+      call get_unit(oc)
+      !Writing to the output channel
+      call writeMOCCa_v1(oc)
+    endif
   enddo
   !End of the mean-field iterations
   !-----------------------------------------------------------------------------

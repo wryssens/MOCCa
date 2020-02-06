@@ -19,6 +19,9 @@ module InOutput
   ! Name of the input file and output file. Default = fort.12 and fort.13
   character(len=256),public :: InputFileName="fort.12", OutputFileName="fort.13"
   !-----------------------------------------------------------------------------
+  ! Checkpoint the code every 'this much' iterations.
+  integer :: checkpointiter = -1
+  !-----------------------------------------------------------------------------
   !logicals determining the symmetries of the input file
   logical ::  inTRC, inTSC,inIC,inPC,inSC
   !-----------------------------------------------------------------------------
@@ -196,7 +199,6 @@ contains
 
     !Getting an open channel for output
     call get_unit(OutputChannel)
-
     !Writing to the output channel
     call writeMOCCa_v1(OutputChannel)
 
@@ -336,7 +338,7 @@ contains
 
     NameList /InAndOutput/ InputFileName,OutputFileName,PromOutput,LegacyInput,&
     &                      Pictures, AllowTransform,nwninit,nwpinit, Cr8output,&
-    &                      JacquesOutput
+    &                      JacquesOutput, checkpointiter
 
     !--------------- Reading Input---------------------------------------
     !Info for the GenInfo Module
@@ -417,6 +419,12 @@ contains
     9 format ( '  nwt = ', i5, / &
     &          '  nwn = ', i5, / &
     &          '  nwp = ', i5 )
+   81 format ( 'In/Output',  /  &
+    &          '    inputfile      = ', a30, / &
+    &          '    outputfile     = ', a30, / &
+    &          '    checkpointiter = ', i3)
+
+
     91 format ('  ATTENTION: ', / &
     &          "  !!!!!!!!!!!!!!!!!!!!!!!")
     92 format ('  MOCCa added ', i2 ,' spwfs to every parity-isospin block.')
@@ -479,7 +487,6 @@ contains
     print 6
     print 7 , neutrons, protons
     print 8
-    
     print 9 , nwt,nwn,nwp
     if(PlusSpwf .ne. 0) then
         print 91
@@ -488,6 +495,9 @@ contains
         print 94, filenwt
         print 95, nwt
     endif
+
+    print 81, inputfilename, outputfilename, checkpointiter
+
     print 10
     print 12, MaxIter
 

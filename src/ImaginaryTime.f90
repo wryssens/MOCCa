@@ -372,7 +372,23 @@ contains
         endif
         
         multipole = multipole + Update
-        
+    case(2)
+        !-----------------------------------------------------------------------
+        ! Constrain the proton & neutron independently
+        power = 1
+        O2    = sum(Current%Squared)                    ! < C^2 >
+        Value = Current%Value                           ! Current value of <C>
+        Targ  = Current%Constraint                      ! Current targeted value
+        Des   = Current%TrueConstraint                  ! Desired final value
+
+        update = 0.0
+        !-----------------------------------------------------------------------
+        !Calculate the update
+        do it=1,2
+            Update(:,:,:,it) = 0.5*(Value(it)  - Des(it))/(O2(it) + d0)*   &
+            &                      Cutoff(:,:,:,it)*Current%SpherHarm
+        enddo
+        multipole = multipole + Update
     case DEFAULT
         call stp('Alternating constraints do not recognize this type of constraint.')
     end select

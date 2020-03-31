@@ -1391,7 +1391,7 @@ contains
     8 format ('Mult_{',i2,i2,'}',   33x,  f15.4)
     9 format ('Mult_{',i2,i2,'}',   2(1x,f15.4))
    10 format ('Devi_{',i2,i2,'}',   33x,  e15.7) 
-   11 format ('Devi_{',i2,i2,'}',   33x,  e15.7) 
+   11 format ('Devi_{',i2,i2,'}',   10x, e10.4, 6x, e10.4) 
 
   select case(ToPrint%l)
 
@@ -1454,11 +1454,13 @@ contains
             print  8, ToPrint%l, Toprint%m, ToPrint%Multiplier(1)            
           endif
         case(2)
-          print 2, ToPrint%TrueConstraint
+          print 2 , ToPrint%TrueConstraint
           print 11, ToPrint%l, Toprint%m, ToPrint%Deviation
           print 9, ToPrint%l, Toprint%m,ToPrint%Multiplier
         case(3)
-          print 7, ToPrint%TrueConstraint, ToPrint%Value(1) - ToPrint%Value(2)
+          print 7 , ToPrint%TrueConstraint, ToPrint%Value(1) - ToPrint%Value(2)
+          print 10, ToPrint%l, Toprint%m, ToPrint%Deviation
+          print  8, ToPrint%l, Toprint%m, ToPrint%Multiplier
         end select
       endif
     endif
@@ -1966,8 +1968,17 @@ subroutine PrintAllMoments()
     ! Set the deviation
     if(ToCalculate%ConstraintType.ne.0) then
         if(.not. ToCalculate%total) then
-          ToCalculate%deviation(1) = abs(sum(ToCalculate%Value) -              &
+          if(tocalculate%isoswitch .eq. 1) then
+            ToCalculate%deviation(1) = abs(sum(ToCalculate%Value) -            &
                                                   ToCalculate%TrueConstraint(1))
+          elseif(tocalculate%isoswitch.eq.2) then
+            ToCalculate%deviation = abs(ToCalculate%Value -            &
+                                                  ToCalculate%TrueConstraint)
+          elseif(tocalculate%isoswitch.eq.3) then
+            ToCalculate%deviation(1) = abs(                                    &
+            &            ToCalculate%Value(1) -Tocalculate%value(2)            &
+                                               -  ToCalculate%TrueConstraint(1))
+          endif
         else
           ToCalculate%deviation(1) = abs(sum(CalculateTotalQl(Tocalculate%l))- &
                                                   ToCalculate%TrueConstraint(1))
@@ -2277,6 +2288,10 @@ subroutine PrintAllMoments()
                   else
                       Current%Constraint(1) = sum(Current%Value)
                   endif
+                case(2)
+                      Current%Constraint    = Current%Value
+                case(3)
+                      Current%Constraint(1) = Current%Value(1)-Current%value(2)
                 case DEFAULT
                     call stp('Not implemented yet!')
                 end select
@@ -2446,8 +2461,12 @@ subroutine PrintAllMoments()
               Value  = sum(Current%Value)
               Desired=   Current%Constraint(1)
             endif
+        case(2)
+          ! Proton & Neutron independently constrained
+          Factor = 2.0_dp * Current%Intensity
+          Desired= Current%Constraint
+          Value  = Current%Value
        end select
-       
     case DEFAULT
           call stp('Not implemented constrainttype.')
     end select
@@ -2969,41 +2988,54 @@ subroutine PrintAllMoments()
         ToReadjust%Constraint(1) = ToReadjust%Constraint(1) &
         & -ReadjustSlowDown * ( ToReadjust%Value(1) - ToReadjust%Value(2)      &
         &                   - ToReadjust%TrueConstraint(1))
+        ! Set the new effective multiplier        
+        ToReadjust%Multiplier = 2 * ToReadjust%Intensity *                     &
+        & (ToReadjust%Value(1) - ToReadjust%Value(2) - ToReadjust%Constraint(1))
+
       end select
     case (2)
+      !-------------------------------------------------------------------------
+      ! Guessing intensities if necessary
+      if(ToReadjust%Intensity(1) .eq. 0.0) then
+
+        select case(ToReadjust%Isoswitch)
+        case(1)        
+            ! Proton + neutron value     
+            if(.not. present(J0)) then
+                if(.not. ToReadjust%Total) then
+                    O2 = ToReadjust%Squared
+                else
+                    O2 = CalculateTotalsquared(ToReadjust%l)
+                endif
+                ToReadjust%Intensity(1) = (2/sum(O2)) 
+            
+                if(momentum.ne.0.0) then
+                    ! It is generally advisable to take less intensive constraints
+                    ! with momentum, as overshoots tend to happen and should not
+                    ! have quite so dramatic effects.                
+                    ToReadjust%Intensity(1) = 0.5 * ToReadjust%Intensity(1)
+                endif
+            else
+                ToReadjust%Intensity(1) = 0.1
+            endif   
+       case(2)
+          O2 = ToReadjust%Squared
+          ToReadjust%Intensity = 2/O2  
+          if(momentum.ne.0.0) then
+            ToReadjust%Intensity = 0.5 * ToReadjust%Intensity
+          endif
+       end select
+       ! Letting the user know his constraint parameters have been estimated.
+       print 11 
+       print 12, ToReadjust%l, ToReadjust%m
+       print 13
+       print 14,  ToReadjust%Intensity(1)
+       print 11
+     endif  
      !--------------------------------------------------------------------------
      ! Alternating direction constraints
      select case(ToReadjust%Isoswitch)
-     ! Proton + neutron value
      case(1)
-      if(ToReadjust%Intensity(1) .eq. 0.0) then
-        !-----------------------------------------------------------------------
-        ! Set the intensity if none was there before
-        if(.not. present(J0)) then
-            if(.not. ToReadjust%Total) then
-                O2 = ToReadjust%Squared
-            else
-                O2 = CalculateTotalsquared(ToReadjust%l)
-            endif
-            ToReadjust%Intensity(1) = (2/sum(O2)) 
-        
-            if(momentum.ne.0.0) then
-                ! It is generally advisable to take less intensive constraints
-                ! with momentum, as overshoots tend to happen and should not
-                ! have quite so dramatic effects.                
-                ToReadjust%Intensity(1) = 0.5 * ToReadjust%Intensity(1)
-            endif
-        else
-            ToReadjust%Intensity(1) = 0.1
-        endif   
-        ! Letting the user know his constraint parameters have been estimated.
-        print 11 
-        print 12, ToReadjust%l, ToReadjust%m
-        print 13
-        print 14,  ToReadjust%Intensity(1)
-        print 11
-      endif
-           
       if(.not.ToReadjust%Total) then
          ToReadjust%Constraint(1) = ToReadjust%Constraint(1)                   &
          & -              (sum(ToReadjust%Value) - ToReadjust%TrueConstraint(1))
@@ -3014,8 +3046,14 @@ subroutine PrintAllMoments()
          ToReadjust%Constraint(1) = ToReadjust%Constraint(1)                   &
          &  - (sum(CalculateTotalQl(Toreadjust%l))-ToReadjust%TrueConstraint(1))
       endif
-      end select     
+     case(2)
+         ToReadjust%Constraint = ToReadjust%Constraint                         &
+         & -              (ToReadjust%Value - ToReadjust%TrueConstraint)
+         ! Set the new effective multiplier        
+         ToReadjust%Multiplier = 2*ToReadjust%Intensity *                      &
+         &                (ToReadjust%Value     - ToReadjust%Constraint)
      end select
+    end select
     return
   end subroutine Readjust
 
@@ -3384,7 +3422,7 @@ subroutine PrintAllMoments()
     
     
     Mom%Multiplier=2*Mom%Intensity(1)*(sum(Mom%Value)     - Mom%Constraint(1))
-    print *,'read', Mom%l, mom%m, mom%constraint, mom%trueconstraint, mom%intensity, mom%multiplier
+    !print *,'read', Mom%l, mom%m, mom%constraint, mom%trueconstraint, mom%intensity, mom%multiplier
     
   end subroutine ReadMoment
 
@@ -3686,6 +3724,13 @@ subroutine PrintAllMoments()
                   endif
                   !Copying the true constraint
                   Current%TrueConstraint = Current%Constraint
+                endif
+
+                if(isoswitch.eq.3 .and.intensity.eq.0) then
+                    call stp('Need to specify intensity of an isovector constraint.')
+                endif
+                if(isoswitch.eq.3 .and. constrainttype .eq. 2) then
+                    call stp('Isovector, alternate-step constraints not implemented.')
                 endif
                 !---------------------------------------------------------------
             else

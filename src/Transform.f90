@@ -1952,10 +1952,6 @@ end subroutine TransformHFBMatrices
     ! Construct the values of the interpolation functions f_r associated with
     ! the old mesh at the points of the new mesh.
     ! (mx,my,mz, ex) => (nx,ny,nz,dx)
-    !
-    !
-    ! Currently only valid when conserving all of the spatial symmetries
-    ! 
     !---------------------------------------------------------------------------
     
     integer, intent(in)       :: mx,my,mz
@@ -1968,21 +1964,16 @@ end subroutine TransformHFBMatrices
     InterpolX = 0.0d0
     InterpolY = 0.0d0
     InterpolZ = 0.0d0
-    
-    if(.not. SC) then
-      call stp('Interpolation not yet supported for signature breaking calculations.')
-    endif
-    if(.not. TSC) then
-      call stp('Interpolation not yet supported for timesimplex breaking calculations.')
-    endif
-    
+       
     dh = dx/ex
     fac =   0.5d0 / mx
     x1  = - 0.5d0 * dh
+    if(.not. SC) x1 = x1 - nx/2 * dh   
     ph  = 0.5 * pi/mx
     do i=1,nx
       x1 = x1 + dh
       x2  = - 0.5d0
+      if(.not. SC) x2 = x2 - mx/2    
       do j=1,mx        
         x2 = x2 + 1
         if (abs(x1-x2).le.eps) then
@@ -1990,10 +1981,14 @@ end subroutine TransformHFBMatrices
         else
           c = sin(pi * (x1 - x2))/sin(ph*(x1-x2))
         endif
-        if (abs((x1+x2)/(2*mx)-1.0_dp).le.eps) then
-          d= pi/ph
+        if(.not. SC) then
+          d = 0.0
         else
-          d  = sin(pi*(x1+x2))/sin(ph*(x1+x2))
+          if (abs((x1+x2)/(2*mx)-1.0_dp).le.eps) then
+            d= pi/ph
+          else
+            d  = sin(pi*(x1+x2))/sin(ph*(x1+x2))
+          endif
         endif
         InterpolX(i,j,1) = fac * (c - d)
         InterpolX(i,j,2) = fac * (c + d)
@@ -2002,10 +1997,12 @@ end subroutine TransformHFBMatrices
     
     fac =   0.5d0 / my
     x1  = - 0.5d0 * dh
+    if(.not. TSC) x1 = x1 - ny/2 * dh   
     ph  = 0.5 * pi/my
     do i=1,ny
       x1 = x1 + dh
       x2  = - 0.5d0
+      if(.not. TSC) x2 = x2 - my/2    
       do j=1,my        
         x2 = x2 + 1
         if (abs(x1-x2).le.eps) then
@@ -2013,10 +2010,14 @@ end subroutine TransformHFBMatrices
         else
           c = sin(pi * (x1 - x2))/sin(ph*(x1-x2))
         endif
-        if (abs((x1+x2)/(2*my)-1.0_dp).le.eps) then
-          d= pi/ph
+        if(.not.TSC) then
+          d= 0.0
         else
-          d  = sin(pi*(x1+x2))/sin(ph*(x1+x2))
+          if (abs((x1+x2)/(2*my)-1.0_dp).le.eps) then
+            d= pi/ph
+          else
+            d  = sin(pi*(x1+x2))/sin(ph*(x1+x2))
+          endif
         endif
         InterpolY(i,j,1) = fac * (c - d)
         InterpolY(i,j,2) = fac * (c + d)
